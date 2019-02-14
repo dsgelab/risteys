@@ -30,7 +30,7 @@ defmodule RisteysWeb do
   def view do
     quote do
       use Phoenix.View,
-        root: "lib/risteys_elixir_web/templates",
+        root: "lib/risteys_web/templates",
         namespace: RisteysWeb
 
       # Import convenience functions from controllers

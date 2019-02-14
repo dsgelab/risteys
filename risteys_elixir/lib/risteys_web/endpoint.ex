@@ -1,5 +1,5 @@
 defmodule RisteysWeb.Endpoint do
-  use Phoenix.Endpoint, otp_app: :risteys_elixir
+  use Phoenix.Endpoint, otp_app: :risteys
 
   socket "/socket", RisteysWeb.UserSocket,
     websocket: true,
@@ -11,7 +11,7 @@ defmodule RisteysWeb.Endpoint do
   # when deploying your static files in production.
   plug Plug.Static,
     at: "/",
-    from: :risteys_elixir,
+    from: :risteys,
     gzip: false,
     only: ~w(css fonts images js favicon.ico robots.txt)
 
@@ -39,8 +39,8 @@ defmodule RisteysWeb.Endpoint do
   # Set :encryption_salt if you would also like to encrypt it.
   plug Plug.Session,
     store: :cookie,
-    key: "_risteys_elixir_key",
-    signing_salt: "X/o6ydQO"
+    key: "_risteys_key",
+    signing_salt: "kE56/xxV"
 
   plug RisteysWeb.Router
 end

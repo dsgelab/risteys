@@ -7,8 +7,7 @@
 # General application configuration
 use Mix.Config
 
-config :risteys_elixir,
-  namespace: Risteys,
+config :risteys,
   ecto_repos: [Risteys.Repo]
 
 # Configures Elixir's Logger

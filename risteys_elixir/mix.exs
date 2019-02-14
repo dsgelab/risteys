@@ -3,7 +3,7 @@ defmodule Risteys.MixProject do
 
   def project do
     [
-      app: :risteys_elixir,
+      app: :risteys,
       version: "0.1.0",
       elixir: "~> 1.5",
       elixirc_paths: elixirc_paths(Mix.env()),
