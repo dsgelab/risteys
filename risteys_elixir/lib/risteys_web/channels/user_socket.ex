@@ -2,7 +2,7 @@ defmodule RisteysWeb.UserSocket do
   use Phoenix.Socket
 
   ## Channels
-  # channel "room:*", RisteysWeb.RoomChannel
+  channel "search", RisteysWeb.SearchChannel
 
   # Socket params are passed from the client and can
   # be used to verify and authenticate a user. After

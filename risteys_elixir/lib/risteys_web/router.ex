@@ -2,7 +2,6 @@ defmodule RisteysWeb.Router do
   use RisteysWeb, :router
 
   pipeline :browser do
-
     plug :accepts, ["html"]
     plug :fetch_session
     plug :fetch_flash
@@ -17,8 +16,8 @@ defmodule RisteysWeb.Router do
   scope "/", RisteysWeb do
     pipe_through :browser
 
-    get "/", PageController, :index
-    get "/code/:code", CodeController, :show
+    get "/", HomeController, :index
+    get "/code/:phenocode", CodeController, :show
   end
 
   # Other scopes may use custom stacks.

@@ -19,6 +19,12 @@ module.exports = (env, options) => ({
     filename: 'app.js',
     path: path.resolve(__dirname, '../priv/static/js')
   },
+  resolve: {
+    alias: {
+        // Needed as we compile templates that are in HTML
+        'vue$': 'vue/dist/vue.esm.js' // 'vue/dist/vue.common.js' for webpack 1
+    }
+  },
   module: {
     rules: [
       {
