@@ -26,12 +26,22 @@ defmodule RisteysWeb.SearchChannel do
   end
 
   defp search(query) do
+  	loquery = String.downcase(query)
+
   	@json
-  	|> Map.values 
-  	|> Enum.map(fn dict -> Map.fetch!(dict, "description") end) 
-  	|> Enum.filter(fn desc ->
-  		String.contains?(desc |> String.downcase, query |> String.downcase) end)
-  	|> Enum.map(fn match -> highlight(match, query |> String.downcase) end)
+  	|> Enum.filter(fn {_code, %{"description" => desc}} ->
+  		# Filter out the results that do not match
+  		desc
+  		|> String.downcase
+  		|> String.contains?(loquery)
+  	end)
+	|> Enum.map(fn {code, %{"description" => desc}} ->
+		# Transform data structure and apply highlighting
+		%{
+			html: highlight(desc, query),
+			url: "/code/" <> code  # TODO use something like route_for(code) instead of hardcoded URL
+		}
+	end)
   end
 
   defp highlight(string, query) do
