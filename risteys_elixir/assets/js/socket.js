@@ -56,24 +56,9 @@ socket.connect()
 
 // Now that you are connected, you can join channels with a topic:
 let channel = socket.channel("search", {})
-let searchInput = document.querySelector("#search-input")
-let resultsContainer = document.querySelector("#results")
-
-
-searchInput.addEventListener("keypress", event => {
-    if (event.keyCode === 13) {
-	channel.push("query", {body: searchInput.value})
-	searchInput.value = ""
-    }
-})
-
-
-channel.on("result", payload => {
-    resultsContainer.innerText = `${payload.body}`
-})
 
 channel.join()
   .receive("ok", resp => { console.log("Joined successfully", resp) })
   .receive("error", resp => { console.log("Unable to join", resp) })
 
-export default socket
+export {socket, channel}

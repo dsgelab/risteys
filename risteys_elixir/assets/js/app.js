@@ -18,11 +18,23 @@ import "phoenix_html"
 //
 // Local files can be imported directly using relative paths, for example:
 import socket from "./socket"
+import { channel } from "./socket"
 
 
 var app = new Vue({
-  el: '#app',
-  data: {
-    message: 'Hello Vue!'
-  }
+    el: '#app',
+    data: {
+        message: '',
+        searchvalue: '',
+    },
+    methods: {
+        search: function (event) {
+            channel.push("query", {body: this.searchvalue});
+        }
+    }
+})
+
+channel.on("result", payload => {
+    console.log(payload.body);
+    app.message = `${payload.body}`;
 })
