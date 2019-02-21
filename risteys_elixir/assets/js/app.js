@@ -24,7 +24,7 @@ import { channel } from "./socket"
 var app = new Vue({
     el: '#app',
     data: {
-        message: '',
+        results: '',
         searchvalue: '',
     },
     methods: {
@@ -35,6 +35,5 @@ var app = new Vue({
 })
 
 channel.on("result", payload => {
-    console.log(payload.body);
-    app.message = `${payload.body}`;
+    app.results = payload.body.results;
 })
