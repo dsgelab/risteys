@@ -13,12 +13,19 @@ defmodule RisteysWeb.SearchChannel do
   	{:noreply, socket}
   end
   def handle_in("query", %{"body" => user_input}, socket) do
+  	finngen_endpoints = %{
+  		title: "Finngen endpoints",
+		hlitems: search(user_input)
+	}
+	finngen_endpoints =
+		if Enum.empty?(finngen_endpoints.hlitems) do
+			%{}
+		else
+			finngen_endpoints
+		end
   	response = %{
   		results: [
-  			%{
-  				title: "Finngen endpoints",
-  				hlitems: search(user_input)
-  			}
+  			finngen_endpoints
   		]
   	}
     :ok = push(socket, "result", %{body: response})
