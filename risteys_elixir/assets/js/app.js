@@ -34,6 +34,6 @@ var app = new Vue({
     }
 })
 
-channel.on("result", payload => {
+channel.on("results", payload => {
     app.results = payload.body.results;
 })
