@@ -37,3 +37,26 @@ var app = new Vue({
 channel.on("results", payload => {
     app.results = payload.body.results;
 })
+
+
+
+/*
+*
+*  CODE PAGE
+*
+*/
+
+var codeapp = new Vue({
+    el: '#interactive_stats',
+    data: {
+        stats: {
+            profiles: [],
+            metrics: [],
+            table: [[1, 2, 3, 4], [5, 6, 7, 8]]
+        },
+    }
+})
+
+channel.on("stats", payload => {
+    codeapp.stats = payload.body.stats;
+})
