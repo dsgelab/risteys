@@ -10,8 +10,11 @@ defmodule Risteys.Data do
     ]
 
     profiles = %{
-      "profileA" => fn %{"chron" => chron} -> chron == true end,
-      "profileB" => fn %{"chron" => chron} -> chron == false end
+      "diagnosed w/" => fn %{"chron" => chron} -> chron end,
+      "whole population" => fn _indiv -> true end,
+      "user defined sub-pop 1" => fn %{"smoking" => smoking, "bmi" => bmi} ->
+	  smoking and bmi < 30
+	end,
     }
 
     indivs =
