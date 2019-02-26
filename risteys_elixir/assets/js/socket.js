@@ -55,10 +55,17 @@ let socket = new Socket("/socket", {params: {token: window.userToken}})
 socket.connect()
 
 // Now that you are connected, you can join channels with a topic:
-let channel = socket.channel("search", {})
+let search_channel = socket.channel("search", {})
 
-channel.join()
-  .receive("ok", resp => { console.log("Joined successfully", resp) })
-  .receive("error", resp => { console.log("Unable to join", resp) })
+search_channel.join()
+  .receive("ok", resp => { console.log("Joined SEARCH successfully", resp) })
+  .receive("error", resp => { console.log("Unable to join SEARCH", resp) })
 
-export {socket, channel}
+
+// STATS
+let stats_channel = socket.channel("stats", {})
+stats_channel.join()
+  .receive("ok", resp => { console.log("Joined STATS successfully", resp) })
+  .receive("error", resp => { console.log("Unable to join STATS", resp) })
+
+export {socket, search_channel, stats_channel}

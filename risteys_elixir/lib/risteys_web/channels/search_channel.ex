@@ -54,12 +54,15 @@ defmodule RisteysWeb.SearchChannel do
         Map.put(map, :description, desc)
       end
       {code, map}
-    end
+      end
+    
     # Reshape data structure to send over websocket
-    for {code, map} <- results do
+    results = for {code, map} <- results do
       # TODO should use sthing like route_of(code) instead of hardcoded route
       Map.put(map, :url, "/code/" <> code)
     end
+
+    results |> Enum.take(10)
   end
 
   defp match_desc(phenos, loquery) do

@@ -29,6 +29,6 @@ defmodule Risteys.Data do
         end
       end
 
-    [profiles: profiles, metrics: metrics, data: data]
+    %{profiles: Map.keys(profiles), metrics: metrics, table: data}
   end
 end

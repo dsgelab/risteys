@@ -3,6 +3,7 @@ defmodule RisteysWeb.UserSocket do
 
   ## Channels
   channel "search", RisteysWeb.SearchChannel
+  channel "stats", RisteysWeb.StatsChannel
 
   # Socket params are passed from the client and can
   # be used to verify and authenticate a user. After

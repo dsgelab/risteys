@@ -18,10 +18,10 @@ import "phoenix_html"
 //
 // Local files can be imported directly using relative paths, for example:
 import socket from "./socket"
-import { channel } from "./socket"
+import { search_channel, stats_channel } from "./socket"
 
 
-var app = new Vue({
+var searchapp = new Vue({
     el: '#app',
     data: {
         results: '',
@@ -29,13 +29,13 @@ var app = new Vue({
     },
     methods: {
         search: function (event) {
-            channel.push("query", {body: this.searchvalue});
+            search_channel.push("query", {body: this.searchvalue});
         }
     }
 })
 
-channel.on("results", payload => {
-    app.results = payload.body.results;
+search_channel.on("results", payload => {
+    searchapp.results = payload.body.results;
 })
 
 
@@ -57,6 +57,13 @@ var codeapp = new Vue({
     }
 })
 
-channel.on("stats", payload => {
-    codeapp.stats = payload.body.stats;
+// Send initial request for data on page load
+stats_channel.push("code", window.location.pathname, 1000)
+  .receive("ok", (payload) => codeapp.stats = payload.body)
+  .receive("error", (reasons) => console.log(reasons))
+  .receive("timeout", () => console.log("timeout"))
+
+// Listen on result update after a user interaction 
+stats_channel.on("results", payload => {
+    codeapp.stats = payload.body.results;
 })
