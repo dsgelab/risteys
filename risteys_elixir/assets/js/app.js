@@ -52,16 +52,16 @@ var codeapp = new Vue({
         stats: {
             profiles: [],
             metrics: [],
-            table: [[1, 2, 3, 4], [5, 6, 7, 8]]
+            table: []
         },
     }
 })
 
 // Send initial request for data on page load
-stats_channel.push("code", window.location.pathname, 1000)
+stats_channel.push("code", window.location.pathname)
   .receive("ok", (payload) => codeapp.stats = payload.body)
   .receive("error", (reasons) => console.log(reasons))
-  .receive("timeout", () => console.log("timeout"))
+  .receive("timeout", () => console.log("timeout on STATS"))
 
 // Listen on result update after a user interaction 
 stats_channel.on("results", payload => {

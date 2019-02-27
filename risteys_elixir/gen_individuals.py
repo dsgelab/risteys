@@ -1,12 +1,3 @@
-# output:
-# [
-#     {
-#         x: 1/2/0/12.5,
-#         ...
-#     },
-#     ...
-# ]
-
 import json
 from random import choice
 
@@ -33,9 +24,9 @@ values = {
     "epilepsy": lambda: choice([True, False]),
 }
 
-# with open("assets/data/myphenos.json") as f:
-#     phenos = json.load(f)
-# phenos = phenos.keys()
+with open("assets/data/myphenos.json") as f:
+    phenos = json.load(f)
+phenos = phenos.keys()
 
 for _ in range(100):
     indiv = {}
