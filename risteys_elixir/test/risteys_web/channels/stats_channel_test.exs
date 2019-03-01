@@ -4,23 +4,26 @@ defmodule RisteysWeb.StatsChannelTest do
   setup do
     {:ok, _, socket} =
       socket(RisteysWeb.UserSocket, "user_id", %{some: :assign})
-      |> subscribe_and_join(RisteysWeb.StatsChannel, "stats:lobby")
+      |> subscribe_and_join(RisteysWeb.StatsChannel, "stats")
 
     {:ok, socket: socket}
   end
 
-  test "ping replies with status ok", %{socket: socket} do
-    ref = push socket, "ping", %{"hello" => "there"}
-    assert_reply ref, :ok, %{"hello" => "there"}
-  end
+  test "handle getting code data", %{socket: socket} do
+    ref = push(socket, "code", "J10")
 
-  test "shout broadcasts to stats:lobby", %{socket: socket} do
-    push socket, "shout", %{"hello" => "all"}
-    assert_broadcast "shout", %{"hello" => "all"}
-  end
+    payload = %{
+      body: %{
+        data: [
+          ["", "asthma", "cancer", "diabetes", "death"],
+          ["diagnosed w/", 22, 28, 24, 21],
+          ["whole population", 53, 53, 48, 50],
+          ["User defined sub-pop 1", 53, 53, 48, 50]
+        ],
+        pop_filter: Risteys.Popfilter.default_filters()
+      }
+    }
 
-  test "broadcasts are pushed to the client", %{socket: socket} do
-    broadcast_from! socket, "broadcast", %{"some" => "data"}
-    assert_push "broadcast", %{"some" => "data"}
+    assert_reply ref, :ok, ^payload
   end
 end

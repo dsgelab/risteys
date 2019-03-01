@@ -49,21 +49,20 @@ search_channel.on("results", payload => {
 var codeapp = new Vue({
     el: '#interactive_stats',
     data: {
-        stats: {
-            profiles: [],
-            metrics: [],
-            table: []
-        },
+        stats: null,
+        pop_filter: null,
     }
 })
 
 // Send initial request for data on page load
 stats_channel.push("code", window.location.pathname)
-  .receive("ok", (payload) => codeapp.stats = payload.body)
+  .receive("ok", (payload) => {
+    codeapp.stats = payload.body.data;
+    codeapp.pop_filter = payload.body.pop_filter})
   .receive("error", (reasons) => console.log(reasons))
   .receive("timeout", () => console.log("timeout on STATS"))
 
-// Listen on result update after a user interaction 
-stats_channel.on("results", payload => {
-    codeapp.stats = payload.body.results;
-})
+
+// HACK(firefox): set the focus back to the home search box
+var search_box = document.getElementById('home-search-input')
+search_box.focus()

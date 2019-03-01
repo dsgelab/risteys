@@ -1,21 +1,32 @@
 defmodule RisteysWeb.StatsChannel do
   use RisteysWeb, :channel
 
-  def join("stats", payload, socket) do
+  def join("stats", _payload, socket) do
     {:ok, socket}
   end
 
-
   def handle_in("code", payload, socket) do
-    _code = String.trim_leading(payload, "/code/")  # TODO find some reverse of url_for
+    # TODO find some reverse of url_for
+    code = String.trim_leading(payload, "/code/")
+
+    # Table data
     data = Risteys.Data.build()
-    row_head = [ "" | data.metrics ]
+    row_head = ["" | data.metrics]
     rows_data =
       for {profile, values} <- Enum.zip(data.profiles, data.table) do
-        [ profile | values ]
+        [profile | values]
       end
-    response = [ row_head | rows_data ]
+    table_data = [row_head | rows_data]
+
+    # Filters
+    pop_filter = Risteys.Popfilter.default_filters()
+
+    # Payload
+    response = %{
+      data: table_data,
+      pop_filter: pop_filter,
+    }
+    
     {:reply, {:ok, %{body: response}}, socket}
   end
-
 end

@@ -6,8 +6,8 @@ defmodule RisteysWeb.CodeController do
     # TODO should be done once per server worker, no need to do it per request
     pheno =
       "assets/data/myphenos.json"
-      |> File.read!
-      |> Jason.decode!
+      |> File.read!()
+      |> Jason.decode!()
       |> Map.fetch!(code)
 
     conn

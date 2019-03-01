@@ -9,7 +9,7 @@ defmodule RisteysWeb.SearchChannel do
   end
 
   def handle_in("query", %{"body" => ""}, socket) do
-    :ok = push(socket, "result", %{body: %{results: []}})
+    :ok = push(socket, "results", %{body: %{results: []}})
     {:noreply, socket}
   end
 
@@ -41,26 +41,31 @@ defmodule RisteysWeb.SearchChannel do
       end)
 
     # Provide a description for the results that match only on ICD or Phenocode
-    results = for {code, map} <- results, into: %{} do
-      map = if Map.has_key?(map, :description) do
-        # The map has already a matching description with highlights, so keeping it.
-        map
-      else
-        # Adding a description from the phenotypes base data
-        desc =
-          @json
-          |> Map.fetch!(code)
-          |> Map.fetch!("description")
-        Map.put(map, :description, desc)
+    results =
+      for {code, map} <- results, into: %{} do
+        map =
+          if Map.has_key?(map, :description) do
+            # The map has already a matching description with highlights, so keeping it.
+            map
+          else
+            # Adding a description from the phenotypes base data
+            desc =
+              @json
+              |> Map.fetch!(code)
+              |> Map.fetch!("description")
+
+            Map.put(map, :description, desc)
+          end
+
+        {code, map}
       end
-      {code, map}
-      end
-    
+
     # Reshape data structure to send over websocket
-    results = for {code, map} <- results do
-      # TODO should use sthing like route_of(code) instead of hardcoded route
-      Map.put(map, :url, "/code/" <> code)
-    end
+    results =
+      for {code, map} <- results do
+        # TODO should use sthing like route_of(code) instead of hardcoded route
+        Map.put(map, :url, "/code/" <> code)
+      end
 
     results |> Enum.take(10)
   end
