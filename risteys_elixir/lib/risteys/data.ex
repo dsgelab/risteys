@@ -7,10 +7,9 @@ defmodule Risteys.Data do
     # - age brackets
     # - sex
     metrics = [
-      "asthma",
-      "cancer",
-      "diabetes",
-      "death"
+      "C3_CANCER",
+      "E4_DMNAS",
+      "I9_K_CARDIAC"
     ]
 
     %{"name" => filter_name, "filters" => user_filter} = Risteys.Popfilter.default_filters()
@@ -20,7 +19,7 @@ defmodule Risteys.Data do
       |> Risteys.Popfilter.filters_to_func()
 
     profiles = [
-      {"diagnosed w/ CODE", fn %{"chron" => chron} -> chron end},  # TODO filter with correct code, not CHRON
+      {"diagnosed w/ " <> code, fn %{^code => code} -> code end},
       {"whole population", fn _indiv -> true end},
       {filter_name, user_filter}
     ]

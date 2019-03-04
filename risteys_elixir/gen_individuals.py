@@ -13,15 +13,15 @@ values = {
     "smoking": lambda: choice([True, False]),
     "sbp": lambda: choice(range(10)),
 
-    # medical conditions
-    "death": lambda: choice([True, False]),
-    "asthma": lambda: choice([True, False]),
-    "cancer": lambda: choice([True, False]),
-    "cdv": lambda: choice([True, False]),
-    "chron": lambda: choice([True, False]),
-    "depression": lambda: choice([True, False]),
-    "diabetes": lambda: choice([True, False]),
-    "epilepsy": lambda: choice([True, False]),
+    # # medical conditions
+    # "death": lambda: choice([True, False]),
+    # "asthma": lambda: choice([True, False]),
+    # "cancer": lambda: choice([True, False]),
+    # "cdv": lambda: choice([True, False]),
+    # "chron": lambda: choice([True, False]),
+    # "depression": lambda: choice([True, False]),
+    # "diabetes": lambda: choice([True, False]),
+    # "epilepsy": lambda: choice([True, False]),
 }
 
 with open("assets/data/myphenos.json") as f:
@@ -34,10 +34,10 @@ for _ in range(100):
     for v, fun in values.items():
         indiv[v] = fun()
 
-    # for pheno in phenos:
-    #     indiv[pheno] = choice([True, False])
+    for pheno in phenos:
+        indiv[pheno] = choice([True, False])
 
     res.append(indiv)
 
-with open("assets/data/fake_indiv.json", "w") as f:
+with open("assets/data/fake_indivs.json", "w") as f:
     json.dump(res, f)
