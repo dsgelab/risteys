@@ -10,15 +10,15 @@ defmodule RisteysWeb.StatsChannelTest do
   end
 
   test "handle getting code data", %{socket: socket} do
-    ref = push(socket, "code", "J10")
+    ref = push(socket, "code", "J10_BRONCH")
 
     payload = %{
       body: %{
         data: [
-          ["", "asthma", "cancer", "diabetes", "death"],
-          ["diagnosed w/", 22, 28, 24, 21],
-          ["whole population", 53, 53, 48, 50],
-          ["User defined sub-pop 1", 53, 53, 48, 50]
+          ["", "C3_CANCER", "E4_DMNAS", "I9_K_CARDIAC"],
+          ["diagnosed w/ J10_BRONCH", 28, 23, 27],
+          ["whole population", 54, 45, 49],
+          ["User defined sub-pop 1", 54, 45, 49]
         ],
         pop_filter: Risteys.Popfilter.default_filters()
       }
