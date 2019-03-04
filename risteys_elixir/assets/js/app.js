@@ -50,7 +50,10 @@ var codeapp = new Vue({
     el: '#interactive_stats',
     data: {
         stats: null,
-        pop_filter: null,
+        pop_filter: {
+            name: '',
+            filters: []
+        },
     }
 })
 

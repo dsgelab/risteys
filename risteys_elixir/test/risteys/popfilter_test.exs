@@ -22,7 +22,22 @@ defmodule Risteys.PopfilterTest do
         "type" => "radio",
         "metric" => "smoking",
         "text" => "Smoking?",
-        "selected" => nil
+        "values" => %{
+          "yes" => %{
+            "display" => "Yes",
+            "data" => [true]
+          },
+          "no" => %{
+            "display" => "No",
+            "data" => [false]
+          },
+          "all" => %{
+            "display" => "All",
+            "data" => [true, false]
+          }
+        },
+        "value_order" => ["yes", "no", "all"],
+        "selected" => "all"
       }
     ]
 
@@ -40,7 +55,22 @@ defmodule Risteys.PopfilterTest do
         "type" => "radio",
         "metric" => "smoking",
         "text" => "Smoking?",
-        "selected" => true
+        "values" => %{
+          "yes" => %{
+            "display" => "Yes",
+            "data" => [true]
+          },
+          "no" => %{
+            "display" => "No",
+            "data" => [false]
+          },
+          "all" => %{
+            "display" => "All",
+            "data" => [true, false]
+          }
+        },
+        "value_order" => ["yes", "no", "all"],
+        "selected" => "yes"
       }
     ]
 
@@ -50,6 +80,47 @@ defmodule Risteys.PopfilterTest do
       %{
         "smoking" => true,
         "bmi" => 12
+      }
+    ]
+
+    assert(Enum.filter(@fake_indivs, func) == expected)
+  end
+
+  test "radio(no) filter" do
+    filters = [
+      %{
+        "type" => "radio",
+        "metric" => "smoking",
+        "text" => "Smoking?",
+        "values" => %{
+          "yes" => %{
+            "display" => "Yes",
+            "data" => [true]
+          },
+          "no" => %{
+            "display" => "No",
+            "data" => [false]
+          },
+          "all" => %{
+            "display" => "All",
+            "data" => [true, false]
+          }
+        },
+        "value_order" => ["yes", "no", "all"],
+        "selected" => "no"
+      }
+    ]
+
+    func = Risteys.Popfilter.filters_to_func(filters)
+
+    expected = [
+      %{
+        "smoking" => false,
+        "bmi" => 40
+      },
+      %{
+        "smoking" => false,
+        "bmi" => 30
       }
     ]
 
@@ -91,7 +162,22 @@ defmodule Risteys.PopfilterTest do
         "type" => "radio",
         "metric" => "smoking",
         "text" => "Smoking?",
-        "selected" => false
+        "values" => %{
+          "yes" => %{
+            "display" => "Yes",
+            "data" => [true]
+          },
+          "no" => %{
+            "display" => "No",
+            "data" => [false]
+          },
+          "all" => %{
+            "display" => "All",
+            "data" => [true, false]
+          }
+        },
+        "value_order" => ["yes", "no", "all"],
+        "selected" => "no"
       },
       %{
         "type" => "interval",

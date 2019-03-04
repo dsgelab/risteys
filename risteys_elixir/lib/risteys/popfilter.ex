@@ -7,13 +7,42 @@ defmodule Risteys.Popfilter do
           "type" => "radio",
           "metric" => "sex",
           "text" => "Sex",
-          "selected" => nil
+          "selected" => "any",
+          "values" => %{
+            "male" => %{
+              "display" => "Male",
+              "data" => [1]
+            },
+            "female" => %{
+              "display" => "Female",
+              "data" => [2]
+            },
+            "any" => %{
+              "display" => "Any",
+              "data" => [1, 2]
+            }
+          },
+          "value_order" => ["any", "male", "female"]
         },
         %{
           "type" => "radio",
           "metric" => "smoking",
           "text" => "Smoking?",
-          "selected" => nil
+          "selected" => "any",
+          "values" => %{
+            "yes" => %{
+              "display" => "Yes",
+              "data" => [true]
+            },
+            "no" => %{
+              "display" => "No",
+              "data" => [false]
+            },
+            "any" => %{
+              "display" => "Any",
+              "data" => [true, false]
+            }
+          }
         },
         %{
           "type" => "interval",
@@ -41,13 +70,17 @@ defmodule Risteys.Popfilter do
     Enum.reduce(filters, fn _ -> true end, fn filter, acc -> to_func(acc, filter) end)
   end
 
-  defp to_func(acc, %{"type" => "radio", "metric" => metric, "selected" => selected}) do
-    if is_nil(selected) do
-      acc
-    else
-      fn %{^metric => metric_value} = indiv ->
-        acc.(indiv) and metric_value == selected
-      end
+  defp to_func(acc, %{
+         "type" => "radio",
+         "metric" => metric,
+         "values" => values,
+         "selected" => selected
+       }) do
+    possible_values = values |> Map.fetch!(selected) |> Map.fetch!("data")
+    filter = fn val -> val in possible_values end
+
+    fn %{^metric => metric_value} = indiv ->
+      acc.(indiv) and filter.(metric_value)
     end
   end
 

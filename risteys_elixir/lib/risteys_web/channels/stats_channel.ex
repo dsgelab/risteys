@@ -10,12 +10,14 @@ defmodule RisteysWeb.StatsChannel do
     code = String.trim_leading(payload, "/code/")
 
     # Table data
-    data = Risteys.Data.build()
+    data = Risteys.Data.build(code)
     row_head = ["" | data.metrics]
+
     rows_data =
       for {profile, values} <- Enum.zip(data.profiles, data.table) do
         [profile | values]
       end
+
     table_data = [row_head | rows_data]
 
     # Filters
@@ -24,9 +26,9 @@ defmodule RisteysWeb.StatsChannel do
     # Payload
     response = %{
       data: table_data,
-      pop_filter: pop_filter,
+      pop_filter: pop_filter
     }
-    
+
     {:reply, {:ok, %{body: response}}, socket}
   end
 end

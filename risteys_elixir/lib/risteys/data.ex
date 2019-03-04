@@ -1,7 +1,7 @@
 defmodule Risteys.Data do
   @fake_indivs "assets/data/fake_indivs.json" |> File.read!() |> Jason.decode!()
 
-  def build() do
+  def build(code) do
     # splits:
     # - most common associated comorbidities
     # - age brackets
@@ -20,7 +20,7 @@ defmodule Risteys.Data do
       |> Risteys.Popfilter.filters_to_func()
 
     profiles = [
-      {"diagnosed w/", fn %{"chron" => chron} -> chron end},
+      {"diagnosed w/ CODE", fn %{"chron" => chron} -> chron end},  # TODO filter with correct code, not CHRON
       {"whole population", fn _indiv -> true end},
       {filter_name, user_filter}
     ]
