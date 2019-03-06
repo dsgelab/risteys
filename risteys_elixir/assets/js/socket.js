@@ -61,11 +61,4 @@ search_channel.join()
   .receive("ok", resp => { console.log("Joined SEARCH successfully", resp) })
   .receive("error", resp => { console.log("Unable to join SEARCH", resp) })
 
-
-// STATS
-let stats_channel = socket.channel("stats", {})
-stats_channel.join()
-  .receive("ok", resp => { console.log("Joined STATS successfully", resp) })
-  .receive("error", resp => { console.log("Unable to join STATS", resp) })
-
-export {socket, search_channel, stats_channel}
+export {socket, search_channel}

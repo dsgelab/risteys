@@ -18,7 +18,7 @@ import "phoenix_html"
 //
 // Local files can be imported directly using relative paths, for example:
 import socket from "./socket"
-import { search_channel, stats_channel } from "./socket"
+import { search_channel } from "./socket"
 
 
 var searchapp = new Vue({
@@ -37,33 +37,6 @@ var searchapp = new Vue({
 search_channel.on("results", payload => {
     searchapp.results = payload.body.results;
 })
-
-
-
-/*
-*
-*  CODE PAGE
-*
-*/
-
-var codeapp = new Vue({
-    el: '#interactive_stats',
-    data: {
-        stats: null,
-        pop_filter: {
-            name: '',
-            filters: []
-        },
-    }
-})
-
-// Send initial request for data on page load
-stats_channel.push("code", window.location.pathname)
-  .receive("ok", (payload) => {
-    codeapp.stats = payload.body.data;
-    codeapp.pop_filter = payload.body.pop_filter})
-  .receive("error", (reasons) => console.log(reasons))
-  .receive("timeout", () => console.log("timeout on STATS"))
 
 
 // HACK(firefox): set the focus back to the home search box
