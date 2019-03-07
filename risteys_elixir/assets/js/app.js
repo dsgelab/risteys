@@ -21,17 +21,48 @@ import socket from "./socket"
 import { search_channel } from "./socket"
 
 
-var searchapp = new Vue({
-    el: '#app',
-    data: {
-        results: '',
-        searchvalue: '',
+Vue.component('risteys-search', {
+    data: function() {
+        return {
+            searchvalue: ''
+        }
     },
+    props: ['results'],
     methods: {
         search: function (event) {
             search_channel.push("query", {body: this.searchvalue});
         }
-    }
+    },
+    template: `
+    <form class="outshadow">
+      <input type="text" v-on:keyup="search" v-model="searchvalue" placeholder="search for disease, ICD code, endpoint"
+         class="inshadow text-xl font-mono p-3 w-full focus:mb-4"
+         autofocus="autofocus"
+       id="home-search-input"
+       autocomplete="off">
+        <section class="results">
+              <ul>
+                <li v-for="item in results" class="leading-normal">
+                  <a :href="item.url">
+                    <span v-html="item.description"></span>
+                  </a>
+                  <div v-if="item.phenocode">Phenocode: <span v-html="item.phenocode" class="font-mono"></span></div>
+                  <div v-if="item.icds">
+                    ICD-10: <span v-for="icd in item.icds" v-html="icd" class="pr-2 inline-block font-mono"></span>
+                  </div>
+                </li>
+              </ul>
+        </section>
+    </form>
+`
+})
+
+
+var searchapp = new Vue({
+    el: '#app',
+    data: {
+        results: '',
+    },
 })
 
 search_channel.on("results", payload => {
