@@ -3,21 +3,41 @@ defmodule RisteysWeb.CodeController do
 
   def show(conn, %{"phenocode" => code}) do
     # Parse phenos.json
-    # TODO should be done once per server worker, no need to do it per request
+    # TODO use a DB
     pheno =
       "assets/data/myphenos.json"
       |> File.read!()
       |> Jason.decode!()
       |> Map.fetch!(code)
 
+    individuals = Risteys.Data.fake_db(code)
+
+    key_figures = %{
+      all: aggregate(individuals, fn _sex -> true end),
+      male: aggregate(individuals, fn sex -> sex == 1 end),
+      female: aggregate(individuals, fn sex -> sex == 2 end),
+    }
+    
     conn
     |> assign(:code, code)
     |> assign(:category, Map.fetch!(pheno, "category"))
     |> assign(:title, Map.fetch!(pheno, "description"))
     |> assign(:icd_incl, Map.fetch!(pheno, "icd_incl"))
-    |> assign(:icd_excl, Map.fetch!(pheno, "icd_excl"))
-    |> assign(:num_cases, Map.fetch!(pheno, "num_cases"))
-    |> assign(:num_controls, Map.fetch!(pheno, "num_controls"))
+    |> assign(:key_figures, key_figures)
     |> render("show.html")
+  end
+
+  def aggregate(individuals, sex_filter) do
+    ages =
+      individuals
+      |> Enum.filter(fn %{sex: sex} -> sex_filter.(sex) end)
+      |> Enum.map(fn %{age: age} -> age end)
+    nevents = length(ages)
+    mean_ages = Enum.sum(ages) / length(ages)
+
+    %{
+      nevents: nevents,
+      mean_ages: mean_ages
+    }
   end
 end
