@@ -17,9 +17,20 @@ import "phoenix_html"
 // Import local files
 //
 // Local files can be imported directly using relative paths, for example:
-import socket from "./socket"
-import { search_channel } from "./socket"
+//// import slider_component from "./MySlider.vue"
+import VueSlider from 'vue-slider-component'
+import 'vue-slider-component/theme/default.css'
 
+import socket from "./socket"
+import { search_channel, kf_channel } from "./socket"
+
+
+var path = window.location.pathname
+
+
+/*
+ *  SEARCH
+ */
 
 Vue.component('risteys-search', {
     data: function() {
@@ -57,16 +68,131 @@ Vue.component('risteys-search', {
 `
 })
 
-
-var searchapp = new Vue({
-    el: '#app',
-    data: {
-        results: '',
-    },
+search_channel.on("results", payload => {
+    app.search_results = payload.body.results;
 })
 
-search_channel.on("results", payload => {
-    searchapp.results = payload.body.results;
+
+/*
+ * KEY FIGURES
+ */
+
+Vue.component('key-figures', {
+    props: ['table', 'filters'],
+    template: `
+    <div class="flex">
+        <kf-table :table="table"></kf-table>
+        <kf-filters :filters="filters" class="flex-grow"></kf-filters>
+    </div>
+    `
+})
+
+// TABLE
+Vue.component('kf-table', {
+    props: ['table'],
+    // TODO prevalence
+    template: `
+        <table class="key-figures table-fixed flex-initial mr-4">
+            <tbody>
+                <tr>
+                    <td>Sex</td>
+                    <td>Number of events</td>
+                    <td>Prevalence (%)</td>
+                    <td>Mean age after baseline (years)</td>
+                </tr>
+                <tr>
+                    <td>All</td>
+                    <td>{{ table.all.nevents }}</td>
+                    <td>{{ table.all.nevents / 1000 }}</td>
+                    <td>{{ Math.floor(table.all.mean_age) }}</td>
+                </tr>
+                <tr>
+                    <td>Male</td>
+                    <td>{{ table.male.nevents }}</td>
+                    <td>{{ table.male.nevents / 1000 }}</td>
+                    <td>{{ Math.floor(table.male.mean_age) }}</td>
+                </tr>
+                <tr>
+                    <td>Female</td>
+                    <td>{{ table.female.nevents }}</td>
+                    <td>{{ table.female.nevents / 1000 }}</td>
+                    <td>{{ Math.floor(table.female.mean_age) }}</td>
+                </tr>
+            </tbody>
+        </table>
+   `
+})
+
+// FILTERS
+Vue.component('kf-filters', {
+    props: ['filters'],
+    methods: {
+        filterOut: function(event) {
+            kf_channel.push("filter_out", {body: {path: path, filters: this.filters}})
+            .receive("ok", (payload) => {
+                app.key_figures.table = payload.body.results;
+            });
+        },
+    },
+    template: `
+        <div>
+            <div class="flex">
+                <div>Age</div>
+                <vue-slider
+                    v-model="filters.age"
+                    @change="filterOut"
+                    :min="25"
+                    :max="70"
+                    :duration="0"
+                    :height="8"
+                    :tooltip="'always'"
+                    :useKeyboard="true"
+                    :lazy="true"
+                    class="flex-grow">
+                </vue-slider>
+            </div>
+        </div>
+    `
+})
+
+// AGE SLIDER
+Vue.component('VueSlider', VueSlider)
+//// Vue.component('kf-age-slider', slider_component)
+
+
+// Send request to get the initial_data for the given code
+kf_channel.push("initial_data", {body: path})
+    .receive("ok", (payload) => {
+        app.key_figures.table = payload.body.results;
+    })
+
+/*
+ * VUE APP
+ */
+var app = new Vue({
+    el: '#app',
+    data: {
+        search_results: '',
+        key_figures: {
+            table: {
+                all: {
+                    nevents: -1,
+                    mean_age: -1,
+                },
+                male: {
+                    nevents: -1,
+                    mean_age: -1,
+                },
+                female: {
+                    nevents: -1,
+                    mean_age: -1,
+                },
+            },
+            filters: {
+                age: [25, 70],
+            }
+        }
+    },
 })
 
 

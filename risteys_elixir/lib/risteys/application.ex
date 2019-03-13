@@ -8,10 +8,9 @@ defmodule Risteys.Application do
   def start(_type, _args) do
     # List all child processes to be supervised
     children = [
-      ### TODO activate the DB connection (Repo) when setup through/within the docker container
-      ### # Start the Ecto repository
-      ### Risteys.Repo,
-      
+      # Start the Ecto repository
+      Risteys.Repo,
+
       # Start the endpoint when the application starts
       RisteysWeb.Endpoint
       # Starts a worker by calling: Risteys.Worker.start_link(arg)
