@@ -10,9 +10,9 @@ defmodule RisteysWeb.KeyFiguresChannelTest do
   end
 
   test "push initial data", %{socket: socket} do
-    push(socket, "initial_data", %{"body" => "J11"})
+    ref = push(socket, "initial_data", %{"body" => "J11"})
 
-    assert_push "results", %{
+    assert_reply ref, :ok, %{
       body: %{
         results: %{
           all: %{
