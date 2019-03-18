@@ -5,12 +5,13 @@ defmodule RisteysWeb.KeyFiguresChannel do
     {:ok, socket}
   end
 
-  def handle_in("initial_data", %{"body" => code}, socket) do
+  def handle_in("initial_data", %{"body" => path}, socket) do
+    code = String.trim_leading(path, "/code/")
     data = Risteys.Data.fake_db(code)
 
     payload = %{
       body: %{
-        results: Risteys.Data.group_by_sex(data)
+        results: Risteys.Data.group_by_sex__db(code)
       }
     }
 

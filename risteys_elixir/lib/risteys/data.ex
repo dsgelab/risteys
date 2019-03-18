@@ -1,4 +1,7 @@
 defmodule Risteys.Data do
+  import Ecto.Query
+  alias Risteys.{Repo, HealthEvent}
+
   def fake_db(code) do
     first = fake_indiv(code)
 
@@ -20,6 +23,48 @@ defmodule Risteys.Data do
       dateevent: dateevent,
       age: Enum.random(25..70)
     }
+  end
+
+  def group_by_sex__db(code) do
+    query =
+      from e in HealthEvent,
+        where: e.icd == ^code,
+        select: [e.sex, count(e.eid), avg(e.age)],
+        group_by: e.sex,
+        order_by: [asc: :sex]
+
+    [[1, n_males, age_males], [2, n_females, age_females]] = Repo.all(query)
+
+    if n_males > 5 and n_females > 5 do
+      results = %{
+        all: %{
+          nevents: n_males + n_females,
+          mean_age: (n_males * age_males + n_females * age_females) / (n_males + n_females)
+        },
+        male: %{
+          nevents: n_males,
+          mean_age: age_males
+        },
+        female: %{
+          nevents: n_females,
+          mean_age: age_females
+        }
+      }
+
+      {:ok, results}
+    else
+      {:error, "not enough data"}
+    end
+  end
+
+  def individuals(code) do
+    events = Risteys.Repo.all(from hevent in HealthEvent, where: hevent.icd == ^code)
+
+    if length(events) > 5 do
+      {:ok, events}
+    else
+      {:error, "Not enough data"}
+    end
   end
 
   defp aggregate(data) do
