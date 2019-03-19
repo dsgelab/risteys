@@ -147,7 +147,7 @@ Vue.component('kf-filters', {
                     :height="8"
                     :tooltip="'always'"
                     :useKeyboard="true"
-                    :lazy="true"
+                    :lazy="false"
                     class="flex-grow">
                 </vue-slider>
             </div>

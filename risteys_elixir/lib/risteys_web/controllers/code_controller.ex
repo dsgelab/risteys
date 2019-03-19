@@ -1,20 +1,17 @@
 defmodule RisteysWeb.CodeController do
   use RisteysWeb, :controller
+  alias Risteys.{Repo, Phenocode}
+  import Ecto.Query
 
   def show(conn, %{"phenocode" => code}) do
-    # Parse phenos.json
-    # TODO use a DB
-    pheno =
-      "assets/data/myphenos.json"
-      |> File.read!()
-      |> Jason.decode!()
-      |> Map.fetch!(code)
+    %Phenocode{longname: title, hd_codes: hd_codes, cod_codes: cod_codes} =
+      Repo.one(from p in Phenocode, where: p.code == ^code)
 
     conn
     |> assign(:code, code)
-    |> assign(:category, Map.fetch!(pheno, "category"))
-    |> assign(:title, Map.fetch!(pheno, "description"))
-    |> assign(:icd_incl, Map.fetch!(pheno, "icd_incl"))
+    |> assign(:title, title)
+    |> assign(:hd_codes, hd_codes)
+    |> assign(:cod_codes, cod_codes)
     |> render("show.html")
   end
 end
