@@ -42,9 +42,14 @@ Vue.component('risteys-search', {
     methods: {
         search: function (event) {
             search_channel.push("query", {body: this.searchvalue});
-        }
+        },
+        setSearch: function (value) {
+            this.searchvalue = value;
+            this.search();
+        },
     },
     template: `
+<div>
     <form class="outshadow">
       <input type="text" v-on:keyup="search" v-model="searchvalue" placeholder="search for disease, ICD code, endpoint"
          class="inshadow text-xl font-mono p-3 w-full focus:mb-4"
@@ -65,6 +70,15 @@ Vue.component('risteys-search', {
               </ul>
         </section>
     </form>
+    <div id="home-examples">
+      <p>Examples:</p>
+      <ul>
+        <li>Search for <a href="#" @click="setSearch('kidney')" class="font-mono">kidney</a></li>
+        <li>Get statistics for the <a href="/code/I9_ANGINA" class="font-mono">I9_ANGINA</a> phenocode</li>
+        <li>Get statistics for the <a href="#TODO" class="font-mono">I25</a> ICD-10 code</li>
+      </ul>
+    </div>
+</div>
 `
 })
 
