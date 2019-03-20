@@ -26,7 +26,27 @@ defmodule RisteysWeb.KeyFiguresChannel do
       ) do
     code = String.trim_leading(path, "/code/")
 
-    {:ok, results} = Risteys.Data.group_by_sex(code, age)
+    results =
+      case Risteys.Data.group_by_sex(code, age) do
+        {:ok, results} ->
+          results
+
+        {:error, _} ->
+          %{
+            all: %{
+              nevents: 0,
+              mean_age: 0
+            },
+            male: %{
+              nevents: 0,
+              mean_age: 0
+            },
+            female: %{
+              nevents: 0,
+              mean_age: 0
+            }
+          }
+      end
 
     payload = %{
       body: %{

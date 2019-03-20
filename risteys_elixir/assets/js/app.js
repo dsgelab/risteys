@@ -73,7 +73,7 @@ Vue.component('risteys-search', {
     <div id="home-examples">
       <p>Examples:</p>
       <ul>
-        <li>Search for <a href="#" @click="setSearch('kidney')" class="font-mono">kidney</a></li>
+        <li>Search for <a href="#" @click="setSearch('infections')" class="font-mono">infections</a></li>
         <li>Get statistics for the <a href="/code/I9_ANGINA" class="font-mono">I9_ANGINA</a> phenocode</li>
         <li>Get statistics for the <a href="#TODO" class="font-mono">I25</a> ICD-10 code</li>
       </ul>
@@ -190,16 +190,16 @@ var app = new Vue({
         key_figures: {
             table: {
                 all: {
-                    nevents: -1,
-                    mean_age: -1,
+                    nevents: 0,
+                    mean_age: 0,
                 },
                 male: {
-                    nevents: -1,
-                    mean_age: -1,
+                    nevents: 0,
+                    mean_age: 0,
                 },
                 female: {
-                    nevents: -1,
-                    mean_age: -1,
+                    nevents: 0,
+                    mean_age: 0,
                 },
             },
             filters: {
