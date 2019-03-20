@@ -7,19 +7,19 @@ defmodule Risteys.HealthEvent do
     field :dateevent, :date
     field :death, :boolean, default: false
     field :eid, :integer
-    field :icd, :string
     field :sex, :integer
 
     timestamps()
+
+    belongs_to :phenocode, Risteys.Phenocode
   end
 
   @doc false
   def changeset(health_event, attrs) do
     health_event
-    |> cast(attrs, [:eid, :sex, :death, :icd, :dateevent, :age])
-    |> validate_required([:eid, :sex, :death, :icd, :dateevent, :age])
+    |> cast(attrs, [:eid, :sex, :death, :dateevent, :age])
+    |> validate_required([:eid, :sex, :death, :dateevent, :age])
     |> validate_inclusion(:sex, [1, 2])
-    |> validate_length(:icd, is: 3)
     |> validate_number(:age, greater_than: 0)
   end
 end

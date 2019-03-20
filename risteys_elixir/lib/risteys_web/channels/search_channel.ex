@@ -1,8 +1,7 @@
 defmodule RisteysWeb.SearchChannel do
   use Phoenix.Channel
-
-  # TODO put the data parsing somewhere in an agent/global state as we need it in different places
-  @json "assets/data/myphenos.json" |> File.read!() |> Jason.decode!()
+  alias Risteys.{Repo, Phenocode}
+  import Ecto.Query
 
   def join("search", _message, socket) do
     {:ok, socket}
@@ -15,94 +14,37 @@ defmodule RisteysWeb.SearchChannel do
 
   def handle_in("query", %{"body" => user_input}, socket) do
     response = %{
-      results: search(user_input)
+      results: search(user_input, 10)
     }
 
     :ok = push(socket, "results", %{body: response})
     {:noreply, socket}
   end
 
-  def search(query) do
-    loquery = String.downcase(query)
+  def search(user_query, limit) do
+    pattern = "%" <> user_query <> "%"
 
-    # Merge results by phenocode
-    # TODO this could refactored by passing the results dict to each function, building it up from %{}
-    descriptions = match_desc(@json, loquery)
-    icds = match_icd(@json, loquery)
-    phenocodes = match_phenocode(@json, loquery)
+    Repo.all(
+      from p in Phenocode,
+        where:
+          ilike(p.code, ^pattern) or
+            ilike(p.longname, ^pattern),
+        limit: ^limit
+    )
+    |> Enum.map(fn %Phenocode{
+                     code: code,
+                     longname: description,
+                     hd_codes: hd_codes,
+                     cod_codes: cod_codes
+                   } ->
+      url = "/code/" <> code
 
-    results =
-      descriptions
-      |> Map.merge(icds, fn _code, desc, icd ->
-        Map.merge(desc, icd)
-      end)
-      |> Map.merge(phenocodes, fn _code, prev, phenocode ->
-        Map.merge(prev, phenocode)
-      end)
-
-    # Provide a description for the results that match only on ICD or Phenocode
-    results =
-      for {code, map} <- results, into: %{} do
-        map =
-          if Map.has_key?(map, :description) do
-            # The map has already a matching description with highlights, so keeping it.
-            map
-          else
-            # Adding a description from the phenotypes base data
-            desc =
-              @json
-              |> Map.fetch!(code)
-              |> Map.fetch!("description")
-
-            Map.put(map, :description, desc)
-          end
-
-        {code, map}
-      end
-
-    # Reshape data structure to send over websocket
-    results =
-      for {code, map} <- results do
-        # TODO should use sthing like route_of(code) instead of hardcoded route
-        Map.put(map, :url, "/code/" <> code)
-      end
-
-    results |> Enum.take(10)
-  end
-
-  defp match_desc(phenos, loquery) do
-    for {code, %{"description" => desc}} <- phenos,
-        desc |> String.downcase() |> String.contains?(loquery),
-        into: %{} do
-      hldesc = highlight(desc, loquery)
-      {code, %{description: hldesc}}
-    end
-  end
-
-  defp match_icd(phenos, loquery) do
-    for {code, %{"icd_incl" => icds}} <- phenos,
-        icds
-        |> Enum.any?(fn icd ->
-          icd |> String.downcase() |> String.contains?(loquery)
-        end),
-        into: %{} do
-      icds =
-        for icd <- icds,
-            icd |> String.downcase() |> String.contains?(loquery) do
-          highlight(icd, loquery)
-        end
-
-      {code, %{icds: icds}}
-    end
-  end
-
-  defp match_phenocode(phenos, loquery) do
-    for {code, _map} <- phenos,
-        code |> String.downcase() |> String.contains?(loquery),
-        into: %{} do
-      hl_phenocode = highlight(code, loquery)
-      {code, %{phenocode: hl_phenocode}}
-    end
+      %{
+        description: description |> highlight(user_query),
+        phenocode: code |> highlight(user_query),
+        url: url
+      }
+    end)
   end
 
   defp highlight(string, query) do

@@ -1,37 +1,28 @@
 defmodule Risteys.Data do
+  import Ecto
   import Ecto.Query
-  alias Risteys.{Repo, HealthEvent}
+  alias Risteys.{Repo, Phenocode}
 
-  def fake_db(code) do
-    first = fake_indiv(code)
+  defp query_group_by_sex(code) do
+    phenocode = Repo.one(from p in Phenocode, where: p.code == ^code)
 
-    Stream.unfold(first, fn acc -> {acc, fake_indiv(code)} end)
-    |> Enum.take(100)
+    from e in assoc(phenocode, :health_events),
+      select: [e.sex, count(e.eid), avg(e.age)],
+      group_by: e.sex,
+      order_by: [asc: :sex]
   end
 
-  defp fake_indiv(code) do
-    year = Enum.random(1998..2015)
-    month = Enum.random(1..12)
-    day = Enum.random(1..28)
-
-    {:ok, dateevent} = Date.new(year, month, day)
-
-    %{
-      sex: Enum.random([1, 2]),
-      death: Enum.random([0, 1]),
-      icd: code,
-      dateevent: dateevent,
-      age: Enum.random(25..70)
-    }
+  defp query_group_by_sex_filter_age(code, [mini, maxi]) do
+    from e in query_group_by_sex(code),
+      where: e.age >= ^mini and e.age <= ^maxi
   end
 
-  def group_by_sex__db(code) do
+  defp get_results(code, [age_mini, age_maxi]) do
     query =
-      from e in HealthEvent,
-        where: e.icd == ^code,
-        select: [e.sex, count(e.eid), avg(e.age)],
-        group_by: e.sex,
-        order_by: [asc: :sex]
+      case [age_mini, age_maxi] do
+        [nil, nil] -> query_group_by_sex(code)
+        _ -> query_group_by_sex_filter_age(code, [age_mini, age_maxi])
+      end
 
     [[1, n_males, age_males], [2, n_females, age_females]] = Repo.all(query)
 
@@ -57,42 +48,11 @@ defmodule Risteys.Data do
     end
   end
 
-  def individuals(code) do
-    events = Risteys.Repo.all(from hevent in HealthEvent, where: hevent.icd == ^code)
-
-    if length(events) > 5 do
-      {:ok, events}
-    else
-      {:error, "Not enough data"}
-    end
+  def group_by_sex(code) do
+    get_results(code, [nil, nil])
   end
 
-  defp aggregate(data) do
-    nevents = length(data)
-
-    ages = Enum.map(data, fn %{age: age} -> age end)
-    mean_age = Enum.sum(ages) / nevents
-
-    %{nevents: nevents, mean_age: mean_age}
-  end
-
-  def group_by_sex(data) do
-    all = data
-    male = all |> Enum.filter(fn %{sex: sex} -> sex == 1 end)
-    female = all |> Enum.filter(fn %{sex: sex} -> sex == 2 end)
-
-    %{
-      all: aggregate(all),
-      male: aggregate(male),
-      female: aggregate(female)
-    }
-  end
-
-  def filter_out(data, [age_min, age_max]) do
-    data
-    |> Enum.filter(fn %{age: age} ->
-      age >= age_min and
-        age <= age_max
-    end)
+  def group_by_sex(code, [age_mini, age_maxi]) do
+    get_results(code, [age_mini, age_maxi])
   end
 end

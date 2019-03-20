@@ -1,10 +1,8 @@
 defmodule Risteys.DataTest do
   use ExUnit.Case, async: true
 
-  test "group data by sex" do
-    data = Risteys.Data.fake_db("X00")
-
-    result = Risteys.Data.group_by_sex(data)
+  test "group data by sex", %{data: data} do
+    {:ok, result} = Risteys.Data.group_by_sex(data)
 
     assert %{
              all: %{nevents: _, mean_age: _},
