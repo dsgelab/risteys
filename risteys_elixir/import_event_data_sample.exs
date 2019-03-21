@@ -14,8 +14,9 @@
 alias Risteys.{Repo, Phenocode}
 import Ecto.Query
 
-phenocodes =
-  Repo.all(from(p in Phenocode))
+Logger.configure(level: :info)
+
+phenocodes = Repo.all(from(p in Phenocode))
 
 "assets/data/example_codes_for_risteys__uniq__nona.tsv"
 |> File.stream!()
@@ -53,5 +54,5 @@ phenocodes =
 
   Ecto.build_assoc(phenocode, :health_events, health_event)
 end)
-|> Enum.take(10_000)
+|> Enum.take(100_000)
 |> Enum.each(&Repo.insert!(&1))
