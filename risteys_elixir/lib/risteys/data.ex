@@ -1,12 +1,14 @@
 defmodule Risteys.Data do
   import Ecto
   import Ecto.Query
-  alias Risteys.{Repo, Phenocode}
+  alias Risteys.{Repo, HealthEvent, Phenocode}
 
   defp query_group_by_sex(code) do
-    phenocode = Repo.one(from p in Phenocode, where: p.code == ^code)
-
-    from e in assoc(phenocode, :health_events),
+    
+    from e in HealthEvent,
+      join: p in Phenocode,
+      on: e.phenocode_id == p.id,
+      where: p.code == ^code,
       select: [e.sex, count(e.eid), avg(e.age)],
       group_by: e.sex,
       order_by: [asc: :sex]
