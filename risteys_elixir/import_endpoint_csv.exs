@@ -14,164 +14,177 @@
 
 alias Risteys.{Repo, Phenocode}
 
-Repo.transaction(fn ->
-  "assets/data/aki_endpoints__expanded2.csv"
-  |> File.stream!()
-  |> CSV.decode!(headers: true)
-  |> Stream.map(fn %{
-                     "TAGS" => tags,
-                     "LEVEL" => level,
-                     "OMIT" => omit,
-                     "NAME" => code,
-                     "LONGNAME" => longname,
-                     "SEX" => sex,
-                     "INCLUDE" => include,
-                     "PRE_CONDITIONS" => pre_conditions,
-                     "CONDITIONS" => conditions,
-                     "OUTPAT_ICD" => outpat_icd,
-                     "HD_MAINONLY" => hd_mainonly,
-                     "HD_ICD_10" => hd_icd_10,
-                     "HD_ICD_9" => hd_icd_9,
-                     "HD_ICD_8" => hd_icd_8,
-                     "HD_ICD_10_EXCL" => hd_icd_10_excl,
-                     "HD_ICD_9_EXCL" => hd_icd_9_excl,
-                     "HD_ICD_8_EXCL" => hd_icd_8_excl,
-                     "COD_MAINONLY" => cod_mainonly,
-                     "COD_ICD_10" => cod_icd_10,
-                     "COD_ICD_9" => cod_icd_9,
-                     "COD_ICD_8" => cod_icd_8,
-                     "COD_ICD_10_EXCL" => cod_icd_10_excl,
-                     "COD_ICD_9_EXCL" => cod_icd_9_excl,
-                     "COD_ICD_8_EXCL" => cod_icd_8_excl,
-                     "OPER_NOM" => oper_nom,
-                     "OPER_HL" => oper_hl,
-                     "OPER_HP1" => oper_hp1,
-                     "OPER_HP2" => oper_hp2,
-                     "KELA_REIMB" => kela_reimb,
-                     "KELA_REIMB_ICD" => kela_reimb_icd,
-                     "KELA_ATC_NEEDOTHER" => kela_atc_needother,
-                     "KELA_ATC" => kela_atc,
-                     "CANC_TOPO" => canc_topo,
-                     "CANC_MORPH" => canc_morph,
-                     "CANC_BEHAV" => canc_behav,
-                     "Special" => special,
-                     "version" => version,
-                     "source" => source,
-                     "PHEWEB" => pheweb
-                   } ->
-    omit =
-      case omit do
-        "" -> nil
-        "1" -> true
-      end
+Logger.configure(level: :info)
 
-    level =
-      case level do
-        "" -> nil
-        _ -> level
-      end
+defmodule RegexICD do
+  @icd10s "assets/data/icd10cm_codes_2019.tsv"
+          |> File.stream!()
+          |> CSV.decode!(separator: ?\t)
+          |> Enum.map(fn [code, _description] -> code end)
 
-    sex =
-      case sex do
-        "" -> nil
-        _ -> String.to_integer(sex)
-      end
+  def expand(regex) do
+    case regex do
+      "" ->
+        []
 
-    hd_mainonly =
-      case hd_mainonly do
-        "" -> nil
-        "YES" -> true
-      end
+      "ANY" ->
+        ["ANY"]
 
-    hd_icd_10 = String.split(hd_icd_10)
-    hd_icd_9 = String.split(hd_icd_9)
-    hd_icd_8 = String.split(hd_icd_8)
-    hd_icd_10_excl = String.split(hd_icd_10_excl)
-    hd_icd_9_excl = String.split(hd_icd_9_excl)
-    hd_icd_8_excl = String.split(hd_icd_8_excl)
+      _ ->
+        # Match only against upper most ICD in the tree.
+        # For example make E[7-9] match E7 but not E700.
+        regex = "^(#{regex})$"
+        reg = Regex.compile!(regex)
 
-    cod_mainonly =
-      case cod_mainonly do
-        "" -> nil
-        "YES" -> true
-      end
+        @icd10s
+        |> Enum.filter(fn code -> Regex.match?(reg, code) end)
+    end
+  end
+end
 
-    cod_icd_10 = String.split(cod_icd_10)
-    cod_icd_9 = String.split(cod_icd_9)
-    cod_icd_8 = String.split(cod_icd_8)
-    cod_icd_10_excl = String.split(cod_icd_10_excl)
-    cod_icd_9_excl = String.split(cod_icd_9_excl)
-    cod_icd_8_excl = String.split(cod_icd_8_excl)
+"assets/data/aki_endpoints.csv"
+|> File.stream!()
+|> CSV.decode!(headers: true)
+|> Stream.map(fn %{
+                   "TAGS" => tags,
+                   "LEVEL" => level,
+                   "OMIT" => omit,
+                   "NAME" => code,
+                   "LONGNAME" => longname,
+                   "SEX" => sex,
+                   "INCLUDE" => include,
+                   "PRE_CONDITIONS" => pre_conditions,
+                   "CONDITIONS" => conditions,
+                   "OUTPAT_ICD" => outpat_icd,
+                   "HD_MAINONLY" => hd_mainonly,
+                   "HD_ICD_10" => hd_icd_10,
+                   "HD_ICD_9" => hd_icd_9,
+                   "HD_ICD_8" => hd_icd_8,
+                   "HD_ICD_10_EXCL" => hd_icd_10_excl,
+                   "HD_ICD_9_EXCL" => hd_icd_9_excl,
+                   "HD_ICD_8_EXCL" => hd_icd_8_excl,
+                   "COD_MAINONLY" => cod_mainonly,
+                   "COD_ICD_10" => cod_icd_10,
+                   "COD_ICD_9" => cod_icd_9,
+                   "COD_ICD_8" => cod_icd_8,
+                   "COD_ICD_10_EXCL" => cod_icd_10_excl,
+                   "COD_ICD_9_EXCL" => cod_icd_9_excl,
+                   "COD_ICD_8_EXCL" => cod_icd_8_excl,
+                   "OPER_NOM" => oper_nom,
+                   "OPER_HL" => oper_hl,
+                   "OPER_HP1" => oper_hp1,
+                   "OPER_HP2" => oper_hp2,
+                   "KELA_REIMB" => kela_reimb,
+                   "KELA_REIMB_ICD" => kela_reimb_icd,
+                   "KELA_ATC_NEEDOTHER" => kela_atc_needother,
+                   "KELA_ATC" => kela_atc,
+                   "CANC_TOPO" => canc_topo,
+                   "CANC_MORPH" => canc_morph,
+                   "CANC_BEHAV" => canc_behav,
+                   "Special" => special,
+                   "version" => version,
+                   "source" => source,
+                   "PHEWEB" => pheweb
+                 } ->
+  omit =
+    case omit do
+      "" -> nil
+      "1" -> true
+    end
 
-    oper_nom = String.split(oper_nom)
-    oper_hl = String.split(oper_hl)
-    oper_hp1 = String.split(oper_hp1)
-    oper_hp2 = String.split(oper_hp2)
+  level =
+    case level do
+      "" -> nil
+      _ -> level
+    end
 
-    kela_reimb =
-      kela_reimb
-      |> String.split()
+  sex =
+    case sex do
+      "" -> nil
+      _ -> String.to_integer(sex)
+    end
 
-    kela_reimb_icd = String.split(kela_reimb_icd)
-    kela_atc = String.split(kela_atc)
+  hd_mainonly =
+    case hd_mainonly do
+      "" -> nil
+      "YES" -> true
+    end
 
-    canc_behav =
-      case canc_behav do
-        "" -> nil
-        _ -> String.to_integer(canc_behav)
-      end
+  # Parse all ICD-10 columns
+  icd_10_regex = hd_icd_10
+  hd_icd_10 = RegexICD.expand(hd_icd_10)
 
-    canc_topo = String.split(canc_topo)
+  cod_icd_10 =
+    case cod_icd_10 do
+      ^icd_10_regex -> hd_icd_10
+      _ -> RegexICD.expand(cod_icd_10)
+    end
 
-    pheweb =
-      case pheweb do
-        "" -> nil
-        "1" -> true
-      end
+  kela_reimb_icd = RegexICD.expand(kela_reimb_icd)
 
-    %Phenocode{
-      code: code,
-      longname: longname,
-      tags: tags,
-      level: level,
-      omit: omit,
-      sex: sex,
-      include: include,
-      pre_conditions: pre_conditions,
-      conditions: conditions,
-      outpat_icd: outpat_icd,
-      hd_mainonly: hd_mainonly,
-      hd_icd_10: hd_icd_10,
-      hd_icd_9: hd_icd_9,
-      hd_icd_8: hd_icd_8,
-      hd_icd_10_excl: hd_icd_10_excl,
-      hd_icd_9_excl: hd_icd_9_excl,
-      hd_icd_8_excl: hd_icd_8_excl,
-      cod_mainonly: cod_mainonly,
-      cod_icd_10: cod_icd_10,
-      cod_icd_9: cod_icd_9,
-      cod_icd_8: cod_icd_8,
-      cod_icd_10_excl: cod_icd_10_excl,
-      cod_icd_9_excl: cod_icd_9_excl,
-      cod_icd_8_excl: cod_icd_8_excl,
-      oper_nom: oper_nom,
-      oper_hl: oper_hl,
-      oper_hp1: oper_hp1,
-      oper_hp2: oper_hp2,
-      kela_reimb: kela_reimb,
-      kela_reimb_icd: kela_reimb_icd,
-      kela_atc_needother: kela_atc_needother,
-      kela_atc: kela_atc,
-      canc_topo: canc_topo,
-      canc_morph: canc_morph,
-      canc_behav: canc_behav,
-      special: special,
-      version: version,
-      source: source,
-      pheweb: pheweb
-    }
-  end)
-  # NOTE take only of subset for development purpose
-  ### |> Stream.take(100)
-  |> Enum.each(&Repo.insert!(&1))
+  # Cause of death
+  cod_mainonly =
+    case cod_mainonly do
+      "" -> nil
+      "YES" -> true
+    end
+
+  # Cancer
+  canc_behav =
+    case canc_behav do
+      "" -> nil
+      _ -> String.to_integer(canc_behav)
+    end
+
+  # Pheweb
+  pheweb =
+    case pheweb do
+      "" -> nil
+      "1" -> true
+    end
+
+  %Phenocode{
+    code: code,
+    longname: longname,
+    tags: tags,
+    level: level,
+    omit: omit,
+    sex: sex,
+    include: include,
+    pre_conditions: pre_conditions,
+    conditions: conditions,
+    outpat_icd: outpat_icd,
+    hd_mainonly: hd_mainonly,
+    hd_icd_10: hd_icd_10,
+    hd_icd_9: hd_icd_9,
+    hd_icd_8: hd_icd_8,
+    hd_icd_10_excl: hd_icd_10_excl,
+    hd_icd_9_excl: hd_icd_9_excl,
+    hd_icd_8_excl: hd_icd_8_excl,
+    cod_mainonly: cod_mainonly,
+    cod_icd_10: cod_icd_10,
+    cod_icd_9: cod_icd_9,
+    cod_icd_8: cod_icd_8,
+    cod_icd_10_excl: cod_icd_10_excl,
+    cod_icd_9_excl: cod_icd_9_excl,
+    cod_icd_8_excl: cod_icd_8_excl,
+    oper_nom: oper_nom,
+    oper_hl: oper_hl,
+    oper_hp1: oper_hp1,
+    oper_hp2: oper_hp2,
+    kela_reimb: kela_reimb,
+    kela_reimb_icd: kela_reimb_icd,
+    kela_atc_needother: kela_atc_needother,
+    kela_atc: kela_atc,
+    canc_topo: canc_topo,
+    canc_morph: canc_morph,
+    canc_behav: canc_behav,
+    special: special,
+    version: version,
+    source: source,
+    pheweb: pheweb
+  }
 end)
+# NOTE take only of subset for development purpose
+### |> Enum.take(100)
+|> Enum.each(&Repo.insert!(&1))

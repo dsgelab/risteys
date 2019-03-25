@@ -15,27 +15,27 @@ defmodule Risteys.Phenocode do
     field :outpat_icd, :string
     field :hd_mainonly, :boolean
     field :hd_icd_10, {:array, :string}
-    field :hd_icd_9, {:array, :string}
-    field :hd_icd_8, {:array, :string}
-    field :hd_icd_10_excl, {:array, :string}
-    field :hd_icd_9_excl, {:array, :string}
-    field :hd_icd_8_excl, {:array, :string}
+    field :hd_icd_9, :string
+    field :hd_icd_8, :string
+    field :hd_icd_10_excl, :string
+    field :hd_icd_9_excl, :string
+    field :hd_icd_8_excl, :string
     field :cod_mainonly, :boolean
     field :cod_icd_10, {:array, :string}
-    field :cod_icd_9, {:array, :string}
-    field :cod_icd_8, {:array, :string}
-    field :cod_icd_10_excl, {:array, :string}
-    field :cod_icd_9_excl, {:array, :string}
-    field :cod_icd_8_excl, {:array, :string}
-    field :oper_nom, {:array, :string}
-    field :oper_hl, {:array, :string}
-    field :oper_hp1, {:array, :string}
-    field :oper_hp2, {:array, :string}
-    field :kela_reimb, {:array, :string}
+    field :cod_icd_9, :string
+    field :cod_icd_8, :string
+    field :cod_icd_10_excl, :string
+    field :cod_icd_9_excl, :string
+    field :cod_icd_8_excl, :string
+    field :oper_nom, :string
+    field :oper_hl, :string
+    field :oper_hp1, :string
+    field :oper_hp2, :string
+    field :kela_reimb, :string
     field :kela_reimb_icd, {:array, :string}
     field :kela_atc_needother, :string
-    field :kela_atc, {:array, :string}
-    field :canc_topo, {:array, :string}
+    field :kela_atc, :string
+    field :canc_topo, :string
     field :canc_morph, :string
     field :canc_behav, :integer
     field :special, :string
