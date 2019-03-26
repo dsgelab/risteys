@@ -34,8 +34,8 @@ defmodule RisteysWeb.SearchChannel do
     |> Enum.map(fn %Phenocode{
                      code: code,
                      longname: description,
-                     hd_icd_10: hd_icd_10,
-                     cod_icd_10: cod_icd_10
+                     hd_icd_10: _hd_icd_10,
+                     cod_icd_10: _cod_icd_10
                    } ->
       url = "/code/" <> code
 

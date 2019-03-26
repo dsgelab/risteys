@@ -46,11 +46,13 @@ defmodule RisteysWeb.CodeController do
     hd_icd_10 =
       phenocode.hd_icd_10
       |> Enum.map(&abbr_icd10(&1, icd10s))
+
     hd_codes = hd_icd_10 ++ [phenocode.hd_icd_9] ++ [phenocode.hd_icd_8]
 
     cod_icd_10 =
       phenocode.cod_icd_10
       |> Enum.map(&abbr_icd10(&1, icd10s))
+
     cod_codes = cod_icd_10 ++ [phenocode.cod_icd_9] ++ [phenocode.cod_icd_8]
 
     data_table =

@@ -8,7 +8,7 @@ defmodule RisteysWeb.KeyFiguresChannel do
   def handle_in("initial_data", %{"body" => path}, socket) do
     code = String.trim_leading(path, "/code/")
 
-    {:ok, results} = Risteys.Data.group_by_sex(code)
+    {:ok, results} = Risteys.Data.stats_by_sex(code)
 
     payload = %{
       body: %{
@@ -27,7 +27,7 @@ defmodule RisteysWeb.KeyFiguresChannel do
     code = String.trim_leading(path, "/code/")
 
     results =
-      case Risteys.Data.group_by_sex(code, age) do
+      case Risteys.Data.stats_by_sex(code, age) do
         {:ok, results} ->
           results
 
@@ -35,15 +35,18 @@ defmodule RisteysWeb.KeyFiguresChannel do
           %{
             all: %{
               nevents: 0,
-              mean_age: 0
+              mean_age: 0,
+              rehosp: 0
             },
             male: %{
               nevents: 0,
-              mean_age: 0
+              mean_age: 0,
+              rehosp: 0
             },
             female: %{
               nevents: 0,
-              mean_age: 0
+              mean_age: 0,
+              rehosp: 0
             }
           }
       end

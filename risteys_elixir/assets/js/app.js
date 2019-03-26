@@ -113,24 +113,28 @@ Vue.component('kf-table', {
                     <td>Number of events</td>
                     <td>Prevalence (%)</td>
                     <td>Mean age after baseline (years)</td>
+                    <td>Re-hospitalization rate (%)</td>
                 </tr>
                 <tr>
                     <td>All</td>
                     <td>{{ table.all.nevents }}</td>
                     <td>{{ table.all.nevents / 1000 }}</td>
                     <td>{{ Math.floor(table.all.mean_age) }}</td>
+                    <td>{{ (table.all.rehosp * 100).toFixed(3) }}</td>
                 </tr>
                 <tr>
                     <td>Male</td>
                     <td>{{ table.male.nevents }}</td>
                     <td>{{ table.male.nevents / 1000 }}</td>
                     <td>{{ Math.floor(table.male.mean_age) }}</td>
+                    <td>{{ (table.male.rehosp * 100).toFixed(3) }}</td>
                 </tr>
                 <tr>
                     <td>Female</td>
                     <td>{{ table.female.nevents }}</td>
                     <td>{{ table.female.nevents / 1000 }}</td>
                     <td>{{ Math.floor(table.female.mean_age) }}</td>
+                    <td>{{ (table.female.rehosp * 100).toFixed(3)  }}</td>
                 </tr>
             </tbody>
         </table>
