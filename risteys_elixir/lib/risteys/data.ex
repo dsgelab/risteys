@@ -130,29 +130,89 @@ defmodule Risteys.Data do
     |> average
   end
 
+  defp case_fatalities(code, age_limits) do
+    indivs =
+      from(he in HealthEvent,
+        join: p in Phenocode,
+        on: he.phenocode_id == p.id,
+        group_by: he.eid,
+        select: %{eid: he.eid, first_event: min(he.dateevent)},
+        where: p.code == ^code
+      )
+      |> filter_age(age_limits)
+
+    fatalities =
+      Repo.all(
+        from he in HealthEvent,
+          join: s in subquery(indivs),
+          on: he.eid == s.eid,
+          select: %{
+            eid: he.eid,
+            sex: he.sex,
+            case_fatality: he.death and max(he.dateevent) - s.first_event < 365.25 * 10
+          },
+          group_by: [he.eid, he.sex, he.death, s.first_event]
+      )
+
+    count_fatality = fn %{case_fatality: fatality}, {lived, died} ->
+      case fatality do
+        false -> {lived + 1, died}
+        true -> {lived, died + 1}
+      end
+    end
+
+    {female_lived, female_died} =
+      fatalities
+      |> Stream.filter(fn %{sex: sex} -> sex == 2 end)
+      |> Enum.reduce({0, 0}, count_fatality)
+
+    {male_lived, male_died} =
+      fatalities
+      |> Stream.filter(fn %{sex: sex} -> sex == 1 end)
+      |> Enum.reduce({0, 0}, count_fatality)
+
+    %{
+      female: female_died / female_lived,
+      male: male_died / male_lived,
+      all: (female_died + male_died) / (female_lived + male_lived)
+    }
+  end
+
   def get_stats(code, [age_mini, age_maxi]) do
     [[1, n_males, age_males], [2, n_females, age_females]] =
       Repo.all(mean_ages(code, [age_mini, age_maxi]))
 
-    %{male: rehosp_males, female: rehosp_females, all: rehosp_all} =
-      rehosp_by_sex(code, [age_mini, age_maxi])
+    %{
+      male: rehosp_males,
+      female: rehosp_females,
+      all: rehosp_all
+    } = rehosp_by_sex(code, [age_mini, age_maxi])
+
+    %{
+      male: case_fatality_males,
+      female: case_fatality_females,
+      all: case_fatality_all
+    } = case_fatalities(code, [age_mini, age_maxi])
 
     if n_males > 5 and n_females > 5 do
       results = %{
         all: %{
           nevents: n_males + n_females,
           mean_age: (n_males * age_males + n_females * age_females) / (n_males + n_females),
-          rehosp: rehosp_all
+          rehosp: rehosp_all,
+          case_fatality: case_fatality_all
         },
         male: %{
           nevents: n_males,
           mean_age: age_males,
-          rehosp: rehosp_males
+          rehosp: rehosp_males,
+          case_fatality: case_fatality_males
         },
         female: %{
           nevents: n_females,
           mean_age: age_females,
-          rehosp: rehosp_females
+          rehosp: rehosp_females,
+          case_fatality: case_fatality_females
         }
       }
 
