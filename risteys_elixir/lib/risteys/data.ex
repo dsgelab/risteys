@@ -132,14 +132,14 @@ defmodule Risteys.Data do
 
   defp case_fatalities(code, age_limits) do
     indivs =
-      from(he in HealthEvent,
+      from he in HealthEvent,
         join: p in Phenocode,
         on: he.phenocode_id == p.id,
         group_by: he.eid,
         select: %{eid: he.eid, first_event: min(he.dateevent)},
         where: p.code == ^code
-      )
-      |> filter_age(age_limits)
+
+    indivs = filter_age(indivs, age_limits)
 
     fatalities =
       Repo.all(
