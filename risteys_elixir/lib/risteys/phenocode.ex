@@ -15,14 +15,14 @@ defmodule Risteys.Phenocode do
     field :outpat_icd, :string
     field :hd_mainonly, :boolean
     field :hd_icd_10, {:array, :string}
-    field :hd_icd_9, :string
+    field :hd_icd_9, {:array, :string}
     field :hd_icd_8, :string
     field :hd_icd_10_excl, :string
     field :hd_icd_9_excl, :string
     field :hd_icd_8_excl, :string
     field :cod_mainonly, :boolean
     field :cod_icd_10, {:array, :string}
-    field :cod_icd_9, :string
+    field :cod_icd_9, {:array, :string}
     field :cod_icd_8, :string
     field :cod_icd_10_excl, :string
     field :cod_icd_9_excl, :string

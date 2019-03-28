@@ -1,20 +1,17 @@
 # Import endpoint (aka Phenocode) information.
 #
-# The endpoint Excel file has to be first exported to CSV.
-#
-# Then the regexes in it are expanded.
-# At this time it is done using the sre_yield python library.
-# Another, more meaningful, approach would be to get a list of matches by using
-# each regex against the full list of ICD codes.
+# Before using this script, the endpoint Excel file has to be exported to CSV.
 #
 # After that, this script can be used. It will:
-# 1. Parse the CSV file
-# 2. Put the data from a CSV line to an Ecto schema
-# 3. Insert data in database
+# 1. Parse the list of ICD-9s and ICD-10s from defined files
+# 2. Parse the Endpoint CSV file
+# 3. Put the data from a CSV line to an Ecto schema
+#    At this stage, some ICD-10 and ICD-9 are matched against the respective lists
+# 4. Insert data in database
 
 alias Risteys.{Repo, Phenocode}
 
-Logger.configure(level: :info)
+Logger.configure(level: :debug)
 
 defmodule RegexICD do
   @icd10s "assets/data/icd10cm_codes_2019.tsv"
@@ -22,7 +19,12 @@ defmodule RegexICD do
           |> CSV.decode!(separator: ?\t)
           |> Enum.map(fn [code, _description] -> code end)
 
-  def expand(regex) do
+  @icd9s "assets/data/icd9_SimoP.txt"
+         |> File.stream!()
+         |> CSV.decode!(separator: ?\t, headers: true)
+         |> Enum.map(fn %{"ICD9" => code} -> code end)
+
+  defp expand(regex, icd_version) do
     case regex do
       "" ->
         []
@@ -36,10 +38,19 @@ defmodule RegexICD do
         regex = "^(#{regex})$"
         reg = Regex.compile!(regex)
 
-        @icd10s
+        icds =
+          case icd_version do
+            10 -> @icd10s
+            9 -> @icd9s
+          end
+
+        icds
         |> Enum.filter(fn code -> Regex.match?(reg, code) end)
     end
   end
+
+  def expand_icd10(regex), do: expand(regex, 10)
+  def expand_icd9(regex), do: expand(regex, 9)
 end
 
 "assets/data/aki_endpoints.csv"
@@ -110,17 +121,27 @@ end
       "YES" -> true
     end
 
-  # Parse all ICD-10 columns
+  # Parse some ICD-10 columns
   icd_10_regex = hd_icd_10
-  hd_icd_10 = RegexICD.expand(hd_icd_10)
+  hd_icd_10 = RegexICD.expand_icd10(hd_icd_10)
 
   cod_icd_10 =
     case cod_icd_10 do
       ^icd_10_regex -> hd_icd_10
-      _ -> RegexICD.expand(cod_icd_10)
+      _ -> RegexICD.expand_icd10(cod_icd_10)
     end
 
-  kela_reimb_icd = RegexICD.expand(kela_reimb_icd)
+  kela_reimb_icd = RegexICD.expand_icd10(kela_reimb_icd)
+
+  # Parse some ICD-9 columns
+  icd_9_regex = hd_icd_9
+  hd_icd_9 = RegexICD.expand_icd9(icd_9_regex)
+
+  cod_icd_9 =
+    case hd_icd_9 do
+      ^icd_9_regex -> hd_icd_9
+      _ -> RegexICD.expand_icd9(cod_icd_9)
+    end
 
   # Cause of death
   cod_mainonly =
