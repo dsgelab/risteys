@@ -11,7 +11,7 @@
 
 alias Risteys.{Repo, Phenocode}
 
-Logger.configure(level: :debug)
+Logger.configure(level: :info)
 
 defmodule RegexICD do
   @icd10s "assets/data/icd10cm_codes_2019.tsv"
@@ -52,6 +52,10 @@ defmodule RegexICD do
   def expand_icd10(regex), do: expand(regex, 10)
   def expand_icd9(regex), do: expand(regex, 9)
 end
+
+lorem = " This should be a description. You Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat.
+
+Duis aute irure dolor in reprehenderit in voluptate velit esse cillum dolore eu fugiat nulla pariatur. Excepteur sint occaecat cupidatat non proident, sunt in culpa qui officia deserunt mollit anim id est laborum."
 
 "assets/data/aki_endpoints.csv"
 |> File.stream!()
@@ -167,6 +171,7 @@ end
   %Phenocode{
     code: code,
     longname: longname,
+    description: lorem,
     tags: tags,
     level: level,
     omit: omit,
@@ -203,7 +208,8 @@ end
     special: special,
     version: version,
     source: source,
-    pheweb: pheweb
+    pheweb: pheweb,
+    hpo_xref: ""
   }
 end)
 # NOTE take only of subset for development purpose

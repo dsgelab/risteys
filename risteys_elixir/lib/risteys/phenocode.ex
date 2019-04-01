@@ -5,6 +5,7 @@ defmodule Risteys.Phenocode do
   schema "phenocodes" do
     field :code, :string
     field :longname, :string
+    field :description, :string
     field :tags, :string
     field :level, :string
     field :omit, :boolean
@@ -42,6 +43,7 @@ defmodule Risteys.Phenocode do
     field :version, :string
     field :source, :string
     field :pheweb, :boolean
+    field :hpo_xref, :string
 
     timestamps()
 
@@ -54,6 +56,7 @@ defmodule Risteys.Phenocode do
     |> cast(attrs, [
       :code,
       :longname,
+      :description,
       :tags,
       :level,
       :omit,
@@ -90,7 +93,8 @@ defmodule Risteys.Phenocode do
       :special,
       :version,
       :source,
-      :pheweb
+      :pheweb,
+      :hpo_xref
     ])
     |> validate_required([:code, :longname])
     # TODO put validations when the data source is stable

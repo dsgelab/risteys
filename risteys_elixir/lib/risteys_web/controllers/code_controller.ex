@@ -34,6 +34,8 @@ defmodule RisteysWeb.CodeController do
     conn
     |> assign(:code, phenocode.code)
     |> assign(:title, phenocode.longname)
+    |> assign(:description, phenocode.description)
+    |> assign(:hpo_xref, phenocode.hpo_xref)
     |> assign(:data_sources, data_sources(phenocode, icd10s, icd9s))
     |> render("show.html")
   end
