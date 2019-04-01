@@ -35,9 +35,24 @@ defmodule RisteysWeb.CodeController do
     |> assign(:code, phenocode.code)
     |> assign(:title, phenocode.longname)
     |> assign(:description, phenocode.description)
-    |> assign(:hpo_xref, phenocode.hpo_xref)
+    |> assign(:hpo_xref, phenocode.hpo_xref |> split_xref)
     |> assign(:data_sources, data_sources(phenocode, icd10s, icd9s))
     |> render("show.html")
+  end
+
+  def split_xref(hpo_xref) do
+    hpo_xref
+    |> String.split(", ")
+    |> Enum.map(&String.split(&1, ":"))
+    |> Enum.map(fn [type, code] ->
+      case type do
+	"SNOMEDCT_US" ->
+	  ~E"<%= type %>:<a href=\"https://mq.b2i.sg/snow-owl/#!terminology/snomed/<%= code %>\"><%= code %></a> "
+	"MSH" ->
+	  ~E"<%= type %>:<a href=\"https://meshb.nlm.nih.gov/record/ui?ui=<%= code %>\"><%= code %></a> "
+	_ -> type <> ":" <> code <> " "
+      end
+    end)
   end
 
   defp data_sources(phenocode, icd10s, icd9s) do
@@ -94,6 +109,6 @@ defmodule RisteysWeb.CodeController do
 
   defp abbr_icd(code, icds) do
     desc = Map.fetch!(icds, code)
-    ~E"<abbr title=\"<%= desc %>\"><%= code %></abbr>"
+    ~E"<abbr data-title=\"<%= desc %>\"><%= code %></abbr>"
   end
 end
