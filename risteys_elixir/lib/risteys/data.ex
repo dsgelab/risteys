@@ -54,7 +54,7 @@ defmodule Risteys.Data do
       select: [he.eid, max(he.dateevent)]
   end
 
-  defp rehosp_by_sex(code, age_limits) do
+  def rehosp_by_sex(code, age_limits) do
     # 1. Get information for each individual
     query =
       from he in HealthEvent,
@@ -123,8 +123,15 @@ defmodule Risteys.Data do
 
         _ ->
           days = Date.diff(end_date, start_date)
-          years = days / 365.25
-          count / years
+
+          case days do
+            0 ->
+              0
+
+            _ ->
+              years = days / 365.25
+              count / years
+          end
       end
     end)
     |> average
