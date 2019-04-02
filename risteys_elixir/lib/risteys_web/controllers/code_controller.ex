@@ -46,7 +46,7 @@ defmodule RisteysWeb.CodeController do
     grouped_refs =
       hpo_xref
       |> String.split(", ")
-      |> Enum.map(&String.split(&1, ":"))
+      |> Enum.map(&String.split(&1, ":", parts: 2))
       |> Enum.reduce(%{}, fn [type, ref], acc ->
         {_, map} =
           Map.get_and_update(acc, type, fn list ->
@@ -82,6 +82,15 @@ defmodule RisteysWeb.CodeController do
               end)
 
             ["MSH", links]
+
+          "HPO" ->
+            links =
+              refs
+              |> Enum.map(fn code ->
+                ~E"<a href=\"https://hpo.jax.org/app/browse/term/<%= code %>\" target=\"blank\" rel=\"noopener noreferrer\"><%= code %></a> "
+              end)
+
+            ["HPO", links]
 
           _ ->
             [type, refs]
