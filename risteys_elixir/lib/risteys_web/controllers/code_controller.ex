@@ -40,19 +40,53 @@ defmodule RisteysWeb.CodeController do
     |> render("show.html")
   end
 
-  def split_xref(hpo_xref) do
-    hpo_xref
-    |> String.split(", ")
-    |> Enum.map(&String.split(&1, ":"))
-    |> Enum.map(fn [type, code] ->
-      case type do
-	"SNOMEDCT_US" ->
-	  ~E"<%= type %>:<a href=\"https://mq.b2i.sg/snow-owl/#!terminology/snomed/<%= code %>\"><%= code %></a> "
-	"MSH" ->
-	  ~E"<%= type %>:<a href=\"https://meshb.nlm.nih.gov/record/ui?ui=<%= code %>\"><%= code %></a> "
-	_ -> type <> ":" <> code <> " "
+  defp split_xref(""), do: nil
+
+  defp split_xref(hpo_xref) do
+    grouped_refs =
+      hpo_xref
+      |> String.split(", ")
+      |> Enum.map(&String.split(&1, ":"))
+      |> Enum.reduce(%{}, fn [type, ref], acc ->
+        {_, map} =
+          Map.get_and_update(acc, type, fn list ->
+            new_value =
+              case list do
+                nil -> [ref]
+                _ -> [ref | list]
+              end
+
+            {list, new_value}
+          end)
+
+        map
+      end)
+
+    html_refs =
+      for {type, refs} <- grouped_refs do
+        case type do
+          "SNOMEDCT_US" ->
+            links =
+              refs
+              |> Enum.map(fn code ->
+                ~E"<a href=\"https://mq.b2i.sg/snow-owl/#!terminology/snomed/<%= code %>\" target=\"_blank\" rel=\"noopener noreferrer\"><%= code %></a> "
+              end)
+
+            ["SNOMED_CT", links]
+
+          "MSH" ->
+            links =
+              refs
+              |> Enum.map(fn code ->
+                ~E"<a href=\"https://meshb.nlm.nih.gov/record/ui?ui=<%= code %>\" target=\"blank\" rel=\"noopener noreferrer\"><%= code %></a> "
+              end)
+
+            ["MSH", links]
+
+          _ ->
+            [type, refs]
+        end
       end
-    end)
   end
 
   defp data_sources(phenocode, icd10s, icd9s) do
