@@ -9,20 +9,15 @@
 #    At this stage, some ICD-10 and ICD-9 are matched against the respective lists
 # 4. Insert data in database
 
-alias Risteys.{Repo, Phenocode}
+alias Risteys.{Repo, Phenocode, ICD10, ICD9}
 
 Logger.configure(level: :debug)
 
 defmodule RegexICD do
-  @icd10s "assets/data/icd10cm_codes_2019.tsv"
-          |> File.stream!()
-          |> CSV.decode!(separator: ?\t)
-          |> Enum.map(fn [code, _description] -> code end)
+  import Ecto.Query
 
-  @icd9s "assets/data/icd9_SimoP.txt"
-         |> File.stream!()
-         |> CSV.decode!(separator: ?\t, headers: true)
-         |> Enum.map(fn %{"ICD9" => code} -> code end)
+  @icd10s Repo.all(from icd in ICD10, select: icd.code) |> MapSet.new()
+  @icd9s Repo.all(from icd in ICD9, select: icd.code) |> MapSet.new()
 
   defp expand(regex, icd_version) do
     case regex do
@@ -52,6 +47,7 @@ defmodule RegexICD do
   def expand_icd10(regex), do: expand(regex, 10)
   def expand_icd9(regex), do: expand(regex, 9)
 end
+
 
 "assets/data/aki_endpoints.csv"
 |> File.stream!()
@@ -142,6 +138,12 @@ end
       ^icd_9_regex -> hd_icd_9
       _ -> RegexICD.expand_icd9(cod_icd_9)
     end
+
+  # Remove $!$ from ICD-8
+  hd_icd_8 = hd_icd_8 |> String.replace("$!$", "")
+  hd_icd_8_excl = hd_icd_8_excl |> String.replace("$!$", "")
+  cod_icd_8 = cod_icd_8 |> String.replace("$!$", "")
+  cod_icd_8_excl = cod_icd_8_excl |> String.replace("$!$", "")
 
   # Cause of death
   cod_mainonly =
