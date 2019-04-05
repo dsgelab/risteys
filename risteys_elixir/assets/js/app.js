@@ -76,8 +76,6 @@ Vue.component('risteys-search', {
     <div id="home-examples">
       <p>Examples:</p>
       <ul>
-        <li>Search for <a href="#" @click="setSearch('infections')" class="font-mono">infections</a></li>
-        <li>Get statistics for the <a href="/code/I9_ANGINA" class="font-mono">I9_ANGINA</a> phenocode</li>
         <li>Search for <a href="#" @click="setSearch('angina')" class="font-mono">angina</a></li>
         <li>Get statistics for the <a href="/code/I9_CARDMPRI" class="font-mono">I9_CARDMPRI</a> phenocode</li>
         <li>Get statistics for the <a href="#TODO" class="font-mono">I25</a> ICD-10 code</li>

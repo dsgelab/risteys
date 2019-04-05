@@ -49,7 +49,7 @@ defmodule RisteysWeb.CodeController do
       oper_hp1: "Operations: HEART PATIENT codes V1",
       oper_hp2: "Operations: HEART PATIENT codes V2",
       kela_reimb:
-        ~E"Reimbursements: <abbr title=\"Finnish Social Insurance Institution\">KELA</abbr> codes",
+        ~E"Reimbursements: <abbr data-title=\"Finnish Social Insurance Institution\">KELA</abbr> codes",
       kela_reimb_icd: "Reimbursements: ICD codes",
       kela_atc_needother: "Medicine purchases: ATC; other reg. data required",
       kela_atc: "Medicine purchases: ATC codes",
@@ -92,6 +92,6 @@ defmodule RisteysWeb.CodeController do
 
   defp abbr_icd(code, icds) do
     desc = Map.fetch!(icds, code)
-    ~E"<abbr title=\"<%= desc %>\"><%= code %></abbr>"
+    ~E"<abbr data-title=\"<%= desc %>\"><%= code %></abbr>"
   end
 end
