@@ -11,7 +11,7 @@
 
 alias Risteys.{Repo, Phenocode, ICD10, ICD9}
 
-Logger.configure(level: :debug)
+Logger.configure(level: :info)
 
 defmodule RegexICD do
   import Ecto.Query
@@ -208,6 +208,4 @@ end
     pheweb: pheweb
   }
 end)
-# NOTE take only of subset for development purpose
-### |> Enum.take(100)
 |> Enum.each(&Repo.insert!(&1))

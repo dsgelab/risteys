@@ -54,5 +54,5 @@ phenocodes = Repo.all(from(p in Phenocode))
 
   Ecto.build_assoc(phenocode, :health_events, health_event)
 end)
-|> Stream.take(1_000)
+|> Stream.take(200_000)
 |> Enum.each(&Repo.insert!(&1))
