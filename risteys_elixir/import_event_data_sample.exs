@@ -1,7 +1,10 @@
 # Import events from an data extract.
 #
-# Before using this script, the data should pre-processed to make each line
+# NOTE! Before using this script, the data should pre-processed to make each line
 # unique, as well as removing the N/A data.
+#
+# Usage:
+# mix run import_event_data_sample.exs <path-to-event-file>
 #
 # Then, this script can be used and will:
 # 1. parse the data file
@@ -15,10 +18,12 @@ alias Risteys.{Repo, Phenocode}
 import Ecto.Query
 
 Logger.configure(level: :info)
+[filepath | _] = System.argv
 
 phenocodes = Repo.all(from(p in Phenocode))
 
-"assets/data/example_codes_for_risteys__uniq__nona.tsv"
+
+filepath
 |> File.stream!()
 |> CSV.decode!(separator: ?\t, headers: true)
 |> Stream.map(fn %{

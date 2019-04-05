@@ -1,6 +1,11 @@
 # Import endpoint (aka Phenocode) information.
 #
-# Before using this script, the endpoint Excel file has to be exported to CSV.
+# NOTE! Before using this script, the endpoint Excel file has to be exported to CSV.
+#
+# Usage:
+# mix run import_endpoint_csv.exs <path-to-file>
+#
+# where <path-to-file> points to the Endpoint file (provided by Aki) in CSV format.
 #
 # After that, this script can be used. It will:
 # 1. Parse the list of ICD-9s and ICD-10s from defined files
@@ -12,6 +17,7 @@
 alias Risteys.{Repo, Phenocode, ICD10, ICD9}
 
 Logger.configure(level: :info)
+[filepath | _ ] = System.argv
 
 defmodule RegexICD do
   import Ecto.Query
@@ -49,7 +55,7 @@ defmodule RegexICD do
 end
 
 
-"assets/data/aki_endpoints.csv"
+filepath
 |> File.stream!()
 |> CSV.decode!(headers: true)
 |> Stream.map(fn %{
