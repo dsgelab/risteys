@@ -17,11 +17,16 @@ defmodule RisteysWeb.SearchChannelTest do
     assert_push "results", %{
       body: %{
         results: [
-          %{
-            description: _,
-            phenocode: _,
-            url: _
-          }
+          [
+            "Phenocode code",
+            [
+              %{
+                content: _,
+                phenocode: _,
+                url: _
+              }
+            ]
+          ]
         ]
       }
     }

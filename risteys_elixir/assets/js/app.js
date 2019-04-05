@@ -53,32 +53,31 @@ Vue.component('risteys-search', {
     },
     template: `
 <div>
-    <form class="outshadow">
+    <div class="outshadow">
       <input type="text" v-on:keyup="search" v-model="searchvalue" placeholder="search for disease, ICD code, endpoint"
          class="inshadow text-xl font-mono p-3 w-full focus:mb-4"
          autofocus="autofocus"
        id="home-search-input"
        autocomplete="off">
-        <section class="results">
-              <ul>
-                <li v-for="item in results" class="leading-normal">
-                  <a :href="item.url">
-                    <span v-html="item.description"></span>
-                  </a>
-                  <div v-if="item.phenocode">Phenocode: <span v-html="item.phenocode" class="font-mono"></span></div>
-                  <div v-if="item.icds">
-                    ICD-10: <span v-for="icd in item.icds" v-html="icd" class="pr-2 inline-block font-mono"></span>
-                  </div>
-                </li>
-              </ul>
-        </section>
-    </form>
+
+      <div class="results">
+            <div class="category" v-for="category in results">
+                <div class="category-name">{{ category[0] }}</div>
+                <div class="item" v-for="item in category[1]">
+                    <span class="font-mono">
+                        <a :href="item.url" v-html="item.phenocode"></a>
+                    </span>
+                    <span v-html="item.content" class="pr-2 inline-block"></span>
+                </div>
+            </div>
+       </div>
+    </div>
+
     <div id="home-examples">
       <p>Examples:</p>
       <ul>
-        <li>Search for <a href="#" @click="setSearch('angina')" class="font-mono">angina</a></li>
+        <li>Search for <a href="#" @click="setSearch('angina')" class="font-mono">angina</a> or <a href="#" @click="setSearch('L12')" class="font-mono">L12</a></li>
         <li>Get statistics for the <a href="/code/I9_CARDMPRI" class="font-mono">I9_CARDMPRI</a> phenocode</li>
-        <li>Get statistics for the <a href="#TODO" class="font-mono">I25</a> ICD-10 code</li>
       </ul>
     </div>
 </div>
