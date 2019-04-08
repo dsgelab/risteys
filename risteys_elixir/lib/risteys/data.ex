@@ -249,9 +249,89 @@ defmodule Risteys.Data do
     end
   end
 
+
+  defp histogram(values, brackets) do
+    # Count values per the given brackets.
+    #
+    # Arguments:
+    # - values: enumerable to look for values
+    # - brackets: list of ranges [lower, upper], where lower is included
+    #   and upper is excluded. This function assumes the brackets are
+    #   already sorted and are not overlapping.
+    #
+    # Returns:
+    # - histogram: list of {bracket, count}
+    #
+    # Examples:
+    #
+    #    iex(7)> Risteys.Data.histogram([10, 20, 30, 40, 70], [[0, 20], [20, 50]])
+    #    [{[0, 20], 1}, {[20, 50], 3}]
+    hist =
+      for b <- brackets, into: %{} do
+        {b, 0}
+      end
+
+    hist =
+      Enum.reduce(values, hist, fn x, acc ->
+        bracket =
+          Enum.find(brackets, fn [mini, maxi] ->
+            x >= mini and x < maxi
+          end)
+
+        case bracket do
+          nil -> acc
+          _ -> Map.update!(acc, bracket, &(&1 + 1))
+        end
+      end)
+
+    for b <- brackets do
+      value = Map.fetch!(hist, b)
+      {b, value}
+    end
+  end
+
   def stats_by_sex(code), do: get_stats(code, [nil, nil])
 
   def stats_by_sex(code, [age_mini, age_maxi]) do
     get_stats(code, [age_mini, age_maxi])
+  end
+
+  def count_by_year(code) do
+    # Use Ecto fragment to parse the year of the date using PostgreSQL rather than Elixir.
+    # This way the computation are done directly on the database.
+    # One downside is that it is specific to PostgreSQL and would have to be changed on other DB.
+    Repo.all(
+      from he in HealthEvent,
+        join: p in Phenocode,
+        on: he.phenocode_id == p.id,
+        select: {fragment("date_part('year', ?)::int", he.dateevent), count()},
+        where: p.code == ^code,
+        group_by: fragment("date_part('year', ?)::int", he.dateevent),
+        order_by: fragment("date_part('year', ?)::int", he.dateevent)
+    )
+  end
+
+  def bin_by_age(code) do
+    # Hard-coded age brackets for the age distribution plot.
+    # Numbers where taken by making an histogram with 8 bins on the
+    # initial 2M dataset.
+    age_brackets = [
+      [25, 31],
+      [31, 36],
+      [36, 42],
+      [42, 47],
+      [47, 52],
+      [52, 58],
+      [58, 64]
+    ]
+
+    Repo.all(
+      from he in HealthEvent,
+        join: p in Phenocode,
+        on: he.phenocode_id == p.id,
+        where: p.code == ^code,
+        select: he.age
+    )
+    |> histogram(age_brackets)
   end
 end

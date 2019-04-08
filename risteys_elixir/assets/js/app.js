@@ -1,6 +1,5 @@
 import Vue from 'vue';
 
-
 // We need to import the CSS so that webpack will load it.
 // The MiniCssExtractPlugin is used to separate it out into
 // its own CSS file.
@@ -20,6 +19,7 @@ import "phoenix_html"
 //// import slider_component from "./MySlider.vue"
 import VueSlider from 'vue-slider-component'
 import 'vue-slider-component/theme/default.css'
+import { accumulate, makeHistogram, putData } from "./plots.js";
 
 import socket from "./socket"
 import { search_channel, kf_channel } from "./socket"
@@ -251,6 +251,43 @@ var app = new Vue({
 })
 
 
+
+/*
+ * PLOTS
+ */
+makeHistogram("Events distribution by year",
+    "year",
+    "number of events",
+    "plot_events_by_year",
+    events_by_year);
+makeHistogram("Age distribution",
+    "age bracket",
+    "number of events",
+    "plot_bin_by_age",
+    bin_by_age);
+
+var app_year_plot = new Vue({
+    el: '#events_by_year',
+    data: {
+        is_cumulative: false,
+    },
+    methods: {
+        toggleCumulative: function() {
+            this.is_cumulative = !this.is_cumulative;
+            if (this.is_cumulative) {
+                var data = accumulate(events_by_year);
+            } else {
+                var data = events_by_year;
+            }
+            putData("plot_events_by_year", data);
+        }
+    },
+});
+
+
+/*
+ * HACKS
+ */
 // HACK(firefox): set the focus back to the home search box
 let search_box = document.getElementById('home-search-input')
 if (search_box !== null) {  // we may not be on the home page
