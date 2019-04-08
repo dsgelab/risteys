@@ -243,5 +243,7 @@ var app = new Vue({
 
 
 // HACK(firefox): set the focus back to the home search box
-var search_box = document.getElementById('home-search-input')
-search_box.focus()
+let search_box = document.getElementById('home-search-input')
+if (search_box !== null) {  // we may not be on the home page
+    search_box.focus();
+}
