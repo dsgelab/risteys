@@ -54,7 +54,7 @@ defmodule Risteys.Data do
       select: [he.eid, max(he.dateevent)]
   end
 
-  def rehosp_by_sex(code, age_limits) do
+  defp rehosp_by_sex(code, age_limits) do
     # 1. Get information for each individual
     query =
       from he in HealthEvent,
@@ -185,7 +185,7 @@ defmodule Risteys.Data do
     }
   end
 
-  def get_stats(code, [age_mini, age_maxi]) do
+  defp get_stats(code, [age_mini, age_maxi]) do
     [[1, n_males, age_males], [2, n_females, age_females]] =
       Repo.all(mean_ages(code, [age_mini, age_maxi]))
 

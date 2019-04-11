@@ -1,20 +1,19 @@
 defmodule Risteys.DataTest do
-  use ExUnit.Case, async: true
+  use Risteys.DataCase
 
-  test "group data by sex", %{data: data} do
-    {:ok, result} = Risteys.Data.group_by_sex(data)
+  setup do
+    data_fixture("AAA01", 20)  # this will give us 10 men + 20 women
 
-    assert %{
-             all: %{nevents: _, mean_age: _},
-             male: %{nevents: _, mean_age: _},
-             female: %{nevents: _, mean_age: _}
-           } = result
+    :ok
   end
 
-  test "filter out data" do
-    data = Risteys.Data.fake_db("X00")
+  test "group data by sex" do
+    {:ok, result} = Risteys.Data.stats_by_sex("AAA01")
 
-    result = Risteys.Data.filter_out(data, [30, 50])
-    assert Enum.all?(result, fn %{age: age} -> age >= 30 and age <= 50 end)
+    assert %{
+             all: %{nevents: _, mean_age: _, case_fatality: _, rehosp: _},
+             male: %{nevents: _, mean_age: _, case_fatality: _, rehosp: _},
+             female: %{nevents: _, mean_age: _, case_fatality: _, rehosp: _}
+           } = result
   end
 end

@@ -6,25 +6,25 @@ defmodule RisteysWeb.SearchChannelTest do
       socket(RisteysWeb.UserSocket, "user_id", %{some: :assign})
       |> subscribe_and_join(RisteysWeb.SearchChannel, "search")
 
+    Risteys.DataCase.data_fixture("XYZ00", 20)
+
     {:ok, socket: socket}
   end
 
   test "search for a phenocode", %{socket: socket} do
-    push(socket, "query", %{"body" => "L12_OTHERCONTACT"})
+    push(socket, "query", %{"body" => "XYZ00"})
 
-    payload = %{
+    assert_push "results", %{
       body: %{
         results: [
           %{
-            description: "Other contact dermatitis",
-            phenocode: "<span class=\"highlight\">L12_OTHERCONTACT</span>",
-            url: "/code/L12_OTHERCONTACT"
+            description: _,
+            phenocode: _,
+            url: _
           }
         ]
       }
     }
-
-    assert_push "results", ^payload
   end
 
   test "search with empty string", %{socket: socket} do
