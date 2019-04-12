@@ -23,6 +23,18 @@ defmodule Risteys.Data do
     end
   end
 
+  defp count_prevalence([mini, maxi]) do
+    query = from(he in HealthEvent,
+      select: [he.sex, count()],
+      group_by: he.sex,
+      order_by: he.sex
+    ) |> filter_age([mini, maxi])
+
+    [[1, n_males], [2, n_females]] = Repo.all(query)
+
+    [n_males, n_females]
+  end
+
   defp mean_ages(code, [mini, maxi]) do
     from(e in HealthEvent,
       join: p in Phenocode,
@@ -189,6 +201,11 @@ defmodule Risteys.Data do
     [[1, n_males, age_males], [2, n_females, age_females]] =
       Repo.all(mean_ages(code, [age_mini, age_maxi]))
 
+    [total_males, total_females] = count_prevalence([age_mini, age_maxi])
+    prevalence_male = n_males / total_males
+    prevalence_female = n_females / total_females
+    prevalence_all = (n_males + n_females) / (total_males + total_females)
+
     %{
       male: rehosp_males,
       female: rehosp_females,
@@ -205,18 +222,21 @@ defmodule Risteys.Data do
       results = %{
         all: %{
           nevents: n_males + n_females,
+	  prevalence: prevalence_all,
           mean_age: (n_males * age_males + n_females * age_females) / (n_males + n_females),
           rehosp: rehosp_all,
           case_fatality: case_fatality_all
         },
         male: %{
           nevents: n_males,
+	  prevalence: prevalence_male,
           mean_age: age_males,
           rehosp: rehosp_males,
           case_fatality: case_fatality_males
         },
         female: %{
           nevents: n_females,
+	  prevalence: prevalence_female,
           mean_age: age_females,
           rehosp: rehosp_females,
           case_fatality: case_fatality_females

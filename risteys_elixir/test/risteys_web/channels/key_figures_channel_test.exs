@@ -19,18 +19,21 @@ defmodule RisteysWeb.KeyFiguresChannelTest do
         results: %{
           all: %{
             nevents: _,
+	    prevalence: _,
             mean_age: _,
             case_fatality: _,
             rehosp: _
           },
           male: %{
             nevents: _,
+	    prevalence: _,
             mean_age: _,
             case_fatality: _,
             rehosp: _
           },
           female: %{
             nevents: _,
+	    prevalence: _,
             mean_age: _,
             case_fatality: _,
             rehosp: _
