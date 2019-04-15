@@ -43,7 +43,14 @@ defmodule Risteys.MixProject do
       {:gettext, "~> 0.11"},
       {:jason, "~> 1.0"},
       {:plug_cowboy, "~> 2.0"},
-      {:csv, "~> 2.2"}
+      {:csv, "~> 2.2"},
+      # Current Ueberauth Google (v0.8) doesn't play well with JSON,
+      # we pull from the official repository with the commit that
+      # fixes this issue.
+      # TODO check if a new release of Ueberauth Google inlcudes this
+      # commit.
+      {:ueberauth_google,
+       github: "ueberauth/ueberauth_google", ref: "0aa46b1b27dbdae963c641a18f81331ea7048319"}
     ]
   end
 
