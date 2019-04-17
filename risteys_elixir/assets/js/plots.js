@@ -1,7 +1,7 @@
 import * as d3 from "d3";
 
 var width = 600,
-    height = 300,
+    height = width / 2,
     label_margin = 30,
     margin = {
         top: 0,
@@ -30,11 +30,12 @@ let prepareHistogram = (title, xlabel, ylabel, div_name, data) => {
 
     let svg = d3.select(selector)
         .attr("width", width)
-        .attr("height", height);
+        .attr("height", height)
+        .attr("class", "font-sans");
 
     svg.append("g")
         .attr("id", div_name + "_rects")
-        .attr("fill", "steelblue")
+        .attr("fill", "#2779bd")
         .attr("transform", "translate(0, 300) scale(1, -1)");
 
     svg.append("g")
@@ -46,7 +47,8 @@ let prepareHistogram = (title, xlabel, ylabel, div_name, data) => {
     // Title
     svg.append("text")
         .attr("transform",
-            `translate(${width / 2}, 20)`)
+            `translate(${width / 2}, 15)`)
+        .attr("class", "font-bold")
         .style("text-anchor", "middle")
         .text(title);
 

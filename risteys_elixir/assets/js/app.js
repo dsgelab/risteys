@@ -18,7 +18,7 @@ import "phoenix_html"
 // Local files can be imported directly using relative paths, for example:
 //// import slider_component from "./MySlider.vue"
 import VueSlider from 'vue-slider-component'
-import 'vue-slider-component/theme/default.css'
+import '../css/vue-slider-custom.css'
 import { accumulate, makeHistogram, putData } from "./plots.js";
 
 import socket from "./socket"
@@ -98,73 +98,80 @@ Vue.component('key-figures', {
     props: ['table', 'filters'],
     template: `
     <div class="flex">
-        <kf-table :table="table"></kf-table>
-        <kf-filters :filters="filters" class="flex-grow"></kf-filters>
+        <kf-table :table="table" :filters="filters"></kf-table>
     </div>
     `
 })
 
 // TABLE
 Vue.component('kf-table', {
-    props: ['table'],
-    // TODO prevalence
+    props: ['table', 'filters'],
     template: `
-    <div>
-        <h3>Key figures</h3>
-        <table class="key-figures table-fixed flex-initial mr-4">
-            <tbody>
-                <tr>
-                    <td>Sex</td>
-                    <td>Number of events</td>
-                    <td>Prevalence (%)</td>
-                    <td>Mean age after baseline (years)</td>
-                </tr>
-                <tr>
-                    <td>All</td>
-                    <td>{{ table.all.nevents }}</td>
-                    <td>{{ (table.all.prevalence * 100).toFixed(3) }}</td>
-                    <td>{{ Math.floor(table.all.mean_age) }}</td>
-                </tr>
-                <tr>
-                    <td>Male</td>
-                    <td>{{ table.male.nevents }}</td>
-                    <td>{{ (table.male.prevalence * 100).toFixed(3) }}</td>
-                    <td>{{ Math.floor(table.male.mean_age) }}</td>
-                </tr>
-                <tr>
-                    <td>Female</td>
-                    <td>{{ table.female.nevents }}</td>
-                    <td>{{ (table.female.prevalence * 100).toFixed(3) }}</td>
-                    <td>{{ Math.floor(table.female.mean_age) }}</td>
-                </tr>
-            </tbody>
-        </table>
+    <div class="tables">
+        <div class="left">
+            <h3>Key figures</h3>
+            <table class="key-figures table-fixed flex-initial mr-4">
+                <tbody>
+                    <tr>
+                        <td>Sex</td>
+                        <td>Number of events</td>
+                        <td>Prevalence (%)</td>
+                        <td>Mean age after baseline (years)</td>
+                    </tr>
+                    <tr>
+                        <td>All</td>
+                        <td>{{ table.all.nevents }}</td>
+                        <td>{{ (table.all.prevalence * 100).toFixed(3) }}</td>
+                        <td>{{ Math.floor(table.all.mean_age) }}</td>
+                    </tr>
+                    <tr>
+                        <td>Male</td>
+                        <td>{{ table.male.nevents }}</td>
+                        <td>{{ (table.male.prevalence * 100).toFixed(3) }}</td>
+                        <td>{{ Math.floor(table.male.mean_age) }}</td>
+                    </tr>
+                    <tr>
+                        <td>Female</td>
+                        <td>{{ table.female.nevents }}</td>
+                        <td>{{ (table.female.prevalence * 100).toFixed(3) }}</td>
+                        <td>{{ Math.floor(table.female.mean_age) }}</td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
 
-        <h3>Clinical metrics</h3>
-        <table class="key-figures table-fixed flex-initial mr-4">
-            <tbody>
-                <tr>
-                    <td>Sex</td>
-                    <td>Re-hospitalization rate (%)</td>
-                    <td>Case fatality (%)</td>
-                </tr>
-                <tr>
-                    <td>All</td>
-                    <td>{{ (table.all.rehosp * 100).toFixed(3) }}</td>
-                    <td>{{ (table.all.case_fatality * 100).toFixed(3) }}</td>
-                </tr>
-                <tr>
-                    <td>Male</td>
-                    <td>{{ (table.male.rehosp * 100).toFixed(3) }}</td>
-                    <td>{{ (table.male.case_fatality * 100).toFixed(3) }}</td>
-                </tr>
-                <tr>
-                    <td>Female</td>
-                    <td>{{ (table.female.rehosp * 100).toFixed(3)  }}</td>
-                    <td>{{ (table.female.case_fatality * 100).toFixed(3) }}</td>
-                </tr>
-            </tbody>
-        </table>
+        <div class="left">
+            <h3>Clinical metrics</h3>
+            <table class="key-figures table-fixed flex-initial mr-4">
+                <tbody>
+                    <tr>
+                        <td>Sex</td>
+                        <td>Re-hospitalization rate (%)</td>
+                        <td>Case fatality (%)</td>
+                    </tr>
+                    <tr>
+                        <td>All</td>
+                        <td>{{ (table.all.rehosp * 100).toFixed(3) }}</td>
+                        <td>{{ (table.all.case_fatality * 100).toFixed(3) }}</td>
+                    </tr>
+                    <tr>
+                        <td>Male</td>
+                        <td>{{ (table.male.rehosp * 100).toFixed(3) }}</td>
+                        <td>{{ (table.male.case_fatality * 100).toFixed(3) }}</td>
+                    </tr>
+                    <tr>
+                        <td>Female</td>
+                        <td>{{ (table.female.rehosp * 100).toFixed(3)  }}</td>
+                        <td>{{ (table.female.case_fatality * 100).toFixed(3) }}</td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+
+        <div class="right">
+            <h3>Filters</h3>
+            <kf-filters :filters="filters" class="flex-grow filters"></kf-filters>
+        </div>
     </div>
    `
 })
@@ -181,29 +188,26 @@ Vue.component('kf-filters', {
         },
     },
     template: `
-        <div>
-            <div class="flex">
-                <div>Age</div>
-                <vue-slider
-                    v-model="filters.age"
-                    @change="filterOut"
-                    :min="25"
-                    :max="70"
-                    :duration="0"
-                    :height="8"
-                    :tooltip="'always'"
-                    :useKeyboard="true"
-                    :lazy="false"
-                    class="flex-grow">
-                </vue-slider>
-            </div>
+        <div class="flex filter">
+            <div class="title">Age</div>
+            <vue-slider
+                v-model="filters.age"
+                @change="filterOut"
+                :min="25"
+                :max="70"
+                :duration="0"
+                :height="8"
+                :tooltip="'always'"
+                :useKeyboard="true"
+                :lazy="false"
+                class="flex-grow">
+            </vue-slider>
         </div>
     `
 })
 
 // AGE SLIDER
 Vue.component('VueSlider', VueSlider)
-//// Vue.component('kf-age-slider', slider_component)
 
 
 // Send request to get the initial_data for the given code
@@ -255,7 +259,7 @@ var app = new Vue({
 /*
  * PLOTS
  */
-makeHistogram("Events distribution by year",
+makeHistogram("Event distribution by year",
     "year",
     "number of events",
     "plot_events_by_year",
@@ -290,6 +294,6 @@ var app_year_plot = new Vue({
  */
 // HACK(firefox): set the focus back to the home search box
 let search_box = document.getElementById('home-search-input')
-if (search_box !== null) {  // we may not be on the home page
+if (search_box !== null) {  // we may be on the home page wihtout the search box
     search_box.focus();
 }
