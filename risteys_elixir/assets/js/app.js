@@ -115,8 +115,8 @@ Vue.component('kf-table', {
                     <tr>
                         <td>Sex</td>
                         <td>Number of events</td>
-                        <td>Prevalence (%)</td>
-                        <td>Mean age after baseline (years)</td>
+                        <td>Unadjusted prevalence (%)</td>
+                        <td>Mean age at first event (years)</td>
                     </tr>
                     <tr>
                         <td>All</td>
