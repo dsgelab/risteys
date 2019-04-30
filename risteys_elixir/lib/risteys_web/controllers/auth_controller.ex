@@ -16,7 +16,6 @@ defmodule RisteysWeb.AuthController do
     home = Routes.home_path(conn, :index)
     login = Routes.auth_path(conn, :login)
 
-    # TODO check if user is a member of the Finngen group.
     if String.ends_with?(email, "@finngen.fi") do
       conn
       |> put_flash(:info, "Successfully authenticated.")
