@@ -4,7 +4,7 @@ defmodule RisteysWeb.AuthControllerTest do
 
   test "login", %{conn: conn} do
     conn = get(conn, Routes.auth_path(conn, :login))
-    assert html_response(conn, 200) =~ "Login with your Finngen account using Google"
+    assert html_response(conn, 200) =~ "Login using your Finngen Google account"
   end
 
   test "logout", %{conn: conn} do
