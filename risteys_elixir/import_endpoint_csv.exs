@@ -17,7 +17,7 @@
 alias Risteys.{Repo, Phenocode, ICD10, ICD9}
 
 Logger.configure(level: :info)
-[filepath | _ ] = System.argv
+[filepath | _] = System.argv()
 
 defmodule RegexICD do
   import Ecto.Query
@@ -53,7 +53,6 @@ defmodule RegexICD do
   def expand_icd10(regex), do: expand(regex, 10)
   def expand_icd9(regex), do: expand(regex, 9)
 end
-
 
 filepath
 |> File.stream!()

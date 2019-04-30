@@ -2,7 +2,6 @@ defmodule Risteys.ICD9 do
   use Ecto.Schema
   import Ecto.Changeset
 
-
   schema "icd9s" do
     field :code, :string
     field :description, :string

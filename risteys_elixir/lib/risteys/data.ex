@@ -24,11 +24,13 @@ defmodule Risteys.Data do
   end
 
   defp count_prevalence([mini, maxi]) do
-    query = from(he in HealthEvent,
-      select: [he.sex, count()],
-      group_by: he.sex,
-      order_by: he.sex
-    ) |> filter_age([mini, maxi])
+    query =
+      from(he in HealthEvent,
+        select: [he.sex, count()],
+        group_by: he.sex,
+        order_by: he.sex
+      )
+      |> filter_age([mini, maxi])
 
     [[1, n_males], [2, n_females]] = Repo.all(query)
 
@@ -222,21 +224,21 @@ defmodule Risteys.Data do
       results = %{
         all: %{
           nevents: n_males + n_females,
-	  prevalence: prevalence_all,
+          prevalence: prevalence_all,
           mean_age: (n_males * age_males + n_females * age_females) / (n_males + n_females),
           rehosp: rehosp_all,
           case_fatality: case_fatality_all
         },
         male: %{
           nevents: n_males,
-	  prevalence: prevalence_male,
+          prevalence: prevalence_male,
           mean_age: age_males,
           rehosp: rehosp_males,
           case_fatality: case_fatality_males
         },
         female: %{
           nevents: n_females,
-	  prevalence: prevalence_female,
+          prevalence: prevalence_female,
           mean_age: age_females,
           rehosp: rehosp_females,
           case_fatality: case_fatality_females
@@ -248,7 +250,6 @@ defmodule Risteys.Data do
       {:error, "not enough data"}
     end
   end
-
 
   defp histogram(values, brackets) do
     # Count values per the given brackets.

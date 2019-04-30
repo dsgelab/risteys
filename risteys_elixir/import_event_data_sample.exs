@@ -18,10 +18,9 @@ alias Risteys.{Repo, Phenocode}
 import Ecto.Query
 
 Logger.configure(level: :info)
-[filepath | _] = System.argv
+[filepath | _] = System.argv()
 
 phenocodes = Repo.all(from(p in Phenocode))
-
 
 filepath
 |> File.stream!()

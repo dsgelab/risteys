@@ -13,7 +13,7 @@
 alias Risteys.{Repo, ICD9}
 
 Logger.configure(level: :info)
-[filepath | _ ] = System.argv
+[filepath | _] = System.argv()
 
 filepath
 |> File.stream!()

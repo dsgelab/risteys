@@ -35,21 +35,21 @@ defmodule RisteysWeb.KeyFiguresChannel do
           %{
             all: %{
               nevents: 0,
-	      prevalence: 0,
+              prevalence: 0,
               mean_age: 0,
               case_fatality: 0,
               rehosp: 0
             },
             male: %{
               nevents: 0,
-	      prevalence: 0,
+              prevalence: 0,
               mean_age: 0,
               case_fatality: 0,
               rehosp: 0
             },
             female: %{
               nevents: 0,
-	      prevalence: 0,
+              prevalence: 0,
               mean_age: 0,
               case_fatality: 0,
               rehosp: 0

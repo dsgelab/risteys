@@ -98,11 +98,13 @@ defmodule RisteysWeb.CodeController do
 
   def plots_data(code) do
     bin_by_age = Risteys.Data.bin_by_age(code)
+
     bin_by_age =
-    for {[mini, maxi], count} <- bin_by_age do
-      bracket = "#{mini}–#{maxi}"
-      {bracket, count}
-    end
+      for {[mini, maxi], count} <- bin_by_age do
+        bracket = "#{mini}–#{maxi}"
+        {bracket, count}
+      end
+
     %{
       events_by_year: Risteys.Data.count_by_year(code),
       bin_by_age: bin_by_age

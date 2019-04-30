@@ -15,11 +15,10 @@
 #        A00-A09	Intestinal infectious diseases
 #        A00	Cholera
 
-
 alias Risteys.{Repo, ICD10}
 
 Logger.configure(level: :info)
-[data_dir | _ ] = System.argv
+[data_dir | _] = System.argv()
 icd10cm = Path.join(data_dir, "icd10cm_codes_2019.tsv")
 icd10finn = Path.join(data_dir, "ICD10_finn_codedesc.tsv")
 
