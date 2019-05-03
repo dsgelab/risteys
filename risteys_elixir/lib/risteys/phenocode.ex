@@ -42,6 +42,9 @@ defmodule Risteys.Phenocode do
     field :validation_article, :string
     field :ontology, {:map, {:array, :string}}
 
+    many_to_many :icd10s, Risteys.Icd10, join_through: Risteys.PhenocodeIcd10
+    many_to_many :icd9s, Risteys.Icd9, join_through: Risteys.PhenocodeIcd9
+
     timestamps()
   end
 
