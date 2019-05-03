@@ -3,7 +3,7 @@ defmodule Risteys.Phenocode do
   import Ecto.Changeset
 
   schema "phenocodes" do
-    field :code, :string
+    field :name, :string
     field :longname, :string
     field :tags, :string
     field :level, :string
@@ -14,15 +14,11 @@ defmodule Risteys.Phenocode do
     field :conditions, :string
     field :outpat_icd, :string
     field :hd_mainonly, :boolean
-    field :hd_icd_10, {:array, :string}
-    field :hd_icd_9, {:array, :string}
     field :hd_icd_8, :string
     field :hd_icd_10_excl, :string
     field :hd_icd_9_excl, :string
     field :hd_icd_8_excl, :string
     field :cod_mainonly, :boolean
-    field :cod_icd_10, {:array, :string}
-    field :cod_icd_9, {:array, :string}
     field :cod_icd_8, :string
     field :cod_icd_10_excl, :string
     field :cod_icd_9_excl, :string
@@ -32,7 +28,6 @@ defmodule Risteys.Phenocode do
     field :oper_hp1, :string
     field :oper_hp2, :string
     field :kela_reimb, :string
-    field :kela_reimb_icd, {:array, :string}
     field :kela_atc_needother, :string
     field :kela_atc, :string
     field :canc_topo, :string
@@ -42,6 +37,10 @@ defmodule Risteys.Phenocode do
     field :version, :string
     field :source, :string
     field :pheweb, :boolean
+    field :distrib_year, {:map, :integer}
+    field :distrib_age, {:map, :integer}
+    field :validation_article, :string
+    field :ontology, {:map, {:array, :string}}
 
     timestamps()
   end
@@ -50,7 +49,7 @@ defmodule Risteys.Phenocode do
   def changeset(phenocode, attrs) do
     phenocode
     |> cast(attrs, [
-      :code,
+      :name,
       :longname,
       :tags,
       :level,
@@ -61,15 +60,11 @@ defmodule Risteys.Phenocode do
       :conditions,
       :outpat_icd,
       :hd_mainonly,
-      :hd_icd_10,
-      :hd_icd_9,
       :hd_icd_8,
       :hd_icd_10_excl,
       :hd_icd_9_excl,
       :hd_icd_8_excl,
       :cod_mainonly,
-      :cod_icd_10,
-      :cod_icd_9,
       :cod_icd_8,
       :cod_icd_10_excl,
       :cod_icd_9_excl,
@@ -79,7 +74,6 @@ defmodule Risteys.Phenocode do
       :oper_hp1,
       :oper_hp2,
       :kela_reimb,
-      :kela_reimb_icd,
       :kela_atc_needother,
       :kela_atc,
       :canc_topo,
@@ -88,10 +82,14 @@ defmodule Risteys.Phenocode do
       :special,
       :version,
       :source,
-      :pheweb
+      :pheweb,
+      :distrib_year,
+      :distrib_age,
+      :validation_article,
+      :ontology
     ])
-    |> validate_required([:code, :longname])
+    |> validate_required([:name, :longname])
     # TODO put validations when the data source is stable
-    |> unique_constraint(:code)
+    |> unique_constraint(:name)
   end
 end
