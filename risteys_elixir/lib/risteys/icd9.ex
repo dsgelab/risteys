@@ -1,4 +1,4 @@
-defmodule Risteys.ICD9 do
+defmodule Risteys.Icd9 do
   use Ecto.Schema
   import Ecto.Changeset
 

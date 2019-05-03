@@ -1,6 +1,6 @@
 defmodule RisteysWeb.CodeController do
   use RisteysWeb, :controller
-  alias Risteys.{Repo, ICD9, ICD10, Phenocode}
+  alias Risteys.{Repo, Icd9, Icd10, Phenocode}
   import Ecto.Query
   import Phoenix.HTML
 
@@ -17,7 +17,7 @@ defmodule RisteysWeb.CodeController do
 
     icd10s =
       for icd <- icd10s, into: %{} do
-        description = Repo.one(from i in ICD10, where: i.code == ^icd, select: i.description)
+        description = Repo.one(from i in Icd10, where: i.code == ^icd, select: i.description)
         {icd, description}
       end
 
@@ -27,7 +27,7 @@ defmodule RisteysWeb.CodeController do
 
     icd9s =
       for icd <- icd9s, into: %{} do
-        description = Repo.one(from i in ICD9, where: i.code == ^icd, select: i.description)
+        description = Repo.one(from i in Icd9, where: i.code == ^icd, select: i.description)
         {icd, description}
       end
 
