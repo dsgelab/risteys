@@ -44,8 +44,6 @@ defmodule Risteys.Phenocode do
     field :pheweb, :boolean
 
     timestamps()
-
-    has_many :health_events, Risteys.HealthEvent
   end
 
   @doc false
