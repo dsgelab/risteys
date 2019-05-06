@@ -1,6 +1,6 @@
 # Import endpoint (aka Phenocode) information.
 #
-# NOTE! Before using this script, the endpoint Excel file has to be exported to CSV.
+# NOTE! Before using this script, the endpoint Excel file has to be converted to CSV.
 #
 # Usage:
 # mix run import_endpoint_csv.exs <path-to-file>
@@ -8,13 +8,18 @@
 # where <path-to-file> points to the Endpoint file (provided by Aki) in CSV format.
 #
 # After that, this script can be used. It will:
-# 1. Parse the list of ICD-9s and ICD-10s from defined files
+# 1. Get the list of ICD-9s and ICD-10s from the database.
+#    So these should be imported before running this script, see:
+#    - import_icd10.exs
+#    - import_icd9.exs
 # 2. Parse the Endpoint CSV file
-# 3. Put the data from a CSV line to an Ecto schema
-#    At this stage, some ICD-10 and ICD-9 are matched against the respective lists
-# 4. Insert data in database
+# 3. Put the phenocode data from a CSV line into Ecto schemas.
+#    At this stage, some ICD-10 and ICD-9 are matched against thir tables in the database.
+#    Phenocode <-> ICD-{10,9} are built.
+# 4. Insert data in database.
 
-alias Risteys.{Repo, Phenocode, ICD10, ICD9}
+require Logger
+alias Risteys.{Repo, Phenocode, Icd10, Icd9, PhenocodeIcd10, PhenocodeIcd9}
 
 Logger.configure(level: :info)
 [filepath | _] = System.argv()
@@ -22,16 +27,17 @@ Logger.configure(level: :info)
 defmodule RegexICD do
   import Ecto.Query
 
-  @icd10s Repo.all(from icd in ICD10, select: icd.code) |> MapSet.new()
-  @icd9s Repo.all(from icd in ICD9, select: icd.code) |> MapSet.new()
+  @icd10s Repo.all(from icd in Icd10, select: %{code: icd.code, id: icd.id}) |> MapSet.new()
+  @icd9s Repo.all(from icd in Icd9, select: %{code: icd.code, id: icd.id}) |> MapSet.new()
 
   defp expand(regex, icd_version) do
+    Logger.debug(fn -> "expanding regex: #{regex}" end)
     case regex do
       "" ->
         []
 
-      "ANY" ->
-        ["ANY"]
+      "ANY" ->  # not a valid ICD
+        []
 
       _ ->
         # Match only against upper most ICD in the tree.
@@ -46,7 +52,7 @@ defmodule RegexICD do
           end
 
         icds
-        |> Enum.filter(fn code -> Regex.match?(reg, code) end)
+        |> Enum.filter(fn %{code: code} -> Regex.match?(reg, code) end)
     end
   end
 
@@ -54,50 +60,85 @@ defmodule RegexICD do
   def expand_icd9(regex), do: expand(regex, 9)
 end
 
+defmodule AssocICDs do
+  def insert(registry, icd_version, phenocode_id, icds) do
+    case icd_version do
+      10 ->
+	Enum.each(icds, fn icd ->
+	  Logger.debug("ICD-10: #{inspect(icd)}")
+	  PhenocodeIcd10.changeset(
+	    %PhenocodeIcd10{},
+	    %{
+	      registry: registry,
+	      phenocode_id: phenocode_id,
+	      icd10_id: icd.id
+	    }
+	  )
+	  |> Repo.insert!()
+	end)
+
+      9 ->
+	Enum.each(icds, fn icd ->
+	  Logger.debug("ICD-9: #{inspect(icd)}")
+	  PhenocodeIcd9.changeset(
+	    %PhenocodeIcd9{},
+	    %{
+	      registry: registry,
+	      phenocode_id: phenocode_id,
+	      icd9_id: icd.id
+	    }
+	  )
+	  |> Repo.insert!()
+	end)
+    end
+  end
+end
+
 filepath
 |> File.stream!()
 |> CSV.decode!(headers: true)
-|> Stream.map(fn %{
-                   "TAGS" => tags,
-                   "LEVEL" => level,
-                   "OMIT" => omit,
-                   "NAME" => code,
-                   "LONGNAME" => longname,
-                   "SEX" => sex,
-                   "INCLUDE" => include,
-                   "PRE_CONDITIONS" => pre_conditions,
-                   "CONDITIONS" => conditions,
-                   "OUTPAT_ICD" => outpat_icd,
-                   "HD_MAINONLY" => hd_mainonly,
-                   "HD_ICD_10" => hd_icd_10,
-                   "HD_ICD_9" => hd_icd_9,
-                   "HD_ICD_8" => hd_icd_8,
-                   "HD_ICD_10_EXCL" => hd_icd_10_excl,
-                   "HD_ICD_9_EXCL" => hd_icd_9_excl,
-                   "HD_ICD_8_EXCL" => hd_icd_8_excl,
-                   "COD_MAINONLY" => cod_mainonly,
-                   "COD_ICD_10" => cod_icd_10,
-                   "COD_ICD_9" => cod_icd_9,
-                   "COD_ICD_8" => cod_icd_8,
-                   "COD_ICD_10_EXCL" => cod_icd_10_excl,
-                   "COD_ICD_9_EXCL" => cod_icd_9_excl,
-                   "COD_ICD_8_EXCL" => cod_icd_8_excl,
-                   "OPER_NOM" => oper_nom,
-                   "OPER_HL" => oper_hl,
-                   "OPER_HP1" => oper_hp1,
-                   "OPER_HP2" => oper_hp2,
-                   "KELA_REIMB" => kela_reimb,
-                   "KELA_REIMB_ICD" => kela_reimb_icd,
-                   "KELA_ATC_NEEDOTHER" => kela_atc_needother,
-                   "KELA_ATC" => kela_atc,
-                   "CANC_TOPO" => canc_topo,
-                   "CANC_MORPH" => canc_morph,
-                   "CANC_BEHAV" => canc_behav,
-                   "Special" => special,
-                   "version" => version,
-                   "source" => source,
-                   "PHEWEB" => pheweb
-                 } ->
+|> Enum.each(fn %{
+                    "TAGS" => tags,
+                    "LEVEL" => level,
+                    "OMIT" => omit,
+                    "NAME" => name,
+                    "LONGNAME" => longname,
+                    "SEX" => sex,
+                    "INCLUDE" => include,
+                    "PRE_CONDITIONS" => pre_conditions,
+                    "CONDITIONS" => conditions,
+                    "OUTPAT_ICD" => outpat_icd,
+                    "HD_MAINONLY" => hd_mainonly,
+                    "HD_ICD_10" => hd_icd_10,
+                    "HD_ICD_9" => hd_icd_9,
+                    "HD_ICD_8" => hd_icd_8,
+                    "HD_ICD_10_EXCL" => hd_icd_10_excl,
+                    "HD_ICD_9_EXCL" => hd_icd_9_excl,
+                    "HD_ICD_8_EXCL" => hd_icd_8_excl,
+                    "COD_MAINONLY" => cod_mainonly,
+                    "COD_ICD_10" => cod_icd_10,
+                    "COD_ICD_9" => cod_icd_9,
+                    "COD_ICD_8" => cod_icd_8,
+                    "COD_ICD_10_EXCL" => cod_icd_10_excl,
+                    "COD_ICD_9_EXCL" => cod_icd_9_excl,
+                    "COD_ICD_8_EXCL" => cod_icd_8_excl,
+                    "OPER_NOM" => oper_nom,
+                    "OPER_HL" => oper_hl,
+                    "OPER_HP1" => oper_hp1,
+                    "OPER_HP2" => oper_hp2,
+                    "KELA_REIMB" => kela_reimb,
+                    "KELA_REIMB_ICD" => kela_reimb_icd,
+                    "KELA_ATC_NEEDOTHER" => kela_atc_needother,
+                    "KELA_ATC" => kela_atc,
+                    "CANC_TOPO" => canc_topo,
+                    "CANC_MORPH" => canc_morph,
+                    "CANC_BEHAV" => canc_behav,
+                    "Special" => special,
+                    "version" => version,
+                    "source" => source,
+                    "PHEWEB" => pheweb
+                  } ->
+  Logger.info("Processing phenocode: #{name}")
   omit =
     case omit do
       "" -> nil
@@ -123,6 +164,7 @@ filepath
     end
 
   # Parse some ICD-10 columns
+  Logger.debug("Parsing ICD-10s for #{name}")
   icd_10_regex = hd_icd_10
   hd_icd_10 = RegexICD.expand_icd10(hd_icd_10)
 
@@ -135,6 +177,7 @@ filepath
   kela_reimb_icd = RegexICD.expand_icd10(kela_reimb_icd)
 
   # Parse some ICD-9 columns
+  Logger.debug("Parsing ICD-9s #{name}")
   icd_9_regex = hd_icd_9
   hd_icd_9 = RegexICD.expand_icd9(icd_9_regex)
 
@@ -171,46 +214,54 @@ filepath
       "1" -> true
     end
 
-  %Phenocode{
-    code: code,
-    longname: longname,
-    tags: tags,
-    level: level,
-    omit: omit,
-    sex: sex,
-    include: include,
-    pre_conditions: pre_conditions,
-    conditions: conditions,
-    outpat_icd: outpat_icd,
-    hd_mainonly: hd_mainonly,
-    hd_icd_10: hd_icd_10,
-    hd_icd_9: hd_icd_9,
-    hd_icd_8: hd_icd_8,
-    hd_icd_10_excl: hd_icd_10_excl,
-    hd_icd_9_excl: hd_icd_9_excl,
-    hd_icd_8_excl: hd_icd_8_excl,
-    cod_mainonly: cod_mainonly,
-    cod_icd_10: cod_icd_10,
-    cod_icd_9: cod_icd_9,
-    cod_icd_8: cod_icd_8,
-    cod_icd_10_excl: cod_icd_10_excl,
-    cod_icd_9_excl: cod_icd_9_excl,
-    cod_icd_8_excl: cod_icd_8_excl,
-    oper_nom: oper_nom,
-    oper_hl: oper_hl,
-    oper_hp1: oper_hp1,
-    oper_hp2: oper_hp2,
-    kela_reimb: kela_reimb,
-    kela_reimb_icd: kela_reimb_icd,
-    kela_atc_needother: kela_atc_needother,
-    kela_atc: kela_atc,
-    canc_topo: canc_topo,
-    canc_morph: canc_morph,
-    canc_behav: canc_behav,
-    special: special,
-    version: version,
-    source: source,
-    pheweb: pheweb
-  }
+  Logger.debug("Inserting phenocode #{name} in DB")
+  phenocode =
+    Phenocode.changeset(%Phenocode{}, %{
+      name: name,
+      longname: longname,
+      tags: tags,
+      level: level,
+      omit: omit,
+      sex: sex,
+      include: include,
+      pre_conditions: pre_conditions,
+      conditions: conditions,
+      outpat_icd: outpat_icd,
+      hd_mainonly: hd_mainonly,
+      hd_icd_8: hd_icd_8,
+      hd_icd_10_excl: hd_icd_10_excl,
+      hd_icd_9_excl: hd_icd_9_excl,
+      hd_icd_8_excl: hd_icd_8_excl,
+      cod_mainonly: cod_mainonly,
+      cod_icd_8: cod_icd_8,
+      cod_icd_10_excl: cod_icd_10_excl,
+      cod_icd_9_excl: cod_icd_9_excl,
+      cod_icd_8_excl: cod_icd_8_excl,
+      oper_nom: oper_nom,
+      oper_hl: oper_hl,
+      oper_hp1: oper_hp1,
+      oper_hp2: oper_hp2,
+      kela_reimb: kela_reimb,
+      kela_atc_needother: kela_atc_needother,
+      kela_atc: kela_atc,
+      canc_topo: canc_topo,
+      canc_morph: canc_morph,
+      canc_behav: canc_behav,
+      special: special,
+      version: version,
+      source: source,
+      pheweb: pheweb
+    })
+    |> Repo.insert!()
+
+  ###
+  # Build Phenocode<->ICD-{10,9} associations
+  ###
+  Logger.debug("Inserting associations for #{name}")
+  AssocICDs.insert("HD", 10, phenocode.id, hd_icd_10)
+  AssocICDs.insert("COD", 10, phenocode.id, cod_icd_10)
+  AssocICDs.insert("KELA_REIMB", 10, phenocode.id, kela_reimb_icd)
+
+  AssocICDs.insert("HD", 9, phenocode.id, hd_icd_9)
+  AssocICDs.insert("COD", 9, phenocode.id, cod_icd_9)
 end)
-|> Enum.each(&Repo.insert!(&1))
