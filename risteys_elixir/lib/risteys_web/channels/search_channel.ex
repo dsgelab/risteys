@@ -105,7 +105,7 @@ defmodule RisteysWeb.SearchChannel do
   end
 
   defp url(conn, code) do
-    Routes.code_path(conn, :show, code)
+    Routes.phenocode_path(conn, :show, code)
   end
 
   defp highlight(string, query) do
