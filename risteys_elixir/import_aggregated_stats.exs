@@ -7,7 +7,7 @@ alias Risteys.{Repo, Phenocode, StatsSex}
 import Ecto.Query
 require Logger
 
-Logger.configure(level: :debug)
+Logger.configure(level: :info)
 [filepath | _] = System.argv()
 
 # taken from the number of records in FINNGEN_PHENOTYPES_R3_V1.txt
@@ -17,7 +17,7 @@ filepath
 |> File.read!()
 |> Jason.decode!()
 |> Enum.each(fn {name, data} ->
-  Logger.debug("processing #{name}")
+  Logger.info("processing #{name}")
 
   phenocode = Repo.one(from p in Phenocode, where: p.name == ^name)
 
@@ -55,10 +55,12 @@ filepath
         data |> Map.get("longit", %{}) |> Map.get("all", %{}) |> Map.get("median_count")
 
       Logger.debug("median reoccurence before trunc: #{all_median_reoccurence}")
+
       all_median_reoccurence =
         if not is_nil(all_median_reoccurence) do
           trunc(all_median_reoccurence)
         end
+
       Logger.debug("median reoccurence after trunc: #{all_median_reoccurence}")
 
       all_reoccurence_rate =
@@ -79,10 +81,12 @@ filepath
           }
         )
 
-      if all_stats.valid? do
-        Repo.insert!(all_stats)
-      else
-        Logger.warn(inspect(all_stats.errors))
+      case Repo.insert(all_stats) do
+        {:ok, _} ->
+          Logger.debug("insert ok for #{name} - all")
+
+        {:error, changeset} ->
+          Logger.warn(inspect(changeset))
       end
 
       # Create stats table for sex=female
@@ -102,9 +106,9 @@ filepath
         |> Map.get("median_count")
 
       female_median_reoccurence =
-      if not is_nil(female_median_reoccurence) do
-         trunc(female_median_reoccurence)
-      end
+        if not is_nil(female_median_reoccurence) do
+          trunc(female_median_reoccurence)
+        end
 
       female_reoccurence_rate =
         data |> Map.get("longit", %{}) |> Map.get("female", %{}) |> Map.get("perc_hosp")
@@ -124,10 +128,12 @@ filepath
           }
         )
 
-      if female_stats.valid? do
-        Repo.insert!(female_stats)
-      else
-        Logger.warn(inspect(female_stats.errors))
+      case Repo.insert(female_stats) do
+        {:ok, _} ->
+          Logger.debug("insert ok for #{name} - female")
+
+        {:error, changeset} ->
+          Logger.warn(inspect(changeset))
       end
 
       # Create stats table for sex=male
@@ -147,9 +153,9 @@ filepath
         |> Map.get("median_count")
 
       male_median_reoccurence =
-      if not is_nil(male_median_reoccurence) do
-        trunc(male_median_reoccurence)
-      end
+        if not is_nil(male_median_reoccurence) do
+          trunc(male_median_reoccurence)
+        end
 
       male_reoccurence_rate =
         data |> Map.get("longit", %{}) |> Map.get("male", %{}) |> Map.get("perc_hosp")
@@ -169,10 +175,12 @@ filepath
           }
         )
 
-      if male_stats.valid? do
-        Repo.insert!(male_stats)
-      else
-        Logger.warn(inspect(male_stats.errors))
+      case Repo.insert(male_stats) do
+        {:ok, _} ->
+          Logger.debug("insert ok for #{name} - male")
+
+        {:error, changeset} ->
+          Logger.warn(inspect(changeset))
       end
   end
 end)

@@ -18,8 +18,8 @@ defmodule Risteys.StatsSex do
   @doc false
   def changeset(stats_sex, attrs) do
     stats_sex
-    |> cast(attrs, [:sex, :n_individuals, :prevalence, :mean_age, :median_reoccurence, :reoccurence_rate, :case_fatality])
-    |> validate_required([:sex, :n_individuals, :prevalence, :mean_age, :median_reoccurence, :reoccurence_rate, :case_fatality])
+    |> cast(attrs, [:sex, :n_individuals, :prevalence, :mean_age, :median_reoccurence, :reoccurence_rate, :case_fatality, :phenocode_id])
+    |> validate_required([:sex, :n_individuals, :prevalence, :mean_age, :median_reoccurence, :reoccurence_rate, :case_fatality, :phenocode_id])
     |> validate_inclusion(:sex, [0, 1, 2])  # 0: all, 1: male, 2: female
     |> validate_number(:n_individuals, greater_than: 5)  # keep only non-individual level data
     |> validate_number(:prevalence, greater_than_or_equal_to: 0.0, less_than_or_equal_to: 1.0)
