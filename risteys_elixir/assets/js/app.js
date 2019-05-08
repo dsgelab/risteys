@@ -17,12 +17,10 @@ import "phoenix_html"
 //
 // Local files can be imported directly using relative paths, for example:
 //// import slider_component from "./MySlider.vue"
-import VueSlider from 'vue-slider-component'
-import '../css/vue-slider-custom.css'
 import { accumulate, makeHistogram, putData } from "./plots.js";
 
 import socket from "./socket"
-import { search_channel, kf_channel } from "./socket"
+import { search_channel } from "./socket"
 
 
 var path = window.location.pathname
@@ -194,131 +192,6 @@ search_channel.on("results", payload => {
 })
 
 
-/*
- * KEY FIGURES
- */
-
-Vue.component('key-figures', {
-    props: ['table', 'filters'],
-    template: `
-    <div class="flex">
-        <kf-table :table="table" :filters="filters"></kf-table>
-    </div>
-    `
-})
-
-// TABLE
-Vue.component('kf-table', {
-    props: ['table', 'filters'],
-    template: `
-    <div class="tables">
-        <div class="left">
-            <h3>Key figures</h3>
-            <table class="key-figures table-fixed flex-initial mr-4">
-                <tbody>
-                    <tr>
-                        <td>Sex</td>
-                        <td>Number of events</td>
-                        <td>Unadjusted prevalence (%)</td>
-                        <td>Mean age at first event (years)</td>
-                    </tr>
-                    <tr>
-                        <td>All</td>
-                        <td>{{ table.all.nevents }}</td>
-                        <td>{{ (table.all.prevalence * 100).toFixed(3) }}</td>
-                        <td>{{ Math.floor(table.all.mean_age) }}</td>
-                    </tr>
-                    <tr>
-                        <td>Male</td>
-                        <td>{{ table.male.nevents }}</td>
-                        <td>{{ (table.male.prevalence * 100).toFixed(3) }}</td>
-                        <td>{{ Math.floor(table.male.mean_age) }}</td>
-                    </tr>
-                    <tr>
-                        <td>Female</td>
-                        <td>{{ table.female.nevents }}</td>
-                        <td>{{ (table.female.prevalence * 100).toFixed(3) }}</td>
-                        <td>{{ Math.floor(table.female.mean_age) }}</td>
-                    </tr>
-                </tbody>
-            </table>
-        </div>
-
-        <div class="left">
-            <h3>Clinical metrics</h3>
-            <table class="key-figures table-fixed flex-initial mr-4">
-                <tbody>
-                    <tr>
-                        <td>Sex</td>
-                        <td>Re-hospitalization rate (%)</td>
-                        <td>Case fatality (%)</td>
-                    </tr>
-                    <tr>
-                        <td>All</td>
-                        <td>{{ (table.all.rehosp * 100).toFixed(3) }}</td>
-                        <td>{{ (table.all.case_fatality * 100).toFixed(3) }}</td>
-                    </tr>
-                    <tr>
-                        <td>Male</td>
-                        <td>{{ (table.male.rehosp * 100).toFixed(3) }}</td>
-                        <td>{{ (table.male.case_fatality * 100).toFixed(3) }}</td>
-                    </tr>
-                    <tr>
-                        <td>Female</td>
-                        <td>{{ (table.female.rehosp * 100).toFixed(3)  }}</td>
-                        <td>{{ (table.female.case_fatality * 100).toFixed(3) }}</td>
-                    </tr>
-                </tbody>
-            </table>
-        </div>
-
-        <div class="right">
-            <h3>Filters</h3>
-            <kf-filters :filters="filters" class="flex-grow filters"></kf-filters>
-        </div>
-    </div>
-   `
-})
-
-// FILTERS
-Vue.component('kf-filters', {
-    props: ['filters'],
-    methods: {
-        filterOut: function(event) {
-            kf_channel.push("filter_out", {body: {path: path, filters: this.filters}})
-            .receive("ok", (payload) => {
-                app.key_figures.table = payload.body.results;
-            });
-        },
-    },
-    template: `
-        <div class="flex filter">
-            <div class="title">Age</div>
-            <vue-slider
-                v-model="filters.age"
-                @change="filterOut"
-                :min="25"
-                :max="70"
-                :duration="0"
-                :height="8"
-                :tooltip="'always'"
-                :useKeyboard="true"
-                :lazy="false"
-                class="flex-grow">
-            </vue-slider>
-        </div>
-    `
-})
-
-// AGE SLIDER
-Vue.component('VueSlider', VueSlider)
-
-
-// Send request to get the initial_data for the given code
-kf_channel.push("initial_data", {body: path})
-    .receive("ok", (payload) => {
-        app.key_figures.table = payload.body.results;
-    })
 
 /*
  * VUE APP
@@ -327,34 +200,6 @@ var app = new Vue({
     el: '#app',
     data: {
         search_results: '',
-        key_figures: {
-            table: {
-                all: {
-                    nevents: 0,
-                    prevalence: 0,
-                    mean_age: 0,
-                    rehosp: 0,
-                    case_fatality: 0,
-                },
-                male: {
-                    nevents: 0,
-                    prevalence: 0,
-                    mean_age: 0,
-                    rehosp: 0,
-                    case_fatality: 0,
-                },
-                female: {
-                    nevents: 0,
-                    prevalence: 0,
-                    mean_age: 0,
-                    rehosp: 0,
-                    case_fatality: 0,
-                },
-            },
-            filters: {
-                age: [25, 70],
-            }
-        }
     },
 })
 

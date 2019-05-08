@@ -62,15 +62,4 @@ search_channel.join()
   .receive("error", resp => { console.log("Unable to join SEARCH", resp) })
 
 
-
-/*
- *  Key Figures
- */
-let kf_channel = socket.channel("key_figures", {})
-kf_channel.join()
-  .receive("ok", resp => { console.log("Joined KEY_FIGURES successfully", resp) })
-  .receive("error", resp => { console.log("Unable to join KEY_FIGURES", resp) })
-
-
-
-export {socket, search_channel, kf_channel}
+export {socket, search_channel}

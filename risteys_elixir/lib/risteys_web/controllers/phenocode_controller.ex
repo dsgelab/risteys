@@ -2,7 +2,6 @@ defmodule RisteysWeb.PhenocodeController do
   use RisteysWeb, :controller
   alias Risteys.{Repo, Icd9, Icd10, Phenocode, PhenocodeIcd10, PhenocodeIcd9, StatsSex}
   import Ecto.Query
-  import Phoenix.HTML
 
   def show(conn, %{"name" => name}) do
     phenocode = Repo.get_by(Phenocode, name: name)
@@ -106,21 +105,6 @@ defmodule RisteysWeb.PhenocodeController do
       all: stats_all,
       female: stats_female,
       male: stats_male
-    }
-  end
-
-  defp plots_data(phenocode_name) do
-    bin_by_age = Risteys.Data.bin_by_age(phenocode_name)
-
-    bin_by_age =
-      for {[mini, maxi], count} <- bin_by_age do
-        bracket = "#{mini}–#{maxi}"
-        {bracket, count}
-      end
-
-    %{
-      events_by_year: Risteys.Data.count_by_year(phenocode_name),
-      bin_by_age: bin_by_age
     }
   end
 end
