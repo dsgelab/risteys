@@ -33,6 +33,7 @@ defmodule RisteysWeb.PhenocodeController do
       end
 
     conn
+    |> assign(:page_title, phenocode.name)
     |> assign(:name, phenocode.name)
     |> assign(:title, phenocode.longname)
     |> assign(:data_sources, data_sources(phenocode))

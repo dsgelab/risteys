@@ -31,6 +31,7 @@ defmodule RisteysWeb.Router do
     pipe_through :browser_authz
 
     get "/", HomeController, :index
+    get "/changelog", ChangelogController, :index
     get "/phenocode/:name", PhenocodeController, :show
   end
 
