@@ -86,4 +86,11 @@ defmodule RisteysWeb.PhenocodeView do
   defp abbr(text, title) do
     content_tag(:abbr, text, [{:data, [title: title]}])
   end
+
+  defp round(number, precision) do
+    case number do
+      "N/A" -> "N/A"
+      _ -> Float.round(number, precision)
+    end
+  end
 end

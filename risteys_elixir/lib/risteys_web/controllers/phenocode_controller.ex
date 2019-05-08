@@ -96,10 +96,32 @@ defmodule RisteysWeb.PhenocodeController do
 
   defp get_stats(phenocode) do
     stats = Repo.all(from ss in StatsSex, where: ss.phenocode_id == ^phenocode.id)
+    no_stats = %{
+      n_individuals: "N/A",
+      prevalence: "N/A",
+      mean_age: "N/A",
+      median_reoccurence: "N/A",
+      reoccurence_rate: "N/A",
+      case_fatality: "N/A",
+    }
 
-    [stats_all] = Enum.filter(stats, fn stats_sex -> stats_sex.sex == 0 end)
-    [stats_female] = Enum.filter(stats, fn stats_sex -> stats_sex.sex == 2 end)
-    [stats_male] = Enum.filter(stats, fn stats_sex -> stats_sex.sex == 1 end)
+    stats_all =
+      case Enum.filter(stats, fn stats_sex -> stats_sex.sex == 0 end) do
+        [] -> no_stats
+        values -> hd(values)
+      end
+
+    stats_female =
+      case Enum.filter(stats, fn stats_sex -> stats_sex.sex == 2 end) do
+	[] -> no_stats
+	values -> hd(values)
+      end
+
+    stats_male =
+      case Enum.filter(stats, fn stats_sex -> stats_sex.sex == 1 end) do
+	[] -> no_stats
+	values -> hd(values)
+      end
 
     %{
       all: stats_all,
