@@ -18,14 +18,28 @@ defmodule RisteysWeb.PhenocodeController do
 
     stats = get_stats(phenocode)
 
+    distrib_year =
+      if is_nil(phenocode.distrib_year) do
+	%{}
+      else
+	phenocode.distrib_year
+      end
+
+    distrib_age =
+      if is_nil(phenocode.distrib_age) do
+	%{}
+      else
+	phenocode.distrib_age
+      end
+
     conn
     |> assign(:name, phenocode.name)
     |> assign(:title, phenocode.longname)
     |> assign(:data_sources, data_sources(phenocode))
     |> assign(:ontology, ontology)
     |> assign(:stats, stats)
-    |> assign(:distrib_year, phenocode.distrib_year)
-    |> assign(:distrib_age, phenocode.distrib_age)
+    |> assign(:distrib_year, distrib_year)
+    |> assign(:distrib_age, distrib_age)
     |> assign(:descriptions, descriptions)
     |> render("show.html")
   end
