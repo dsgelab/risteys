@@ -6,19 +6,19 @@ defmodule RisteysWeb.SearchChannelTest do
       socket(RisteysWeb.UserSocket, "user_id", %{some: :assign})
       |> subscribe_and_join(RisteysWeb.SearchChannel, "search")
 
-    Risteys.DataCase.data_fixture("XYZ00", 20)
+    Risteys.DataCase.data_fixture("longname for XYZ00")
 
     {:ok, socket: socket}
   end
 
-  test "search for a phenocode", %{socket: socket} do
+  test "search for a phenocode by longname", %{socket: socket} do
     push(socket, "query", %{"body" => "XYZ00"})
 
     assert_push "results", %{
       body: %{
         results: [
           [
-            "Phenocode code",
+            "Phenocode long name",
             [
               %{
                 content: _,
