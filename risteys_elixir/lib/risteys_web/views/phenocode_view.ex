@@ -77,14 +77,72 @@ defmodule RisteysWeb.PhenocodeView do
   end
 
   defp table_ontology(ontology) do
+    display = %{
+      "DOID" => %{
+        display: "DOID",
+        url: fn doid ->
+          link = "https://www.ebi.ac.uk/ols/search?q=" <> doid <> "&ontology=doid"
+          ahref(doid, link)
+        end
+      },
+      "EFO_CLEAN" => %{
+        display: "GWAS catalog",
+        url: fn efo ->
+          link = "https://www.ebi.ac.uk/gwas/efotraits/EFO_" <> efo
+          ahref(efo, link)
+        end
+      },
+      "MESH" => %{
+        display: "MESH",
+        url: fn mesh ->
+          link = "https://meshb.nlm.nih.gov/record/ui?ui=" <> mesh
+          ahref(mesh, link)
+        end
+      },
+      "SNOMED" => %{
+        display: "SNOMED CT",
+        url: fn snomed ->
+          link =
+            "https://browser.ihtsdotools.org/?perspective=full&conceptId1=" <>
+              snomed <> "&edition=en-edition"
+
+          ahref(snomed, link)
+        end
+      }
+    }
+
     for {source, values} <- ontology, into: %{} do
+      values =
+        Enum.map(values, fn id ->
+          fun =
+            display
+            |> Map.fetch!(source)
+            |> Map.fetch!(:url)
+
+          fun.(id)
+        end)
+
+      source =
+        display
+        |> Map.fetch!(source)
+        |> Map.fetch!(:display)
+
       values = Enum.intersperse(values, ", ")
+
       {source, values}
     end
   end
 
   defp abbr(text, title) do
     content_tag(:abbr, text, [{:data, [title: title]}])
+  end
+
+  defp ahref(text, link) do
+    content_tag(:a, text,
+      href: link,
+      rel: "external nofollow noopener noreferrer",
+      target: "_blank"
+    )
   end
 
   defp round(number, precision) do
