@@ -15,7 +15,7 @@
 #        A00-A09	Intestinal infectious diseases
 #        A00	Cholera
 
-alias Risteys.{Repo, ICD10}
+alias Risteys.{Repo, Icd10}
 
 Logger.configure(level: :info)
 [data_dir | _] = System.argv()
@@ -43,5 +43,5 @@ icd10s =
 
 icd10s
 |> Enum.map(fn {code, description} ->
-  Repo.insert!(%ICD10{code: code, description: description})
+  Repo.insert!(%Icd10{code: code, description: description})
 end)
