@@ -2,6 +2,20 @@
 #
 # Usage:
 #     mix run import_aggregated_data.exs <json-file-aggregegated-stats>
+#
+# where <json-file-aggregegated-stats> is a JSON file with all the
+# aggregated stats, with the following format:
+#
+# {
+#   "ENDPOINT XYZ": {
+#     "year_distrib": {...},
+#     "age_distrib": {...},
+#     "longit": {...},
+#     "common_stats": {...},
+#   },
+#   ...
+# }
+
 
 alias Risteys.{Repo, Phenocode, StatsSex}
 import Ecto.Query
