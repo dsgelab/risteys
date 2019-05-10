@@ -13,11 +13,21 @@ var width = 600,
 let accumulate = (data) => {
     let sum_data = [];
     let sum = 0;
+    let has_nan = false;
     for (var item of data) {
+        if (isNaN(item.value)) {
+            has_nan = true;
+        }
         sum += item.value;
         sum_data.push({name: item.name, value: sum});
     }
-    return sum_data;
+
+    // Switch histogram style only if no NaN-values
+    if (has_nan) {
+        return data
+    } else {
+        return sum_data;
+    }
 }
 
 let makeHistogram = (title, xlabel, ylabel, div_name, data) => {
@@ -99,10 +109,36 @@ let putData = (div_name, data) => {
         .data(data)
         .join(
             enter => enter.append("rect")
-                        .attr("height", d => y(0) - y(d.value)),
+                        .attr("height", d => {
+                            if (isNaN(d.value)) {
+                                return y(0)
+                            } else {
+                                return y(0) - y(d.value)
+                            }
+                        })
+                        .attr("fill", d => {
+                            if (isNaN(d.value)) {
+                                return "#f1f5f8"
+                            } else{
+                                return ""
+                            }
+                        }),
             update => update
                         .call(update => update.transition().duration(100)
-                            .attr("height", d => y(0) - y(d.value))),
+                            .attr("height", d => {
+                                if (isNaN(d.value)) {
+                                    return y(0)
+                                } else {
+                                    return y(0) - y(d.value)
+                                }
+                            })
+                            .attr("fill", d => {
+                                if (isNaN(d.value)) {
+                                    return "#f1f5f8"
+                                } else{
+                                    return ""
+                                }})
+                        ),
         )
         .attr("x", d => x(d.name))
         .attr("y", margin.bottom)
