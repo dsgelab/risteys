@@ -18,7 +18,6 @@
 
 
 alias Risteys.{Repo, Phenocode, StatsSex}
-import Ecto.Query
 require Logger
 
 Logger.configure(level: :info)
@@ -33,7 +32,7 @@ filepath
 |> Enum.each(fn {name, data} ->
   Logger.info("processing #{name}")
 
-  phenocode = Repo.one(from p in Phenocode, where: p.name == ^name)
+  phenocode = Repo.get_by(Phenocode, name: name)
 
   cond do
     is_nil(Map.get(data, "common_stats")) ->
