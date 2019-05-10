@@ -8,8 +8,8 @@
 #
 # {
 #   "ENDPOINT XYZ": {
-#     "year_distrib": {...},
-#     "age_distrib": {...},
+#     "year_distrib": [...],
+#     "age_distrib": [...],
 #     "longit": {...},
 #     "common_stats": {...},
 #   },
@@ -44,7 +44,9 @@ filepath
     true ->
       # Update phenocode with stats distributions
       year_distrib = Map.get(data, "year_distrib")
+      year_distrib = %{hist: year_distrib}  # wrap the list of lists into a map
       age_distrib = Map.get(data, "age_distrib")
+      age_distrib = %{hist: age_distrib}  # wrap the list of lists into a map
       Logger.debug("year_distrib: #{inspect(year_distrib)}")
       Logger.debug("age_distrib: #{inspect(age_distrib)}")
 

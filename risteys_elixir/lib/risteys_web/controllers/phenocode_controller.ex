@@ -16,21 +16,12 @@ defmodule RisteysWeb.PhenocodeController do
         {no_desc, %{}}
       end
 
+    # Get stats
     stats = get_stats(phenocode)
 
-    distrib_year =
-      if is_nil(phenocode.distrib_year) do
-	%{}
-      else
-	phenocode.distrib_year
-      end
-
-    distrib_age =
-      if is_nil(phenocode.distrib_age) do
-	%{}
-      else
-	phenocode.distrib_age
-      end
+    # Unwrap histograms
+    %{"hist" => distrib_year} = phenocode.distrib_year
+    %{"hist" => distrib_age} = phenocode.distrib_age
 
     conn
     |> assign(:page_title, phenocode.name)
@@ -111,13 +102,14 @@ defmodule RisteysWeb.PhenocodeController do
 
   defp get_stats(phenocode) do
     stats = Repo.all(from ss in StatsSex, where: ss.phenocode_id == ^phenocode.id)
+
     no_stats = %{
       n_individuals: "N/A",
       prevalence: "N/A",
       mean_age: "N/A",
       median_reoccurence: "N/A",
       reoccurence_rate: "N/A",
-      case_fatality: "N/A",
+      case_fatality: "N/A"
     }
 
     stats_all =
@@ -128,14 +120,14 @@ defmodule RisteysWeb.PhenocodeController do
 
     stats_female =
       case Enum.filter(stats, fn stats_sex -> stats_sex.sex == 2 end) do
-	[] -> no_stats
-	values -> hd(values)
+        [] -> no_stats
+        values -> hd(values)
       end
 
     stats_male =
       case Enum.filter(stats, fn stats_sex -> stats_sex.sex == 1 end) do
-	[] -> no_stats
-	values -> hd(values)
+        [] -> no_stats
+        values -> hd(values)
       end
 
     %{

@@ -133,6 +133,17 @@ defmodule RisteysWeb.PhenocodeView do
     end
   end
 
+  defp distrib_values(distrib) do
+    if is_nil(distrib) do
+      []
+    else
+      for [bin, val] <- distrib do
+        val = if is_nil(val), do: "NaN", else: val
+        [bin, val]
+      end
+    end
+  end
+
   defp abbr(text, title) do
     content_tag(:abbr, text, [{:data, [title: title]}])
   end

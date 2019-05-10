@@ -37,8 +37,8 @@ defmodule Risteys.Phenocode do
     field :version, :string
     field :source, :string
     field :pheweb, :boolean
-    field :distrib_year, {:map, :integer}
-    field :distrib_age, {:map, :integer}
+    field :distrib_year, :map  # can't specify more since composite type
+    field :distrib_age, :map  # can't specify more since composite type
     field :validation_article, :string
     field :ontology, {:map, {:array, :string}}
 
