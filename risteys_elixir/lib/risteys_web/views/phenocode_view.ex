@@ -162,4 +162,8 @@ defmodule RisteysWeb.PhenocodeView do
       _ -> Float.round(number, precision)
     end
   end
+
+  defp percentage(number) do
+    number * 100
+  end
 end
