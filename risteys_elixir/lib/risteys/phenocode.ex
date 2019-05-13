@@ -101,23 +101,25 @@ defmodule Risteys.Phenocode do
     |> validate_change(:ontology, fn :ontology, ontology ->
       allowed = allowed_ontology_types()
 
-      if ontology not in allowed do
-        [ontology: "not in #{inspect(allowed)}"]
-      else
-        []
-      end
+      ontology
+      |> Enum.map(fn {type, _value} ->
+	if type not in allowed do
+	  {:ontology, "#{type} not in #{inspect(allowed)}"}
+	end
+      end)
+      |> Enum.reject(fn error -> is_nil(error) end)
     end)
     # TODO put validations when the data source is stable
     |> unique_constraint(:name)
   end
 
-  defp allowed_ontology_types() do
+  def allowed_ontology_types() do
     MapSet.new([
       "DESCRIPTION",
       "DOID",
       "EFO_CLEAN",
       "MESH",
-      "SNOMED_CT_US"
+      "SNOMED"
     ])
   end
 
