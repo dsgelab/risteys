@@ -37,8 +37,10 @@ defmodule Risteys.Phenocode do
     field :version, :string
     field :source, :string
     field :pheweb, :boolean
-    field :distrib_year, :map  # can't specify more since composite type
-    field :distrib_age, :map  # can't specify more since composite type
+    # can't specify more since composite type
+    field :distrib_year, :map
+    # can't specify more since composite type
+    field :distrib_age, :map
     field :validation_article, :string
     field :ontology, {:map, {:array, :string}}
 
@@ -92,6 +94,10 @@ defmodule Risteys.Phenocode do
       :ontology
     ])
     |> validate_required([:name, :longname])
+    |> validate_change(:distrib_year, fn :distrib_year, %{hist: hist} ->
+      check_distrib(hist)
+    end)
+    |> validate_change(:distrib_age, fn :distrib_age, %{hist: hist} -> check_distrib(hist) end)
     |> validate_change(:ontology, fn :ontology, ontology ->
       allowed = allowed_ontology_types()
 
@@ -105,7 +111,7 @@ defmodule Risteys.Phenocode do
     |> unique_constraint(:name)
   end
 
-  def allowed_ontology_types() do
+  defp allowed_ontology_types() do
     MapSet.new([
       "DESCRIPTION",
       "DOID",
@@ -113,5 +119,16 @@ defmodule Risteys.Phenocode do
       "MESH",
       "SNOMED_CT_US"
     ])
+  end
+
+  defp check_distrib(hist) do
+    errors =
+      for [bin, value] <- hist do
+        if value < 6 do
+          {:distrib_age, "bin #{bin} value #{value} < 6"}
+        end
+      end
+
+    Enum.reject(errors, fn error -> is_nil(error) end)
   end
 end

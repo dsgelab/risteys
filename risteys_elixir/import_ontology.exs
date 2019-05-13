@@ -19,7 +19,6 @@
 # cell in the database.
 
 alias Risteys.{Repo, Phenocode}
-import Ecto.Query
 require Logger
 
 Logger.configure(level: :info)
@@ -66,7 +65,7 @@ filepath
       Map.put(ontology, "SNOMED", snomed)
     end
 
-  Repo.one(from p in Phenocode, where: p.name == ^name)
-  |> Ecto.Changeset.change(ontology: ontology)
+  Repo.get_by(Phenocode, name: name)
+  |> Phenocode.changeset(%{ontology: ontology})
   |> Repo.update!()
 end)

@@ -16,7 +16,6 @@
 #   ...
 # }
 
-
 alias Risteys.{Repo, Phenocode, StatsSex}
 require Logger
 
@@ -44,17 +43,25 @@ filepath
     true ->
       # Update phenocode with stats distributions
       year_distrib = Map.get(data, "year_distrib")
-      year_distrib = %{hist: year_distrib}  # wrap the list of lists into a map
+      # wrap the list of lists into a map
+      year_distrib = %{hist: year_distrib}
       age_distrib = Map.get(data, "age_distrib")
-      age_distrib = %{hist: age_distrib}  # wrap the list of lists into a map
+      # wrap the list of lists into a map
+      age_distrib = %{hist: age_distrib}
       Logger.debug("year_distrib: #{inspect(year_distrib)}")
       Logger.debug("age_distrib: #{inspect(age_distrib)}")
 
       changeset =
-        Ecto.Changeset.change(phenocode, distrib_year: year_distrib, distrib_age: age_distrib)
+        Phenocode.changeset(phenocode, %{distrib_year: year_distrib, distrib_age: age_distrib})
 
       Logger.debug("Applying Phenocode changeset: #{inspect(changeset)}")
-      phenocode = Repo.update!(changeset)
+      case Repo.update(changeset) do
+        {:ok, _} ->
+          Logger.debug("update ok for #{phenocode.name}")
+
+        {:error, changeset} ->
+          Logger.warn(inspect(changeset))
+      end
 
       # Create stats table for sex=all
       all_case_fatality =
