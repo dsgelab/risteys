@@ -20,8 +20,19 @@ defmodule RisteysWeb.PhenocodeController do
     stats = get_stats(phenocode)
 
     # Unwrap histograms
-    %{"hist" => distrib_year} = phenocode.distrib_year
-    %{"hist" => distrib_age} = phenocode.distrib_age
+    %{"hist" => distrib_year} =
+      if is_nil(phenocode.distrib_year) do
+        %{"hist" => nil}
+      else
+        phenocode.distrib_year
+      end
+
+    %{"hist" => distrib_age} =
+      if is_nil(phenocode.distrib_age) do
+        %{"hist" => nil}
+      else
+        phenocode.distrib_age
+      end
 
     conn
     |> assign(:page_title, phenocode.name)
