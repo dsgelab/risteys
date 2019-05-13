@@ -45,23 +45,20 @@ filepath
       year_distrib = Map.get(data, "year_distrib")
       # wrap the list of lists into a map
       year_distrib = %{hist: year_distrib}
+      Logger.debug("year_distrib: #{inspect(year_distrib)}")
+
+      changeset = Phenocode.changeset(phenocode, %{distrib_year: year_distrib})
+      Logger.debug("Applying Phenocode changeset: #{inspect(changeset)}")
+      phenocode = Repo.try_update(phenocode, changeset)
+
       age_distrib = Map.get(data, "age_distrib")
       # wrap the list of lists into a map
       age_distrib = %{hist: age_distrib}
-      Logger.debug("year_distrib: #{inspect(year_distrib)}")
       Logger.debug("age_distrib: #{inspect(age_distrib)}")
 
-      changeset =
-        Phenocode.changeset(phenocode, %{distrib_year: year_distrib, distrib_age: age_distrib})
-
+      changeset = Phenocode.changeset(phenocode, %{distrib_age: age_distrib})
       Logger.debug("Applying Phenocode changeset: #{inspect(changeset)}")
-      case Repo.update(changeset) do
-        {:ok, _} ->
-          Logger.debug("update ok for #{phenocode.name}")
-
-        {:error, changeset} ->
-          Logger.warn(inspect(changeset))
-      end
+      phenocode = Repo.try_update(phenocode, changeset)
 
       # Create stats table for sex=all
       all_case_fatality =
