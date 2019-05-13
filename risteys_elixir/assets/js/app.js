@@ -211,31 +211,15 @@ var app = new Vue({
 makeHistogram("Event distribution by year",
     "year",
     "number of events",
+    true,
     "plot_events_by_year",
     events_by_year);
 makeHistogram("Age distribution",
     "age bracket",
     "number of events",
+    false,
     "plot_bin_by_age",
     bin_by_age);
-
-var app_year_plot = new Vue({
-    el: '#events_by_year',
-    data: {
-        is_cumulative: false,
-    },
-    methods: {
-        toggleCumulative: function() {
-            this.is_cumulative = !this.is_cumulative;
-            if (this.is_cumulative) {
-                var data = accumulate(events_by_year);
-            } else {
-                var data = events_by_year;
-            }
-            putData("plot_events_by_year", data);
-        }
-    },
-});
 
 
 /*
