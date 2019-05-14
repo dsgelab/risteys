@@ -164,6 +164,12 @@ defmodule RisteysWeb.PhenocodeView do
   end
 
   defp percentage(number) do
-    number * 100
+    case number do
+      "N/A" ->
+	"N/A"
+
+      _ ->
+	number * 100
+    end
   end
 end
