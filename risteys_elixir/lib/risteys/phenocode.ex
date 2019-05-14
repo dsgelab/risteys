@@ -94,6 +94,14 @@ defmodule Risteys.Phenocode do
       :ontology
     ])
     |> validate_required([:name, :longname])
+    |> validate_exclusion(:level, ["1"])
+    |> validate_change(:omit, fn :omit, omit ->
+      if omit do
+        [omit: "cannot be true"]
+      else
+        []
+      end
+    end)
     |> validate_change(:distrib_year, fn :distrib_year, %{hist: hist} ->
       check_distrib(hist)
     end)
@@ -103,9 +111,9 @@ defmodule Risteys.Phenocode do
 
       ontology
       |> Enum.map(fn {type, _value} ->
-	if type not in allowed do
-	  {:ontology, "#{type} not in #{inspect(allowed)}"}
-	end
+        if type not in allowed do
+          {:ontology, "#{type} not in #{inspect(allowed)}"}
+        end
       end)
       |> Enum.reject(fn error -> is_nil(error) end)
     end)

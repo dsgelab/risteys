@@ -65,7 +65,13 @@ filepath
       Map.put(ontology, "SNOMED", snomed)
     end
 
-  Repo.get_by(Phenocode, name: name)
-  |> Phenocode.changeset(%{ontology: ontology})
-  |> Repo.update!()
+  case Repo.get_by(Phenocode, name: name) do
+    nil ->
+      Logger.debug("Phenocode #{name} not in DB, may be not imported due to restrictions on OMIT or LEVEL.")
+
+    phenocode ->
+      phenocode
+      |> Phenocode.changeset(%{ontology: ontology})
+      |> Repo.update!()
+  end
 end)

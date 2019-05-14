@@ -32,11 +32,13 @@ defmodule RegexICD do
 
   defp expand(regex, icd_version) do
     Logger.debug(fn -> "expanding regex: #{regex}" end)
+
     case regex do
       "" ->
         []
 
-      "ANY" ->  # not a valid ICD
+      # not a valid ICD
+      "ANY" ->
         []
 
       _ ->
@@ -64,32 +66,34 @@ defmodule AssocICDs do
   def insert(registry, icd_version, phenocode_id, icds) do
     case icd_version do
       10 ->
-	Enum.each(icds, fn icd ->
-	  Logger.debug("ICD-10: #{inspect(icd)}")
-	  PhenocodeIcd10.changeset(
-	    %PhenocodeIcd10{},
-	    %{
-	      registry: registry,
-	      phenocode_id: phenocode_id,
-	      icd10_id: icd.id
-	    }
-	  )
-	  |> Repo.insert!()
-	end)
+        Enum.each(icds, fn icd ->
+          Logger.debug("ICD-10: #{inspect(icd)}")
+
+          PhenocodeIcd10.changeset(
+            %PhenocodeIcd10{},
+            %{
+              registry: registry,
+              phenocode_id: phenocode_id,
+              icd10_id: icd.id
+            }
+          )
+          |> Repo.insert!()
+        end)
 
       9 ->
-	Enum.each(icds, fn icd ->
-	  Logger.debug("ICD-9: #{inspect(icd)}")
-	  PhenocodeIcd9.changeset(
-	    %PhenocodeIcd9{},
-	    %{
-	      registry: registry,
-	      phenocode_id: phenocode_id,
-	      icd9_id: icd.id
-	    }
-	  )
-	  |> Repo.insert!()
-	end)
+        Enum.each(icds, fn icd ->
+          Logger.debug("ICD-9: #{inspect(icd)}")
+
+          PhenocodeIcd9.changeset(
+            %PhenocodeIcd9{},
+            %{
+              registry: registry,
+              phenocode_id: phenocode_id,
+              icd9_id: icd.id
+            }
+          )
+          |> Repo.insert!()
+        end)
     end
   end
 end
@@ -98,47 +102,48 @@ filepath
 |> File.stream!()
 |> CSV.decode!(headers: true)
 |> Enum.each(fn %{
-                    "TAGS" => tags,
-                    "LEVEL" => level,
-                    "OMIT" => omit,
-                    "NAME" => name,
-                    "LONGNAME" => longname,
-                    "SEX" => sex,
-                    "INCLUDE" => include,
-                    "PRE_CONDITIONS" => pre_conditions,
-                    "CONDITIONS" => conditions,
-                    "OUTPAT_ICD" => outpat_icd,
-                    "HD_MAINONLY" => hd_mainonly,
-                    "HD_ICD_10" => hd_icd_10,
-                    "HD_ICD_9" => hd_icd_9,
-                    "HD_ICD_8" => hd_icd_8,
-                    "HD_ICD_10_EXCL" => hd_icd_10_excl,
-                    "HD_ICD_9_EXCL" => hd_icd_9_excl,
-                    "HD_ICD_8_EXCL" => hd_icd_8_excl,
-                    "COD_MAINONLY" => cod_mainonly,
-                    "COD_ICD_10" => cod_icd_10,
-                    "COD_ICD_9" => cod_icd_9,
-                    "COD_ICD_8" => cod_icd_8,
-                    "COD_ICD_10_EXCL" => cod_icd_10_excl,
-                    "COD_ICD_9_EXCL" => cod_icd_9_excl,
-                    "COD_ICD_8_EXCL" => cod_icd_8_excl,
-                    "OPER_NOM" => oper_nom,
-                    "OPER_HL" => oper_hl,
-                    "OPER_HP1" => oper_hp1,
-                    "OPER_HP2" => oper_hp2,
-                    "KELA_REIMB" => kela_reimb,
-                    "KELA_REIMB_ICD" => kela_reimb_icd,
-                    "KELA_ATC_NEEDOTHER" => kela_atc_needother,
-                    "KELA_ATC" => kela_atc,
-                    "CANC_TOPO" => canc_topo,
-                    "CANC_MORPH" => canc_morph,
-                    "CANC_BEHAV" => canc_behav,
-                    "Special" => special,
-                    "version" => version,
-                    "source" => source,
-                    "PHEWEB" => pheweb
-                  } ->
+                  "TAGS" => tags,
+                  "LEVEL" => level,
+                  "OMIT" => omit,
+                  "NAME" => name,
+                  "LONGNAME" => longname,
+                  "SEX" => sex,
+                  "INCLUDE" => include,
+                  "PRE_CONDITIONS" => pre_conditions,
+                  "CONDITIONS" => conditions,
+                  "OUTPAT_ICD" => outpat_icd,
+                  "HD_MAINONLY" => hd_mainonly,
+                  "HD_ICD_10" => hd_icd_10,
+                  "HD_ICD_9" => hd_icd_9,
+                  "HD_ICD_8" => hd_icd_8,
+                  "HD_ICD_10_EXCL" => hd_icd_10_excl,
+                  "HD_ICD_9_EXCL" => hd_icd_9_excl,
+                  "HD_ICD_8_EXCL" => hd_icd_8_excl,
+                  "COD_MAINONLY" => cod_mainonly,
+                  "COD_ICD_10" => cod_icd_10,
+                  "COD_ICD_9" => cod_icd_9,
+                  "COD_ICD_8" => cod_icd_8,
+                  "COD_ICD_10_EXCL" => cod_icd_10_excl,
+                  "COD_ICD_9_EXCL" => cod_icd_9_excl,
+                  "COD_ICD_8_EXCL" => cod_icd_8_excl,
+                  "OPER_NOM" => oper_nom,
+                  "OPER_HL" => oper_hl,
+                  "OPER_HP1" => oper_hp1,
+                  "OPER_HP2" => oper_hp2,
+                  "KELA_REIMB" => kela_reimb,
+                  "KELA_REIMB_ICD" => kela_reimb_icd,
+                  "KELA_ATC_NEEDOTHER" => kela_atc_needother,
+                  "KELA_ATC" => kela_atc,
+                  "CANC_TOPO" => canc_topo,
+                  "CANC_MORPH" => canc_morph,
+                  "CANC_BEHAV" => canc_behav,
+                  "Special" => special,
+                  "version" => version,
+                  "source" => source,
+                  "PHEWEB" => pheweb
+                } ->
   Logger.info("Processing phenocode: #{name}")
+
   omit =
     case omit do
       "" -> nil
@@ -215,6 +220,7 @@ filepath
     end
 
   Logger.debug("Inserting phenocode #{name} in DB")
+
   phenocode =
     Phenocode.changeset(%Phenocode{}, %{
       name: name,
@@ -252,16 +258,20 @@ filepath
       source: source,
       pheweb: pheweb
     })
-    |> Repo.insert!()
 
-  ###
-  # Build Phenocode<->ICD-{10,9} associations
-  ###
-  Logger.debug("Inserting associations for #{name}")
-  AssocICDs.insert("HD", 10, phenocode.id, hd_icd_10)
-  AssocICDs.insert("COD", 10, phenocode.id, cod_icd_10)
-  AssocICDs.insert("KELA_REIMB", 10, phenocode.id, kela_reimb_icd)
+  case Repo.insert(phenocode) do
+    {:ok, struct} ->
+      Logger.debug("Successfully inserted #{name}.")
+      # Build Phenocode<->ICD-{10,9} associations
+      Logger.debug("Inserting associations for #{name}")
+      AssocICDs.insert("HD", 10, struct.id, hd_icd_10)
+      AssocICDs.insert("COD", 10, struct.id, cod_icd_10)
+      AssocICDs.insert("KELA_REIMB", 10, struct.id, kela_reimb_icd)
 
-  AssocICDs.insert("HD", 9, phenocode.id, hd_icd_9)
-  AssocICDs.insert("COD", 9, phenocode.id, cod_icd_9)
+      AssocICDs.insert("HD", 9, struct.id, hd_icd_9)
+      AssocICDs.insert("COD", 9, struct.id, cod_icd_9)
+
+    {:error, changeset} ->
+      Logger.warn("Could not insert #{name}: #{inspect(changeset)}")
+  end
 end)
