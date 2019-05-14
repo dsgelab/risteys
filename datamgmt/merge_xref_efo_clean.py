@@ -17,6 +17,9 @@ import logging
 from sys import argv
 
 
+MAX_DOID_COUNT = 80
+
+
 def main(path_doid, path_efo_clean):
     """Output the merge of the 2 given JSON files with XREFs."""
     with open(path_doid) as f:
@@ -47,6 +50,9 @@ def main(path_doid, path_efo_clean):
                     logging.debug(f"data for {endpoint}: {xref} not in <json-file-endpoint-xrefs>, adding as is from <json-file-efo-clean>")
                     res[endpoint][xref] = efo_clean_values
 
+        # Trim the DOID list if too many
+        if len(res[endpoint].get("DOID", [])) > MAX_DOID_COUNT:
+            res[endpoint]["DOID"] = res[endpoint]["DOID"][:MAX_DOID_COUNT]
 
     print(json.dumps(res))
 
