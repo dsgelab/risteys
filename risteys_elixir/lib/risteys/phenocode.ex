@@ -117,7 +117,14 @@ defmodule Risteys.Phenocode do
       end)
       |> Enum.reject(fn error -> is_nil(error) end)
     end)
-    # TODO put validations when the data source is stable
+    |> validate_change(:ontology, fn :ontology, ontology ->
+      len = Map.get(ontology, "DOID", []) |> length()
+      if len > 80 do
+	[ontology: "Too many DOID: #{len} > 80"]
+      else
+	[]
+      end
+    end)
     |> unique_constraint(:name)
   end
 

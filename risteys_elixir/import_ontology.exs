@@ -70,8 +70,7 @@ filepath
       Logger.debug("Phenocode #{name} not in DB, may be not imported due to restrictions on OMIT or LEVEL.")
 
     phenocode ->
-      phenocode
-      |> Phenocode.changeset(%{ontology: ontology})
-      |> Repo.update!()
+      changeset = Phenocode.changeset(phenocode, %{ontology: ontology})
+      Repo.try_update(%Phenocode{}, changeset)
   end
 end)
