@@ -22,8 +22,30 @@ require Logger
 Logger.configure(level: :info)
 [filepath | _] = System.argv()
 
-# taken from the number of records in FINNGEN_PHENOTYPES_R3_V1.txt
-total_indivs = 152_796
+# Get the number of individuals for all/female/male
+{total_indivs, total_females, total_males} =
+  filepath
+  |> File.read!()
+  |> Jason.decode!()
+  |> Enum.reduce({0, 0, 0}, fn {name, data}, {cnt_indivs, cnt_females, cnt_males} ->
+    case Map.get(data, "common_stats") do
+      nil ->
+        {cnt_indivs, cnt_females, cnt_males}
+
+      common_stats ->
+        %{
+          "all" => %{"nindivs" => nall},
+          "female" => %{"nindivs" => nfemales},
+          "male" => %{"nindivs" => nmales}
+        } = common_stats
+
+        {
+          cnt_indivs + nall,
+          cnt_females + nfemales,
+          cnt_males + nmales
+        }
+    end
+  end)
 
 filepath
 |> File.read!()
@@ -142,7 +164,7 @@ filepath
             mean_age: female_mean_age,
             median_reoccurence: female_median_reoccurence,
             n_individuals: female_nindivs,
-            prevalence: female_nindivs / total_indivs,
+            prevalence: female_nindivs / total_females,
             reoccurence_rate: female_reoccurence_rate
           }
         )
@@ -189,7 +211,7 @@ filepath
             mean_age: male_mean_age,
             median_reoccurence: male_median_reoccurence,
             n_individuals: male_nindivs,
-            prevalence: male_nindivs / total_indivs,
+            prevalence: male_nindivs / total_males,
             reoccurence_rate: male_reoccurence_rate
           }
         )
