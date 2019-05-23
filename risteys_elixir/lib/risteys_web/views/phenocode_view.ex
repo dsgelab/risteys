@@ -61,7 +61,7 @@ defmodule RisteysWeb.PhenocodeView do
     ]
 
     # Discard table rows with no values
-    Enum.reject(table, fn {_name, values} -> values in ["", nil, ["", "", ""]] end)
+    Enum.reject(table, fn {_name, values} -> values in ["", nil, []] end)
   end
 
   defp render_icds(_prefix, nil), do: ""
