@@ -27,7 +27,7 @@ Logger.configure(level: :info)
   filepath
   |> File.read!()
   |> Jason.decode!()
-  |> Enum.reduce({0, 0, 0}, fn {name, data}, {cnt_indivs, cnt_females, cnt_males} ->
+  |> Enum.reduce({0, 0, 0}, fn {_name, data}, {cnt_indivs, cnt_females, cnt_males} ->
     case Map.get(data, "common_stats") do
       nil ->
         {cnt_indivs, cnt_females, cnt_males}
@@ -107,22 +107,24 @@ filepath
       all_reoccurence_rate =
         data |> Map.get("longit", %{}) |> Map.get("all", %{}) |> Map.get("perc_hosp")
 
-      all_stats =
-        StatsSex.changeset(
-          %StatsSex{},
-          %{
-            phenocode_id: phenocode.id,
-            sex: 0,
-            case_fatality: all_case_fatality,
-            mean_age: all_mean_age,
-            median_reoccurence: all_median_reoccurence,
-            n_individuals: all_nindivs,
-            prevalence: all_nindivs / total_indivs,
-            reoccurence_rate: all_reoccurence_rate
-          }
-        )
+      result_all_stats =
+        case Repo.get_by(StatsSex, sex: 0, phenocode_id: phenocode.id) do
+          nil -> %StatsSex{}
+          stats -> stats
+        end
+        |> StatsSex.changeset(%{
+          phenocode_id: phenocode.id,
+          sex: 0,
+          case_fatality: all_case_fatality,
+          mean_age: all_mean_age,
+          median_reoccurence: all_median_reoccurence,
+          n_individuals: all_nindivs,
+          prevalence: all_nindivs / total_indivs,
+          reoccurence_rate: all_reoccurence_rate
+        })
+        |> Repo.insert_or_update()
 
-      case Repo.insert(all_stats) do
+      case result_all_stats do
         {:ok, _} ->
           Logger.debug("insert ok for #{name} - all")
 
@@ -154,22 +156,24 @@ filepath
       female_reoccurence_rate =
         data |> Map.get("longit", %{}) |> Map.get("female", %{}) |> Map.get("perc_hosp")
 
-      female_stats =
-        StatsSex.changeset(
-          %StatsSex{},
-          %{
-            phenocode_id: phenocode.id,
-            sex: 2,
-            case_fatality: female_case_fatality,
-            mean_age: female_mean_age,
-            median_reoccurence: female_median_reoccurence,
-            n_individuals: female_nindivs,
-            prevalence: female_nindivs / total_females,
-            reoccurence_rate: female_reoccurence_rate
-          }
-        )
+      result_female_stats =
+        case Repo.get_by(StatsSex, sex: 2, phenocode_id: phenocode.id) do
+          nil -> %StatsSex{}
+          stats -> stats
+        end
+        |> StatsSex.changeset(%{
+          phenocode_id: phenocode.id,
+          sex: 2,
+          case_fatality: female_case_fatality,
+          mean_age: female_mean_age,
+          median_reoccurence: female_median_reoccurence,
+          n_individuals: female_nindivs,
+          prevalence: female_nindivs / total_females,
+          reoccurence_rate: female_reoccurence_rate
+        })
+        |> Repo.insert_or_update()
 
-      case Repo.insert(female_stats) do
+      case result_female_stats do
         {:ok, _} ->
           Logger.debug("insert ok for #{name} - female")
 
@@ -201,22 +205,24 @@ filepath
       male_reoccurence_rate =
         data |> Map.get("longit", %{}) |> Map.get("male", %{}) |> Map.get("perc_hosp")
 
-      male_stats =
-        StatsSex.changeset(
-          %StatsSex{},
-          %{
-            phenocode_id: phenocode.id,
-            sex: 1,
-            case_fatality: male_case_fatality,
-            mean_age: male_mean_age,
-            median_reoccurence: male_median_reoccurence,
-            n_individuals: male_nindivs,
-            prevalence: male_nindivs / total_males,
-            reoccurence_rate: male_reoccurence_rate
-          }
-        )
+      result_male_stats =
+        case Repo.get_by(StatsSex, sex: 1, phenocode_id: phenocode.id) do
+          nil -> %StatsSex{}
+          stats -> stats
+        end
+        |> StatsSex.changeset(%{
+          phenocode_id: phenocode.id,
+          sex: 1,
+          case_fatality: male_case_fatality,
+          mean_age: male_mean_age,
+          median_reoccurence: male_median_reoccurence,
+          n_individuals: male_nindivs,
+          prevalence: male_nindivs / total_males,
+          reoccurence_rate: male_reoccurence_rate
+        })
+        |> Repo.insert_or_update()
 
-      case Repo.insert(male_stats) do
+      case result_male_stats do
         {:ok, _} ->
           Logger.debug("insert ok for #{name} - male")
 
