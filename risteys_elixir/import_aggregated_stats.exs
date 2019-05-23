@@ -1,7 +1,7 @@
 # Import pre-processed / aggregated data in the database
 #
 # Usage:
-#     mix run import_aggregated_data.exs <json-file-aggregegated-stats>
+#     mix run import_aggregated_data.exs <json-file-aggregegated-stats> <json-file-count-by-sex>
 #
 # where <json-file-aggregegated-stats> is a JSON file with all the
 # aggregated stats, with the following format:
@@ -15,39 +15,28 @@
 #   },
 #   ...
 # }
+#
+# and where <json-file-count-by-sex> is a JSON file with counts of
+# males and females, like:
+#
+# [85534, 67262]
 
 alias Risteys.{Repo, Phenocode, StatsSex}
 require Logger
 
 Logger.configure(level: :info)
-[filepath | _] = System.argv()
+[stats_filepath, counts_filepath | _] = System.argv()
 
-# Get the number of individuals for all/female/male
-{total_indivs, total_females, total_males} =
-  filepath
+
+# Count number of individuals
+%{"females" => count_females, "males" => count_males} =
+  counts_filepath
   |> File.read!()
   |> Jason.decode!()
-  |> Enum.reduce({0, 0, 0}, fn {_name, data}, {cnt_indivs, cnt_females, cnt_males} ->
-    case Map.get(data, "common_stats") do
-      nil ->
-        {cnt_indivs, cnt_females, cnt_males}
+count_all = count_females + count_males
 
-      common_stats ->
-        %{
-          "all" => %{"nindivs" => nall},
-          "female" => %{"nindivs" => nfemales},
-          "male" => %{"nindivs" => nmales}
-        } = common_stats
 
-        {
-          cnt_indivs + nall,
-          cnt_females + nfemales,
-          cnt_males + nmales
-        }
-    end
-  end)
-
-filepath
+stats_filepath
 |> File.read!()
 |> Jason.decode!()
 |> Enum.each(fn {name, data} ->
@@ -119,7 +108,7 @@ filepath
           mean_age: all_mean_age,
           median_reoccurence: all_median_reoccurence,
           n_individuals: all_nindivs,
-          prevalence: all_nindivs / total_indivs,
+          prevalence: all_nindivs / count_all,
           reoccurence_rate: all_reoccurence_rate
         })
         |> Repo.insert_or_update()
@@ -168,7 +157,7 @@ filepath
           mean_age: female_mean_age,
           median_reoccurence: female_median_reoccurence,
           n_individuals: female_nindivs,
-          prevalence: female_nindivs / total_females,
+          prevalence: female_nindivs / count_females,
           reoccurence_rate: female_reoccurence_rate
         })
         |> Repo.insert_or_update()
@@ -217,7 +206,7 @@ filepath
           mean_age: male_mean_age,
           median_reoccurence: male_median_reoccurence,
           n_individuals: male_nindivs,
-          prevalence: male_nindivs / total_males,
+          prevalence: male_nindivs / count_males,
           reoccurence_rate: male_reoccurence_rate
         })
         |> Repo.insert_or_update()
