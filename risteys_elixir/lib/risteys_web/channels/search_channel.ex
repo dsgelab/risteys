@@ -84,11 +84,24 @@ defmodule RisteysWeb.SearchChannel do
     %{name: name, description: description}
   end
 
+  defp search_phenocode_name(user_query, limit) do
+    pattern = "%" <> user_query <> "%"
+
+    query =
+      from p in Phenocode,
+        select: %{name: p.name, longname: p.longname},
+        where: ilike(p.name, ^pattern),
+        limit: ^limit
+
+    Repo.all(query)
+  end
+
   defp search(socket, user_query, limit) do
     # 1. Get matches from the database
     icds = search_icd10_code(user_query, limit)
     phenocode_longnames = search_phenocode_longname(user_query, limit)
     descriptions = search_description(user_query, limit)
+    phenocode_names = search_phenocode_name(user_query, limit)
 
     # 2. Structure the output to be sent over the channel
     icds = [
@@ -117,7 +130,15 @@ defmodule RisteysWeb.SearchChannel do
       end)
     ]
 
-    [phenocode_longnames, icds, descriptions]
+    phenocode_names = [
+      "Phenocode name",
+      Enum.map(phenocode_names, fn %{name: name, longname: longname} ->
+        hlname = highlight(name, user_query)
+        %{phenocode: hlname, content: longname, url: url(socket, name)}
+      end)
+    ]
+
+    [phenocode_longnames, icds, descriptions, phenocode_names]
     |> Enum.reject(fn [_category, list] -> Enum.empty?(list) end)
   end
 
