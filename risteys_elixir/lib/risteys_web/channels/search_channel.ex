@@ -25,15 +25,16 @@ defmodule RisteysWeb.SearchChannel do
   defp search_icd10_code(user_query, limit) do
     pattern = "%" <> user_query <> "%"
 
-    query = from p in Phenocode,
-      join: assoc in PhenocodeIcd10,
-      on: p.id == assoc.phenocode_id,
-      join: icd in Icd10,
-      on: assoc.icd10_id == icd.id,
-      where: ilike(icd.code, ^pattern),
-      group_by: p.name,
-      select: %{name: p.name, icds: fragment("array_agg(?)", icd.code)},
-      limit: ^limit
+    query =
+      from p in Phenocode,
+        join: assoc in PhenocodeIcd10,
+        on: p.id == assoc.phenocode_id,
+        join: icd in Icd10,
+        on: assoc.icd10_id == icd.id,
+        where: ilike(icd.code, ^pattern),
+        group_by: p.name,
+        select: %{name: p.name, icds: fragment("array_agg(?)", icd.code)},
+        limit: ^limit
 
     Repo.all(query)
     |> Enum.map(&struct_icd_code(&1))
@@ -42,7 +43,8 @@ defmodule RisteysWeb.SearchChannel do
   defp struct_icd_code(%{name: name, icds: icds}) do
     %{
       name: name,
-      icds: MapSet.new(icds) |> MapSet.to_list()  # dedup ICDs
+      # dedup ICDs
+      icds: MapSet.new(icds) |> MapSet.to_list()
     }
   end
 
@@ -57,10 +59,36 @@ defmodule RisteysWeb.SearchChannel do
     )
   end
 
+  defp search_description(user_query, limit) do
+    pattern = "%" <> user_query <> "%"
+
+    query =
+      from p in Phenocode,
+        where: ilike(p.description, ^pattern),
+        select: %{name: p.name, description: p.description},
+        limit: ^limit
+
+    Repo.all(query)
+    |> Enum.map(fn res -> struct_description(res, user_query) end)
+  end
+
+  # Show only sentences that have the user query in it.
+  defp struct_description(%{name: name, description: description}, user_query) do
+    description =
+      description
+      |> String.split(".")
+      |> Enum.filter(fn sentence -> String.contains?(sentence, user_query) end)
+      |> Enum.intersperse("…")
+      |> Enum.join("")
+
+    %{name: name, description: description}
+  end
+
   defp search(socket, user_query, limit) do
     # 1. Get matches from the database
     icds = search_icd10_code(user_query, limit)
     phenocode_longnames = search_phenocode_longname(user_query, limit)
+    descriptions = search_description(user_query, limit)
 
     # 2. Structure the output to be sent over the channel
     icds = [
@@ -76,12 +104,20 @@ defmodule RisteysWeb.SearchChannel do
       "Phenocode long name",
       Enum.map(phenocode_longnames, fn %{name: name, longname: longname} ->
         hlname = highlight(name, user_query)
-	hllongname = highlight(longname, user_query)
+        hllongname = highlight(longname, user_query)
         %{phenocode: hlname, content: hllongname, url: url(socket, name)}
       end)
     ]
 
-    [phenocode_longnames, icds]
+    descriptions = [
+      "Description",
+      Enum.map(descriptions, fn %{name: name, description: description} ->
+        hldesc = highlight(description, user_query)
+        %{phenocode: name, content: hldesc, url: url(socket, name)}
+      end)
+    ]
+
+    [phenocode_longnames, icds, descriptions]
     |> Enum.reject(fn [_category, list] -> Enum.empty?(list) end)
   end
 

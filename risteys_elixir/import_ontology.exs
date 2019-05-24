@@ -43,6 +43,15 @@ filepath
     MapSet.union(snomedct, snomed_ct)
     |> Enum.to_list()
 
+  # Get the description from the ontology.
+  # This will be added at the phenocode level so it can be queried.
+  description =
+    Map.get(ontology, "DESCRIPTION", [])
+    |> Enum.reject(fn d -> d == "No definition available" end)
+    |> Enum.join(" ")
+
+  description = if description == "", do: nil, else: description
+
   # Remove ontology types we don't need
   keep_keys =
     ontology
@@ -65,12 +74,15 @@ filepath
       Map.put(ontology, "SNOMED", snomed)
     end
 
+  # Update the phenocode with the ontology and description
   case Repo.get_by(Phenocode, name: name) do
     nil ->
-      Logger.debug("Phenocode #{name} not in DB, may be not imported due to restrictions on OMIT or LEVEL.")
+      Logger.debug(
+        "Phenocode #{name} not in DB, may be not imported due to restrictions on OMIT or LEVEL."
+      )
 
     phenocode ->
-      changeset = Phenocode.changeset(phenocode, %{ontology: ontology})
+      changeset = Phenocode.changeset(phenocode, %{ontology: ontology, description: description})
       Repo.try_update(%Phenocode{}, changeset)
   end
 end)

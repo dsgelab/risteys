@@ -43,6 +43,8 @@ defmodule Risteys.Phenocode do
     field :distrib_age, :map
     field :validation_article, :string
     field :ontology, {:map, {:array, :string}}
+    # used for the search feature
+    field :description, :string
 
     many_to_many :icd10s, Risteys.Icd10, join_through: Risteys.PhenocodeIcd10
     many_to_many :icd9s, Risteys.Icd9, join_through: Risteys.PhenocodeIcd9
@@ -91,7 +93,8 @@ defmodule Risteys.Phenocode do
       :distrib_year,
       :distrib_age,
       :validation_article,
-      :ontology
+      :ontology,
+      :description
     ])
     |> validate_required([:name, :longname])
     |> validate_exclusion(:level, ["1"])
@@ -119,10 +122,11 @@ defmodule Risteys.Phenocode do
     end)
     |> validate_change(:ontology, fn :ontology, ontology ->
       len = Map.get(ontology, "DOID", []) |> length()
+
       if len > 80 do
-	[ontology: "Too many DOID: #{len} > 80"]
+        [ontology: "Too many DOID: #{len} > 80"]
       else
-	[]
+        []
       end
     end)
     |> unique_constraint(:name)
