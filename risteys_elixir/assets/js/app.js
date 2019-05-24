@@ -50,11 +50,13 @@ makeHistogram("Event distribution by year",
     "year",
     "number of events",
     true,
+    true,
     "plot_events_by_year",
     events_by_year);
 makeHistogram("Age distribution",
     "age bracket",
     "number of events",
+    false,
     false,
     "plot_bin_by_age",
     bin_by_age);

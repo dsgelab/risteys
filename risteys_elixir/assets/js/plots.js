@@ -55,19 +55,24 @@ let decumulate = (data) => {
     }
 }
 
-let makeHistogram = (title, xlabel, ylabel, cumulative, div_name, data) => {
-    prepareHistogram(title, xlabel, ylabel, cumulative, div_name, data);
-    putData(div_name, data);
+let makeHistogram = (title, xlabel, ylabel, angleXAxis, cumulative, div_name, data) => {
+    prepareHistogram(title, xlabel, ylabel, angleXAxis, cumulative, div_name, data);
+    putData(angleXAxis, div_name, data);
 }
 
-let prepareHistogram = (title, xlabel, ylabel, cumulative, div_name, data) => {
+let prepareHistogram = (title, xlabel, ylabel, angleXAxis, cumulative, div_name, data) => {
     let selector = "#" + div_name;
     let id_bins = "#" + div_name + "_rects";
+
+    let plot_height = height;
+    if (angleXAxis) {
+        plot_height += 30;
+    }
 
     let svg = d3.select(selector)
         .append("svg")
         .attr("width", width)
-        .attr("height", height)
+        .attr("height", plot_height)
         .attr("class", "font-sans");
 
     let tooltip = d3.select(selector)
@@ -98,13 +103,13 @@ let prepareHistogram = (title, xlabel, ylabel, cumulative, div_name, data) => {
     // X axis label
     svg.append("text")
         .attr("transform",
-              `translate(${width / 2}, ${height - 10})`)  // "10" to make the label fully inside the SVG
+              `translate(${width / 2}, ${plot_height - 10})`)  // "10" to make the label fully inside the SVG
         .style("text-anchor", "middle")
         .text(xlabel);
 
     // Y axis label
     svg.append("text")
-        .attr("transform", `rotate(-90) translate(${- height / 2}, ${label_margin})`)
+        .attr("transform", `rotate(-90) translate(${- plot_height / 2}, ${label_margin})`)
         .style("text-anchor", "middle")
         .text(ylabel);
 
@@ -115,15 +120,15 @@ let prepareHistogram = (title, xlabel, ylabel, cumulative, div_name, data) => {
             isCumulative = !isCumulative;
             let data = svg.select(id_bins).selectAll("rect").data();
             if (isCumulative) {
-                putData(div_name, accumulate(data));
+                putData(angleXAxis, div_name, accumulate(data));
             } else {
-                putData(div_name, decumulate(data));
+                putData(angleXAxis, div_name, decumulate(data));
             }
         });
     }
 };
 
-let putData = (div_name, data) => {
+let putData = (angleXAxis, div_name, data) => {
     let id_xaxis = "#" + div_name + "_xaxis";
     let id_yaxis = "#" + div_name + "_yaxis";
     let id_bins = "#" + div_name + "_rects";
@@ -138,9 +143,16 @@ let putData = (div_name, data) => {
         .domain([0, d3.max(data, d => d.value)]).nice()
         .range([height - margin.bottom, margin.top + 20]);
 
-    let xAxis = (g) => g
-        .attr("transform", `translate(0, ${height - margin.bottom})`)
-        .call(d3.axisBottom(x).tickSizeOuter(0));
+    let xAxis = (g) => {
+        let elem = g.attr("transform", `translate(0, ${height - margin.bottom})`)
+                        .call(d3.axisBottom(x).tickSizeOuter(0));
+        if (angleXAxis) {
+            elem = elem.selectAll("text")
+                        .style("text-anchor", "end")
+                        .attr("transform", "rotate(-50)");
+        }
+        return elem
+    }
 
     let yAxis = (g) => g
         .attr("transform", `translate(${margin.left}, 0)`)
