@@ -7,7 +7,7 @@
          aria-owns="search-results"
          :aria-expanded="ariaExpanded() ? 'true' : 'false'">
       <input type="text"
-             v-on:keydown.enter="acceptResult"
+             v-on:keydown.enter.prevent="acceptResult"
              v-on:keydown.down.prevent="nextResult"
              v-on:keydown.up.prevent="previousResult"
              v-on:keyup="kbdSearch"
