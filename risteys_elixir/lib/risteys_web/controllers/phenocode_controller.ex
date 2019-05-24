@@ -4,8 +4,20 @@ defmodule RisteysWeb.PhenocodeController do
   import Ecto.Query
 
   def show(conn, %{"name" => name}) do
-    phenocode = Repo.get_by(Phenocode, name: name)
+    case Repo.get_by(Phenocode, name: name) do
+      nil ->
+        conn
+        |> assign(:page_title, "404 Not Found: #{name}")
+        |> put_status(:not_found)
+        |> put_view(RisteysWeb.ErrorView)
+        |> render("404.html")
 
+      phenocode ->
+        show_phenocode(conn, phenocode)
+    end
+  end
+
+  defp show_phenocode(conn, phenocode) do
     # Get the descriptions, if any.
     no_desc = ["No definition available."]
 
