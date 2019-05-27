@@ -55,12 +55,50 @@ let decumulate = (data) => {
     }
 }
 
+let hasNaNTails = (data) => {
+    let first = data[0]["value"];
+    let last = data[data.length - 1]["value"];
+    if (isNaN(first) || isNaN(last)) {
+        return true
+    } else {
+        return false
+    }
+}
+
+let removeNaNTails = (data) => {
+    // Remove NaN at the start
+    for (var ii = 0; ii < data.length; ii++) {
+        if (isNaN(data[ii]["value"])) {
+            data.shift()
+            ii--  // adjust the index since we removed an item
+        } else {
+            break
+        }
+    }
+
+    // Remove NaN at the end
+    for (var ii = data.length - 1; ii >= 0; ii--) {
+        if (isNaN(data[ii]["value"])) {
+            data.pop()
+        } else {
+            break
+        }
+    }
+
+    return data
+}
+
 let makeHistogram = (title, xlabel, ylabel, angleXAxis, cumulative, div_name, data) => {
-    prepareHistogram(title, xlabel, ylabel, angleXAxis, cumulative, div_name, data);
+    let nanTails = hasNaNTails(data);
+    if (nanTails) {
+        data = removeNaNTails(data);
+    }
+
+    prepareHistogram(title, nanTails, xlabel, ylabel, angleXAxis, cumulative, div_name, data);
     putData(angleXAxis, div_name, data);
 }
 
-let prepareHistogram = (title, xlabel, ylabel, angleXAxis, cumulative, div_name, data) => {
+let prepareHistogram = (title, nanTails, xlabel, ylabel, angleXAxis, cumulative, div_name, data) => {
     let selector = "#" + div_name;
     let id_bins = "#" + div_name + "_rects";
 
@@ -99,6 +137,15 @@ let prepareHistogram = (title, xlabel, ylabel, angleXAxis, cumulative, div_name,
         .attr("class", "font-bold")
         .style("text-anchor", "middle")
         .text(title);
+
+    // Subtitle if NaN tails
+    if (nanTails) {
+        svg.append("text")
+            .attr("transform", `translate(${width / 2}, 30)`)
+            .style("text-anchor", "middle")
+            .style("font-size", "0.8rem")
+            .text("(not showing the tails: bins with individual-level data)");
+    }
 
     // X axis label
     svg.append("text")
