@@ -18,32 +18,37 @@ defmodule RisteysWeb.PhenocodeController do
   end
 
   defp show_phenocode(conn, phenocode) do
-    # Get the descriptions, if any.
-    no_desc = ["No definition available."]
-
-    {descriptions, ontology} =
-      if not is_nil(phenocode.ontology) do
-        Map.pop(phenocode.ontology, "DESCRIPTION", no_desc)
+    description =
+      if not is_nil(phenocode.description) do
+        phenocode.description
       else
-        {no_desc, %{}}
+        "No definition available."
+      end
+
+    ontology =
+      if not is_nil(phenocode.ontology) do
+        phenocode.ontology
+      else
+        %{}
       end
 
     # Get stats
     stats = get_stats(phenocode)
+    %{all: %{distrib_year: distrib_year, distrib_age: distrib_age}} = stats
 
     # Unwrap histograms
     %{"hist" => distrib_year} =
-      if is_nil(phenocode.distrib_year) do
+      if is_nil(distrib_year) do
         %{"hist" => nil}
       else
-        phenocode.distrib_year
+        distrib_year
       end
 
     %{"hist" => distrib_age} =
-      if is_nil(phenocode.distrib_age) do
+      if is_nil(distrib_age) do
         %{"hist" => nil}
       else
-        phenocode.distrib_age
+        distrib_age
       end
 
     conn
@@ -55,7 +60,7 @@ defmodule RisteysWeb.PhenocodeController do
     |> assign(:stats, stats)
     |> assign(:distrib_year, distrib_year)
     |> assign(:distrib_age, distrib_age)
-    |> assign(:descriptions, descriptions)
+    |> assign(:description, description)
     |> render("show.html")
   end
 
@@ -132,7 +137,9 @@ defmodule RisteysWeb.PhenocodeController do
       mean_age: "N/A",
       median_reoccurence: "N/A",
       reoccurence_rate: "N/A",
-      case_fatality: "N/A"
+      case_fatality: "N/A",
+      distrib_year: [],
+      distrib_age: []
     }
 
     stats_all =
