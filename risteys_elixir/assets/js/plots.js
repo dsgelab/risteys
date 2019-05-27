@@ -164,66 +164,40 @@ let putData = (angleXAxis, div_name, data) => {
     d3.select(id_yaxis)
         .call(yAxis);
 
-    // TODO could refactor the shared parts of enter and update
     // TODO check error on click in JavaScript console: "Error: unknown type: mouseover"
+    let drawBin = (selection) =>
+        selection.attr("height", d => {
+                        if (isNaN(d.value)) {
+                            return y(0)
+                        } else {
+                            return y(0) - y(d.value)
+                        }
+                    })
+            .attr("fill", d => {
+                if (isNaN(d.value)) {
+                    return "#f1f5f8"
+                } else {
+                    return ""
+                }
+            })
+            .on("mouseover", d => {
+                d3.select(id_tooltip)
+                    .style("display", "block")
+                    .html(d.value)
+                    .style("left", d3.event.pageX + "px")
+                    .style("top", d3.event.pageY + "px");
+            })
+            .on("mouseout", d => {
+                d3.select(id_tooltip)
+                    .style("display", "none");
+            });
+
     d3.select(id_bins)
         .selectAll("rect")
         .data(data)
         .join(
-            enter => enter.append("rect")
-                        .attr("height", d => {
-                            if (isNaN(d.value)) {
-                                return y(0)
-                            } else {
-                                return y(0) - y(d.value)
-                            }
-                        })
-                        .attr("fill", d => {
-                            if (isNaN(d.value)) {
-                                return "#f1f5f8"
-                            } else {
-                                return ""
-                            }
-                        })
-                        .on("mouseover", d => {
-                            d3.select(id_tooltip)
-                                .style("display", "block")
-                                .html(d.value)
-                                .style("left", d3.event.pageX + "px")
-                                .style("top", d3.event.pageY + "px");
-                        })
-                        .on("mouseout", d => {
-                            d3.select(id_tooltip)
-                                .style("display", "none");
-                        }),
-            update => update
-                        .call(update => update.transition().duration(100)
-                            .attr("height", d => {
-                                if (isNaN(d.value)) {
-                                    return y(0)
-                                } else {
-                                    return y(0) - y(d.value)
-                                }
-                            })
-                            .attr("fill", d => {
-                                if (isNaN(d.value)) {
-                                    return "#f1f5f8"
-                                } else {
-                                    return ""
-                                }
-                            })
-                            .on("mouseover", d => {
-                                d3.select(id_tooltip)
-                                    .style("display", "block")
-                                    .html(d.value)
-                                    .style("left", d3.event.pageX + "px")
-                                    .style("top", d3.event.pageY + "px");
-                            })
-                            .on("mouseout", d => {
-                                d3.select(id_tooltip)
-                                    .style("display", "none");
-                            })
-                        ),
+            enter => drawBin(enter.append("rect")),
+            update => update.call(update => drawBin(update.transition().duration(100))),
         )
         .attr("x", d => x(d.name))
         .attr("y", margin.bottom)
