@@ -2,10 +2,10 @@ library(rjson)
 library(ontologyIndex)
 library(stringr)
 
-json_data <- fromJSON(file="/Users/aganna/Desktop/endpoint_xrefs.json")
+json_data <- fromJSON(file="endpoint_xrefs.json")
 
-efo <- get_OBO("/Users/aganna/Desktop/efo.obo", propagate_relationships = "is_a", extract_tags = "everything")
-doid <- get_OBO("/Users/aganna/Desktop/doid.obo", propagate_relationships = "is_a", extract_tags = "everything")
+efo <- get_OBO("efo.obo", propagate_relationships = "is_a", extract_tags = "everything")
+doid <- get_OBO("doid.obo", propagate_relationships = "is_a", extract_tags = "everything")
 
 property_value_with_gwas <- efo$property_value[grep("gwas:trait",efo$property_value)]
 
@@ -61,4 +61,4 @@ for (endpoint in names(json_data))
 }
 
 
-write(toJSON(json_data_EDIT),file="/Users/aganna/Desktop/endpoint_xrefs_description_efo_clean.json")
+write(toJSON(json_data_EDIT),file="endpoint_xrefs_description_efo_clean_TEST.json")
