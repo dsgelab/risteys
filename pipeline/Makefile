@@ -1,16 +1,25 @@
 # Usage:
-#   DATA_DIRECTORY=<path-to-data-dir> make
+#   cd <data-dir>
+#   make --makefile <path-to-this-Makefile>
 
+code_path := $(dir ${MAKEFILE_LIST})
+
+outputs := endpoint_efo.json indivs_sex.json aggregated_data.json count_by_sex.json
+
+# Pseudo-targets
 .PHONY: all clean
 
-all: endpoint_efo.json indivs_sex.json
+all: ${outputs}
 
 clean:
-	-rm *.json
+	-rm -f ${outputs}
 
 # Data file dependencies
-endpoint_efo.json: ${DATA_DIRECTORY}/endpoint_xrefs.json ${DATA_DIRECTORY}/efo.owl
-	python get_efo.py ${DATA_DIRECTORY}
+endpoint_efo.json: endpoint_xrefs.json efo.owl
+	python ${code_path}get_efo.py .
 
-indivs_sex.json: ${DATA_DIRECTORY}/FINNGEN_MINIMUM_DATA.txt
-	python get_indivs_sex.py ${DATA_DIRECTORY}
+indivs_sex.json: FINNGEN_MINIMUM_DATA.txt
+	python ${code_path}get_indivs_sex.py .
+
+aggregated_data.json count_by_sex.json: FINNGEN_ENDPOINTS_longitudinal.txt indivs_sex.json
+	python ${code_path}aggregate_by_endpoint.py $^ .
