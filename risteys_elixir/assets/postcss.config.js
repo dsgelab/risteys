@@ -6,10 +6,11 @@ const purgecss = require('@fullhuman/postcss-purgecss')({
   content: [
     '../lib/risteys_web/templates/**/*.html.eex',
     './js/**/*.vue',
+    './js/*.js',
 
-    // Special case for the search channel since it generates some HTML.
-    // This is needed for example for the "highlight" CSS class.
+    // Special cases for some Phoenix files that generate HTML.
     '../lib/risteys_web/channels/search_channel.ex',
+    '../lib/risteys_web/views/phenocode_view.ex',
   ],
 
   // Include any special characters you're using in this regular expression
