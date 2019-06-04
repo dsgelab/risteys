@@ -4,7 +4,7 @@
 
 code_path := $(dir ${MAKEFILE_LIST})
 
-outputs := endpoint_efo.json indivs_sex.json aggregated_data.json count_by_sex.json
+outputs := endpoint_efo.json stats.hdf5
 
 # Pseudo-targets
 .PHONY: all clean
@@ -18,8 +18,5 @@ clean:
 endpoint_efo.json: endpoint_xrefs.json efo.owl
 	python ${code_path}get_efo.py .
 
-indivs_sex.json: FINNGEN_MINIMUM_DATA.txt
-	python ${code_path}get_indivs_sex.py .
-
-aggregated_data.json count_by_sex.json: FINNGEN_ENDPOINTS_longitudinal.txt indivs_sex.json
+stats.hdf5: FINNGEN_ENDPOINTS_longitudinal.txt FINNGEN_MINIMUM_DATA.txt
 	python ${code_path}aggregate_by_endpoint.py $^ .

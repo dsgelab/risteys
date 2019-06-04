@@ -15,6 +15,7 @@ from sys import argv
 
 from pronto import Ontology
 
+from log import logger
 from utils import file_exists
 
 
@@ -25,6 +26,7 @@ OUTPUT_FILE = "endpoint_efo.json"
 
 def prechecks(data_directory):
     """Perform checks before running to fail earlier rather than later"""
+    logger.info("Performing pre-checks")
     assert file_exists(data_directory / INPUT_ENDPOINT_FILE)
     assert file_exists(data_directory / INPUT_ONTOLOGY_FILE)
     assert not file_exists(OUTPUT_FILE)
@@ -42,7 +44,8 @@ def main(data_directory):
 
 
 def map_endpoint_doids(data_directory):
-    """Build a map of endpoint name -> list of DOIDs"""
+    """Build a map of endpoint -> list of DOIDs"""
+    logger.info("Mapping endpoint name to list of DOIDs")
     endpoints_path = data_directory / INPUT_ENDPOINT_FILE
     with open(endpoints_path) as f:
         endpoints = json.load(f)
@@ -52,6 +55,7 @@ def map_endpoint_doids(data_directory):
 
 def map_doid_efos(data_directory):
     """Build a map of DOID -> list of EFOs"""
+    logger.info("Mapping DOID to list of EFOs")
     # Load the EFO ontology
     ontology_path = data_directory / INPUT_ONTOLOGY_FILE
     ontology = Ontology(str(ontology_path))
@@ -77,6 +81,7 @@ def map_doid_efos(data_directory):
 
 def map_endpoint_efos(endpoint_doids, doid_efos):
     """Build a map of Endpoint->EFOs by linking them through DOIDs"""
+    logger.info("Mapping endpoint to EFOs")
     res = {}
 
     for endpoint, doids in endpoint_doids.items():
