@@ -7,10 +7,7 @@ const purgecss = require('@fullhuman/postcss-purgecss')({
     '../lib/risteys_web/templates/**/*.html.eex',
     './js/**/*.vue',
     './js/*.js',
-
-    // Special cases for some Phoenix files that generate HTML.
-    '../lib/risteys_web/channels/search_channel.ex',
-    '../lib/risteys_web/views/phenocode_view.ex',
+    './css/*.css',
   ],
 
   // Include any special characters you're using in this regular expression
