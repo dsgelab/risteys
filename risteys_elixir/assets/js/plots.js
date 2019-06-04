@@ -144,7 +144,7 @@ let prepareHistogram = (title, nanTails, xlabel, ylabel, angleXAxis, cumulative,
             .attr("transform", `translate(${width / 2}, 30)`)
             .style("text-anchor", "middle")
             .style("font-size", "0.8rem")
-            .text("(not showing the tails: bins with individual-level data)");
+            .text("(bins with <5 individuals are not shown)");
     }
 
     // X axis label
@@ -214,19 +214,8 @@ let putData = (angleXAxis, div_name, data) => {
     // TODO check error on click in JavaScript console: "Error: unknown type: mouseover"
     let drawBin = (selection) =>
         selection.attr("height", d => {
-                        if (isNaN(d.value)) {
-                            return y(0)
-                        } else {
-                            return y(0) - y(d.value)
-                        }
+                        return y(0) - y(d.value)
                     })
-            .attr("fill", d => {
-                if (isNaN(d.value)) {
-                    return "#f1f5f8"
-                } else {
-                    return ""
-                }
-            })
             .on("mouseover", d => {
                 d3.select(id_tooltip)
                     .style("display", "block")
