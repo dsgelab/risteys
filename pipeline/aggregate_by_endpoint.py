@@ -25,7 +25,6 @@ import numpy as np
 import pandas as pd
 
 from log import logger
-from utils import file_exists
 
 
 OUTPUT_FILENAME = "stats.hdf5"
@@ -34,9 +33,9 @@ OUTPUT_FILENAME = "stats.hdf5"
 def prechecks(longit_file, mindata_file):
     """Perform checks before running to fail earlier rather than later"""
     logger.info("Performing pre-checks")
-    assert file_exists(longit_file), f"{longit_file} doesn't exist"
-    assert file_exists(mindata_file), f"{mindata_file} doesn't exist"
-    assert not file_exists(OUTPUT_FILEPATH), f"{OUTPUT_FILEPATH} already exists, not overwritting it"
+    assert longit_file.exists(), f"{longit_file} doesn't exist"
+    assert mindata_file.exists(), f"{mindata_file} doesn't exist"
+    assert not OUTPUT_FILEPATH.exists(), f"{OUTPUT_FILEPATH} already exists, not overwritting it"
 
     # Check event file headers
     df = pd.read_csv(longit_file, dialect=excel_tab, nrows=0)

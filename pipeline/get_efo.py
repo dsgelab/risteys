@@ -16,7 +16,6 @@ from sys import argv
 from pronto import Ontology
 
 from log import logger
-from utils import file_exists
 
 
 INPUT_ENDPOINT_FILE = "endpoint_xrefs.json"
@@ -27,9 +26,9 @@ OUTPUT_FILE = "endpoint_efo.json"
 def prechecks(data_directory):
     """Perform checks before running to fail earlier rather than later"""
     logger.info("Performing pre-checks")
-    assert file_exists(data_directory / INPUT_ENDPOINT_FILE)
-    assert file_exists(data_directory / INPUT_ONTOLOGY_FILE)
-    assert not file_exists(OUTPUT_FILE)
+    assert (data_directory / INPUT_ENDPOINT_FILE).exists()
+    assert (data_directory / INPUT_ONTOLOGY_FILE).exists()
+    assert not Path(OUTPUT_FILE).exists()
 
 
 def main(data_directory):
