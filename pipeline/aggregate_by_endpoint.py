@@ -32,6 +32,7 @@ OUTPUT_FILENAME = "stats.hdf5"
 
 
 def prechecks(longit_file, mindata_file):
+    """Perform checks before running to fail earlier rather than later"""
     logger.info("Performing pre-checks")
     assert file_exists(longit_file), f"{longit_file} doesn't exist"
     assert file_exists(mindata_file), f"{mindata_file} doesn't exist"
@@ -52,15 +53,29 @@ def prechecks(longit_file, mindata_file):
 
 
 def main(longit_file, mindata_file):
+    """Compute statistics on input data and put them into and HDF5 file"""
     prechecks(longit_file, mindata_file)
 
-    parse_pandas(longit_file, mindata_file)
+    indata = parse_data(longit_file, mindata_file)
+
+    outdata = pd.DataFrame()
+    outdata = compute_prevalence(indata, outdata)
+
+    outdata.to_hdf(OUTPUT_FILEPATH, "/stats")
 
     logger.info("Done.")
 
 
-def parse_pandas(longit_file, mindata_file):
-    res = pd.DataFrame()
+def parse_data(longit_file, mindata_file):
+    """Load the input data into a DataFrame
+
+    NOTE:
+    At this point we might want to write out the loaded data as a
+    DataFrame so it can be re-loaded later on. However doing this adds
+    the cost for: writing out the DataFrame the first time + loading
+    the DataFrame each time. After few measurements it turns out this
+    doesn't save that much time.
+    """
     logger.info("Parsing 'longitudinal file' and 'mininimum data file' into DataFrames")
     df = pd.read_csv(
         longit_file,
@@ -91,6 +106,11 @@ def parse_pandas(longit_file, mindata_file):
     logger.debug("Merging longitudinal and sex DataFrames")
     df = df.merge(dfsex, on="FINNGENID")
 
+    return df
+
+
+def compute_prevalence(df, outdata):
+    """Compute the prevalence by endpoint for sex=all,female,male"""
     # Count total number of individuals by sex
     logger.info("Computing: count by sex")
     count_by_sex = df.groupby("FINNGENID")
@@ -111,16 +131,15 @@ def parse_pandas(longit_file, mindata_file):
     count_by_endpoint_all = count_by_endpoint_female + count_by_endpoint_male
 
     # Add prevalence to the output DataFrame
-    res["prevalence_all"] = count_by_endpoint_all / count_all
-    res["prevalence_female"] = count_by_endpoint_female / count_female
-    res["prevalence_male"] = count_by_endpoint_male / count_male
+    outdata["prevalence_all"] = count_by_endpoint_all / count_all
+    outdata["prevalence_female"] = count_by_endpoint_female / count_female
+    outdata["prevalence_male"] = count_by_endpoint_male / count_male
 
-    res.to_hdf(OUTPUT_FILEPATH, "/stats")
-
-    return res
+    return outdata
 
 
 if __name__ == '__main__':
+    # Get filenames from the command line arguments
     LONGIT_FILE = Path(argv[1])
     MINDATA_FILE = Path(argv[2])
     OUTPUT_DIR = Path(argv[3])
