@@ -15,8 +15,7 @@ For each endpoint we want the metrics (split by sex: all/female/male):
 - year distribution --> YEAR LIST
 
 Output:
-- JSON file with hierarchy: {endpoint -> {indiv -> [(event age, event year) , ...] (sorted) }}
-- JSON file with the total number of individual by sex
+- HDF5 file with statistics and distributions for each endpoint
 """
 from csv import excel_tab
 from pathlib import Path
@@ -61,6 +60,7 @@ def main(longit_file, mindata_file):
 
 
 def parse_pandas(longit_file, mindata_file):
+    res = pd.DataFrame()
     logger.info("Parsing 'longitudinal file' and 'mininimum data file' into DataFrames")
     df = pd.read_csv(
         longit_file,
@@ -109,14 +109,15 @@ def parse_pandas(longit_file, mindata_file):
     count_by_endpoint_female = count_by_endpoint["female"]
     count_by_endpoint_male = count_by_endpoint["male"]
     count_by_endpoint_all = count_by_endpoint_female + count_by_endpoint_male
-    
-    prevalence_female = count_by_endpoint_female / count_female
-    prevalence_male = count_by_endpoint_male / count_male
-    prevalence_all = count_by_endpoint_all / count_all
 
-    prevalence_female.to_hdf(OUTPUT_FILEPATH, "/stats/prevalence_female")
-    prevalence_male.to_hdf(OUTPUT_FILEPATH, "/stats/prevalence_male")
-    prevalence_all.to_hdf(OUTPUT_FILEPATH, "/stats/prevalence_all")
+    # Add prevalence to the output DataFrame
+    res["prevalence_all"] = count_by_endpoint_all / count_all
+    res["prevalence_female"] = count_by_endpoint_female / count_female
+    res["prevalence_male"] = count_by_endpoint_male / count_male
+
+    res.to_hdf(OUTPUT_FILEPATH, "/stats")
+
+    return res
 
 
 if __name__ == '__main__':
