@@ -235,7 +235,7 @@ def compute_reoccurence(df, outdata):
 
     # sex: female
     stat = df[df["female"] == 1]
-    stat = df.groupby(["ENDPOINT", "FINNGENID"])
+    stat = stat.groupby(["ENDPOINT", "FINNGENID"])
     stat = stat["EVENT_AGE"].agg(lambda ages: any_reoccurence(ages, window))
     stat = stat.groupby("ENDPOINT")
     stat = stat.agg(lambda g: g[g == True].count() / g.count())
@@ -243,7 +243,7 @@ def compute_reoccurence(df, outdata):
 
     # sex: male
     stat = df[df["male"] == 1]
-    stat = df.groupby(["ENDPOINT", "FINNGENID"])
+    stat = stat.groupby(["ENDPOINT", "FINNGENID"])
     stat = stat["EVENT_AGE"].agg(lambda ages: any_reoccurence(ages, window))
     stat = stat.groupby("ENDPOINT")
     stat = stat.agg(lambda g: g[g == True].count() / g.count())
@@ -293,7 +293,7 @@ def compute_case_fatality(df, outdata):
 
     # sex: female
     stat = df[df["female"] == 1]
-    stat = df.groupby(["ENDPOINT", "FINNGENID"])
+    stat = stat.groupby(["ENDPOINT", "FINNGENID"])
     stat = stat["EVENT_AGE", "DEATH_AGE"].min()
     stat = stat["DEATH_AGE"] - stat["EVENT_AGE"] < 5
     stat = stat.groupby("ENDPOINT").agg(lambda g: g[g == True].count() / g.count())
@@ -301,7 +301,7 @@ def compute_case_fatality(df, outdata):
 
     # sex: male
     stat = df[df["male"] == 1]
-    stat = df.groupby(["ENDPOINT", "FINNGENID"])
+    stat = stat.groupby(["ENDPOINT", "FINNGENID"])
     stat = stat["EVENT_AGE", "DEATH_AGE"].min()
     stat = stat["DEATH_AGE"] - stat["EVENT_AGE"] < 5
     stat = stat.groupby("ENDPOINT").agg(lambda g: g[g == True].count() / g.count())
@@ -356,7 +356,7 @@ def compute_distrib(df, column, brackets):
 
     # sex: female
     stat = df[df["female"] == 1]
-    stat = df.groupby(["ENDPOINT", "FINNGENID"])
+    stat = stat.groupby(["ENDPOINT", "FINNGENID"])
     stat = stat[column].min()
     stat = stat.groupby("ENDPOINT")
     stat = stat.apply(lambda g: pd.cut(g, brackets, right=False).value_counts())
@@ -364,7 +364,7 @@ def compute_distrib(df, column, brackets):
 
     # sex: male
     stat = df[df["male"] == 1]
-    stat = df.groupby(["ENDPOINT", "FINNGENID"])
+    stat = stat.groupby(["ENDPOINT", "FINNGENID"])
     stat = stat[column].min()
     stat = stat.groupby("ENDPOINT")
     stat = stat.apply(lambda g: pd.cut(g, brackets, right=False).value_counts())
