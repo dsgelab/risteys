@@ -5,7 +5,7 @@ logger = logging.getLogger("pipeline")
 handler = logging.StreamHandler()
 
 formatter = logging.Formatter(
-    "%(asctime)s %(levelname)-5s %(module)s:%(funcName)s:%(message)s",
+    "%(asctime)s %(levelname)-5s %(module)-21s %(funcName)-25s: %(message)s",
     "%H:%M:%S"
 )
 handler.setFormatter(formatter)
