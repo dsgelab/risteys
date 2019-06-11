@@ -53,34 +53,34 @@ def prechecks(longit_file, mindata_file):
 
 
 def main(longit_file, mindata_file):
-    """Compute statistics on input data and put them into and HDF5 file"""
+    """Compute statistics on input data and put them into an HDF5 file"""
     prechecks(longit_file, mindata_file)
 
     indata = parse_data(longit_file, mindata_file)
-    outdata = pd.DataFrame()
+    stats = pd.DataFrame()
 
-    outdata = compute_prevalence(indata, outdata)
-    outdata.to_hdf(OUTPUT_RECOVERY, "/stats")
+    stats = compute_prevalence(indata, stats)
+    stats.to_hdf(OUTPUT_RECOVERY, "/stats")
 
-    outdata = compute_mean_age(indata, outdata)
-    outdata.to_hdf(OUTPUT_RECOVERY, "/stats")
+    stats = compute_mean_age(indata, stats)
+    stats.to_hdf(OUTPUT_RECOVERY, "/stats")
 
-    outdata = compute_median_events(indata, outdata)
-    outdata.to_hdf(OUTPUT_RECOVERY, "/stats")
+    stats = compute_median_events(indata, stats)
+    stats.to_hdf(OUTPUT_RECOVERY, "/stats")
 
-    outdata = compute_reoccurence(indata, outdata)
-    outdata.to_hdf(OUTPUT_RECOVERY, "/stats")
+    stats = compute_reoccurence(indata, stats)
+    stats.to_hdf(OUTPUT_RECOVERY, "/stats")
 
-    outdata = compute_case_fatality(indata, outdata)
-    outdata.to_hdf(OUTPUT_RECOVERY, "/stats")
+    stats = compute_case_fatality(indata, stats)
+    stats.to_hdf(OUTPUT_RECOVERY, "/stats")
 
-    outdata = compute_age_distribution(indata)
+    distrib_age = compute_age_distribution(indata)
     logger.debug("Writing age distribution to HDF5")
-    outdata.to_hdf(OUTPUT_RECOVERY, "/distrib/age")
+    distrib_age.to_hdf(OUTPUT_RECOVERY, "/distrib/age")
 
-    outdata = compute_year_distribution(indata)
+    distrib_year = compute_year_distribution(indata)
     logger.debug("Writing year distribution to HDF5")
-    outdata.to_hdf(OUTPUT_RECOVERY, "/distrib/year")
+    distrib_year.to_hdf(OUTPUT_RECOVERY, "/distrib/year")
 
     # Everything went fine, moving recovery file to proper output path
     OUTPUT_RECOVERY.rename(OUTPUT_FILEPATH)
@@ -135,9 +135,9 @@ def compute_prevalence(df, outdata):
     """Compute the prevalence by endpoint for sex=all,female,male"""
     # Count total number of individuals by sex
     logger.info("Computing count by sex")
-    count_by_sex = df.groupby("FINNGENID")
-    count_by_sex = count_by_sex[["female", "male"]]
-    count_by_sex = count_by_sex.first()
+    count_by_sex = (df.groupby("FINNGENID")
+                    [["female", "male"]]
+                    .first())
     count_female = count_by_sex["female"].sum()
     count_male = count_by_sex["male"].sum()
     count_all = count_female + count_male
@@ -146,8 +146,10 @@ def compute_prevalence(df, outdata):
 
     # Un-adjusted prevalence
     logger.info("Computing un-adjusted prevalence")
-    count_by_endpoint = df.groupby(["ENDPOINT", "FINNGENID"]).first()
-    count_by_endpoint = count_by_endpoint.groupby("ENDPOINT").sum()
+    count_by_endpoint = (df.groupby(["ENDPOINT", "FINNGENID"])
+                         .first()
+                         .groupby("ENDPOINT")
+                         .sum())
     count_by_endpoint_female = count_by_endpoint["female"]
     count_by_endpoint_male = count_by_endpoint["male"]
     count_by_endpoint_all = count_by_endpoint_female + count_by_endpoint_male
@@ -165,27 +167,34 @@ def compute_mean_age(df, outdata):
     logger.info("Computing mean age at first event")
 
     # sex: all
-    stat = df.groupby(["ENDPOINT", "FINNGENID"])
-    stat = stat["EVENT_AGE"].min()
-    stat = stat.groupby("ENDPOINT")
-    stat = stat.mean()
-    outdata["mean_age_all"] = stat
+    outdata["mean_age_all"] = (
+        df
+        .groupby(["ENDPOINT", "FINNGENID"])
+        ["EVENT_AGE"]
+        .min()
+        .groupby("ENDPOINT")
+        .mean()
+    )
 
     # sex: female
-    stat = df[df["female"] == 1]
-    stat = stat.groupby(["ENDPOINT", "FINNGENID"])
-    stat = stat["EVENT_AGE"].min()
-    stat = stat.groupby("ENDPOINT")
-    stat = stat.mean()
-    outdata["mean_age_female"] = stat
+    outdata["mean_age_female"] = (
+        df[df["female"] == 1]
+        .groupby(["ENDPOINT", "FINNGENID"])
+        ["EVENT_AGE"]
+        .min()
+        .groupby("ENDPOINT")
+        .mean()
+    )
 
     # sex: male
-    stat = df[df["male"] == 1]
-    stat = stat.groupby(["ENDPOINT", "FINNGENID"])
-    stat = stat["EVENT_AGE"].min()
-    stat = stat.groupby("ENDPOINT")
-    stat = stat.mean()
-    outdata["mean_age_male"] = stat
+    outdata["mean_age_male"] = (
+        df[df["male"] == 1]
+        .groupby(["ENDPOINT", "FINNGENID"])
+        ["EVENT_AGE"]
+        .min()
+        .groupby("ENDPOINT")
+        .mean()
+    )
 
     return outdata
 
@@ -195,27 +204,31 @@ def compute_median_events(df, outdata):
     logger.info("Computing median number of events")
 
     # sex: all
-    stat = df.groupby(["ENDPOINT", "FINNGENID"])
-    stat = stat["EVENT_YEAR"].count()  # could have selected any column as we just count events
-    stat = stat.groupby("ENDPOINT")
-    stat = stat.median()
-    outdata["median_events_all"] = stat
+    outdata["median_events_all"] = (
+        df
+        .groupby(["ENDPOINT", "FINNGENID"])
+        ["EVENT_YEAR"].count()  # could have selected any column as we just count events
+        .groupby("ENDPOINT")
+        .median()
+    )
 
     # sex: female
-    stat = df[df["female"] == 1]
-    stat = stat.groupby(["ENDPOINT", "FINNGENID"])
-    stat = stat["EVENT_YEAR"].count()
-    stat = stat.groupby("ENDPOINT")
-    stat = stat.median()
-    outdata["median_events_female"] = stat
+    outdata["median_events_female"] = (
+        df[df["female"] == 1]
+        .groupby(["ENDPOINT", "FINNGENID"])
+        ["EVENT_YEAR"].count()
+        .groupby("ENDPOINT")
+        .median()
+    )
 
     # sex: male
-    stat = df[df["male"] == 1]
-    stat = stat.groupby(["ENDPOINT", "FINNGENID"])
-    stat = stat["EVENT_YEAR"].count()
-    stat = stat.groupby("ENDPOINT")
-    stat = stat.median()
-    outdata["median_events_male"] = stat
+    outdata["median_events_male"] = (
+        df[df["male"] == 1]
+        .groupby(["ENDPOINT", "FINNGENID"])
+        ["EVENT_YEAR"].count()
+        .groupby("ENDPOINT")
+        .median()
+    )
 
     return outdata
 
@@ -226,28 +239,33 @@ def compute_reoccurence(df, outdata):
     window = 0.5  # in years, we assume the EVENT_AGE column is in years also
 
     # sex: all
-    stat = df.groupby(["ENDPOINT", "FINNGENID"])
-    stat = stat["EVENT_AGE"].agg(lambda ages: any_reoccurence(ages, window))
-    stat = stat.groupby("ENDPOINT")
-    # For each endpoint, count the number of individuals with reoccurence / total individuals
-    stat = stat.agg(lambda g: g[g == True].count() / g.count())
-    outdata["reoccurence_all"] = stat
+    outdata["reoccurence_all"] = (
+        df.groupby(["ENDPOINT", "FINNGENID"])
+        ["EVENT_AGE"]
+        .agg(lambda ages: any_reoccurence(ages, window))
+        .groupby("ENDPOINT")
+        # For each endpoint, count the number of individuals with reoccurence / total individuals
+        .agg(lambda g: g[g == True].count() / g.count())
+    )
 
     # sex: female
-    stat = df[df["female"] == 1]
-    stat = stat.groupby(["ENDPOINT", "FINNGENID"])
-    stat = stat["EVENT_AGE"].agg(lambda ages: any_reoccurence(ages, window))
-    stat = stat.groupby("ENDPOINT")
-    stat = stat.agg(lambda g: g[g == True].count() / g.count())
-    outdata["reoccurence_female"] = stat
+    outdata["reoccurence_female"] = (
+        df[df["female"] == 1]
+        .groupby(["ENDPOINT", "FINNGENID"])
+        ["EVENT_AGE"]
+        .agg(lambda ages: any_reoccurence(ages, window))
+        .groupby("ENDPOINT")
+        .agg(lambda g: g[g == True].count() / g.count())
+    )
 
     # sex: male
-    stat = df[df["male"] == 1]
-    stat = stat.groupby(["ENDPOINT", "FINNGENID"])
-    stat = stat["EVENT_AGE"].agg(lambda ages: any_reoccurence(ages, window))
-    stat = stat.groupby("ENDPOINT")
-    stat = stat.agg(lambda g: g[g == True].count() / g.count())
-    outdata["reoccurence_male"] = stat
+    outdata["reoccurence_male"] = (
+        df[df["male"] == 1]
+        .groupby(["ENDPOINT", "FINNGENID"])
+        ["EVENT_AGE"].agg(lambda ages: any_reoccurence(ages, window))
+        .groupby("ENDPOINT")
+        .agg(lambda g: g[g == True].count() / g.count())
+    )
 
     return outdata
 
@@ -274,9 +292,12 @@ def compute_case_fatality(df, outdata):
 
     # Finding death event for all individuals
     logger.info("Finding death event for all individuals")
-    deaths = df.loc[df.loc[:, "ENDPOINT"] == "DEATH"]
-    deaths = deaths.rename(columns={'EVENT_AGE': 'DEATH_AGE'})
-    deaths = deaths.drop(["EVENT_YEAR", "ENDPOINT", "female", "male"], axis=1)
+    deaths = (
+        df.loc[df.loc[:, "ENDPOINT"] == "DEATH"]
+        .rename(columns={'EVENT_AGE': 'DEATH_AGE'})
+        .drop(["EVENT_YEAR", "ENDPOINT", "female", "male"], axis=1)
+    )
+
     # Individuals not dead are not in the "deaths" DataFrame so using
     # the default inner-join would remove all of them from the merged
     # DataFrame. We want to keep them so we use a left-join.
@@ -285,26 +306,46 @@ def compute_case_fatality(df, outdata):
 
     logger.debug("Back to computing case fatality")
     # sex: all
-    stat = df.groupby(["ENDPOINT", "FINNGENID"])
-    stat = stat["EVENT_AGE", "DEATH_AGE"].min()
+    stat = (
+        df
+        .groupby(["ENDPOINT", "FINNGENID"])
+        ["EVENT_AGE", "DEATH_AGE"]
+        .min()
+    )
     stat = stat["DEATH_AGE"] - stat["EVENT_AGE"] < window
-    stat = stat.groupby("ENDPOINT").agg(lambda g: g[g == True].count() / g.count())
+    stat = (
+        stat
+        .groupby("ENDPOINT")
+        .agg(lambda g: g[g == True].count() / g.count())
+    )
     outdata["case_fatality_all"] = stat
 
     # sex: female
-    stat = df[df["female"] == 1]
-    stat = stat.groupby(["ENDPOINT", "FINNGENID"])
-    stat = stat["EVENT_AGE", "DEATH_AGE"].min()
+    stat = (
+        df[df["female"] == 1]
+        .groupby(["ENDPOINT", "FINNGENID"])
+        ["EVENT_AGE", "DEATH_AGE"]
+        .min()
+    )
     stat = stat["DEATH_AGE"] - stat["EVENT_AGE"] < 5
-    stat = stat.groupby("ENDPOINT").agg(lambda g: g[g == True].count() / g.count())
+    stat = (
+        stat
+        .groupby("ENDPOINT")
+        .agg(lambda g: g[g == True].count() / g.count()))
     outdata["case_fatality_female"] = stat
 
     # sex: male
-    stat = df[df["male"] == 1]
-    stat = stat.groupby(["ENDPOINT", "FINNGENID"])
-    stat = stat["EVENT_AGE", "DEATH_AGE"].min()
+    stat = (
+        df[df["male"] == 1]
+        .groupby(["ENDPOINT", "FINNGENID"])
+        ["EVENT_AGE", "DEATH_AGE"]
+        .min()
+    )
     stat = stat["DEATH_AGE"] - stat["EVENT_AGE"] < 5
-    stat = stat.groupby("ENDPOINT").agg(lambda g: g[g == True].count() / g.count())
+    stat = (
+        stat
+        .groupby("ENDPOINT")
+        .agg(lambda g: g[g == True].count() / g.count()))
     outdata["case_fatality_male"] = stat
 
     return outdata
@@ -347,28 +388,44 @@ def compute_distrib(df, column, brackets):
     outdata = pd.DataFrame()
 
     # sex: all
-    stat = df.groupby(["ENDPOINT", "FINNGENID"])
-    stat = stat[column].min()
-    stat = stat.groupby("ENDPOINT")
-    # Perform binning for each row, then count how many occurences for each bin
-    stat = stat.apply(lambda g: pd.cut(g, brackets, right=False).value_counts())
-    outdata["all"] = stat
+    outdata["all"] = (
+        df
+        .groupby(["ENDPOINT", "FINNGENID"])
+        [column]
+        .min()
+        .groupby("ENDPOINT")
+        # Perform binning for each row, then count how many occurences for each bin
+        .apply(lambda g:
+               pd.cut(g, brackets, right=False)
+               .value_counts()
+        )
+    )
 
     # sex: female
-    stat = df[df["female"] == 1]
-    stat = stat.groupby(["ENDPOINT", "FINNGENID"])
-    stat = stat[column].min()
-    stat = stat.groupby("ENDPOINT")
-    stat = stat.apply(lambda g: pd.cut(g, brackets, right=False).value_counts())
-    outdata["female"] = stat
+    outdata["female"] = (
+        df[df["female"] == 1]
+        .groupby(["ENDPOINT", "FINNGENID"])
+        [column]
+        .min()
+        .groupby("ENDPOINT")
+        .apply(lambda g:
+               pd.cut(g, brackets, right=False)
+               .value_counts()
+        )
+    )
 
     # sex: male
-    stat = df[df["male"] == 1]
-    stat = stat.groupby(["ENDPOINT", "FINNGENID"])
-    stat = stat[column].min()
-    stat = stat.groupby("ENDPOINT")
-    stat = stat.apply(lambda g: pd.cut(g, brackets, right=False).value_counts())
-    outdata["male"] = stat
+    outdata["male"] = (
+        df[df["male"] == 1]
+        .groupby(["ENDPOINT", "FINNGENID"])
+        [column]
+        .min()
+        .groupby("ENDPOINT")
+        .apply(lambda g:
+               pd.cut(g, brackets, right=False)
+               .value_counts()
+        )
+    )
 
     return outdata
 
