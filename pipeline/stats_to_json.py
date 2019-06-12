@@ -73,6 +73,7 @@ def main(input_path, output_path):
     distrib_year = json.dumps(distrib_year)
 
     # Manually craft the JSON output given the 3 JSON strings we already have
+    logger.info(f"Writing out data to JSON in file {output_path}")
     output = f'{{"stats": {agg_stats}, "distrib_age": {distrib_age}, "distrib_year": {distrib_year}}}'
     with open(OUTPUT_PATH, "x") as f:
         f.write(output)

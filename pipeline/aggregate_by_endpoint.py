@@ -2,7 +2,7 @@
 Aggregate data by endpoint on a couple of metrics, for female, male and all sex.
 
 Usage:
-    python aggregate_by_endpoint.py <data-file-longitudinal> <data-file-minimum-data> <output-dir>
+    python aggregate_by_endpoint.py <path-to-data-dir>
 
 For each endpoint we want the metrics (split by sex: all/female/male):
 - number of individuals --> COUNT
@@ -27,36 +27,24 @@ import pandas as pd
 from log import logger
 
 
+INPUT_FILENAME = "input.hdf5"
 OUTPUT_FILENAME = "stats.hdf5"
 
 
-def prechecks(longit_file, mindata_file):
+def prechecks(input_file):
     """Perform checks before running to fail earlier rather than later"""
     logger.info("Performing pre-checks")
-    assert longit_file.exists(), f"{longit_file} doesn't exist"
-    assert mindata_file.exists(), f"{mindata_file} doesn't exist"
-    assert not OUTPUT_FILEPATH.exists(), f"{OUTPUT_FILEPATH} already exists, not overwritting it"
+    assert input_file.exists(), f"{input_file} doesn't exist"
+    assert not OUTPUT_PATH.exists(), f"{OUTPUT_PATH} already exists, not overwritting it"
     assert not OUTPUT_RECOVERY.exists(), f"{OUTPUT_RECOVERY} already exists, not overwritting it"
 
-    # Check event file headers
-    df = pd.read_csv(longit_file, dialect=excel_tab, nrows=0)
-    cols = list(df.columns)
-    expected_cols = ["FINNGENID", "EVENT_AGE", "EVENT_YEAR", "ENDPOINT"]
-    assert cols == expected_cols
-
-    # Check sex for all individuals
-    df = pd.read_csv(mindata_file, dialect=excel_tab, usecols=["FINNGENID", "SEX"])
-    sexs = df["SEX"].unique()
-    sexs = set(sexs)
-    expected_sexs = set(["female", "male"])
-    assert sexs == expected_sexs
 
 
-def main(longit_file, mindata_file):
+def main(input_path):
     """Compute statistics on input data and put them into an HDF5 file"""
-    prechecks(longit_file, mindata_file)
+    prechecks(input_path)
 
-    indata = parse_data(longit_file, mindata_file)
+    indata = pd.read_hdf(input_path)
     stats = pd.DataFrame()
 
     stats = compute_prevalence(indata, stats)
@@ -83,52 +71,9 @@ def main(longit_file, mindata_file):
     distrib_year.to_hdf(OUTPUT_RECOVERY, "/distrib/year")
 
     # Everything went fine, moving recovery file to proper output path
-    OUTPUT_RECOVERY.rename(OUTPUT_FILEPATH)
+    OUTPUT_RECOVERY.rename(OUTPUT_PATH)
 
     logger.info("Done.")
-
-
-def parse_data(longit_file, mindata_file):
-    """Load the input data into a DataFrame
-
-    NOTE:
-    At this point we might want to write out the loaded data as a
-    DataFrame so it can be re-loaded later on. However doing this adds
-    the cost for: writing out the DataFrame the first time + loading
-    the DataFrame each time. After few measurements it turns out this
-    doesn't save that much time.
-    """
-    logger.info("Parsing 'longitudinal file' and 'mininimum data file' into DataFrames")
-    df = pd.read_csv(
-        longit_file,
-        dialect=excel_tab,
-        dtype={
-            "FINNGENID": np.object,
-            "EVENT_AGE": np.float64,
-            "EVENT_YEAR": np.int64,
-            "ENDPOINT": np.object,
-    })
-
-    # Loading data file with ID -> SEX info
-    dfsex = pd.read_csv(
-        mindata_file,
-        dialect=excel_tab,
-        usecols=["FINNGENID", "SEX"],
-        dtype={
-            "FINNGENID": np.object,
-            "SEX": "category",
-    })
-
-    # Perform one-hot encoding for SEX so it can be written to HDF
-    # without the slow format="table".
-    onehot = pd.get_dummies(dfsex["SEX"])
-    dfsex = pd.concat([dfsex, onehot], axis=1)
-    dfsex = dfsex.drop("SEX", axis=1)
-
-    logger.debug("Merging longitudinal and sex DataFrames")
-    df = df.merge(dfsex, on="FINNGENID")
-
-    return df
 
 
 def compute_prevalence(df, outdata):
@@ -432,11 +377,10 @@ def compute_distrib(df, column, brackets):
 
 if __name__ == '__main__':
     # Get filenames from the command line arguments
-    LONGIT_FILE = Path(argv[1])
-    MINDATA_FILE = Path(argv[2])
-    OUTPUT_DIR = Path(argv[3])
+    DATA_DIR = Path(argv[1])
+    INPUT_PATH = DATA_DIR / INPUT_FILENAME
 
-    OUTPUT_FILEPATH = OUTPUT_DIR / OUTPUT_FILENAME
-    OUTPUT_RECOVERY = OUTPUT_FILEPATH.with_suffix(".hdf5.recovery")
+    OUTPUT_PATH = DATA_DIR / OUTPUT_FILENAME
+    OUTPUT_RECOVERY = OUTPUT_PATH.with_suffix(".hdf5.recovery")
 
-    main(LONGIT_FILE, MINDATA_FILE)
+    main(INPUT_PATH)
