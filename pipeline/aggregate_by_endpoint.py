@@ -27,8 +27,38 @@ import pandas as pd
 from log import logger
 
 
+# Input / output files
 INPUT_FILENAME = "input.hdf5"
 OUTPUT_FILENAME = "stats.hdf5"
+
+# Treshold below which data is considered individual-level data
+INDIV_TRESHOLD = 6
+
+# Columns where we will remove data if it contains individual-level data
+ALL_COLS = [
+    "nindivs_all",
+    "prevalence_all",
+    "mean_age_all",
+    "median_events_all",
+    "reoccurence_all",
+    "case_fatality_all",
+]
+FEMALE_COLS = [
+    "nindivs_female",
+    "prevalence_female",
+    "mean_age_female",
+    "median_events_female",
+    "reoccurence_female",
+    "case_fatality_female",
+]
+MALE_COLS = [
+    "nindivs_male",
+    "prevalence_male",
+    "mean_age_male",
+    "median_events_male",
+    "reoccurence_male",
+    "case_fatality_male",
+]
 
 
 def prechecks(input_file):
@@ -39,14 +69,15 @@ def prechecks(input_file):
     assert not OUTPUT_RECOVERY.exists(), f"{OUTPUT_RECOVERY} already exists, not overwritting it"
 
 
-
 def main(input_path):
     """Compute statistics on input data and put them into an HDF5 file"""
     prechecks(input_path)
 
+    # Loading input data
     indata = pd.read_hdf(input_path)
     stats = pd.DataFrame()
 
+    # Building up the aggregated statisitcs by endpoint
     stats = compute_prevalence(indata, stats)
     stats.to_hdf(OUTPUT_RECOVERY, "/stats")
 
@@ -62,6 +93,7 @@ def main(input_path):
     stats = compute_case_fatality(indata, stats)
     stats.to_hdf(OUTPUT_RECOVERY, "/stats")
 
+    # Making the distributions by endpoint
     distrib_age = compute_age_distribution(indata)
     logger.debug("Writing age distribution to HDF5")
     distrib_age.to_hdf(OUTPUT_RECOVERY, "/distrib/age")
@@ -69,6 +101,21 @@ def main(input_path):
     distrib_year = compute_year_distribution(indata)
     logger.debug("Writing year distribution to HDF5")
     distrib_year.to_hdf(OUTPUT_RECOVERY, "/distrib/year")
+
+    # Checking that we don't miss any column with individual-level data
+    expected_columns = set(ALL_COLS + FEMALE_COLS + MALE_COLS)
+    assert set(stats.columns) == set(expected_columns), f"Mismatch while checking that all columns with individual-level are covered: {set(expected_columns)} != {set(stats.columns)}"
+
+    # Filtering the data to remove individual-level data
+    filter_stats(stats)
+    stats.to_hdf(OUTPUT_RECOVERY, "/stats")
+
+    filter_distrib(distrib_age)
+    distrib_age.to_hdf(OUTPUT_RECOVERY, "/distrib/age")
+
+    filter_distrib(distrib_year)
+    distrib_year.to_hdf(OUTPUT_RECOVERY, "/distrib/year")
+
 
     # Everything went fine, moving recovery file to proper output path
     OUTPUT_RECOVERY.rename(OUTPUT_PATH)
@@ -89,7 +136,7 @@ def compute_prevalence(df, outdata):
     check_count_all = df["FINNGENID"].unique().size
     assert count_all == check_count_all, f"Counts for sex 'all' defer: {count_all} != {check_count_all}"
 
-    # Un-adjusted prevalence
+    # Number of individuals / endpoint for prevalence
     logger.info("Computing un-adjusted prevalence")
     count_by_endpoint = (df.groupby(["ENDPOINT", "FINNGENID"])
                          .first()
@@ -99,7 +146,12 @@ def compute_prevalence(df, outdata):
     count_by_endpoint_male = count_by_endpoint["male"]
     count_by_endpoint_all = count_by_endpoint_female + count_by_endpoint_male
 
-    # Add prevalence to the output DataFrame
+    # Add number of individuals to the output DataFrame
+    outdata["nindivs_all"] = count_by_endpoint_all
+    outdata["nindivs_female"] = count_by_endpoint_female
+    outdata["nindivs_male"] = count_by_endpoint_male
+
+    # Compute and add prevalence to the output DataFrame
     outdata["prevalence_all"] = count_by_endpoint_all / count_all
     outdata["prevalence_female"] = count_by_endpoint_female / count_female
     outdata["prevalence_male"] = count_by_endpoint_male / count_male
@@ -373,6 +425,52 @@ def compute_distrib(df, column, brackets):
     )
 
     return outdata
+
+
+def filter_stats(stats):
+    """Remove individual-level data in the statistics"""
+    logger.info("Filtering out individual level data in the statistics")
+
+    # sex: all
+    stats.loc[
+        (stats.loc[:, "nindivs_all"] < INDIV_TRESHOLD) & (stats.loc[:, "nindivs_all"] != 0),
+        ALL_COLS + FEMALE_COLS + MALE_COLS
+    ] = np.nan
+
+    # sex: female
+    stats.loc[
+        (stats.loc[:, "nindivs_female"] < INDIV_TRESHOLD) & (stats.loc[:, "nindivs_female"] != 0),
+        FEMALE_COLS
+    ] = np.nan
+
+    # sex: male
+    stats.loc[
+        (stats.loc[:, "nindivs_male"] < INDIV_TRESHOLD) & (stats.loc[:, "nindivs_male"] != 0),
+        MALE_COLS
+    ] = np.nan
+
+
+def filter_distrib(distrib):
+    """Remove individual-level data in the bins of the given distribution"""
+    logger.info("Filtering out individual-level data in a distribution")
+
+    # sex: all
+    distrib.loc[
+        (distrib.loc[:, "all"] < INDIV_TRESHOLD) & (distrib.loc[:, "all"] != 0),
+        "all"
+    ] = np.nan
+
+    # sex: female
+    distrib.loc[
+        (distrib.loc[:, "female"] < INDIV_TRESHOLD) & (distrib.loc[:, "female"] != 0),
+        "female"
+    ] = np.nan
+
+    # sex: male
+    distrib.loc[
+        (distrib.loc[:, "male"] < INDIV_TRESHOLD) & (distrib.loc[:, "male"] != 0),
+        "male"
+    ] = np.nan
 
 
 if __name__ == '__main__':
