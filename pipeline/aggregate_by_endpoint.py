@@ -435,19 +435,19 @@ def filter_stats(stats):
     stats.loc[
         (stats.loc[:, "nindivs_all"] < INDIV_TRESHOLD) & (stats.loc[:, "nindivs_all"] != 0),
         ALL_COLS + FEMALE_COLS + MALE_COLS
-    ] = np.nan
+    ] = None
 
     # sex: female
     stats.loc[
         (stats.loc[:, "nindivs_female"] < INDIV_TRESHOLD) & (stats.loc[:, "nindivs_female"] != 0),
         FEMALE_COLS
-    ] = np.nan
+    ] = None
 
     # sex: male
     stats.loc[
         (stats.loc[:, "nindivs_male"] < INDIV_TRESHOLD) & (stats.loc[:, "nindivs_male"] != 0),
         MALE_COLS
-    ] = np.nan
+    ] = None
 
 
 def filter_distrib(distrib):
@@ -458,19 +458,19 @@ def filter_distrib(distrib):
     distrib.loc[
         (distrib.loc[:, "all"] < INDIV_TRESHOLD) & (distrib.loc[:, "all"] != 0),
         "all"
-    ] = np.nan
+    ] = None
 
     # sex: female
     distrib.loc[
         (distrib.loc[:, "female"] < INDIV_TRESHOLD) & (distrib.loc[:, "female"] != 0),
         "female"
-    ] = np.nan
+    ] = None
 
     # sex: male
     distrib.loc[
         (distrib.loc[:, "male"] < INDIV_TRESHOLD) & (distrib.loc[:, "male"] != 0),
         "male"
-    ] = np.nan
+    ] = None
 
 
 if __name__ == '__main__':
