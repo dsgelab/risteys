@@ -37,10 +37,6 @@ defmodule Risteys.Phenocode do
     field :version, :string
     field :source, :string
     field :pheweb, :boolean
-    # can't specify more since composite type
-    field :distrib_year, :map
-    # can't specify more since composite type
-    field :distrib_age, :map
     field :validation_article, :string
     field :ontology, {:map, {:array, :string}}
     # used for the search feature
@@ -90,8 +86,6 @@ defmodule Risteys.Phenocode do
       :version,
       :source,
       :pheweb,
-      :distrib_year,
-      :distrib_age,
       :validation_article,
       :ontology,
       :description
@@ -105,10 +99,6 @@ defmodule Risteys.Phenocode do
         []
       end
     end)
-    |> validate_change(:distrib_year, fn :distrib_year, %{hist: hist} ->
-      check_distrib(hist)
-    end)
-    |> validate_change(:distrib_age, fn :distrib_age, %{hist: hist} -> check_distrib(hist) end)
     |> validate_change(:ontology, fn :ontology, ontology ->
       allowed = allowed_ontology_types()
 
@@ -140,16 +130,5 @@ defmodule Risteys.Phenocode do
       "MESH",
       "SNOMED"
     ])
-  end
-
-  defp check_distrib(hist) do
-    errors =
-      for [bin, value] <- hist do
-        if value < 6 do
-          {:distrib_age, "bin #{bin} value #{value} < 6"}
-        end
-      end
-
-    Enum.reject(errors, fn error -> is_nil(error) end)
   end
 end

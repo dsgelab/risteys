@@ -1,222 +1,211 @@
 # Import pre-processed / aggregated data in the database
 #
 # Usage:
-#     mix run import_aggregated_data.exs <json-file-aggregegated-stats> <json-file-count-by-sex>
+#     mix run import_aggregated_data.exs <json-file-aggregegated-stats>
 #
 # where <json-file-aggregegated-stats> is a JSON file with all the
 # aggregated stats, with the following format:
 #
 # {
+#   "stats":
 #   "ENDPOINT XYZ": {
-#     "year_distrib": [...],
-#     "age_distrib": [...],
-#     "longit": {...},
-#     "common_stats": {...},
+#     ...
+#   },
+#   ...
+#   "distrib_age":
+#   "ENDPOINT XYZ": {
+#     ...
+#   },
+#   ...
+#   "distrib_year":
+#   "ENDPOINT XYZ": {
+#     ...
 #   },
 #   ...
 # }
-#
-# and where <json-file-count-by-sex> is a JSON file with counts of
-# males and females, like:
-#
-# [85534, 67262]
 
 alias Risteys.{Repo, Phenocode, StatsSex}
 require Logger
 
 Logger.configure(level: :info)
-[stats_filepath, counts_filepath | _] = System.argv()
+[stats_filepath | _] = System.argv()
 
+defmodule Risteys.ImportAgg do
+  def stats(
+        phenocode,
+        sex,
+        case_fatality,
+        mean_age,
+        median_reoccurence,
+        n_individuals,
+        prevalence,
+        reoccurence_rate,
+        distrib_year,
+        distrib_age
+      ) do
+    # Wrap distributions in a map
+    distrib_year = %{hist: distrib_year}
+    distrib_age = %{hist: distrib_age}
 
-# Count number of individuals
-%{"females" => count_females, "males" => count_males} =
-  counts_filepath
+    stats =
+      case Repo.get_by(StatsSex, sex: sex, phenocode_id: phenocode.id) do
+        nil -> %StatsSex{}
+        existing -> existing
+      end
+      |> StatsSex.changeset(%{
+        phenocode_id: phenocode.id,
+        sex: sex,
+        case_fatality: case_fatality,
+        mean_age: mean_age,
+        median_reoccurence: median_reoccurence,
+        n_individuals: n_individuals,
+        prevalence: prevalence,
+        reoccurence_rate: reoccurence_rate,
+        distrib_year: distrib_year,
+        distrib_age: distrib_age
+      })
+      |> Repo.insert_or_update()
+
+    case stats do
+      {:ok, _} ->
+        Logger.debug("insert ok for #{phenocode.name} - sex: #{sex}")
+
+      {:error, changeset} ->
+        Logger.warn(inspect(changeset))
+    end
+  end
+end
+
+# Parse the data
+%{
+  "stats" => stats,
+  "distrib_year" => distrib_year,
+  "distrib_age" => distrib_age
+} =
+  stats_filepath
   |> File.read!()
   |> Jason.decode!()
-count_all = count_females + count_males
 
-
-stats_filepath
-|> File.read!()
-|> Jason.decode!()
+# Add stats to DB
+stats
 |> Enum.each(fn {name, data} ->
-  Logger.info("processing #{name}")
+  Logger.info("Processing stats for #{name}")
 
   phenocode = Repo.get_by(Phenocode, name: name)
 
   cond do
-    is_nil(Map.get(data, "common_stats")) ->
-      Logger.warn("Skipping #{name}: no common_stats")
-
     is_nil(phenocode) ->
-      Logger.warn("Skipping. #{name} not in DB")
+      Logger.warn("Skipping stats for #{name}: not in DB")
 
     true ->
-      # Update phenocode with stats distributions
-      year_distrib = Map.get(data, "year_distrib")
-      # wrap the list of lists into a map
-      year_distrib = %{hist: year_distrib}
-      Logger.debug("year_distrib: #{inspect(year_distrib)}")
+      # Import stats for this phenocode
+      %{
+        "nindivs_all" => nindivs_all,
+        "nindivs_female" => nindivs_female,
+        "nindivs_male" => nindivs_male,
+        "case_fatality_all" => case_fatality_all,
+        "case_fatality_female" => case_fatality_female,
+        "case_fatality_male" => case_fatality_male,
+        "mean_age_all" => mean_age_all,
+        "mean_age_female" => mean_age_female,
+        "mean_age_male" => mean_age_male,
+        "median_events_all" => median_events_all,
+        "median_events_female" => median_events_female,
+        "median_events_male" => median_events_male,
+        "prevalence_all" => prevalence_all,
+        "prevalence_female" => prevalence_female,
+        "prevalence_male" => prevalence_male,
+        "reoccurence_all" => reoccurence_all,
+        "reoccurence_female" => reoccurence_female,
+        "reoccurence_male" => reoccurence_male
+      } = data
 
-      changeset = Phenocode.changeset(phenocode, %{distrib_year: year_distrib})
-      Logger.debug("Applying Phenocode changeset: #{inspect(changeset)}")
-      phenocode = Repo.try_update(phenocode, changeset)
+      %{
+        "all" => distrib_year_all,
+        "female" => distrib_year_female,
+        "male" => distrib_year_male
+      } = Map.fetch!(distrib_year, name)
 
-      age_distrib = Map.get(data, "age_distrib")
-      # wrap the list of lists into a map
-      age_distrib = %{hist: age_distrib}
-      Logger.debug("age_distrib: #{inspect(age_distrib)}")
+      %{
+        "all" => distrib_age_all,
+        "female" => distrib_age_female,
+        "male" => distrib_age_male
+      } = Map.fetch!(distrib_age, name)
 
-      changeset = Phenocode.changeset(phenocode, %{distrib_age: age_distrib})
-      Logger.debug("Applying Phenocode changeset: #{inspect(changeset)}")
-      phenocode = Repo.try_update(phenocode, changeset)
+      # Cast to correct number types
+      nindivs_all = if is_nil(nindivs_all), do: nil, else: floor(nindivs_all)
+      nindivs_female = if is_nil(nindivs_female), do: nil, else: floor(nindivs_female)
+      nindivs_male = if is_nil(nindivs_male), do: nil, else: floor(nindivs_male)
+      median_events_all = if is_nil(median_events_all), do: nil, else: floor(median_events_all)
 
-      # Create stats table for sex=all
-      all_case_fatality =
-        data |> Map.get("common_stats", %{}) |> Map.get("all", %{}) |> Map.get("case_fatality")
-
-      all_nindivs =
-        data |> Map.get("common_stats", %{}) |> Map.get("all", %{}) |> Map.get("nindivs")
-
-      all_mean_age =
-        data |> Map.get("common_stats", %{}) |> Map.get("all", %{}) |> Map.get("mean_age")
-
-      all_median_reoccurence =
-        data |> Map.get("longit", %{}) |> Map.get("all", %{}) |> Map.get("median_count")
-
-      Logger.debug("median reoccurence before trunc: #{all_median_reoccurence}")
-
-      all_median_reoccurence =
-        if not is_nil(all_median_reoccurence) do
-          trunc(all_median_reoccurence)
+      median_events_female =
+        if is_nil(median_events_female) do
+          nil
+        else
+          floor(median_events_female)
         end
 
-      Logger.debug("median reoccurence after trunc: #{all_median_reoccurence}")
-
-      all_reoccurence_rate =
-        data |> Map.get("longit", %{}) |> Map.get("all", %{}) |> Map.get("perc_hosp")
-
-      result_all_stats =
-        case Repo.get_by(StatsSex, sex: 0, phenocode_id: phenocode.id) do
-          nil -> %StatsSex{}
-          stats -> stats
+      median_events_male =
+        if is_nil(median_events_male) do
+          nil
+        else
+          floor(median_events_male)
         end
-        |> StatsSex.changeset(%{
-          phenocode_id: phenocode.id,
-          sex: 0,
-          case_fatality: all_case_fatality,
-          mean_age: all_mean_age,
-          median_reoccurence: all_median_reoccurence,
-          n_individuals: all_nindivs,
-          prevalence: all_nindivs / count_all,
-          reoccurence_rate: all_reoccurence_rate
-        })
-        |> Repo.insert_or_update()
 
-      case result_all_stats do
-        {:ok, _} ->
-          Logger.debug("insert ok for #{name} - all")
-
-        {:error, changeset} ->
-          Logger.warn(inspect(changeset))
+      # sex: all
+      # Don't import anything if Nindivs = 0 (really no events with this phenotype) or
+      # Nindivs = nil (individual-level data).
+      if not is_nil(nindivs_all) and floor(nindivs_all) != 0 do
+        Risteys.ImportAgg.stats(
+          phenocode,
+          0,
+          case_fatality_all,
+          mean_age_all,
+          median_events_all,
+          nindivs_all,
+          prevalence_all,
+          reoccurence_all,
+          distrib_year_all,
+          distrib_age_all
+        )
+      else
+        Logger.warn("Skipping stats for #{phenocode.name} - all : None or 0 individual")
       end
 
-      # Create stats table for sex=female
-      female_case_fatality =
-        data |> Map.get("common_stats", %{}) |> Map.get("female", %{}) |> Map.get("case_fatality")
-
-      female_nindivs =
-        data |> Map.get("common_stats", %{}) |> Map.get("female", %{}) |> Map.get("nindivs")
-
-      female_mean_age =
-        data |> Map.get("common_stats", %{}) |> Map.get("female", %{}) |> Map.get("mean_age")
-
-      female_median_reoccurence =
-        data
-        |> Map.get("longit", %{})
-        |> Map.get("female", %{})
-        |> Map.get("median_count")
-
-      female_median_reoccurence =
-        if not is_nil(female_median_reoccurence) do
-          trunc(female_median_reoccurence)
-        end
-
-      female_reoccurence_rate =
-        data |> Map.get("longit", %{}) |> Map.get("female", %{}) |> Map.get("perc_hosp")
-
-      result_female_stats =
-        case Repo.get_by(StatsSex, sex: 2, phenocode_id: phenocode.id) do
-          nil -> %StatsSex{}
-          stats -> stats
-        end
-        |> StatsSex.changeset(%{
-          phenocode_id: phenocode.id,
-          sex: 2,
-          case_fatality: female_case_fatality,
-          mean_age: female_mean_age,
-          median_reoccurence: female_median_reoccurence,
-          n_individuals: female_nindivs,
-          prevalence: female_nindivs / count_females,
-          reoccurence_rate: female_reoccurence_rate
-        })
-        |> Repo.insert_or_update()
-
-      case result_female_stats do
-        {:ok, _} ->
-          Logger.debug("insert ok for #{name} - female")
-
-        {:error, changeset} ->
-          Logger.warn(inspect(changeset))
+      # sex: male
+      if not is_nil(nindivs_male) and floor(nindivs_male) != 0 do
+        Risteys.ImportAgg.stats(
+          phenocode,
+          1,
+          case_fatality_male,
+          mean_age_male,
+          median_events_male,
+          nindivs_male,
+          prevalence_male,
+          reoccurence_male,
+          distrib_year_male,
+          distrib_age_male
+        )
+      else
+        Logger.warn("Skipping stats for #{phenocode.name} - male : None or 0 individual")
       end
 
-      # Create stats table for sex=male
-      male_case_fatality =
-        data |> Map.get("common_stats", %{}) |> Map.get("male", %{}) |> Map.get("case_fatality")
-
-      male_nindivs =
-        data |> Map.get("common_stats", %{}) |> Map.get("male", %{}) |> Map.get("nindivs")
-
-      male_mean_age =
-        data |> Map.get("common_stats", %{}) |> Map.get("male", %{}) |> Map.get("mean_age")
-
-      male_median_reoccurence =
-        data
-        |> Map.get("longit", %{})
-        |> Map.get("male", %{})
-        |> Map.get("median_count")
-
-      male_median_reoccurence =
-        if not is_nil(male_median_reoccurence) do
-          trunc(male_median_reoccurence)
-        end
-
-      male_reoccurence_rate =
-        data |> Map.get("longit", %{}) |> Map.get("male", %{}) |> Map.get("perc_hosp")
-
-      result_male_stats =
-        case Repo.get_by(StatsSex, sex: 1, phenocode_id: phenocode.id) do
-          nil -> %StatsSex{}
-          stats -> stats
-        end
-        |> StatsSex.changeset(%{
-          phenocode_id: phenocode.id,
-          sex: 1,
-          case_fatality: male_case_fatality,
-          mean_age: male_mean_age,
-          median_reoccurence: male_median_reoccurence,
-          n_individuals: male_nindivs,
-          prevalence: male_nindivs / count_males,
-          reoccurence_rate: male_reoccurence_rate
-        })
-        |> Repo.insert_or_update()
-
-      case result_male_stats do
-        {:ok, _} ->
-          Logger.debug("insert ok for #{name} - male")
-
-        {:error, changeset} ->
-          Logger.warn(inspect(changeset))
+      # sex: female
+      if not is_nil(nindivs_female) and floor(nindivs_female) != 0 do
+        Risteys.ImportAgg.stats(
+          phenocode,
+          2,
+          case_fatality_female,
+          mean_age_female,
+          median_events_female,
+          nindivs_female,
+          prevalence_female,
+          reoccurence_female,
+          distrib_year_female,
+          distrib_age_female
+        )
+      else
+        Logger.warn("Skipping stats for #{phenocode.name} - female : None or 0 individual")
       end
   end
 end)
