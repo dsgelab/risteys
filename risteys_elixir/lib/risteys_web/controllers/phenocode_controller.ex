@@ -18,14 +18,18 @@ defmodule RisteysWeb.PhenocodeController do
   end
 
   defp show_phenocode(conn, phenocode) do
-    # Get the descriptions, if any.
-    no_desc = ["No definition available."]
-
-    {descriptions, ontology} =
-      if not is_nil(phenocode.ontology) do
-        Map.pop(phenocode.ontology, "DESCRIPTION", no_desc)
+    description =
+      if not is_nil(phenocode.description) do
+        phenocode.description
       else
-        {no_desc, %{}}
+        "No definition available."
+      end
+
+    ontology =
+      if not is_nil(phenocode.ontology) do
+        phenocode.ontology
+      else
+        %{}
       end
 
     # Get stats
@@ -56,7 +60,7 @@ defmodule RisteysWeb.PhenocodeController do
     |> assign(:stats, stats)
     |> assign(:distrib_year, distrib_year)
     |> assign(:distrib_age, distrib_age)
-    |> assign(:descriptions, descriptions)
+    |> assign(:description, description)
     |> render("show.html")
   end
 

@@ -4,7 +4,7 @@
 
 code_path := $(dir ${MAKEFILE_LIST})
 
-outputs := endpoint_efo.json input.hdf5 stats.hdf5 stats.json
+outputs := ontology.json input.hdf5 stats.hdf5 stats.json
 
 # Pseudo-targets
 .PHONY: all clean
@@ -15,7 +15,7 @@ clean:
 	-rm -f ${outputs}
 
 # Data file dependencies
-endpoint_efo.json: endpoint_xrefs.json efo.owl
+ontology.json: endpoint_doid_exact_names_ag2.tsv efo.owl
 	python ${code_path}get_efo.py .
 
 input.hdf5: FINNGEN_ENDPOINTS_longitudinal.txt FINNGEN_MINIMUM_DATA.txt

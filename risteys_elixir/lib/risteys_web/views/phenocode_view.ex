@@ -1,10 +1,6 @@
 defmodule RisteysWeb.PhenocodeView do
   use RisteysWeb, :view
 
-  defp sorted_descriptions(descriptions) do
-    Enum.sort(descriptions, fn a, b -> String.length(a) > String.length(b) end)
-  end
-
   defp table_data_sources(data_sources) do
     # Merge HD registry ICDs
     hd_icd10s = render_icds("ICD-10: ", data_sources.hd_icd10s)
@@ -85,7 +81,7 @@ defmodule RisteysWeb.PhenocodeView do
           ahref(doid, link)
         end
       },
-      "EFO_CLEAN" => %{
+      "EFO" => %{
         display: "GWAS catalog",
         url: fn efo ->
           link = "https://www.ebi.ac.uk/gwas/efotraits/EFO_" <> efo
@@ -111,26 +107,29 @@ defmodule RisteysWeb.PhenocodeView do
       }
     }
 
-    for {source, values} <- ontology, into: %{} do
-      values =
-        Enum.map(values, fn id ->
-          fun =
-            display
-            |> Map.fetch!(source)
-            |> Map.fetch!(:url)
+    table =
+      for {source, values} <- ontology, into: %{} do
+        values =
+          Enum.map(values, fn id ->
+            fun =
+              display
+              |> Map.fetch!(source)
+              |> Map.fetch!(:url)
 
-          fun.(id)
-        end)
+            fun.(id)
+          end)
 
-      source =
-        display
-        |> Map.fetch!(source)
-        |> Map.fetch!(:display)
+        source =
+          display
+          |> Map.fetch!(source)
+          |> Map.fetch!(:display)
 
-      values = Enum.intersperse(values, ", ")
+        values = Enum.intersperse(values, ", ")
 
-      {source, values}
-    end
+        {source, values}
+      end
+
+    Enum.reject(table, fn {_name, values} -> values == [] end)
   end
 
   defp distrib_values(distrib) do
@@ -166,10 +165,10 @@ defmodule RisteysWeb.PhenocodeView do
   defp percentage(number) do
     case number do
       "N/A" ->
-	"N/A"
+        "N/A"
 
       _ ->
-	number * 100
+        number * 100
     end
   end
 end

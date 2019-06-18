@@ -8,6 +8,7 @@
 # {
 #   "<endpoint-name>": {
 #     {
+#       "description": "some text description.",
 #       "<ontology-name>": [val1, val2, ...],
 #       ...
 #     }
@@ -27,52 +28,8 @@ Logger.configure(level: :info)
 filepath
 |> File.read!()
 |> Jason.decode!()
-|> Enum.each(fn {name, ontology} ->
-  # Merge SNOMEDCT and SNOMED_CT values
-  snomedct =
-    ontology
-    |> Map.get("SNOMEDCT_US_2018_03_01", [])
-    |> MapSet.new()
-
-  snomed_ct =
-    ontology
-    |> Map.get("SNOMED_CT_US_2018_03_01", [])
-    |> MapSet.new()
-
-  snomed =
-    MapSet.union(snomedct, snomed_ct)
-    |> Enum.to_list()
-
-  # Get the description from the ontology.
-  # This will be added at the phenocode level so it can be queried.
-  description =
-    Map.get(ontology, "DESCRIPTION", [])
-    |> Enum.reject(fn d -> d == "No definition available" end)
-    |> Enum.join(" ")
-
-  description = if description == "", do: nil, else: description
-
-  # Remove ontology types we don't need
-  keep_keys =
-    ontology
-    |> Map.keys()
-    |> MapSet.new()
-    |> MapSet.intersection(Phenocode.allowed_ontology_types())
-
-  current_keys =
-    ontology
-    |> Map.keys()
-    |> MapSet.new()
-
-  remove_keys = MapSet.difference(current_keys, keep_keys)
-  ontology = Map.drop(ontology, remove_keys)
-
-  # Add SNOMED into the ontology
-  ontology =
-    if "SNOMEDCT_US_2018_03_01" in current_keys or "SNOMED_CT_US_2018_03_01" in current_keys do
-      Logger.debug("got SNOMED data")
-      Map.put(ontology, "SNOMED", snomed)
-    end
+|> Enum.each(fn {name, data} ->
+  {description, ontology} = Map.pop(data, "description")
 
   # Update the phenocode with the ontology and description
   case Repo.get_by(Phenocode, name: name) do

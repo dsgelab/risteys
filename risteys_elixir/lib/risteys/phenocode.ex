@@ -124,9 +124,8 @@ defmodule Risteys.Phenocode do
 
   def allowed_ontology_types() do
     MapSet.new([
-      "DESCRIPTION",
       "DOID",
-      "EFO_CLEAN",
+      "EFO",
       "MESH",
       "SNOMED"
     ])
