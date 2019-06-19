@@ -46,7 +46,7 @@ search_channel.on("results", payload => {
 /*
  * PLOTS
  */
-makeHistogram("Event distribution by year",
+makeHistogram("Year distribution",
     "year",
     "number of events",
     true,
