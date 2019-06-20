@@ -26,7 +26,17 @@ defmodule RisteysWeb.SearchChannelTest do
                 url: _
               }
             ]
-          ]
+          ],
+	  [
+	    "Phenocode name",
+	    [
+	      %{
+		content: _,
+		phenocode: _,
+		url: _,
+	      }
+	    ]
+	  ]
         ]
       }
     }
