@@ -17,9 +17,9 @@ import "phoenix_html";
 //
 // Local files can be imported directly using relative paths, for example:
 //// import slider_component from "./MySlider.vue"
-import { accumulate, makeHistogram, putData } from "./plots.js";
+import {makeHistogram, toggleCumulative} from "./plots.js";
 import Search from './Search.vue';
-import {socket, search_channel } from "./socket";
+import {search_channel} from "./socket";
 
 
 var path = window.location.pathname;
@@ -50,16 +50,21 @@ makeHistogram("Year distribution",
     "year",
     "number of events",
     true,
-    true,
     "plot_events_by_year",
     events_by_year);
 makeHistogram("Age distribution",
     "age bracket",
     "number of events",
     false,
-    false,
     "plot_bin_by_age",
     bin_by_age);
+
+
+
+let button = document.getElementById("toggle_year_cumulative");
+button.addEventListener('click', event => {
+    toggleCumulative("plot_events_by_year", true);
+});
 
 
 /*

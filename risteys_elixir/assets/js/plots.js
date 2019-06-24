@@ -88,17 +88,17 @@ let removeNaNTails = (data) => {
     return data
 }
 
-let makeHistogram = (title, xlabel, ylabel, angleXAxis, cumulative, div_name, data) => {
+let makeHistogram = (title, xlabel, ylabel, angleXAxis, div_name, data) => {
     let nanTails = hasNaNTails(data);
     if (nanTails) {
         data = removeNaNTails(data);
     }
 
-    prepareHistogram(title, nanTails, xlabel, ylabel, angleXAxis, cumulative, div_name, data);
+    prepareHistogram(title, nanTails, xlabel, ylabel, angleXAxis, div_name, data);
     putData(angleXAxis, div_name, data);
 }
 
-let prepareHistogram = (title, nanTails, xlabel, ylabel, angleXAxis, cumulative, div_name, data) => {
+let prepareHistogram = (title, nanTails, xlabel, ylabel, angleXAxis, div_name, data) => {
     let selector = "#" + div_name;
     let id_bins = "#" + div_name + "_rects";
 
@@ -108,7 +108,7 @@ let prepareHistogram = (title, nanTails, xlabel, ylabel, angleXAxis, cumulative,
     }
 
     let svg = d3.select(selector)
-        .append("svg")
+        .insert("svg", ":first-child")  // add svg as first item of selected <div>
         .attr("width", width)
         .attr("height", plot_height)
         .attr("class", "font-sans");
@@ -159,19 +159,19 @@ let prepareHistogram = (title, nanTails, xlabel, ylabel, angleXAxis, cumulative,
         .attr("transform", `rotate(-90) translate(${- plot_height / 2}, ${label_margin})`)
         .style("text-anchor", "middle")
         .text(ylabel);
+};
 
-    // Toggle cumulative
-    if (cumulative) {
-        svg.attr("class", svg.attr("class") + " cumulative");
-        svg.on("click", () => {
-            isCumulative = !isCumulative;
-            let data = svg.select(id_bins).selectAll("rect").data();
-            if (isCumulative) {
-                putData(angleXAxis, div_name, accumulate(data));
-            } else {
-                putData(angleXAxis, div_name, decumulate(data));
-            }
-        });
+
+let toggleCumulative = (div_name, angleXAxis) => {
+    let selector = "#" + div_name;
+    let id_bins = "#" + div_name + "_rects";
+    let svg = d3.select(selector);
+    isCumulative = !isCumulative;
+    let data = svg.select(id_bins).selectAll("rect").data();
+    if (isCumulative) {
+        putData(angleXAxis, div_name, accumulate(data));
+    } else {
+        putData(angleXAxis, div_name, decumulate(data));
     }
 };
 
@@ -240,4 +240,4 @@ let putData = (angleXAxis, div_name, data) => {
         .attr("width", x.bandwidth());
 };
 
-export {makeHistogram};
+export {makeHistogram, toggleCumulative};
