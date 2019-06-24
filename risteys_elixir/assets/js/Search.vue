@@ -46,10 +46,10 @@
       <p>Examples:</p>
       <ul>
         <li>Search for <a href="#" @click="setSearch('angina')" class="font-mono">angina</a>,
-          <a href="#" @click="setSearch('L12')" class="font-mono">L12</a> or
+          <a href="#" @click="setSearch('N14')" class="font-mono">N14</a> or
           <a href="#" @click="setSearch('sore throat')" class="font-mono">sore throat</a>
         </li>
-        <li>Get statistics for the <a href="/phenocode/I9_CARDMPRI" class="font-mono">I9_CARDMPRI</a> phenocode</li>
+        <li>Get statistics for the <a href="/phenocode/L12_ATOPIC" class="font-mono">L12_ATOPIC</a> phenocode</li>
       </ul>
     </div>
   </div>
