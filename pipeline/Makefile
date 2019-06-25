@@ -15,7 +15,7 @@ clean:
 	-rm -f ${outputs}
 
 # Data file dependencies
-ontology.json: endpoint_doid_exact_names_ag2.tsv efo.owl
+ontology.json: endpoint_doid.tsv efo.owl
 	python ${code_path}get_efo.py .
 
 input.hdf5: FINNGEN_ENDPOINTS_longitudinal.txt FINNGEN_MINIMUM_DATA.txt

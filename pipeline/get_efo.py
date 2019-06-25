@@ -18,7 +18,7 @@ from pronto import Ontology
 from log import logger
 
 
-INPUT_ENDPOINT_FILE = "endpoint_doid_exact_names_ag2.tsv"
+INPUT_ENDPOINT_FILE = "endpoint_doid.tsv"
 INPUT_ONTOLOGY_FILE = "efo.owl"
 OUTPUT_FILE = "ontology.json"
 
