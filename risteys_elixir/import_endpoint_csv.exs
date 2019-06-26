@@ -147,8 +147,9 @@ filepath
 
   omit =
     case omit do
-      "" -> nil
+      "" -> false
       "1" -> true
+      "2" -> true
     end
 
   level =

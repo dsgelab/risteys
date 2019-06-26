@@ -51,7 +51,6 @@ defmodule RisteysWeb.PhenocodeView do
       {"Medicine purchases: ATC codes", data_sources.kela_atc},
       {"Cancer reg: TOPOGRAPHY codes", data_sources.canc_topo},
       {"Cancer reg: MORPHOLOGY codes", data_sources.canc_morph},
-      {"Do NOT RELEASE this endpoint ", data_sources.omit},
       {"SEX specific endpoint", data_sources.sex},
       {"CONDITIONS required", data_sources.conditions}
     ]
