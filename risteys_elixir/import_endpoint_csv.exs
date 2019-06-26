@@ -6,6 +6,7 @@
 # mix run import_endpoint_csv.exs <path-to-file>
 #
 # where <path-to-file> points to the Endpoint file (provided by Aki) in CSV format.
+# This file usually have the name "Endpoint_definitions_FINNGEN_ENDPOINTS_DFxxx.tsv"
 #
 # After that, this script can be used. It will:
 # 1. Get the list of ICD-9s and ICD-10s from the database.
@@ -100,7 +101,7 @@ end
 
 filepath
 |> File.stream!()
-|> CSV.decode!(headers: true)
+|> CSV.decode!(separator: ?\t, headers: true)
 |> Enum.each(fn %{
                   "TAGS" => tags,
                   "LEVEL" => level,
