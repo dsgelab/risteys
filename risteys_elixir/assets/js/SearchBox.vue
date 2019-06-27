@@ -1,10 +1,10 @@
 <template>
-	<div class="outshadow"
-		 role="combobox"
+	<div role="combobox"
 		 aria-label="search for anything on Risteys"
 		 aria-haspopup="grid"
 		 aria-owns="search-results"
-		 :aria-expanded="ariaExpanded() ? 'true' : 'false'">
+		 :aria-expanded="ariaExpanded() ? 'true' : 'false'"
+		 class="outshadow">
 		<input type="text"
 			   v-on:keydown.enter.prevent="acceptResult"
 			   v-on:keydown.down.prevent="nextResult"
@@ -16,11 +16,11 @@
 			   aria-autocomplete="list"
 			   aria-controls="search-results"
 			   :aria-activedescendant="getItemIdSelected()"
-			   placeholder="search for disease, ICD code, endpoint"
-			   class="inshadow text-xl font-mono p-3 w-full focus:mb-4"
+			   placeholder="click or type 's' to search for disease, ICD code, endpoint"
 			   autofocus="autofocus"
-			   id="home-search-input"
-			   autocomplete="off">
+			   id="search-input"
+			   autocomplete="off"
+			   class="font-mono">
 
 		<div id="search-results" class="results" role="grid">
 			<div class="category" v-for="(category, idx_category) in results">
@@ -41,6 +41,58 @@
 		</div>
 	</div>
 </template>
+
+<style>
+div[role="combobox"] {
+	color: black;
+	@apply text-left;
+}
+
+.outshadow:focus-within {
+    box-shadow: 0 0 30px rgba(0, 0, 0, 0.15);
+}
+
+div[role="combobox"] > input {
+    box-shadow: inset 0 0 15px rgba(0, 0, 0, 0.1);
+	@apply p-3;
+    @apply w-full;
+}
+
+div[role="combobox"] > input:focus {
+    box-shadow: none;
+}
+
+.results {
+	position: relative;
+	@apply bg-grey-lightest;
+}
+
+.results .category {
+	@apply p-2;
+}
+
+.results .category:nth-child(n + 2) .category-name {
+    @apply mt-4;
+}
+.results .item {
+    @apply py-2;
+    display: grid;
+    grid-template-columns: 250px auto;
+}
+.results .item > span:nth-child(1) {
+    @apply pr-2;
+    overflow-wrap: break-word;
+}
+.results .item.selected {
+    @apply bg-grey-light;
+}
+
+.results .category-name {
+    @apply uppercase;
+    @apply bg-grey-lighter;
+    @apply py-2;
+}
+</style>
 
 <script>
 import { search_channel } from "./socket";

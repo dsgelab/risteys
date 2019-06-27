@@ -19,7 +19,7 @@
 				<input
 					type="text"
 					placeholder="filter by name"
-					v-on:keyup="comp_table"  
+					v-on:keyup.stop="comp_table"
 					v-model="pheno_filter">
 			</td>
 			<td class="col-interactive" v-on:click="sort_table('hr')">{{ symbol_sort("hr") }} Hazard Ratio [95%&nbsp;CI]</td>
@@ -109,7 +109,6 @@ export default {
 	},
 	methods: {
 		comp_table() {
-			console.log("TTTTEST")
 			let show_before = this.toggle_before === "show";
 			let show_after = this.toggle_after === "show";
 			this.assoc_table = compute_table(

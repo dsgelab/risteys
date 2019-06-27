@@ -21,18 +21,32 @@ import {makeHistogram, toggleCumulative} from "./plots.js";
 import AssocPlot from './AssocPlot.vue';
 import AssocTable from './AssocTable.vue';
 import Search from './Search.vue';
+import SearchBox from './SearchBox.vue';
 import {search_channel} from "./socket";
 
 
 var path = window.location.pathname;
 
 
+
+/*
+ * UTILS
+ */
+
+let init_search_key = () => {
+    document.addEventListener('keyup', (event) => {
+        if (event.key === "s") {
+            let search_box = document.getElementById('search-input');
+            search_box.focus();
+        }
+    })
+};
+
 /*
  *  HOME PAGE
  */
-
-/* SEARCH */
 if (path === "/") {
+    /* SEARCH */
     var app_search_results = new Vue({
         el: '#app-search-results',
         template: '<Search v-bind:results="search_results"/>',
@@ -45,6 +59,15 @@ if (path === "/") {
     search_channel.on("results", payload => {
         app_search_results.search_results = payload.body.results;
     });
+
+    init_search_key();
+
+    // HACK(firefox): set the focus back to the home search box
+    let search_box = document.getElementById('search-input');
+    if (search_box !== null) {  // we may be on the home page wihtout the search box
+        search_box.focus();
+    }
+
 }
 
 
@@ -54,6 +77,22 @@ if (path === "/") {
 if (path.startsWith("/phenocode/")) {  // Load only on phenocode pages
 
     let phenocode = path.split("/")[2];
+
+    init_search_key();
+
+    /* SEARCH BOX */
+    var pheno_search_results = new Vue({
+        el: '#pheno-searchbox',
+        template: '<SearchBox v-bind:results="search_results"/>',
+        data: {
+            search_results: [],
+        },
+        components: { SearchBox }
+    });
+    search_channel.on("results", payload => {
+        pheno_search_results.search_results = payload.body.results;
+    });
+
 
     /* HISTOGRAMS */
     makeHistogram("Year distribution",
@@ -100,13 +139,4 @@ if (path.startsWith("/phenocode/")) {  // Load only on phenocode pages
         });
     });
 
-}
-
-/*
- * HACKS
- */
-// HACK(firefox): set the focus back to the home search box
-let search_box = document.getElementById('home-search-input')
-if (search_box !== null) {  // we may be on the home page wihtout the search box
-    search_box.focus();
 }

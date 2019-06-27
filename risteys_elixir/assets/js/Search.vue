@@ -1,7 +1,7 @@
 <template>
-  <div>
+  <div class="home-page">
     <SearchBox :results="results" :example="searchvalue"/>
-    <div id="home-examples">
+    <div id="home-interactive-examples">
       <p>Examples:</p>
       <ul>
         <li>Search for <a href="#" @click="setSearch('angina')" class="font-mono">angina</a>,
@@ -33,7 +33,7 @@ export default {
     },
     methods: {
       setSearch (value) {
-        var search_box = document.getElementById('home-search-input');
+        var search_box = document.getElementById('search-input');
         search_box.focus();
         this.searchvalue = value;
       }
