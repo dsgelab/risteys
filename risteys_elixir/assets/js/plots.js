@@ -55,43 +55,23 @@ let decumulate = (data) => {
     }
 }
 
-let hasNaNTails = (data) => {
-    let first = data[0]["value"];
-    let last = data[data.length - 1]["value"];
-    if (isNaN(first) || isNaN(last)) {
-        return true
-    } else {
+let hasNaN = (data) => {
+    let found = data.findIndex(item => isNaN(item.value));
+    if (found === -1) {
         return false
+    } else {
+        return true
     }
 }
 
-let removeNaNTails = (data) => {
-    // Remove NaN at the start
-    for (var ii = 0; ii < data.length; ii++) {
-        if (isNaN(data[ii]["value"])) {
-            data.shift()
-            ii--  // adjust the index since we removed an item
-        } else {
-            break
-        }
-    }
-
-    // Remove NaN at the end
-    for (var ii = data.length - 1; ii >= 0; ii--) {
-        if (isNaN(data[ii]["value"])) {
-            data.pop()
-        } else {
-            break
-        }
-    }
-
-    return data
+let removeNaN = (data) => {
+    return data.filter(item => ! isNaN(item.value))
 }
 
 let makeHistogram = (title, xlabel, ylabel, angleXAxis, div_name, data) => {
-    let nanTails = hasNaNTails(data);
+    let nanTails = hasNaN(data);
     if (nanTails) {
-        data = removeNaNTails(data);
+        data = removeNaN(data);
     }
 
     prepareHistogram(title, nanTails, xlabel, ylabel, angleXAxis, div_name, data);
@@ -144,7 +124,7 @@ let prepareHistogram = (title, nanTails, xlabel, ylabel, angleXAxis, div_name, d
             .attr("transform", `translate(${width / 2}, 30)`)
             .style("text-anchor", "middle")
             .style("font-size", "0.8rem")
-            .text("(bins with <5 individuals are not shown)");
+            .text("(bins with 1 to 5 individuals are not shown)");
     }
 
     // X axis label
