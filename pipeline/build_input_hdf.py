@@ -1,7 +1,9 @@
 """
 Takes the input CSV files and merge them into one HDF5 file.
 
-Also performs filtering of the endpoints that are too broad.
+Also filters out:
+- endpoints that are too broad
+- comorbidities
 
 Usage:
     python build_input_hdf.py <path-to-data-dir>
@@ -35,6 +37,7 @@ def prechecks(endpoints_path, longit_path, info_path, output_path):
     assert "NAME" in df.columns
     assert "OMIT" in df.columns
     assert "LEVEL" in df.columns
+    assert "TAGS" in df.columns
     
     # Check event file headers
     df = pd.read_csv(longit_path, dialect=excel_tab, nrows=0)
@@ -54,7 +57,7 @@ def main(endpoints_path, longit_path, info_path, output_path):
     """Clean up and merge all the input files into one HDF5 file"""
     prechecks(endpoints_path, longit_path, info_path, output_path)
 
-    endpoints = get_endpoints(endpoints_path)
+    endpoints = filter_out_endpoints(endpoints_path)
 
     data = parse_data(longit_path, info_path)
 
@@ -65,19 +68,31 @@ def main(endpoints_path, longit_path, info_path, output_path):
     data.to_hdf(output_path, "/data")
 
 
-def get_endpoints(filepath):
+def filter_out_endpoints(filepath):
     """Get endpoints that are not too broad"""
     df = pd.read_csv(
         filepath,
         dialect=excel_tab,
-        usecols=["NAME", "OMIT", "LEVEL"],
+        usecols=["NAME", "OMIT", "LEVEL", "TAGS"],
         skiprows=[1]  # this row contains the comment info on the file version
     )
     mask_level = df["LEVEL"] != '1'
     mask_omit = df["OMIT"].isna()
-    df = df[mask_level & mask_omit]
-    df = df.drop(["OMIT", "LEVEL"], axis="columns").rename({"NAME": "ENDPOINT"}, axis="columns")
+
+    comorb = df["TAGS"].apply(is_comorb)
+    mask_comorb = ~comorb
+
+    df = df[mask_level & mask_omit & mask_comorb]
+    df = df.drop(["OMIT", "LEVEL", "TAGS"], axis="columns").rename({"NAME": "ENDPOINT"}, axis="columns")
     return df
+
+
+def is_comorb(tags):
+    """Return True if the endpoint is a comorbidity, False otherwise."""
+    comorb_suffix = "_CM"
+    tags = tags.split(",")
+    tags = map(lambda tag: tag.endswith(comorb_suffix), tags)
+    return all(tags)
 
 
 def parse_data(longit_file, mindata_file):
