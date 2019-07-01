@@ -7,6 +7,21 @@ Also filters out:
 
 Usage:
     python build_input_hdf.py <path-to-data-dir>
+
+Input files:
+- FINNGEN_ENDPOINTS_longitudinal.txt
+  Each row is an event with FinnGen ID, Endpoint and time information.
+  Source: FinnGen data
+- FINNGEN_MINIMUM_DATA.txt
+  Each row is an individual in FinnGen with some information.
+  Source: FinnGen data
+- Endpoint_definitions_FINNGEN_ENDPOINTS.tsv
+  Each row is an endpoint definition.
+  Source: PheWeb
+- COV_PHENO.txt
+  Each row is an individual in FinnGen, with FinnGen ID. Only these
+  individuals will be used for data processing in PheWeb.
+  Source: FinnGen data
 """
 from csv import excel_tab
 from pathlib import Path
@@ -18,13 +33,14 @@ import pandas as pd
 from log import logger
 
 
+INPUT_ENDPOINTS = "Endpoint_definitions_FINNGEN_ENDPOINTS.tsv"
 INPUT_LONGIT = "FINNGEN_ENDPOINTS_longitudinal.txt"
 INPUT_INFO = "FINNGEN_MINIMUM_DATA.txt"
-INPUT_ENDPOINTS = "Endpoint_definitions_FINNGEN_ENDPOINTS.tsv"
+INPUT_SAMPLES = "COV_PHENO.txt"
 OUTPUT_NAME = "input.hdf5"
 
 
-def prechecks(endpoints_path, longit_path, info_path, output_path):
+def prechecks(endpoints_path, longit_path, info_path, samples_path, output_path):
     """Perform checks before running to fail earlier rather than later"""
     logger.info("Performing pre-checks")
     assert endpoints_path.exists()
@@ -38,7 +54,7 @@ def prechecks(endpoints_path, longit_path, info_path, output_path):
     assert "OMIT" in df.columns
     assert "LEVEL" in df.columns
     assert "TAGS" in df.columns
-    
+
     # Check event file headers
     df = pd.read_csv(longit_path, dialect=excel_tab, nrows=0)
     cols = list(df.columns)
@@ -52,20 +68,37 @@ def prechecks(endpoints_path, longit_path, info_path, output_path):
     expected_sexs = set(["female", "male"])
     assert sexs == expected_sexs
 
+    # Check samples file headers
+    df = pd.read_csv(samples_path, dialect=excel_tab, nrows=0)
+    assert "FINNGENID" in df.columns
 
-def main(endpoints_path, longit_path, info_path, output_path):
+
+def main(endpoints_path, longit_path, info_path, samples_path, output_path):
     """Clean up and merge all the input files into one HDF5 file"""
-    prechecks(endpoints_path, longit_path, info_path, output_path)
-
-    endpoints = filter_out_endpoints(endpoints_path)
+    prechecks(endpoints_path, longit_path, info_path, samples_path, output_path)
 
     data = parse_data(longit_path, info_path)
 
-    logger.info("Filtering out the endpoints that are too broad")
+    logger.info("Filtering out the samples.")
+    data = filter_out_samples(data, samples_path)
+
+    logger.info("Filtering out the endpoints.")
+    endpoints = filter_out_endpoints(endpoints_path)
     data = data.merge(endpoints, on="ENDPOINT")
 
     logger.info(f"Writing merged and filtered input data to HDF5 file {output_path}")
     data.to_hdf(output_path, "/data")
+
+
+def filter_out_samples(data, samples_path):
+    """Filter out samples, select only the one included in PheWeb."""
+    (nbefore, _) = data.shape
+    samples = pd.read_csv(samples_path, dialect=excel_tab, usecols=["FINNGENID"])
+    data = data.merge(samples, on="FINNGENID")
+    (nafter, _) = data.shape
+
+    logger.debug(f"Events reduced from {nbefore} to {nafter} (𝚫 = {nbefore - nafter}, {(nbefore - nafter) / nbefore * 100:.1f} %)")
+    return data
 
 
 def filter_out_endpoints(filepath):
@@ -140,9 +173,11 @@ def parse_data(longit_file, mindata_file):
 
 if __name__ == '__main__':
     DATA_DIR = Path(argv[1])
-    INPUT_LONGIT_PATH = DATA_DIR / INPUT_LONGIT
-    INPUT_INFO_PATH = DATA_DIR / INPUT_INFO
-    INPUT_ENDPOINTS_PATH = DATA_DIR / INPUT_ENDPOINTS
-    OUTPUT_PATH = DATA_DIR / OUTPUT_NAME
 
-    main(INPUT_ENDPOINTS_PATH, INPUT_LONGIT_PATH, INPUT_INFO_PATH, OUTPUT_PATH)
+    main(
+        DATA_DIR / INPUT_ENDPOINTS,
+        DATA_DIR / INPUT_LONGIT,
+        DATA_DIR / INPUT_INFO,
+        DATA_DIR / INPUT_SAMPLES,
+        DATA_DIR / OUTPUT_NAME,
+    )
