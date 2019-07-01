@@ -1,6 +1,6 @@
 <template>
   <div>
-    <div class="outshadow"
+    <div class="outshadow max-w-lg m-auto"
          role="combobox"
          aria-label="search for anything on Risteys"
          aria-haspopup="grid"
@@ -42,12 +42,12 @@
        </div>
     </div>
 
-    <div id="home-examples">
+    <div class="home-examples">
       <p>Examples:</p>
       <ul>
         <li>Search for <a href="#" @click="setSearch('angina')" class="font-mono">angina</a>,
           <a href="#" @click="setSearch('N14')" class="font-mono">N14</a> or
-          <a href="#" @click="setSearch('sore throat')" class="font-mono">sore throat</a>
+          <a href="#" @click="setSearch('dry')" class="font-mono">dry</a>
         </li>
         <li>Get statistics for the <a href="/phenocode/L12_ATOPIC" class="font-mono">L12_ATOPIC</a> phenocode</li>
       </ul>
