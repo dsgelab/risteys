@@ -352,10 +352,10 @@ def compute_age_distribution(df):
     """Compute the age distribution of first event for each endpoint.
 
     Pre-defined age brackets:
-    0-10, 11-20, 21-30, 31-40, 41-50, 51-60, 61-70, 71-80, 81-90, 91+
+    0-9, 10-19, 20-29, 30-39, 40-49, 50-59, 60-69, 70-79, 80-89, 90+
     """
     logger.info("Computing age distributions")
-    brackets = [0, 11, 21, 31, 41, 51, 61, 71, 81, 91, np.inf]
+    brackets = [0, 10, 20, 30, 40, 50, 60, 70, 80, 90, np.inf]
     return compute_distrib(df, "EVENT_AGE", brackets)
 
 
