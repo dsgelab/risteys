@@ -8,6 +8,7 @@ defmodule RisteysWeb.PhenocodeController do
       nil ->
         conn
         |> assign(:page_title, "404 Not Found: #{name}")
+	|> assign(:name, name)
         |> put_status(:not_found)
         |> put_view(RisteysWeb.ErrorView)
         |> render("404.html")
