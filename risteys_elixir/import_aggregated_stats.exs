@@ -1,4 +1,5 @@
-# Import pre-processed / aggregated data in the database
+# Import pre-processed / aggregated data in the database.
+# Clean-up endpoints without statistics afterwards.
 #
 # Usage:
 #     mix run import_aggregated_data.exs <json-file-aggregegated-stats>
@@ -25,6 +26,7 @@
 # }
 
 alias Risteys.{Repo, Phenocode, StatsSex}
+import Ecto.Query
 require Logger
 
 Logger.configure(level: :info)
@@ -209,3 +211,16 @@ stats
       end
   end
 end)
+
+###
+# Clean-up endpoints without stats
+###
+keep = Repo.all(from p in Phenocode, right_join: s in StatsSex, select: s.phenocode_id)
+all = Repo.all(from p in Phenocode, select: p.id)
+
+delete =
+  MapSet.difference(MapSet.new(all), MapSet.new(keep))
+  |> MapSet.to_list()
+
+Logger.info("Cleaning-up #{length(delete)} phenocodes that don't have any statistics.")
+Repo.delete_all(from p in Phenocode, where: p.id in ^delete)
