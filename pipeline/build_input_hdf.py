@@ -86,6 +86,9 @@ def main(endpoints_path, longit_path, info_path, samples_path, output_path):
     endpoints = filter_out_endpoints(endpoints_path)
     data = data.merge(endpoints, on="ENDPOINT")
 
+    logger.info("Sorting the events by date for each individual.")
+    data = sort_events(data)
+
     logger.info(f"Writing merged and filtered input data to HDF5 file {output_path}")
     data.to_hdf(output_path, "/data")
 
@@ -169,6 +172,11 @@ def parse_data(longit_file, mindata_file):
     df = df.merge(dfsex, on="FINNGENID")
 
     return df
+
+
+def sort_events(data):
+    """Sort data by event date, grouping them by FinnGen ID"""
+    return data.sort_values(by=["FINNGENID", "EVENT_AGE"])
 
 
 if __name__ == '__main__':

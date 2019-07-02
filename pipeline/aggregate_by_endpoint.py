@@ -268,12 +268,11 @@ def compute_reoccurence(df, outdata):
 
 
 def any_reoccurence(events, window):
-    """Check if any two events happened within a given time window
+    """Check if any two events happened within a given time window.
 
-    NOTE: Performs a sort on the values since we don't assume they are already sorted.
+    NOTE: We assume that events are already sorted, so we don't
+    perform a sort.
     """
-    events = events.sort_values()
-
     # Diff between a value and the next one
     shifted = events.shift(-1)
     diff = events - shifted
