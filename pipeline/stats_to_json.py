@@ -11,6 +11,7 @@ from pathlib import Path
 from sys import argv
 
 import pandas as pd
+import numpy as np
 
 from log import logger
 
@@ -101,6 +102,10 @@ def dict_distrib(distrib, new_labels):
        "endpoint 2": ...}
     """
     res = defaultdict(dict)
+
+    # Some JSON implementations don't support NaN, so this will use null
+    distrib = distrib.replace({np.nan: None})
+
     for (endpoint, series) in distrib.groupby("ENDPOINT"):
         table = (
             series
