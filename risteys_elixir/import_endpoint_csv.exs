@@ -102,6 +102,7 @@ end
 filepath
 |> File.stream!()
 |> CSV.decode!(separator: ?\t, headers: true)
+|> Enum.drop(1)  # Omit first line of data: it is a comment line
 |> Enum.each(fn %{
                   "TAGS" => tags,
                   "LEVEL" => level,
