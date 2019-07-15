@@ -4,16 +4,6 @@ Aggregate data by endpoint on a couple of metrics, for female, male and all sex.
 Usage:
     python aggregate_by_endpoint.py <path-to-data-dir>
 
-For each endpoint we want the metrics (split by sex: all/female/male):
-- number of individuals --> COUNT
-- un-adjusted prevalence --> TOTAL number of individuals
-- mean age at first-event --> AGE LIST
-- median number of events by individual --> MAP {indiv -> count}
-- re-occurence within 6 months --> MAP {indiv -> [LIST AGEs]}
-- case fatality at 5 years --> MAP {indiv -> {first event: AGE, death: AGE}}
-- age distribution --> AGE LIST
-- year distribution --> YEAR LIST
-
 Output:
 - stats.df5: HDF5 file with statistics and distributions for each endpoint
 """
@@ -270,8 +260,8 @@ def compute_reoccurence(df, outdata):
 def any_reoccurence(events, window):
     """Check if any two events happened within a given time window.
 
-    NOTE: We assume that events are already sorted, so we don't
-    perform a sort.
+    NOTE: We assume that events are already sorted by
+    [FINNGENID, EVENT_AGE], so we don't perform a sort.
     """
     # Diff between a value and the next one
     shifted = events.shift(-1)

@@ -1,9 +1,11 @@
 """
 Takes the input CSV files and merge them into one HDF5 file.
 
-Also filters out:
-- endpoints that are too broad
-- comorbidities
+Steps:
+- filter out endpoints that are too broad
+- filter out endpoints that are comorbidities
+- for each individual, sort their events by date
+- merge events that are within a 30-day time window
 
 Usage:
     python build_input_hdf.py <path-to-data-dir>
@@ -84,51 +86,19 @@ def main(endpoints_path, longit_path, info_path, samples_path, output_path):
 
     logger.info("Filtering out the endpoints.")
     endpoints = filter_out_endpoints(endpoints_path)
+    (nbefore, _) = data.shape
     data = data.merge(endpoints, on="ENDPOINT")
+    (nafter, _) = data.shape
+    log_event_reduction(nbefore, nafter)
 
     logger.info("Sorting the events by date for each individual.")
     data = sort_events(data)
 
+    logger.info("Merging events with 30-day time window")
+    data = merge_events(data)
+
     logger.info(f"Writing merged and filtered input data to HDF5 file {output_path}")
     data.to_hdf(output_path, "/data")
-
-
-def filter_out_samples(data, samples_path):
-    """Filter out samples, select only the one included in PheWeb."""
-    (nbefore, _) = data.shape
-    samples = pd.read_csv(samples_path, dialect=excel_tab, usecols=["FINNGENID"])
-    data = data.merge(samples, on="FINNGENID")
-    (nafter, _) = data.shape
-
-    logger.debug(f"Events reduced from {nbefore} to {nafter} (𝚫 = {nbefore - nafter}, {(nbefore - nafter) / nbefore * 100:.1f} %)")
-    return data
-
-
-def filter_out_endpoints(filepath):
-    """Get endpoints that are not too broad"""
-    df = pd.read_csv(
-        filepath,
-        dialect=excel_tab,
-        usecols=["NAME", "OMIT", "LEVEL", "TAGS"],
-        skiprows=[1]  # this row contains the comment info on the file version
-    )
-    mask_level = df["LEVEL"] != '1'
-    mask_omit = df["OMIT"].isna()
-
-    comorb = df["TAGS"].apply(is_comorb)
-    mask_comorb = ~comorb
-
-    df = df[mask_level & mask_omit & mask_comorb]
-    df = df.drop(["OMIT", "LEVEL", "TAGS"], axis="columns").rename({"NAME": "ENDPOINT"}, axis="columns")
-    return df
-
-
-def is_comorb(tags):
-    """Return True if the endpoint is a comorbidity, False otherwise."""
-    comorb_suffix = "_CM"
-    tags = tags.split(",")
-    tags = map(lambda tag: tag.endswith(comorb_suffix), tags)
-    return all(tags)
 
 
 def parse_data(longit_file, mindata_file):
@@ -174,9 +144,73 @@ def parse_data(longit_file, mindata_file):
     return df
 
 
+def filter_out_samples(data, samples_path):
+    """Filter out samples, select only the one included in PheWeb."""
+    (nbefore, _) = data.shape
+    samples = pd.read_csv(samples_path, dialect=excel_tab, usecols=["FINNGENID"])
+    data = data.merge(samples, on="FINNGENID")
+    (nafter, _) = data.shape
+
+    log_event_reduction(nbefore, nafter)
+    return data
+
+
+def filter_out_endpoints(filepath):
+    """Get endpoints that are not too broad"""
+    df = pd.read_csv(
+        filepath,
+        dialect=excel_tab,
+        usecols=["NAME", "OMIT", "LEVEL", "TAGS"],
+        skiprows=[1]  # this row contains the comment info on the file version
+    )
+    mask_level = df["LEVEL"] != '1'
+    mask_omit = df["OMIT"].isna()
+
+    comorb = df["TAGS"].apply(is_comorb)
+    mask_comorb = ~comorb
+
+    df = df[mask_level & mask_omit & mask_comorb]
+    df = df.drop(["OMIT", "LEVEL", "TAGS"], axis="columns").rename({"NAME": "ENDPOINT"}, axis="columns")
+
+    return df
+
+
+def log_event_reduction(nbefore, nafter):
+    logger.debug(f"Events reduced from {nbefore} to {nafter} (𝚫 = {nbefore - nafter}, {(nbefore - nafter) / nbefore * 100:.1f} %)")
+
+
+def is_comorb(tags):
+    """Return True if the endpoint is a comorbidity, False otherwise."""
+    comorb_suffix = "_CM"
+    tags = tags.split(",")
+    tags = map(lambda tag: tag.endswith(comorb_suffix), tags)
+    return all(tags)
+
+
 def sort_events(data):
     """Sort data by event date, grouping them by FinnGen ID"""
     return data.sort_values(by=["FINNGENID", "EVENT_AGE"])
+
+
+def merge_events(df):
+    """Merge events of same individual and endpoint if less than 30 days apart.
+
+    NOTE: assumes rows are sorted by EVENT_AGE for each individual,
+    will lead to wrong result otherwise.
+    """
+    window = 30/365.25
+    res = df.groupby(
+        ["FINNGENID", "ENDPOINT"],
+        sort=False)  # speed-up by turning off post-sorting
+    res = res.apply(lambda x: _group_merge_window(x, window))
+    res = res.reset_index(drop=True)
+    return res
+
+
+def _group_merge_window(df, window):
+    """Group events together if they are less or equal to 'window' apart"""
+    exclude = df.EVENT_AGE <= (df.EVENT_AGE + window).shift()
+    return df[~ exclude]
 
 
 if __name__ == '__main__':
