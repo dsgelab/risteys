@@ -4,7 +4,7 @@
 
 code_path := $(dir ${MAKEFILE_LIST})
 
-outputs := ontology.json input.hdf5 stats.hdf5 stats.json
+outputs := ontology.json input.hdf5 stats.hdf5 stats.json filtered_pairs.csv
 
 # Pseudo-targets
 .PHONY: all clean
@@ -26,3 +26,6 @@ stats.hdf5: input.hdf5
 
 stats.json: stats.hdf5
 	python ${code_path}stats_to_json.py .
+
+filtered_pairs.csv: input.hdf5 demo_endpoints.tsv
+	python ${code_path}surv_endpoints.py .
