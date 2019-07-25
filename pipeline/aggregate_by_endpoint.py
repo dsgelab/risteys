@@ -225,48 +225,38 @@ def compute_reoccurence(df, outdata):
     logger.info("Computing re-occurence within 6 months")
     window = 0.5  # in years, we assume the EVENT_AGE column is in years also
 
-    # sex: all
-    outdata["reoccurence_all"] = (
-        df.groupby(["ENDPOINT", "FINNGENID"])
-        ["EVENT_AGE"]
-        .agg(lambda ages: any_reoccurence(ages, window))
-        .groupby("ENDPOINT")
-        # For each endpoint, count the number of individuals with reoccurence / total individuals
-        .agg(lambda g: g[g == True].count() / g.count())
-    )
-
-    # sex: female
-    outdata["reoccurence_female"] = (
-        df[df["female"] == 1]
-        .groupby(["ENDPOINT", "FINNGENID"])
-        ["EVENT_AGE"]
-        .agg(lambda ages: any_reoccurence(ages, window))
-        .groupby("ENDPOINT")
-        .agg(lambda g: g[g == True].count() / g.count())
-    )
-
-    # sex: male
-    outdata["reoccurence_male"] = (
-        df[df["male"] == 1]
-        .groupby(["ENDPOINT", "FINNGENID"])
-        ["EVENT_AGE"].agg(lambda ages: any_reoccurence(ages, window))
-        .groupby("ENDPOINT")
-        .agg(lambda g: g[g == True].count() / g.count())
-    )
+    # Sex: all
+    outdata["reoccurence_all"] = _recurrence_sex(df, window)
+    # Sex: female
+    outdata["reoccurence_female"] = _recurrence_sex(df[df.female == 1], window)
+    # Sex: male
+    outdata["reoccurence_male"] = _recurrence_sex(df[df.male == 1], window)
 
     return outdata
 
 
-def any_reoccurence(events, window):
-    """Check if any two events happened within a given time window.
+def _recurrence_sex(df, window):
+    """Given a whole data frame, compute the recurrence rate for each endpoint.
+
+    This function doesn't use a groupby() to find recurrent events,
+    which is faster.  Instead it relies on the given data frame being
+    already sorted.
 
     NOTE: We assume that for an endpoint, the events of an individual
-    are already sorted by EVENT_AGE, so we don't perform an additional
-    sort here.
+    are already sorted by EVENT_AGE, otherwise results will be wrong.
     """
-    # Diff between a value and the next one
-    reoccurence = events.diff() <= window
-    return reoccurence.any()
+    shifted = df.shift()
+    diff_age = df.EVENT_AGE - shifted.EVENT_AGE
+    recurrence_rows = (
+        (df.FINNGENID == shifted.FINNGENID)
+        & (df.ENDPOINT == shifted.ENDPOINT)
+        & (diff_age <= window)
+    )
+
+    count_recurrence = df[recurrence_rows].groupby("ENDPOINT")["FINNGENID"].nunique()
+    count_all = df.groupby("ENDPOINT")["FINNGENID"].nunique()
+
+    return count_recurrence / count_all
 
 
 def compute_case_fatality(df, outdata):
