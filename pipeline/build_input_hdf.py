@@ -81,7 +81,6 @@ def main(endpoints_path, longit_path, info_path, samples_path, output_path):
 
     data = parse_data(longit_path, info_path)
 
-    logger.info("Filtering out the samples.")
     data = filter_out_samples(data, samples_path)
 
     logger.info("Filtering out the endpoints.")
@@ -93,7 +92,6 @@ def main(endpoints_path, longit_path, info_path, samples_path, output_path):
 
     data = sort_events(data)
 
-    logger.info("Merging events with 30-day time window")
     data = merge_events(data)
 
     logger.info(f"Writing merged and filtered input data to HDF5 file {output_path}")
@@ -145,6 +143,7 @@ def parse_data(longit_file, mindata_file):
 
 def filter_out_samples(data, samples_path):
     """Filter out samples, select only the one included in PheWeb."""
+    logger.info("Filtering out the samples.")
     (nbefore, _) = data.shape
     samples = pd.read_csv(samples_path, dialect=excel_tab, usecols=["FINNGENID"])
     data = data.merge(samples, on="FINNGENID")
@@ -198,6 +197,7 @@ def merge_events(df):
     NOTE: assumes rows are sorted by FINNGENID, ENDPOINT, EVENT_AGE
     will lead to wrong result otherwise.
     """
+    logger.info("Merging events with 30-day time window")
     window = 30/365.25
 
     shifted = df.shift()
