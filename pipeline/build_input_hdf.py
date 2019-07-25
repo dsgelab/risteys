@@ -91,7 +91,6 @@ def main(endpoints_path, longit_path, info_path, samples_path, output_path):
     (nafter, _) = data.shape
     log_event_reduction(nbefore, nafter)
 
-    logger.info("Sorting the events by date for each individual.")
     data = sort_events(data)
 
     logger.info("Merging events with 30-day time window")
@@ -189,28 +188,31 @@ def is_comorb(tags):
 
 def sort_events(data):
     """Sort data by event date, grouping them by FinnGen ID"""
-    return data.sort_values(by=["FINNGENID", "EVENT_AGE"])
+    logger.info("Sorting the events by FinnGenID > Endpoint > Event age")
+    return data.sort_values(by=["FINNGENID", "ENDPOINT", "EVENT_AGE"])
 
 
 def merge_events(df):
     """Merge events of same individual and endpoint if less than 30 days apart.
 
-    NOTE: assumes rows are sorted by EVENT_AGE for each individual,
+    NOTE: assumes rows are sorted by FINNGENID, ENDPOINT, EVENT_AGE
     will lead to wrong result otherwise.
     """
     window = 30/365.25
-    res = df.groupby(
-        ["FINNGENID", "ENDPOINT"],
-        sort=False)  # speed-up by turning off post-sorting
-    res = res.apply(lambda x: _group_merge_window(x, window))
-    res = res.reset_index(drop=True)
-    return res
 
+    shifted = df.shift()
+    shifted["end"] = shifted.EVENT_AGE + window
 
-def _group_merge_window(df, window):
-    """Group events together if they are less than or equal to 'window' apart"""
-    exclude = df.EVENT_AGE <= (df.EVENT_AGE + window).shift()
-    return df[~ exclude]
+    # Compare only same individual & same endpoint, then check if time
+    # difference between 2 successive events is less than the time
+    # window.
+    skip = (
+        (df.FINNGENID == shifted.FINNGENID)
+        & (df.ENDPOINT == shifted.ENDPOINT)
+        & (df.EVENT_AGE <= shifted.end)
+    )
+    df_merged = df[~ skip]
+    return df_merged
 
 
 if __name__ == '__main__':
