@@ -208,7 +208,7 @@ def merge_events(df):
 
 
 def _group_merge_window(df, window):
-    """Group events together if they are less or equal to 'window' apart"""
+    """Group events together if they are less than or equal to 'window' apart"""
     exclude = df.EVENT_AGE <= (df.EVENT_AGE + window).shift()
     return df[~ exclude]
 
