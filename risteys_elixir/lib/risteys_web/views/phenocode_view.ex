@@ -166,6 +166,9 @@ defmodule RisteysWeb.PhenocodeView do
       "N/A" ->
         "N/A"
 
+      nil ->
+	"N/A"
+
       _ ->
         number * 100
     end
