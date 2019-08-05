@@ -27,5 +27,5 @@ stats.hdf5: input.hdf5
 stats.json: stats.hdf5
 	python ${code_path}stats_to_json.py .
 
-filtered_pairs.csv: input.hdf5 demo_endpoints.tsv
+filtered_pairs.csv: input.hdf5
 	python ${code_path}surv_endpoints.py .
