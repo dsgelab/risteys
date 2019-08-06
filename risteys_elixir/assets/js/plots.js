@@ -90,7 +90,8 @@ let prepareHistogram = (title, nanTails, xlabel, ylabel, angleXAxis, div_name, d
     let svg = d3.select(selector)
         .insert("svg", ":first-child")  // add svg as first item of selected <div>
         .attr("width", width)
-        .attr("height", plot_height)
+        .attr("height", 310)
+        .attr("viewBox", "0 0 600 330")
         .attr("class", "font-sans");
 
     let tooltip = d3.select(selector)
