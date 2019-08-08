@@ -138,7 +138,8 @@ def filter_prior_later(pairs, matrix):
         else:
             logger.debug(f"{nindivs} < {CROSS_THRESHOLD} for pair {pair}")
 
-        print(f"done pair {idx_pair + 1}/{npairs} : {(idx_pair + 1) / npairs * 100:.2f}%", end="\r")
+        if (idx_pair + 1) % 1000 == 0:
+            print(f"done pair {idx_pair + 1}/{npairs} : {(idx_pair + 1) / npairs * 100:.2f}%", end="\r")
     print()  # keep the last "done pair …" message
 
     return filtered_pairs
@@ -165,7 +166,8 @@ def filter_crosstab(filtered_pairs, matrix):
         else:
             logger.debug(f"Rejected pair {pair}, cross-table: {ftable}")
 
-        print(f"done pair {idx_pair + 1}/{npairs} : {(idx_pair + 1) / npairs * 100:.2f}%", end="\r")
+        if (idx_pair + 1) % 1000 == 0:
+            print(f"done pair {idx_pair + 1}/{npairs} : {(idx_pair + 1) / npairs * 100:.2f}%", end="\r")
     print()  # keep the last "done pair …" message
 
     return res_pairs

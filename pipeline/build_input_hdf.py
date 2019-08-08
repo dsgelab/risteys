@@ -2,6 +2,7 @@
 Takes the input CSV files and merge them into one HDF5 file.
 
 Steps:
+- filter out individuals according to PheWeb selected ones
 - filter out endpoints that are too broad
 - filter out endpoints that are comorbidities
 - for each individual, sort their events by date

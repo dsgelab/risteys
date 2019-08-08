@@ -47,8 +47,11 @@ def main(data_directory):
     endpoint_efos = map_endpoint_efos(endpoint_doids, efo_doids)
     endpoint_refs = get_endpoint_refs(ontology, endpoint_efos)
 
+    logger.info(f"Writing endpoint refs to file {output_path}")
     with open(output_path, "x") as f:
         json.dump(endpoint_refs, f)
+
+    logger.info("Done.")
 
 
 def map_endpoint_doids(endpoints_path):
