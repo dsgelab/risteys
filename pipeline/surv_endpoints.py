@@ -79,8 +79,9 @@ def load_data(events_path):
     # Read the longitudinal file
     df = pd.read_hdf(events_path)
 
-    # Keep only events after 1998, when we have registry data
-    df = df[df.EVENT_YEAR.gt(1997)]
+    # Keep only events in [1998, 2018[, the period we have all
+    # registry data.
+    df = df[df.EVENT_YEAR.gt(1997) & df.EVENT_YEAR.lt(2018)]
 
     return df
 
