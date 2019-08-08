@@ -106,13 +106,18 @@ def build_pairs(matrix):
     prior_endpoints = endpoint_counts[endpoint_counts >= CROSS_THRESHOLD].index
     later_endpoints = endpoint_counts[endpoint_counts >= LATER_THRESHOLD].index
 
-    # Build all possible pairs of endpoints, filter them out after
+    # Build all possible pairs of endpoints, filter them out in a later stage
     pairs = []
     for prior in prior_endpoints:
         for later in later_endpoints:
             if prior != later:
                 pairs.append((prior, later))
-                pairs.append((later, prior))
+
+    # Making sure there is no duplicates
+    df = pd.DataFrame(pairs, columns=["prior", "later"])
+    size_orig, _ = df.shape
+    size_dedup, _ = df.drop_duplicates(keep=False).shape
+    assert size_orig == size_dedup, f"Duplicates in the list of pairs ({size_orig} != {size_dedup} pairs)"
 
     return pairs
 
