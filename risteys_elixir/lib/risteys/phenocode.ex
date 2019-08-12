@@ -6,6 +6,7 @@ defmodule Risteys.Phenocode do
     field :name, :string
     field :longname, :string
     field :tags, :string
+    field :category, :string
     field :level, :string
     field :omit, :boolean
     field :sex, :integer
@@ -55,6 +56,7 @@ defmodule Risteys.Phenocode do
       :name,
       :longname,
       :tags,
+      :category,
       :level,
       :omit,
       :sex,

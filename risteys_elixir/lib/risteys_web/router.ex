@@ -46,7 +46,16 @@ defmodule RisteysWeb.Router do
   end
 
   # Other scopes may use custom stacks.
-  # scope "/api", RisteysWeb do
-  #   pipe_through :api
-  # end
+  pipeline :api_authz do
+    plug :api
+    plug :fetch_session
+    plug :protect_from_forgery  # Needed since we use a session, see https://hexdocs.pm/plug/1.8.1/Plug.CSRFProtection.html
+    plug :authz_user
+  end
+
+  scope "/api", RisteysWeb do
+    pipe_through :api_authz
+
+    get "/phenocode/:name/assocs.json", PhenocodeController, :get_assocs
+  end
 end

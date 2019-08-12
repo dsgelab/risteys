@@ -1,6 +1,6 @@
 defmodule RisteysWeb.PhenocodeController do
   use RisteysWeb, :controller
-  alias Risteys.{Repo, Icd9, Icd10, Phenocode, PhenocodeIcd10, PhenocodeIcd9, StatsSex}
+  alias Risteys.{Repo, CoxHR, Icd9, Icd10, Phenocode, PhenocodeIcd10, PhenocodeIcd9, StatsSex}
   import Ecto.Query
 
   def show(conn, %{"name" => name}) do
@@ -8,7 +8,7 @@ defmodule RisteysWeb.PhenocodeController do
       nil ->
         conn
         |> assign(:page_title, "404 Not Found: #{name}")
-	|> assign(:name, name)
+        |> assign(:name, name)
         |> put_status(:not_found)
         |> put_view(RisteysWeb.ErrorView)
         |> render("404.html")
@@ -16,6 +16,16 @@ defmodule RisteysWeb.PhenocodeController do
       phenocode ->
         show_phenocode(conn, phenocode)
     end
+  end
+
+  def get_assocs(conn, %{"name" => name}) do
+    phenocode = Repo.get_by(Phenocode, name: name)
+    assocs = data_assocs(phenocode)
+
+    conn
+    |> assign(:phenocode, phenocode)
+    |> assign(:assocs, assocs)
+    |> render("assocs.json")
   end
 
   defp show_phenocode(conn, phenocode) do
@@ -62,6 +72,7 @@ defmodule RisteysWeb.PhenocodeController do
     |> assign(:distrib_year, distrib_year)
     |> assign(:distrib_age, distrib_age)
     |> assign(:description, description)
+    |> assign(:data_assocs, data_assocs(phenocode))
     |> render("show.html")
   end
 
@@ -166,5 +177,31 @@ defmodule RisteysWeb.PhenocodeController do
       female: stats_female,
       male: stats_male
     }
+  end
+
+  defp data_assocs(phenocode) do
+    query =
+      from assoc in CoxHR,
+        join: prior in Phenocode,
+        on: assoc.prior_id == prior.id,
+        join: outcome in Phenocode,
+        on: assoc.outcome_id == outcome.id,
+        where: assoc.prior_id == ^phenocode.id or assoc.outcome_id == ^phenocode.id,
+        order_by: [desc: assoc.hr],
+        select: %{
+          prior_name: prior.name,
+          prior_longname: prior.longname,
+          prior_category: prior.category,
+          outcome_name: outcome.name,
+          outcome_longname: outcome.longname,
+          outcome_category: outcome.category,
+          hr: assoc.hr,
+          ci_min: assoc.ci_min,
+          ci_max: assoc.ci_max,
+          pvalue: assoc.pvalue,
+          nindivs: assoc.n_individuals
+        }
+
+    Repo.all(query)
   end
 end

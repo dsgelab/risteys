@@ -1,5 +1,35 @@
 defmodule RisteysWeb.PhenocodeView do
   use RisteysWeb, :view
+  require Integer
+
+  def render("assocs.json", %{phenocode: phenocode, assocs: assocs}) do
+    Enum.map(assocs, fn assoc ->
+      # Find direction given phenocode of interest
+      {other_pheno_name, other_pheno_longname, other_pheno_category, direction} =
+        if phenocode.name == assoc.prior_name do
+          {assoc.outcome_name, assoc.outcome_longname, assoc.outcome_category, "after"}
+        else
+          {assoc.prior_name, assoc.prior_longname, assoc.prior_category, "before"}
+        end
+
+      # Scientific notation for p-value
+      # http://erlang.org/doc/man/io.html#format-2
+      pvalue_str = :io_lib.format("~.. e", [assoc.pvalue]) |> to_string()
+
+      %{
+        "name" => other_pheno_name,
+        "longname" => other_pheno_longname,
+        "category" => other_pheno_category,
+        "direction" => direction,
+        "hr" => round(assoc.hr, 2),
+        "ci_min" => round(assoc.ci_min, 2),
+        "ci_max" => round(assoc.ci_max, 2),
+        "pvalue_str" => pvalue_str,
+        "pvalue_num" => assoc.pvalue,
+        "nindivs" => assoc.nindivs
+      }
+    end)
+  end
 
   defp table_data_sources(data_sources) do
     # Merge HD registry ICDs
@@ -167,7 +197,7 @@ defmodule RisteysWeb.PhenocodeView do
         "N/A"
 
       nil ->
-	"N/A"
+        "N/A"
 
       _ ->
         number * 100

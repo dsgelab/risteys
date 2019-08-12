@@ -63,6 +63,7 @@ defmodule Risteys.DataCase do
       Phenocode.changeset(%Phenocode{}, %{
         name: name,
         longname: "Longname for #{name}",
+        category: "test",
         tags: "",
         level: "",
         omit: false,

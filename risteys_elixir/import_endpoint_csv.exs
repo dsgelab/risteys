@@ -3,10 +3,12 @@
 # NOTE! Before using this script, the endpoint Excel file has to be converted to CSV.
 #
 # Usage:
-# mix run import_endpoint_csv.exs <path-to-file>
+# mix run import_endpoint_csv.exs <path-to-endpoints-file> <path-to-categories-file>
 #
-# where <path-to-file> points to the Endpoint file (provided by Aki) in CSV format.
+# where <path-to-endpoints-file> points to the Endpoint file (provided by Aki) in CSV format.
 # This file usually have the name "Endpoint_definitions_FINNGEN_ENDPOINTS_DFxxx.tsv"
+#
+# where <path-to-categories-file> is the JSON file with the mapping of TAG -> category name.
 #
 # After that, this script can be used. It will:
 # 1. Get the list of ICD-9s and ICD-10s from the database.
@@ -23,7 +25,7 @@ require Logger
 alias Risteys.{Repo, Phenocode, Icd10, Icd9, PhenocodeIcd10, PhenocodeIcd9}
 
 Logger.configure(level: :info)
-[filepath | _] = System.argv()
+[endpoints_path, categories_path | _] = System.argv()
 
 defmodule RegexICD do
   import Ecto.Query
@@ -99,7 +101,20 @@ defmodule AssocICDs do
   end
 end
 
-filepath
+
+###
+# PARSE CATEGORIES
+###
+categories =
+  categories_path
+  |> File.read!()
+  |> Jason.decode!()
+
+
+###
+# IMPORT ENDPOINTS
+###
+endpoints_path
 |> File.stream!()
 |> CSV.decode!(separator: ?\t, headers: true)
 |> Enum.drop(1)  # Omit first line of data: it is a comment line
@@ -165,6 +180,13 @@ filepath
       _ -> String.to_integer(sex)
     end
 
+  # Set category
+  first_tag =
+    tags
+    |> String.split(",")
+    |> hd()
+  category = Map.get(categories, first_tag, "Unknown")
+
   hd_mainonly =
     case hd_mainonly do
       "" -> nil
@@ -229,6 +251,7 @@ filepath
       name: name,
       longname: longname,
       tags: tags,
+      category: category,
       level: level,
       omit: omit,
       sex: sex,
@@ -266,7 +289,7 @@ filepath
     {:ok, struct} ->
       Logger.debug("Successfully inserted #{name}.")
       # Build Phenocode<->ICD-{10,9} associations
-      Logger.debug("Inserting associations for #{name}")
+      Logger.debug("Inserting ICD associations for #{name}")
       AssocICDs.insert("HD", 10, struct.id, hd_icd_10)
       AssocICDs.insert("COD", 10, struct.id, cod_icd_10)
       AssocICDs.insert("KELA_REIMB", 10, struct.id, kela_reimb_icd)
