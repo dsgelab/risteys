@@ -20,11 +20,11 @@ contains E. That is:
 - (*, E): association from any endpoint that then leads to endpoint E
 - (E, *): association from E that then leads to any endpoint.
 
-This is a lot endpoint combinations.
+This is a lot of endpoint combinations.
 
 We filter the possible endpoint combinations by only selecting
 endpoints that have enough individuals in order to have enough
-statistical power
+statistical power.
 """
 
 from pathlib import Path
