@@ -215,11 +215,15 @@ end)
 ###
 # Clean-up endpoints without stats
 ###
-keep = Repo.all(from p in Phenocode, right_join: s in StatsSex, select: s.phenocode_id)
-all = Repo.all(from p in Phenocode, select: p.id)
+keep =
+  Repo.all(from p in Phenocode, right_join: s in StatsSex, select: s.phenocode_id)
+  |> MapSet.new()
+all =
+  Repo.all(from p in Phenocode, select: p.id)
+  |> MapSet.new()
 
 delete =
-  MapSet.difference(MapSet.new(all), MapSet.new(keep))
+  MapSet.difference(all, keep)
   |> MapSet.to_list()
 
 Logger.info("Cleaning-up #{length(delete)} phenocodes that don't have any statistics.")
