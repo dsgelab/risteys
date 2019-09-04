@@ -64,6 +64,15 @@ defmodule RisteysWeb.PhenocodeView do
 
     kela_icd10s = render_icds("ICD-10: ", data_sources.kela_icd10s)
 
+    # Link to included phenocodes
+    include =
+      if not is_nil(data_sources.include) do
+        data_sources.include
+        |> String.split("|")
+        |> Enum.map(fn name -> content_tag(:a, name, href: name) end)
+	|> Enum.intersperse(", ")
+      end
+
     # Build the whole table
     kela_abbr = abbr("KELA", "Finnish Social Insurance Institution")
 
@@ -82,7 +91,8 @@ defmodule RisteysWeb.PhenocodeView do
       {"Cancer reg: TOPOGRAPHY codes", data_sources.canc_topo},
       {"Cancer reg: MORPHOLOGY codes", data_sources.canc_morph},
       {"SEX specific endpoint", data_sources.sex},
-      {"CONDITIONS required", data_sources.conditions}
+      {"CONDITIONS required", data_sources.conditions},
+      {"Include", include}
     ]
 
     # Discard table rows with no values

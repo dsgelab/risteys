@@ -126,7 +126,8 @@ defmodule RisteysWeb.PhenocodeController do
       canc_morph: phenocode.canc_morph,
       omit: phenocode.omit,
       sex: phenocode.sex,
-      conditions: phenocode.conditions
+      conditions: phenocode.conditions,
+      include: phenocode.include
     }
   end
 
