@@ -134,11 +134,13 @@ let showTooltip = (tooltip, point, other_pheno) => {
 	let text = `
 	<p>
 		<b>${point.longname}</b> (${point.name})<br>
-		<b>Category:</b>&nbsp;${point.category}<br>
+		happening <b>${point.direction}</b> ${other_pheno}<br>
+	</p>
+	<p>
 		<b>HR:</b>&nbsp;${point.hr}&nbsp;[${point.ci_min},&nbsp;${point.ci_max}]<br>
 		<b>p-value:</b>&nbsp;${point.pvalue}<br>
-		<b>N. individuals:&nbsp;</b>${point.nindivs}<br>
-		happening <b>${point.direction}</b> ${other_pheno}<br>
+		<b>N. individuals:&nbsp;</b>${point.nindivs}
+		<b>Category:</b>&nbsp;${point.category}<br>
 	</p>
 	`;
 
