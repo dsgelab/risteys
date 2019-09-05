@@ -1,3 +1,13 @@
+# Import Cox regression data
+#
+# Usage:
+#   mix run import_coxhr.exs <csv-file-cox>
+#
+# where <csv-file-cox> is a CSV file with data for many pairs of
+# endpoints, with the following header:
+# prior,later,hr,ci_lower,ci_upper,p-value,concordance,nindivs_prior_later
+
+
 alias Risteys.{Repo, CoxHR, Phenocode}
 require Logger
 
