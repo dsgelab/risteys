@@ -26,7 +26,7 @@
 			<td class="col-interactive" v-on:click="sort_table('hr')">{{ symbol_sort("hr") }} Hazard Ratio [95%&nbsp;CI]</td>
 			<td class="col-interactive" v-on:click="sort_table('pvalue')">{{ symbol_sort("pvalue") }} p-value</td>
 			<td class="col-interactive" v-on:click="sort_table('nindivs')">{{ symbol_sort("nindivs") }}
-				<abbr data-title="Number of individuals having this prior->later association">N.&nbsp;individuals</abbr>
+				<abbr data-title="Number of overlapping individuals">N.&nbsp;individuals</abbr>
 			</td>
 		</thead>
 		<tbody>
