@@ -14,7 +14,7 @@ defmodule RisteysWeb.PhenocodeView do
 
       # Scientific notation for p-value
       # http://erlang.org/doc/man/io.html#format-2
-      pvalue_str = :io_lib.format("~.. e", [assoc.pvalue]) |> to_string()
+      pvalue_str = :io_lib.format("~.2. e", [assoc.pvalue]) |> to_string()
 
       %{
         "name" => other_pheno_name,
