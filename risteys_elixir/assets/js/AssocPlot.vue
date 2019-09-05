@@ -139,7 +139,7 @@ let showTooltip = (tooltip, point, other_pheno) => {
 	<p>
 		<b>HR:</b>&nbsp;${point.hr}&nbsp;[${point.ci_min},&nbsp;${point.ci_max}]<br>
 		<b>p-value:</b>&nbsp;${point.pvalue}<br>
-		<b>N. individuals:&nbsp;</b>${point.nindivs}
+		<b>N. individuals:&nbsp;</b>${point.nindivs}<br>
 		<b>Category:</b>&nbsp;${point.category}<br>
 	</p>
 	`;
