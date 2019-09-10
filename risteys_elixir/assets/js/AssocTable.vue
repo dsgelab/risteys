@@ -2,21 +2,20 @@
 	<table>
 		<thead>
 			<td>
-				<input
+				<b>Association</b><br>
+				Phenocode happening
+				<span class="border-2 cursor-pointer rounded hover:bg-grey-light" v-on:click="do_toggle_before()">
+					<input
 					type="checkbox"
 					v-model="toggle_before"
 					true-value="show"
-					false-value="hide"
-					v-on:change="comp_table">&nbsp;Before&nbsp;■<br>
-				<input
+					false-value="hide">■&nbsp;Before</span>
+					/ <span class="border-2 cursor-pointer rounded hover:bg-grey-light" v-on:click="do_toggle_after()">
+						<input
 					type="checkbox"
 					v-model="toggle_after"
 					true-value="show"
-					false-value="hide"
-					v-on:change="comp_table">&nbsp;After&nbsp;□
-			</td>
-			<td>
-				Phenocode<br>
+					false-value="hide">□&nbsp;After</span> {{ phenocode }}<br>
 				<input
 					type="text"
 					placeholder="filter by name"
@@ -26,17 +25,13 @@
 			<td class="col-interactive" v-on:click="sort_table('hr')">{{ symbol_sort("hr") }} Hazard Ratio [95%&nbsp;CI]</td>
 			<td class="col-interactive" v-on:click="sort_table('pvalue')">{{ symbol_sort("pvalue") }} p-value</td>
 			<td class="col-interactive" v-on:click="sort_table('nindivs')">{{ symbol_sort("nindivs") }}
-				<abbr data-title="Number of overlapping individuals">N.&nbsp;individuals</abbr>
+				<abbr data-title="Number of overlapping individuals">N.</abbr>
 			</td>
 		</thead>
 		<tbody>
 			<tr v-for="pheno in assoc_table">
-				<td>
-					<span :title="pheno.longname + ' ' + pheno.direction + ' ' + phenocode">
-						{{ directionSymbol(pheno.direction) }}
-					</span>
-				</td>
-				<td><a :href="'/phenocode/' + pheno.name" :title="pheno.name">{{ pheno.longname }}</a></td>
+				<td> <a :href="'/phenocode/' + pheno.name" :title="pheno.name">{{ pheno.longname }}</a><br>
+					<span class="pl-4">happening {{ directionSymbol(pheno.direction) }}&nbsp;<i>{{ pheno.direction }}</i>&nbsp;{{ phenocode }}</span></td>
 				<td>{{ pheno.hr }}&nbsp;[{{ pheno.ci_min }},&nbsp;{{ pheno.ci_max }}]</td>
 				<td>{{ pheno.pvalue_str }}</td>
 				<td>{{ pheno.nindivs }}</td>
@@ -125,6 +120,22 @@ export default {
 				this.sort_by[1],
 				this.full_table
 			)
+		},
+		do_toggle_before() {
+			if (this.toggle_before === "show") {
+				this.toggle_before = "hide";
+			} else {
+				this.toggle_before = "show";
+			}
+			this.comp_table();
+		},
+		do_toggle_after() {
+			if (this.toggle_after === "show") {
+				this.toggle_after = "hide";
+			} else {
+				this.toggle_after = "show";
+			}
+			this.comp_table();
 		},
 		directionSymbol (dir) {
 			if (dir === "after") {
