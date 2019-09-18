@@ -4,8 +4,19 @@ Do survival analysis (Cox hazard ratios) on endpoint pairs.
 
 Usage
 -----
-Due to the expensive computations required, this script is to be run
+Due to the expensive computations required, this script is usually run
 using the dsub [1] piece of software.
+
+However, this script can also be run in a standard python
+environment. One needs to set the following environment variables (see
+"Input files" and "Output files" sections for a description):
+- INPUT_PHENOTYPES
+- INPUT_PAIRS
+- OUTPUT_NAME
+- OUTPUT_ERROR
+and run:
+  python surv_analysis.py
+
 
 Input files
 -----------
@@ -15,6 +26,13 @@ Input files
 - INPUT_PAIRS
   CSV file containing a list of pairs to do survival analysis of.
   This file header is: prior,later
+
+Output files
+------------
+- OUTPUT_NAME
+   Result file, as CSV, one line per endpoint pair.
+- OUTPUT_ERROR
+   Where to log errors, one line per endpoint pair.
 
 Description
 -----------
@@ -128,12 +146,35 @@ def create_csv_writers(output_path, error_path):
     res_writer.writerow([
         "prior",
         "later",
-        "hr",
-        "ci_lower",
-        "ci_upper",
-        "p-value",
+        "nindivs_prior_later",
+        "pred_coef",
+        "pred_se",
+        "pred_hr",
+        "pred_ci_lower",
+        "pred_ci_upper",
+        "pred_pval",
+        "pred_zval",
+        "year_coef",
+        "year_se",
+        "year_hr",
+        "year_ci_lower",
+        "year_ci_upper",
+        "year_pval",
+        "year_zval",
+        "sex_coef",
+        "sex_se",
+        "sex_hr",
+        "sex_ci_lower",
+        "sex_ci_upper",
+        "sex_pval",
+        "sex_zval",
+        "nsubjects",
+        "nevents",
+        "partial_log_likelihood",
         "concordance",
-        "nindivs_prior_later"
+        "log_likelihood_ratio_test",
+        "log_likelihood_ndf",
+        "log_likelihood_pval",
     ])
 
     error_file = open(error_path, "x", buffering=line_buffering)
@@ -222,7 +263,7 @@ def clean_data(df, endpoints):
 
 
 def compute_coxhr(pair, df, res_writer, error_writer):
-    """Run the Cox regression by taking the right data"""
+    """Shape the data for the Cox regression, then do the regression"""
     prior, later = pair
     logger.info(f"Preparing data for Cox regression on ({prior}, {later})")
 
@@ -300,43 +341,130 @@ def compute_coxhr(pair, df, res_writer, error_writer):
         logger.warning("Some durations < 0")
         error_writer.writerow([prior, later, "AssertionError", e])
     else:
-        # Cox regression
-        logger.info("Computing Cox regression")
-        cph = CoxPHFitter()
-        df = df.loc[:, ["duration", "outcome", "pred_prior", "birth_year", "SEX"]]
+        cox_fit(df, prior, later, nindivs, res_writer, error_writer)
 
-        # Set default values in case of error
-        hr, ci_lower, ci_upper, pval, concordance = np.nan, np.nan, np.nan, np.nan, np.nan
-        try:
-            cph.fit(
-                df,
-                duration_col="duration",
-                event_col="outcome",
-                show_progress=False,
-                # step_size=0.1,  # may help with convergence
-            )
-        except ConvergenceError as e:
-            logger.warning(f"Could not fit Cox model for pair ({prior}, {later})")
-            error_writer.writerow([prior, later, "ConvergenceError", e])
-        except Warning as e:
-            logger.warning(f"Warning emitted")
-            error_writer.writerow([prior, later, "ConvergenceWarning", e])
-        else:
-            coef = cph.params_["pred_prior"]
-            se = cph.standard_errors_["pred_prior"]
-            ci_lower = coef - 1.96 * se
-            ci_upper = coef + 1.96 * se
+def cox_fit(df, prior, later, nindivs, res_writer, error_writer):
+    """Fit the data for the Cox regression and write output to result file"""
+    logger.info("Computing Cox regression")
+    cph = CoxPHFitter()
+    df = df.loc[:, ["duration", "outcome", "pred_prior", "birth_year", "SEX"]]
 
-            # Exponentiate to have hazard ratios
-            hr = np.exp(coef)
-            ci_lower = np.exp(ci_lower)
-            ci_upper = np.exp(ci_upper)
+    # Set default values in case of error
+    pred_coef = np.nan
+    pred_se = np.nan
+    pred_hr = np.nan
+    pred_ci_lower = np.nan
+    pred_ci_upper = np.nan
+    pred_pval = np.nan
+    pred_zval = np.nan
 
-            pval = cph.summary.p["pred_prior"]
+    year_coef = np.nan
+    year_se = np.nan
+    year_hr = np.nan
+    year_ci_lower = np.nan
+    year_ci_upper = np.nan
+    year_pval = np.nan
+    year_zval = np.nan
 
-            concordance = cph.score_
+    sex_coef = np.nan
+    sex_se = np.nan
+    sex_hr = np.nan
+    sex_ci_lower = np.nan
+    sex_ci_upper = np.nan
+    sex_pval = np.nan
+    sex_zval = np.nan
 
-        res_writer.writerow([prior, later, hr, ci_lower, ci_upper, pval, concordance, nindivs])
+    nsubjects = np.nan
+    nevents = np.nan
+    partial_log_likelihood = np.nan
+    concordance = np.nan
+    log_likelihood_ratio_test = np.nan
+    log_likelihood_ndf = np.nan
+    log_likelihood_pval = np.nan
+
+    try:
+        cph.fit(
+            df,
+            duration_col="duration",
+            event_col="outcome",
+            show_progress=False,
+            # step_size=0.1,  # may help with convergence
+        )
+    except ConvergenceError as e:
+        logger.warning(f"Could not fit Cox model for pair ({prior}, {later})")
+        error_writer.writerow([prior, later, "ConvergenceError", e])
+    except Warning as e:
+        logger.warning(f"Warning emitted")
+        error_writer.writerow([prior, later, "ConvergenceWarning", e])
+    else:
+        # Save results
+        pred_coef = cph.params_["pred_prior"]
+        pred_se = cph.standard_errors_["pred_prior"]
+        pred_hr = np.exp(pred_coef)
+        pred_ci_lower = np.exp(pred_coef - 1.96 * pred_se)
+        pred_ci_upper = np.exp(pred_coef + 1.96 * pred_se)
+        pred_pval = cph.summary.p["pred_prior"]
+        pred_zval = cph.summary.z["pred_prior"]
+
+        year_coef = cph.params_["birth_year"]
+        year_se = cph.standard_errors_["birth_year"]
+        year_hr = np.exp(year_coef)
+        year_ci_lower = np.exp(year_coef - 1.96 * year_se)
+        year_ci_upper = np.exp(year_coef + 1.96 * year_se)
+        year_pval = cph.summary.p["birth_year"]
+        year_zval = cph.summary.z["birth_year"]
+
+        sex_coef = cph.params_["SEX"]
+        sex_se = cph.standard_errors_["SEX"]
+        sex_hr = np.exp(sex_coef)
+        sex_ci_lower = np.exp(sex_coef - 1.96 * sex_se)
+        sex_ci_upper = np.exp(sex_coef + 1.96 * sex_se)
+        sex_pval = cph.summary.p["SEX"]
+        sex_zval = cph.summary.z["SEX"]
+
+        nsubjects = cph._n_examples
+        nevents = cph.event_observed.sum()
+        partial_log_likelihood = cph._log_likelihood
+        concordance = cph.score_
+        with np.errstate(invalid="ignore", divide="ignore"):
+            sr = cph.log_likelihood_ratio_test()
+            log_likelihood_ratio_test = sr.test_statistic
+            log_likelihood_ndf = sr.degrees_freedom
+            log_likelihood_pval = sr.p_value
+
+    res_writer.writerow([
+        prior,
+        later,
+        nindivs,
+        pred_coef,
+        pred_se,
+        pred_hr,
+        pred_ci_lower,
+        pred_ci_upper,
+        pred_pval,
+        pred_zval,
+        year_coef,
+        year_se,
+        year_hr,
+        year_ci_lower,
+        year_ci_upper,
+        year_pval,
+        year_zval,
+        sex_coef,
+        sex_se,
+        sex_hr,
+        sex_ci_lower,
+        sex_ci_upper,
+        sex_pval,
+        sex_zval,
+        nsubjects,
+        nevents,
+        partial_log_likelihood,
+        concordance,
+        log_likelihood_ratio_test,
+        log_likelihood_ndf,
+        log_likelihood_pval,
+    ])
 
 
 if __name__ == '__main__':
