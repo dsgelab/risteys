@@ -14,7 +14,12 @@ defmodule RisteysWeb.PhenocodeView do
 
       # Scientific notation for p-value
       # http://erlang.org/doc/man/io.html#format-2
-      pvalue_str = :io_lib.format("~.2. e", [assoc.pvalue]) |> to_string()
+      pvalue_str =
+        if assoc.pvalue < 1.0e-100 do
+          "< 1e-100"
+        else
+          :io_lib.format("~.2. e", [assoc.pvalue]) |> to_string()
+        end
 
       %{
         "name" => other_pheno_name,
@@ -70,7 +75,7 @@ defmodule RisteysWeb.PhenocodeView do
         data_sources.include
         |> String.split("|")
         |> Enum.map(fn name -> content_tag(:a, name, href: name) end)
-	|> Enum.intersperse(", ")
+        |> Enum.intersperse(", ")
       end
 
     # Build the whole table
