@@ -83,21 +83,32 @@ defmodule RisteysWeb.PhenocodeView do
 
     table = [
       {"Hospital Discharge registry", hd},
+      {"Hospital Discharge registry: exclude ICD-10", data_sources.hd_icd10s_excl},
+      {"Hospital Discharge registry: exclude ICD-9", data_sources.hd_icd9s_excl},
+      {"Hospital Discharge registry: exclude ICD-8", data_sources.hd_icd8s_excl},
+      {"Hospital Discharge registry: only main entry used", data_sources.hd_mainonly},
       {"Cause of Death registry", cod},
-      {[kela_abbr | " reimbursements"], kela_icd10s},
+      {"Cause of Death registry: exclude ICD-10", data_sources.cod_icd10s_excl},
+      {"Cause of Death registry: exclude ICD-9", data_sources.cod_icd9s_excl},
+      {"Cause of Death registry: exclude ICD-8", data_sources.cod_icd8s_excl},
+      {"Cause of Death registry: only main entry used", data_sources.cod_mainonly},
       {"Outpatient visit: ICD and other codes ", data_sources.outpat_icd},
       {"Operations: NOMESCO codes", data_sources.oper_nom},
       {"Operations: FINNISH HOSPITAL LEAGUE codes", data_sources.oper_hl},
       {"Operations: HEART PATIENT codes V1", data_sources.oper_hp1},
       {"Operations: HEART PATIENT codes V2", data_sources.oper_hp2},
       {[kela_abbr | " reimboursements codes"], data_sources.kela_reimb},
+      {[kela_abbr | " reimbursements"], kela_icd10s},
       {"Medicine purchases: ATC; other reg. data required", data_sources.kela_atc_needother},
       {"Medicine purchases: ATC codes", data_sources.kela_atc},
       {"Cancer reg: TOPOGRAPHY codes", data_sources.canc_topo},
       {"Cancer reg: MORPHOLOGY codes", data_sources.canc_morph},
-      {"SEX specific endpoint", data_sources.sex},
-      {"CONDITIONS required", data_sources.conditions},
-      {"Include", include}
+      {"Sex specific endpoint", data_sources.sex},
+      {"Pre-conditions required", data_sources.pre_conditions},
+      {"Conditions required", data_sources.conditions},
+      {"Include", include},
+      {"Level in the ICD-hierarchy", data_sources.level},
+      {"First defined in version", data_sources.version}
     ]
 
     # Discard table rows with no values
