@@ -18,7 +18,10 @@ clean:
 ontology.json: endpoint_doid.tsv efo.owl
 	python ${code_path}get_efo.py .
 
-input.hdf5: Endpoint_definitions_FINNGEN_ENDPOINTS.tsv FINNGEN_ENDPOINTS_longitudinal.txt FINNGEN_MINIMUM_DATA.txt COV_PHENO.txt
+qc.hdf5: FINNGEN_PHENOTYPES.txt FINNGEN_ENDPOINTS_longitudinal.txt FINNGEN_MINIMUM_DATA.txt
+	python ${code_path}qc.py .
+
+input.hdf5: qc.hdf5 Endpoint_definitions_FINNGEN_ENDPOINTS.tsv COV_PHENO.txt
 	python ${code_path}build_input_hdf.py .
 
 stats.hdf5: input.hdf5

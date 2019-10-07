@@ -12,12 +12,9 @@ Usage:
     python build_input_hdf.py <path-to-data-dir>
 
 Input files:
-- FINNGEN_ENDPOINTS_longitudinal.txt
-  Each row is an event with FinnGen ID, Endpoint and time information.
-  Source: FinnGen data
-- FINNGEN_MINIMUM_DATA.txt
-  Each row is an individual in FinnGen with some information.
-  Source: FinnGen data
+- qc.hdf5
+  FinnGen data that has been quality controled in a previous step of
+  the pipeline.
 - Endpoint_definitions_FINNGEN_ENDPOINTS.tsv
   Each row is an endpoint definition.
   Source: PheWeb
@@ -35,20 +32,17 @@ import pandas as pd
 
 from log import logger
 
-
+INPUT_QC = "qc.hdf5"
 INPUT_ENDPOINTS = "Endpoint_definitions_FINNGEN_ENDPOINTS.tsv"
-INPUT_LONGIT = "FINNGEN_ENDPOINTS_longitudinal.txt"
-INPUT_INFO = "FINNGEN_MINIMUM_DATA.txt"
 INPUT_SAMPLES = "COV_PHENO.txt"
 OUTPUT_NAME = "input.hdf5"
 
 
-def prechecks(endpoints_path, longit_path, info_path, samples_path, output_path):
+def prechecks(qc_path, endpoints_path, samples_path, output_path):
     """Perform checks before running to fail earlier rather than later"""
     logger.info("Performing pre-checks")
+    assert qc_path.exists()
     assert endpoints_path.exists()
-    assert longit_path.exists()
-    assert info_path.exists()
     assert not output_path.exists()
 
     # Check endpoint file headers
@@ -58,29 +52,16 @@ def prechecks(endpoints_path, longit_path, info_path, samples_path, output_path)
     assert "LEVEL" in df.columns
     assert "TAGS" in df.columns
 
-    # Check event file headers
-    df = pd.read_csv(longit_path, dialect=excel_tab, nrows=0)
-    cols = list(df.columns)
-    expected_cols = ["FINNGENID", "EVENT_AGE", "EVENT_YEAR", "ENDPOINT"]
-    assert cols == expected_cols
-
-    # Check sex for all individuals
-    df = pd.read_csv(info_path, dialect=excel_tab, usecols=["FINNGENID", "SEX"])
-    sexs = df["SEX"].unique()
-    sexs = set(sexs)
-    expected_sexs = set(["female", "male"])
-    assert sexs == expected_sexs
-
     # Check samples file headers
     df = pd.read_csv(samples_path, dialect=excel_tab, nrows=0)
     assert "FINNGENID" in df.columns
 
 
-def main(endpoints_path, longit_path, info_path, samples_path, output_path):
+def main(qc_path, endpoints_path, samples_path, output_path):
     """Clean up and merge all the input files into one HDF5 file"""
-    prechecks(endpoints_path, longit_path, info_path, samples_path, output_path)
+    prechecks(qc_path, endpoints_path, samples_path, output_path)
 
-    data = parse_data(longit_path, info_path)
+    data = load_data(qc_path)
 
     data = filter_out_samples(data, samples_path)
 
@@ -99,35 +80,29 @@ def main(endpoints_path, longit_path, info_path, samples_path, output_path):
     data.to_hdf(output_path, "/data")
 
 
-def parse_data(longit_file, mindata_file):
-    """Parse the events file and mindata file to build a coherent DataFrame.
-
-    NOTE:
-    At this point we might want to write out the loaded data as a
-    DataFrame so it can be re-loaded later on. However doing this adds
-    the cost for: writing out the DataFrame the first time + loading
-    the DataFrame each time. After few measurements it turns out this
-    doesn't save that much time.
-    """
+def load_data(qc_path):
+    """Merge the events file and info file to build a coherent DataFrame"""
     logger.info("Parsing 'longitudinal file' and 'mininimum data file' into DataFrames")
-    df = pd.read_csv(
-        longit_file,
-        dialect=excel_tab,
-        dtype={
-            "FINNGENID": np.object,
-            "EVENT_AGE": np.float64,
-            "EVENT_YEAR": np.int64,
-            "ENDPOINT": np.object,
+    df = pd.read_hdf(
+        qc_path,
+        "/longit"
+    )
+    df = df.astype({
+        "FINNGENID": np.object,
+        "EVENT_AGE": np.float64,
+        "EVENT_YEAR": np.int64,
+        "ENDPOINT": np.object,
     })
 
     # Loading data file with ID -> SEX info
-    dfsex = pd.read_csv(
-        mindata_file,
-        dialect=excel_tab,
-        usecols=["FINNGENID", "SEX"],
-        dtype={
-            "FINNGENID": np.object,
-            "SEX": "category",
+    dfsex = pd.read_hdf(
+        qc_path,
+        "/info"
+    )
+    dfsex = dfsex.drop(columns=["BL_AGE", "BL_YEAR"])
+    dfsex = dfsex.astype({
+        "FINNGENID": np.object,
+        "SEX": "category",
     })
 
     # Perform one-hot encoding for SEX so it can be written to HDF
@@ -220,9 +195,8 @@ if __name__ == '__main__':
     DATA_DIR = Path(argv[1])
 
     main(
+        DATA_DIR / INPUT_QC,
         DATA_DIR / INPUT_ENDPOINTS,
-        DATA_DIR / INPUT_LONGIT,
-        DATA_DIR / INPUT_INFO,
         DATA_DIR / INPUT_SAMPLES,
         DATA_DIR / OUTPUT_NAME,
     )
