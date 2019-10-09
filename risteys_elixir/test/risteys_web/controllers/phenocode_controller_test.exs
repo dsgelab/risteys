@@ -39,7 +39,7 @@ defmodule RisteysWeb.PhenocodeControllerTest do
                  "hr" => 0.0,
                  "ci_min" => 0.0,
                  "ci_max" => 0.0,
-                 "pvalue_str" => "0.0e+0",
+                 "pvalue_str" => "< 1e-100",
                  "pvalue_num" => 0.0,
                  "nindivs" => 100
                }
