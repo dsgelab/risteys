@@ -12,12 +12,16 @@ Usage:
     python build_input_hdf.py <path-to-data-dir>
 
 Input files:
-- qc.hdf5
-  FinnGen data that has been quality controled in a previous step of
-  the pipeline.
+- dense_first_events.csv
+  Source: previous pipeline step
+- FINNGEN_ENDPOINTS_longitudinal_QCed.csv
+  Source: previous pipeline step
+- FINNGEN_MINIMUM_DATA.txt
+  Each row is an individual in FinnGen with some information.
+  Source: FinnGen data
 - Endpoint_definitions_FINNGEN_ENDPOINTS.tsv
   Each row is an endpoint definition.
-  Source: PheWeb
+  Source: FinnGen data
 - COV_PHENO.txt
   Each row is an individual in FinnGen, with FinnGen ID. Only these
   individuals will be used for data processing in PheWeb.
@@ -32,17 +36,22 @@ import pandas as pd
 
 from log import logger
 
-INPUT_QC = "qc.hdf5"
+INPUT_FIRST_EVENT = "dense_first_events.csv"
+INPUT_LONGIT = "FINNGEN_ENDPOINTS_longitudinal_QCed.csv"
+INPUT_INFO = "FINNGEN_MINIMUM_DATA.txt"
 INPUT_ENDPOINTS = "Endpoint_definitions_FINNGEN_ENDPOINTS.tsv"
 INPUT_SAMPLES = "COV_PHENO.txt"
 OUTPUT_NAME = "input.hdf5"
 
 
-def prechecks(qc_path, endpoints_path, samples_path, output_path):
+def prechecks(first_event_path, longit_path, info_path, endpoints_path, samples_path, output_path):
     """Perform checks before running to fail earlier rather than later"""
     logger.info("Performing pre-checks")
-    assert qc_path.exists()
+    assert first_event_path.exists()
+    assert longit_path.exists()
+    assert info_path.exists()
     assert endpoints_path.exists()
+    assert samples_path.exists()
     assert not output_path.exists()
 
     # Check endpoint file headers
@@ -57,37 +66,57 @@ def prechecks(qc_path, endpoints_path, samples_path, output_path):
     assert "FINNGENID" in df.columns
 
 
-def main(qc_path, endpoints_path, samples_path, output_path):
+def main(first_event_path, longit_path, info_path, endpoints_path, samples_path, output_path):
     """Clean up and merge all the input files into one HDF5 file"""
-    prechecks(qc_path, endpoints_path, samples_path, output_path)
+    prechecks(first_event_path, longit_path, info_path, endpoints_path, samples_path, output_path)
 
-    data = load_data(qc_path)
+    # Load data
+    df_fevent, df_longit = load_data(first_event_path, longit_path, info_path)
 
-    data = filter_out_samples(data, samples_path)
+    # Filter out the individuals
+    df_fevent = filter_out_samples(df_fevent, samples_path)
+    df_longit = filter_out_samples(df_longit, samples_path)
 
-    logger.info("Filtering out the endpoints.")
-    endpoints = filter_out_endpoints(endpoints_path)
-    (nbefore, _) = data.shape
-    data = data.merge(endpoints, on="ENDPOINT")
-    (nafter, _) = data.shape
-    log_event_reduction(nbefore, nafter)
+    # Filter out the endpoints
+    logger.info("Filtering out the endpoints for first-event and longitudinal data.")
+    endpoints = get_filtered_endpoints(endpoints_path)
+    # TODO maybe add the extras: BL_AGE, BL_YEAR, FU_END_AGE
+    df_fevent = filter_out_endpoints(df_fevent, endpoints)
+    df_longit = filter_out_endpoints(df_longit, endpoints)
 
-    data = sort_events(data)
+    # Sort events for first-event data
+    df_fevent = df_fevent.sort_values(by=["FINNGENID", "AGE"])
+    df_fevent = df_fevent.reset_index(drop=True)
+    
+    # Event processing for longitudinal data
+    df_longit = sort_events(df_longit)
+    df_longit = merge_events(df_longit)
 
-    data = merge_events(data)
-
+    # Write result to output
     logger.info(f"Writing merged and filtered input data to HDF5 file {output_path}")
-    data.to_hdf(output_path, "/data")
+    df_fevent.to_hdf(output_path, "/first_event")
+    df_longit.to_hdf(output_path, "/longit")
 
 
-def load_data(qc_path):
-    """Merge the events file and info file to build a coherent DataFrame"""
-    logger.info("Parsing 'longitudinal file' and 'mininimum data file' into DataFrames")
-    df = pd.read_hdf(
-        qc_path,
-        "/longit"
-    )
-    df = df.astype({
+def load_data(first_event_path, longit_path, info_path):
+    """Load the first-event and longitudinal data"""
+    logger.info("Loading first-event and longitudinal data")
+
+    # First-event file
+    logger.debug("Loading the first-event dense data")
+    df_fevent = pd.read_csv(first_event_path)
+    df_fevent = df_fevent.astype({
+        "FINNGENID": np.object,
+        "ENDPOINT": np.object,
+        "AGE": np.float64,
+        "YEAR": np.int64,
+        "NEVT": np.int64,
+    })
+
+    # Longitudinal data
+    logger.debug("Loading and cleaning longitudinal data")
+    df_longit = pd.read_csv(longit_path)
+    df_longit = df_longit.astype({
         "FINNGENID": np.object,
         "EVENT_AGE": np.float64,
         "EVENT_YEAR": np.int64,
@@ -95,11 +124,12 @@ def load_data(qc_path):
     })
 
     # Loading data file with ID -> SEX info
-    dfsex = pd.read_hdf(
-        qc_path,
-        "/info"
+    logger.debug("Loading info data")
+    dfsex = pd.read_csv(
+        info_path,
+        dialect=excel_tab,
+        usecols=["FINNGENID", "SEX"]
     )
-    dfsex = dfsex.drop(columns=["BL_AGE", "BL_YEAR"])
     dfsex = dfsex.astype({
         "FINNGENID": np.object,
         "SEX": "category",
@@ -111,10 +141,14 @@ def load_data(qc_path):
     dfsex = pd.concat([dfsex, onehot], axis=1)
     dfsex = dfsex.drop("SEX", axis=1)
 
-    logger.debug("Merging longitudinal and sex DataFrames")
-    df = df.merge(dfsex, on="FINNGENID")
+    # Add SEX information to longitudinal DataFrame
+    # NOTE: for some individuals there is no sex information, so
+    # "female" and "male" columns will be NaN and of type float64.
+    logger.debug("Merging sex information into the DataFrames")
+    df_longit = df_longit.merge(dfsex, on="FINNGENID", how="left")
+    df_fevent = df_fevent.merge(dfsex, on="FINNGENID", how="left")
 
-    return df
+    return df_fevent, df_longit
 
 
 def filter_out_samples(data, samples_path):
@@ -129,7 +163,7 @@ def filter_out_samples(data, samples_path):
     return data
 
 
-def filter_out_endpoints(filepath):
+def get_filtered_endpoints(filepath):
     """Get endpoints that are not too broad"""
     df = pd.read_csv(
         filepath,
@@ -144,13 +178,26 @@ def filter_out_endpoints(filepath):
     mask_comorb = ~comorb
 
     df = df[mask_level & mask_omit & mask_comorb]
-    df = df.drop(["OMIT", "LEVEL", "TAGS"], axis="columns").rename({"NAME": "ENDPOINT"}, axis="columns")
+    endpoints = list(df.NAME.values)
+
+    return endpoints
+
+
+def filter_out_endpoints(df, endpoints):
+    """Filter out data based on the given endpoints"""
+    df_endpoints = pd.DataFrame({"ENDPOINT": endpoints})
+
+    (nbefore, _) = df.shape
+    df = df.merge(df_endpoints, on="ENDPOINT")
+    (nafter, _) = df.shape
+
+    log_event_reduction(nbefore, nafter)
 
     return df
 
 
 def log_event_reduction(nbefore, nafter):
-    logger.debug(f"Events reduced from {nbefore} to {nafter} (𝚫 = {nbefore - nafter}, {(nbefore - nafter) / nbefore * 100:.1f} %)")
+    logger.debug(f"Data reduced from {nbefore} to {nafter} (𝚫 = {nbefore - nafter}, {(nbefore - nafter) / nbefore * 100:.1f} %)")
 
 
 def is_comorb(tags):
@@ -195,7 +242,9 @@ if __name__ == '__main__':
     DATA_DIR = Path(argv[1])
 
     main(
-        DATA_DIR / INPUT_QC,
+        DATA_DIR / INPUT_FIRST_EVENT,
+        DATA_DIR / INPUT_LONGIT,
+        DATA_DIR / INPUT_INFO,
         DATA_DIR / INPUT_ENDPOINTS,
         DATA_DIR / INPUT_SAMPLES,
         DATA_DIR / OUTPUT_NAME,

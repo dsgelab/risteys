@@ -14,6 +14,11 @@ Input Files:
 - FINNGEN_ENDPOINTS_longitudinal.txt
   Each row is an event with FinnGen ID, Endpoint and time information.
   Source: FinnGen data
+
+Output files:
+- FINNGEN_ENDPOINTS_longitudinal_QCed.csv
+  CSV file with the same format as the original longitudinal file, but
+  with QC applied.
 """
 
 from csv import excel_tab
@@ -25,72 +30,86 @@ import pandas as pd
 from log import logger
 
 
-INPUT_INFO = "FINNGEN_MINIMUM_DATA.txt"
-INPUT_FIRST_EVENT = "FINNGEN_PHENOTYPES.txt"
-INPUT_LONGIT = "FINNGEN_ENDPOINTS_longitudinal.txt"
-OUTPUT_FILE = "qc.hdf5"
+INPUT_INFO  = "FINNGEN_MINIMUM_DATA.txt"
+INPUT_FIRST_EVENT  = "FINNGEN_PHENOTYPES.txt"
+INPUT_LONGIT  = "FINNGEN_ENDPOINTS_longitudinal.txt"
+OUTPUT_LONGIT = "FINNGEN_ENDPOINTS_longitudinal_QCed.csv"
 
 
-def prechecks(info_path, first_event_path, longit_path, output_path):
+def prechecks(info_path, first_event_path, longit_path, longit_output_path):
     """Make sure input files exist and output file doesn't"""
     logger.info("Performing pre-checks")
+
     assert info_path.exists(), f"{info_path} doesn't exist"
     assert first_event_path.exists(), f"{first_event_path} doesn't exist"
     assert longit_path.exists(), f"{longit_path} doesn't exist"
-    assert not output_path.exists(), f"{output_path} already exists"
+    assert not longit_output_path.exists(), f"{longit_output_path} already exists"
 
 
-def main(info_path, first_event_path, longit_path, output_path):
+def main(info_path, first_event_path, longit_path, longit_output_path):
     """Check the data for quality control"""
     prechecks(
         info_path,
         first_event_path,
         longit_path,
-        output_path
+        longit_output_path
     )
 
-    # Load the data
-    logger.info("Loading the data")
+    qc_info_file(info_path)
+    qc_first_event_file(first_event_path)
+    qc_longit_file(longit_path, longit_output_path)
+
+
+def qc_info_file(input_path):
+    logger.info("Performing QC for minimum info file")
+
     df_info = pd.read_csv(
-        info_path,
+        input_path,
         dialect=excel_tab,
         usecols=["FINNGENID", "BL_YEAR", "BL_AGE", "SEX"]
     )
 
-    df_first_event = pd.read_csv(
-        first_event_path,
-        dialect=excel_tab,
-        usecols=["FINNGENID", "DEATH", "DEATH_AGE", "FU_END_AGE"]
-    )
-
-    df_longit = pd.read_csv(
-        longit_path,
-        dialect=excel_tab,
-    )
-
-    # QC for info file
-    logger.info("Performing QC for the minimum info file")
     check_year(df_info)
     check_age(df_info)
     check_sex(df_info)
 
-    # QC for first-event file
+
+def qc_first_event_file(input_path):
     logger.info("Performing QC for the first-event file")
+
+    df_first_event = pd.read_csv(
+        input_path,
+        dialect=excel_tab,
+        usecols=["DEATH", "DEATH_AGE", "FU_END_AGE"]  # speed-up the parsing
+    )
+
     check_age_death(df_first_event)
 
-    # QC for longitudinal file
+
+def qc_longit_file(input_path, output_path):
     logger.info("Performing QC for the longitudinal file")
+
+    df_longit = pd.read_csv(
+        input_path,
+        dialect=excel_tab,
+        # Need to specify column names as DF4 file has not headers
+        names=[
+            "FINNGENID",
+            "EVENT_TYPE",
+            "EVENT_AGE",
+            "EVENT_YEAR",
+            "ICDVER",
+            "ENDPOINT"
+        ]
+    )
+
     try:
         check_no_duplicates(df_longit)
     except AssertionError:
         logger.warning("Found duplicates in longitudinal file, cleaning.")
         df_longit = remove_duplicates(df_longit)
 
-    # Output QCed data
-    logger.info("Writing out the QCed data")
-    df_info.to_hdf(output_path, "/info")
-    df_first_event.to_hdf(output_path, "/first_event")
-    df_longit.to_hdf(output_path, "/longit")
+    df_longit.to_csv(output_path, index=False, mode="x")
 
 
 def check_year(df):
@@ -136,5 +155,5 @@ if __name__ == '__main__':
         DATA_DIR / INPUT_INFO,
         DATA_DIR / INPUT_FIRST_EVENT,
         DATA_DIR / INPUT_LONGIT,
-        DATA_DIR / OUTPUT_FILE
+        DATA_DIR / OUTPUT_LONGIT
     )
