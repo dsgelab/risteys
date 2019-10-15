@@ -58,13 +58,13 @@ if (path.startsWith("/phenocode/")) {  // Load only on phenocode pages
     /* HISTOGRAMS */
     makeHistogram("Year distribution",
         "year",
-        "number of events",
+        "number of individuals",
         true,
         "plot_events_by_year",
         events_by_year);
     makeHistogram("Age distribution",
         "age bracket",
-        "number of events",
+        "number of individuals",
         false,
         "plot_bin_by_age",
         bin_by_age);
