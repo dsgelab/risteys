@@ -201,9 +201,11 @@ defmodule RisteysWeb.PhenocodeController do
         where: assoc.prior_id == ^phenocode.id or assoc.outcome_id == ^phenocode.id,
         order_by: [desc: assoc.hr],
         select: %{
+          prior_id: prior.id,
           prior_name: prior.name,
           prior_longname: prior.longname,
           prior_category: prior.category,
+          outcome_id: outcome.id,
           outcome_name: outcome.name,
           outcome_longname: outcome.longname,
           outcome_category: outcome.category,

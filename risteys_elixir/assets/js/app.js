@@ -124,7 +124,7 @@ if (path.startsWith("/phenocode/")) {  // Load only on phenocode pages
         new Vue({
             el: '#assoc-plot',
             data: {
-                assoc_data: assoc_data
+                assoc_data: assoc_data["plot"]
             },
             components: { AssocPlot },
         });
@@ -133,7 +133,7 @@ if (path.startsWith("/phenocode/")) {  // Load only on phenocode pages
         new Vue({
             el: '#assoc-table',
             data: {
-                assoc_data: assoc_data
+                assoc_data: assoc_data["table"]
             },
             components: { AssocTable },
         });

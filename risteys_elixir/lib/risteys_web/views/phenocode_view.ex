@@ -3,37 +3,10 @@ defmodule RisteysWeb.PhenocodeView do
   require Integer
 
   def render("assocs.json", %{phenocode: phenocode, assocs: assocs}) do
-    Enum.map(assocs, fn assoc ->
-      # Find direction given phenocode of interest
-      {other_pheno_name, other_pheno_longname, other_pheno_category, direction} =
-        if phenocode.name == assoc.prior_name do
-          {assoc.outcome_name, assoc.outcome_longname, assoc.outcome_category, "after"}
-        else
-          {assoc.prior_name, assoc.prior_longname, assoc.prior_category, "before"}
-        end
-
-      # Scientific notation for p-value
-      # http://erlang.org/doc/man/io.html#format-2
-      pvalue_str =
-        if assoc.pvalue < 1.0e-100 do
-          "< 1e-100"
-        else
-          :io_lib.format("~.2. e", [assoc.pvalue]) |> to_string()
-        end
-
-      %{
-        "name" => other_pheno_name,
-        "longname" => other_pheno_longname,
-        "category" => other_pheno_category,
-        "direction" => direction,
-        "hr" => round(assoc.hr, 2),
-        "ci_min" => round(assoc.ci_min, 2),
-        "ci_max" => round(assoc.ci_max, 2),
-        "pvalue_str" => pvalue_str,
-        "pvalue_num" => assoc.pvalue,
-        "nindivs" => assoc.nindivs
-      }
-    end)
+    %{
+      "plot" => data_assocs_plot(phenocode, assocs),
+      "table" => data_assocs_table(phenocode.id, assocs)
+    }
   end
 
   defp table_data_sources(data_sources) do
@@ -228,5 +201,124 @@ defmodule RisteysWeb.PhenocodeView do
       _ ->
         number * 100
     end
+  end
+
+  defp pvalue_str(pvalue) do
+    # Print the given pvalue using scientific notation, display
+    # "<1e-100" if very low.
+    cond do
+      is_nil pvalue -> "N/A"
+      pvalue < 1.0e-100 -> "<1e-100"
+      true ->
+	# See http://erlang.org/doc/man/io.html#format-2
+	:io_lib.format("~.2. e", [pvalue]) |> to_string()
+    end
+  end
+
+  defp data_assocs_plot(phenocode, assocs) do
+    Enum.map(assocs, fn assoc ->
+      # Find direction given phenocode of interest
+      {other_pheno_name, other_pheno_longname, other_pheno_category, direction} =
+        if phenocode.name == assoc.prior_name do
+          {assoc.outcome_name, assoc.outcome_longname, assoc.outcome_category, "after"}
+        else
+          {assoc.prior_name, assoc.prior_longname, assoc.prior_category, "before"}
+        end
+
+      %{
+        "name" => other_pheno_name,
+        "longname" => other_pheno_longname,
+        "category" => other_pheno_category,
+        "direction" => direction,
+        "hr" => round(assoc.hr, 2),
+        "ci_min" => round(assoc.ci_min, 2),
+        "ci_max" => round(assoc.ci_max, 2),
+        "pvalue_str" => pvalue_str(assoc.pvalue),
+        "pvalue_num" => assoc.pvalue,
+        "nindivs" => assoc.nindivs
+      }
+    end)
+  end
+
+  defp data_assocs_table(pheno_id, assocs) do
+    # Takes the associations from the database and transform them to
+    # values for the assocation table, such that each table row has
+    # "before" and "after" associations with the given pheno_id.
+    no_stats = %{
+      "hr" => nil,
+      "ci_min" => nil,
+      "ci_max" => nil,
+      "pvalue" => nil,
+      "nindivs" => nil
+    }
+
+    rows =
+      Enum.reduce(assocs, %{}, fn assoc, acc ->
+        to_record(acc, assoc, pheno_id)
+      end)
+
+    Enum.map(rows, fn {other_id, info} ->
+      before = Map.get(info, "before", no_stats)
+      after_ = Map.get(info, "after", no_stats)
+
+      %{
+        "id" => other_id,
+	"name" => info["name"],
+        "longname" => info["longname"],
+        "before" => before,
+        "after" => after_
+      }
+    end)
+  end
+
+  defp to_record(res, assoc, pheno_id) do
+    # Takes an association and transform it to a suitable value for a
+    # row in the association table.
+    [dir, other_pheno] =
+      if pheno_id == assoc.prior_id do
+        [
+          "after",
+          %{
+            id: assoc.outcome_id,
+	    name: assoc.outcome_name,
+            longname: assoc.outcome_longname
+          }
+        ]
+      else
+        [
+          "before",
+          %{
+            id: assoc.prior_id,
+	    name: assoc.prior_name,
+            longname: assoc.prior_longname
+          }
+        ]
+      end
+
+    new_stats = %{
+      "hr" => round(assoc.hr, 2),
+      "ci_min" => round(assoc.ci_min, 2),
+      "ci_max" => round(assoc.ci_max, 2),
+      "pvalue" => assoc.pvalue,
+      "pvalue_str" => pvalue_str(assoc.pvalue),
+      "nindivs" => assoc.nindivs
+    }
+
+    record =
+      case Map.get(res, other_pheno.id) do
+        nil ->
+          %{
+	    "name" => other_pheno.name,
+            "longname" => other_pheno.longname,
+            dir => new_stats
+          }
+
+        existing ->
+          Map.merge(existing, %{
+            dir => new_stats
+          })
+      end
+
+    Map.put(res, other_pheno.id, record)
   end
 end
