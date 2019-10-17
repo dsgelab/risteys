@@ -4,7 +4,13 @@
 
 code_path := $(dir ${MAKEFILE_LIST})
 
-outputs := ontology.json FINNGEN_ENDPOINTS_longitudinal_QCed.csv dense_first_events.csv input.hdf5 stats.hdf5 stats.json filtered_pairs.csv
+outputs := ontology.json \
+	FINNGEN_ENDPOINTS_longitudinal_QCed.csv \
+	dense_first_events.csv \
+	input.hdf5 \
+	stats.hdf5 \
+	stats.json \
+	filtered_pairs.csv
 
 #
 # PSEUDO-TARGETS

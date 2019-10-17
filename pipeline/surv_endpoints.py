@@ -7,8 +7,8 @@ Usage
 
 Input files
 -----------
-- input.hdf5
-  Each row is an event with FinnGen ID, Endpoint and time information.
+- input.hdf5  /first_event
+  Each row is the first-event of an endpoint for an individual.
 
 Description
 -----------
@@ -41,11 +41,13 @@ DATA_DIR = Path(argv[1])
 INPUT_EVENTS = "input.hdf5"
 OUTPUT_NAME = "filtered_pairs.csv"
 
-# Filter parameters
+# Parameters
 CROSS_THRESHOLD = 5  # how many individuals to have, at least, in each
                      # cell of the frequency table
 LATER_THRESHOLD = 25 # how many individuals to have, at least, for the
                      # "later" endpoints
+STUDY_STARTS_AFTER = 1997  # Look at the data after this year
+STUDY_ENDS_BEFORE  = 2018  # Look at the data before this year
 
 
 def prechecks(events_path, output_path):
@@ -55,9 +57,9 @@ def prechecks(events_path, output_path):
     assert not output_path.exists(), f"{output_path} already exists, not overwriting it"
 
     # Check event file headers
-    df = pd.read_hdf(events_path, stop=0)
+    df = pd.read_hdf(events_path, "/first_event", stop=0)
     cols = set(df.columns)
-    expected_cols = set(["FINNGENID", "EVENT_AGE", "EVENT_YEAR", "ENDPOINT"])
+    expected_cols = set(["FINNGENID", "AGE", "YEAR", "ENDPOINT"])
     assert expected_cols.issubset(cols), f"wrong columns in input file: {expected_cols} not in {cols}"
 
 
@@ -77,11 +79,11 @@ def load_data(events_path):
     """Load input data"""
     logger.info("Loading data")
     # Read the longitudinal file
-    df = pd.read_hdf(events_path)
+    df = pd.read_hdf(events_path, "/first_event")
 
     # Keep only events in [1998, 2018[, the period we have all
     # registry data.
-    df = df[df.EVENT_YEAR.gt(1997) & df.EVENT_YEAR.lt(2018)]
+    df = df[df.YEAR.gt(STUDY_STARTS_AFTER) & df.YEAR.lt(STUDY_ENDS_BEFORE)]
 
     return df
 
@@ -92,7 +94,7 @@ def build_matrix(df):
 
     matrix = (
         df.groupby(["FINNGENID", "ENDPOINT"], sort=False)
-        ["EVENT_AGE"]
+        ["AGE"]
         .min()
         .unstack(level="ENDPOINT")
     )
@@ -103,6 +105,9 @@ def build_matrix(df):
 def build_pairs(matrix):
     """Build a list of pairs of endpoints"""
     logger.info("Building full list of pairs")
+
+    # Pre-filter by selecting endpoints with enough individuals,
+    # without looking at endpoint association.
     endpoint_counts = matrix.count()  # count n. individuals by endpoints
     prior_endpoints = endpoint_counts[endpoint_counts >= CROSS_THRESHOLD].index
     later_endpoints = endpoint_counts[endpoint_counts >= LATER_THRESHOLD].index
