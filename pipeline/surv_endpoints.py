@@ -9,6 +9,10 @@ Input files
 -----------
 - input.hdf5  /first_event
   Each row is the first-event of an endpoint for an individual.
+  Source: previous pipeline step
+- Endpoint_definitions_FINNGEN_ENDPOINTS.tsv
+  Each row is an endpoint definition.
+  Source: FinnGen data
 
 Description
 -----------
@@ -27,6 +31,7 @@ endpoints that have enough individuals in order to have enough
 statistical power.
 """
 
+from csv import excel_tab
 from pathlib import Path
 from sys import argv
 
@@ -39,6 +44,7 @@ from log import logger
 # Files
 DATA_DIR = Path(argv[1])
 INPUT_EVENTS = "input.hdf5"
+INPUT_ENDPOINTS = "Endpoint_definitions_FINNGEN_ENDPOINTS.tsv"
 OUTPUT_NAME = "filtered_pairs.csv"
 
 # Parameters
@@ -50,10 +56,11 @@ STUDY_STARTS_AFTER = 1997  # Look at the data after this year
 STUDY_ENDS_BEFORE  = 2018  # Look at the data before this year
 
 
-def prechecks(events_path, output_path):
+def prechecks(events_path, endpoints_path, output_path):
     """Perform checks before running to fail earlier rather than later"""
     logger.info("Performing pre-checks")
     assert events_path.exists(), f"{events_path} doesn't exist"
+    assert endpoints_path.exists(), f"{endpoints_path} does't exist"
     assert not output_path.exists(), f"{output_path} already exists, not overwriting it"
 
     # Check event file headers
@@ -63,13 +70,15 @@ def prechecks(events_path, output_path):
     assert expected_cols.issubset(cols), f"wrong columns in input file: {expected_cols} not in {cols}"
 
 
-def main(events_path, output_path):
+def main(events_path, endpoints_path, output_path):
     """Get a selection of pairs of endpoints to do survival analysis on"""
-    prechecks(events_path, output_path)
+    prechecks(events_path, endpoints_path, output_path)
 
     df = load_data(events_path)
+    endpoints = load_endpoints(endpoints_path)
     matrix = build_matrix(df)
     pairs = build_pairs(matrix)
+    pairs = filter_descendants(pairs, endpoints)
     pairs = filter_prior_later(pairs, matrix)
     pairs = filter_crosstab(pairs, matrix)
     write_output(pairs, output_path)
@@ -85,6 +94,17 @@ def load_data(events_path):
     # registry data.
     df = df[df.YEAR.gt(STUDY_STARTS_AFTER) & df.YEAR.lt(STUDY_ENDS_BEFORE)]
 
+    return df
+
+
+def load_endpoints(endpoints_path):
+    """Load the endpoint definitions"""
+    df = pd.read_csv(
+        endpoints_path,
+        usecols=["NAME", "INCLUDE"],
+        skiprows=[1],  # comment line in the endpoints file
+        dialect=excel_tab
+    )
     return df
 
 
@@ -126,6 +146,57 @@ def build_pairs(matrix):
     assert size_orig == size_dedup, f"Duplicates in the list of pairs ({size_orig} != {size_dedup} pairs)"
 
     return pairs
+
+
+def filter_descendants(pairs, endpoints):
+    """Remove pairs where one endpoint includes the other"""
+    logger.info("Filtering overlapping endpoint pairs")
+    res = []
+
+    inclusions = get_all_inclusions(endpoints)
+
+    for (prior, later) in pairs:
+        if later not in inclusions[prior] and prior not in inclusions[later]:
+            res.append((prior, later))
+
+    return res
+
+
+def get_all_inclusions(endpoints):
+    """Flatten the endpoint hierarchy with a map: endpoint -> all its descendants"""
+    composite = endpoints[endpoints.INCLUDE.notna()]
+    parents = composite.NAME
+    children = composite.INCLUDE.str.split("|")
+
+    # Build the graph of parent -> direct children
+    graph = {}
+    for p, c in zip(parents, children):
+        graph[p] = set(c)
+
+    # Build the map of parent -> all direct and indirect descendants
+    res = {}
+    cyclic = []
+    for ee in endpoints.NAME:
+        res[ee] = get_descendants(ee, graph, cyclic)
+
+    return res
+
+
+def get_descendants(name, graph, cyclic, acc=None):
+    """Get all direct and indirect descendants of an endpoint"""
+    # Initialize for first non tail-call
+    if acc is None:
+        acc = set()
+
+    if name in cyclic:
+        return graph.get(name, set())
+
+    children = graph.get(name, set())
+    children = children.difference(set([name]))  # case where an endpoint includes itself
+    acc = acc.union(children)
+    for child in children:
+        acc = acc.union(get_descendants(child, graph, acc))
+    return acc
 
 
 def filter_prior_later(pairs, matrix):
@@ -193,5 +264,6 @@ def write_output(pairs, output_path):
 if __name__ == '__main__':
     main(
         DATA_DIR / INPUT_EVENTS,
+        DATA_DIR / INPUT_ENDPOINTS,
         DATA_DIR / OUTPUT_NAME,
     )
