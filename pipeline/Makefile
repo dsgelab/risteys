@@ -48,5 +48,8 @@ stats.hdf5: input.hdf5
 stats.json: stats.hdf5
 	python ${code_path}stats_to_json.py .
 
-filtered_pairs.csv: Endpoint_definitions_FINNGEN_ENDPOINTS.tsv input.hdf5
+filtered_pairs.csv: input.hdf5 \
+		Endpoint_definitions_FINNGEN_ENDPOINTS.tsv \
+		icd10cm_codes_2019.tsv \
+		ICD10_koodistopalvelu_2015-08_26_utf8.txt
 	python ${code_path}surv_endpoints.py .

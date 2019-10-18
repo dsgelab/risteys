@@ -13,6 +13,12 @@ Input files
 - Endpoint_definitions_FINNGEN_ENDPOINTS.tsv
   Each row is an endpoint definition.
   Source: FinnGen data
+- icd10cm_codes_2019.tsv
+  Official ICD-10-CM file.
+  Source: ftp://ftp.cdc.gov/pub/Health_Statistics/NCHS/Publications/ICD10CM/2019/
+- ICD10_koodistopalvelu_2015-08_26_utf8.txt
+  Finnish ICD code definitions.
+  Source: Aki, then converted to utf8 with "iconv -f MAC -t UTF8"
 
 Description
 -----------
@@ -34,6 +40,7 @@ statistical power.
 from csv import excel_tab
 from pathlib import Path
 from sys import argv
+import re
 
 import numpy as np
 import pandas as pd
@@ -45,7 +52,17 @@ from log import logger
 DATA_DIR = Path(argv[1])
 INPUT_EVENTS = "input.hdf5"
 INPUT_ENDPOINTS = "Endpoint_definitions_FINNGEN_ENDPOINTS.tsv"
+INPUT_ICD_CM = "icd10cm_codes_2019.tsv"
+INPUT_ICD_FINN = "ICD10_koodistopalvelu_2015-08_26_utf8.txt"
 OUTPUT_NAME = "filtered_pairs.csv"
+
+# Where to look for ICD in the endpoint definitions file
+ICD_COLS = [
+    "OUTPAT_ICD",
+    "HD_ICD_10",
+    "COD_ICD_10",
+    "KELA_REIMB_ICD"
+]
 
 # Parameters
 CROSS_THRESHOLD = 5  # how many individuals to have, at least, in each
@@ -56,11 +73,14 @@ STUDY_STARTS_AFTER = 1997  # Look at the data after this year
 STUDY_ENDS_BEFORE  = 2018  # Look at the data before this year
 
 
-def prechecks(events_path, endpoints_path, output_path):
+
+def prechecks(events_path, endpoints_path, icd_cm_path, icd_finn_path, output_path):
     """Perform checks before running to fail earlier rather than later"""
     logger.info("Performing pre-checks")
     assert events_path.exists(), f"{events_path} doesn't exist"
-    assert endpoints_path.exists(), f"{endpoints_path} does't exist"
+    assert endpoints_path.exists(), f"{endpoints_path} does'nt exist"
+    assert icd_cm_path.exists(), f"{icd_cm_path} doesn't exist"
+    assert icd_finn_path.exists(), f"{icd_finn_path} doesn't exist"
     assert not output_path.exists(), f"{output_path} already exists, not overwriting it"
 
     # Check event file headers
@@ -70,17 +90,31 @@ def prechecks(events_path, endpoints_path, output_path):
     assert expected_cols.issubset(cols), f"wrong columns in input file: {expected_cols} not in {cols}"
 
 
-def main(events_path, endpoints_path, output_path):
+def main(events_path, endpoints_path, icd_cm_path, icd_finn_path, output_path):
     """Get a selection of pairs of endpoints to do survival analysis on"""
-    prechecks(events_path, endpoints_path, output_path)
+    prechecks(events_path, endpoints_path, icd_cm_path, icd_finn_path, output_path)
 
+    # Load data
     df = load_data(events_path)
     endpoints = load_endpoints(endpoints_path)
+    icds = load_icds(icd_cm_path, icd_finn_path)
+
+    # Build list of pairs of endpoints
     matrix = build_matrix(df)
     pairs = build_pairs(matrix)
+
+    # Filter pairs
+    logger.info(f"len(pairs): {len(pairs)}")
+    pairs = filter_overlapping_icds(pairs, endpoints, icds)
+    logger.info(f"len(pairs): {len(pairs)}")
     pairs = filter_descendants(pairs, endpoints)
+    logger.info(f"len(pairs): {len(pairs)}")
     pairs = filter_prior_later(pairs, matrix)
+    logger.info(f"len(pairs): {len(pairs)}")
     pairs = filter_crosstab(pairs, matrix)
+    logger.info(f"len(pairs): {len(pairs)}")
+
+    # Write filtered pairs
     write_output(pairs, output_path)
 
 
@@ -101,11 +135,42 @@ def load_endpoints(endpoints_path):
     """Load the endpoint definitions"""
     df = pd.read_csv(
         endpoints_path,
-        usecols=["NAME", "INCLUDE"],
+        usecols=["NAME", "INCLUDE"] + ICD_COLS,
         skiprows=[1],  # comment line in the endpoints file
         dialect=excel_tab
     )
     return df
+
+
+def load_icds(icd_cm, icd_finn):
+    """Load the lists of ICD"""
+    # ICD-10-CM
+    cm = pd.read_csv(
+        icd_cm,
+        dialect=excel_tab,
+        header=None,
+        names=["code", "desc"],
+        usecols=["code"]
+    )
+    cm = cm.code
+
+    # Finnish version of ICDs
+    finn = pd.read_csv(
+        icd_finn,
+        dialect=excel_tab,
+        usecols=["A:Koodi1", "A:Koodi2"],
+    )
+    codes1 = finn.loc[finn["A:Koodi1"].notna(), "A:Koodi1"]
+    codes2 = finn.loc[finn["A:Koodi2"].notna(), "A:Koodi2"]
+    finn = set(codes1).union(set(codes2))
+
+    # Remove the '.' in Finnish ICDs since the endpoint definitions don't have it
+    finn = map(lambda s: s.replace(".", ""), finn)
+
+    # Merge all ICD-10 codes
+    icds = set(cm).union(finn)
+
+    return icds
 
 
 def build_matrix(df):
@@ -146,6 +211,47 @@ def build_pairs(matrix):
     assert size_orig == size_dedup, f"Duplicates in the list of pairs ({size_orig} != {size_dedup} pairs)"
 
     return pairs
+
+
+def filter_overlapping_icds(pairs, endpoints, icds):
+    """Filter pairs if a pair has overlapping ICD codes"""
+    logger.info("Filtering pairs by overlapping ICD-10s")
+    res = []
+
+    # For each endpoint: assoc ICD list to all its regexes (complex: ~ 4k)
+    endpoint_icds = map_endpoint_icds(endpoints, icds)
+
+    for (prior, later) in pairs:
+        # TODO replace this call to a map.get
+        icds_prior = endpoint_icds[prior]
+        icds_later = endpoint_icds[later]
+
+        if icds_prior.isdisjoint(icds_later):
+            res.append((prior, later))
+
+    return res
+
+
+def map_endpoint_icds(definitions, icds):
+    """Map each endpoint to its list of ICD-10s"""
+    res = {}
+
+    for _, row in definitions.loc[:, ["NAME"] + ICD_COLS].iterrows():
+        endpoint_icds = []
+        regexes = row.loc[ICD_COLS]
+        regexes = regexes[regexes.notna()]
+        regexes = map(lambda r: f"^({r})$", regexes.values)  # exact matches only
+        regexes = set(regexes)  # remove duplicates
+
+        for regex in regexes:
+            for icd in icds:
+                match = re.match(regex, icd)
+                if match is not None:
+                    endpoint_icds.append(icd)
+
+        res[row.NAME] = set(endpoint_icds)
+
+    return res
 
 
 def filter_descendants(pairs, endpoints):
@@ -265,5 +371,7 @@ if __name__ == '__main__':
     main(
         DATA_DIR / INPUT_EVENTS,
         DATA_DIR / INPUT_ENDPOINTS,
+        DATA_DIR / INPUT_ICD_CM,
+        DATA_DIR / INPUT_ICD_FINN,
         DATA_DIR / OUTPUT_NAME,
     )
