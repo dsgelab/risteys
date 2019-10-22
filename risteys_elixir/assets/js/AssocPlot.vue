@@ -157,7 +157,7 @@ let hideTooltip = (tooltip) => {
 
 let makePlot = (data, ticks, categoryNames, other_pheno) => {
 	let labelX = "Associations grouped by category";
-	let labelY = "-log10(p)";
+	let labelY = "-log₁₀ (p)";
 	let scales = getScales(data);
 
 	let tooltip = d3.select("#d3-assoc-plot")
