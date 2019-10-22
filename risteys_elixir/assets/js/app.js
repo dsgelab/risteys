@@ -23,6 +23,16 @@ import AssocTable from './AssocTable.vue';
 import Search from './Search.vue';
 import SearchBox from './SearchBox.vue';
 import {search_channel} from "./socket";
+import { forEach } from "lodash-es";
+
+// Help buttons
+import HelpButton from './HelpButton.vue';
+import HelpNumberIndividuals from './HelpNumberIndividuals.vue';
+import HelpPrevalence from './HelpPrevalence.vue';
+import HelpMeanAge from './HelpMeanAge.vue';
+import HelpCaseFatality from './HelpCaseFatality.vue';
+import HelpMedianEvents from './HelpMedianEvents.vue';
+import HelpRecurrence from './HelpRecurrence.vue';
 
 
 var path = window.location.pathname;
@@ -41,6 +51,26 @@ let init_search_key = () => {
         }
     })
 };
+
+let showHelpContent = (elem) => {
+    // Select content div
+    let content = elem.querySelector(".help-content");
+    // Toggle display
+    content.style.display = "unset";
+};
+/* Attach listener to open help windows */
+let helps = document.querySelectorAll(".help-button");
+forEach(helps, (elem) => elem.addEventListener("click", () => showHelpContent(elem)));
+
+let hideHelpContent = (closeButton) => {
+    let content = closeButton.parentElement;
+    console.log(content);
+    content.style.display = "none";
+    console.log(content);
+}
+/* Attach listener to close help windows */
+let closeButtons = document.querySelectorAll(".help-close");
+forEach(closeButtons, (elem) => elem.addEventListener("click", () => hideHelpContent(elem)));
 
 /*
  *  HOME PAGE
@@ -93,6 +123,37 @@ if (path.startsWith("/phenocode/")) {  // Load only on phenocode pages
         pheno_search_results.search_results = payload.body.results;
     });
 
+    /* HELP BUTTONS */
+    var help_button_nindivs = new Vue({
+        el: '#help-button-nindivs',
+        template: `<HelpNumberIndividuals phenocode="${phenocode}"/>`,
+        components: { HelpNumberIndividuals },
+    });
+    var help_button_prevalence = new Vue({
+        el: '#help-button-prevalence',
+        template: `<HelpPrevalence phenocode="${phenocode}"/>`,
+        components: { HelpPrevalence },
+    });
+    var help_button_mean_age = new Vue({
+        el: '#help-button-mean-age',
+        template: `<HelpMeanAge phenocode="${phenocode}"/>`,
+        components: { HelpMeanAge },
+    });
+    var help_button_case_fatality = new Vue({
+        el: '#help-button-case-fatality',
+        template: `<HelpCaseFatality phenocode="${phenocode}"/>`,
+        components: { HelpCaseFatality },
+    });
+    var help_button_median_events = new Vue({
+        el: '#help-button-median-events',
+        template: `<HelpMedianEvents phenocode="${phenocode}"/>`,
+        components: { HelpMedianEvents },
+    });
+    var help_button_recurrence = new Vue({
+        el: '#help-button-recurrence',
+        template: `<HelpRecurrence phenocode="${phenocode}"/>`,
+        components: { HelpRecurrence },
+    });
 
     /* HISTOGRAMS */
     makeHistogram("Year distribution",
