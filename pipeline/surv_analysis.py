@@ -200,15 +200,10 @@ def load_data(pairs_path, phenotypes_path, definitions_path):
 
     pairs = pd.read_csv(pairs_path)
 
-    # Some endpoints can be in in the pair list but not in the columns
-    # of the phenotype file. This is because the pair list was made
-    # from the longitudinal file, which unfortunately has endpoints
-    # that does not match in the phenotype file. To solve this, we
-    # take only endpoints present in the phenotype file.
-    # Another solution would be to make the indivs × first event
-    # matrix from the longitudinal file, and include the extra
-    # information such as baseline age and sex.
+    # Get all endpoints in the pair list that are part of the first-event file.
     endpoints = set.union(set(pairs.prior), set(pairs.later))
+    if not endpoints.issubset(set(pheno_cols)):
+        logger.warning("Some endpoints in the pair list are not part of the first-event file.")
     endpoints = set.intersection(endpoints, set(pheno_cols))
     # Remove inacessible endpoints from the list of pairs
     pairs = pairs[
