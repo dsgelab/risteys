@@ -416,7 +416,7 @@ def cox_fit(df, prior, later, nindivs, is_sex_specific, res_writer, error_writer
         error_writer.writerow([prior, later, "ConvergenceError", e])
     except Warning as e:
         logger.warning(f"Warning emitted")
-        error_writer.writerow([prior, later, "ConvergenceWarning", e])
+        error_writer.writerow([prior, later, "Warning", e])
     else:
         # Save results
         pred_coef = cph.params_["pred_prior"]
