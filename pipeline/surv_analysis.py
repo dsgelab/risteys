@@ -84,6 +84,7 @@ logger.setLevel(level)
 # variables.
 INPUT_PHENOTYPES = Path(getenv("INPUT_PHENOTYPES"))
 INPUT_PAIRS = Path(getenv("INPUT_PAIRS"))
+INPUT_DEFINITIONS = Path(getenv("INPUT_DEFINITIONS"))
 OUTPUT_NAME = Path(getenv("OUTPUT_NAME"))
 OUTPUT_ERROR = Path(getenv("OUTPUT_ERROR"))
 
@@ -106,27 +107,28 @@ SUFFIX_YEAR = "_YEAR"
 filterwarnings(action="error", module="lifelines")
 
 
-def prechecks(pairs_path, phenotypes_path, output_path, error_path):
+def prechecks(pairs_path, phenotypes_path, definitions_path, output_path, error_path):
     """Perform checks before running to fail early"""
     logger.info("Performing pre-checks")
-    assert phenotypes_path.exists(), f"{phenotypes_path} doesn't exists"
-    assert pairs_path.exists(), f"{pairs_path} doesn't exists"
+    assert phenotypes_path.exists(), f"{phenotypes_path} doesn't exist"
+    assert pairs_path.exists(), f"{pairs_path} doesn't exist"
+    assert definitions_path.exists(), f"{definitions_path} doesn't exist"
     assert not output_path.exists(), f"{output_path} already exists, not overwriting it"
     assert not error_path.exists(), f"{error_path} already exists, not overwriting it"
 
 
-def main(pairs_path, phenotypes_path, output_path, error_path):
+def main(pairs_path, phenotypes_path, definitions_path, output_path, error_path):
     """Run Cox regressions on all provided pairs of endpoints"""
-    prechecks(pairs_path, phenotypes_path, output_path, error_path)
+    prechecks(pairs_path, phenotypes_path, definitions_path, output_path, error_path)
 
-    pairs, df, endpoints = load_data(pairs_path, phenotypes_path)
+    pairs, df, endpoints, definitions = load_data(pairs_path, phenotypes_path, definitions_path)
 
     df = clean_data(df, endpoints)
 
     res_writer, res_file, error_writer, error_file = create_csv_writers(output_path, error_path)
 
     pairs.apply(
-        lambda p: compute_coxhr(p, df, res_writer, error_writer),
+        lambda p: compute_coxhr(p, df, definitions, res_writer, error_writer),
         axis=1,
         result_type="expand"
     )
@@ -184,7 +186,7 @@ def create_csv_writers(output_path, error_path):
     return res_writer, res_file, error_writer, error_file
 
 
-def load_data(pairs_path, phenotypes_path):
+def load_data(pairs_path, phenotypes_path, definitions_path):
     """Load the relevant columns from the phenotype data"""
     logger.info("Loading data")
 
@@ -225,7 +227,14 @@ def load_data(pairs_path, phenotypes_path):
         usecols=cols
     )
 
-    return pairs, phenotypes, endpoints
+    # Endpoint definitions to check for sex-specific endpoints
+    definitions = pd.read_csv(
+        definitions_path,
+        dialect=csv.excel_tab,
+        usecols=["NAME", "SEX"]
+    )
+
+    return pairs, phenotypes, endpoints, definitions
 
 
 def clean_data(df, endpoints):
@@ -262,13 +271,16 @@ def clean_data(df, endpoints):
     return df
 
 
-def compute_coxhr(pair, df, res_writer, error_writer):
+def compute_coxhr(pair, df, definitions, res_writer, error_writer):
     """Shape the data for the Cox regression, then do the regression"""
     prior, later = pair
     logger.info(f"Preparing data for Cox regression on ({prior}, {later})")
 
     prior_age = prior + SUFFIX_AGE
     later_age = later + SUFFIX_AGE
+
+    # Check if outcome endpoint is sex-specific
+    is_sex_specific = pd.notna(definitions.loc[definitions.NAME == later, "SEX"].iloc[0])
 
     # Remove individuals having "later" event (prevalent) before study starts
     pseudo_later_year = df["birth_year"] + df[later_age]
@@ -341,13 +353,18 @@ def compute_coxhr(pair, df, res_writer, error_writer):
         logger.warning("Some durations < 0")
         error_writer.writerow([prior, later, "AssertionError", e])
     else:
-        cox_fit(df, prior, later, nindivs, res_writer, error_writer)
+        cox_fit(df, prior, later, nindivs, is_sex_specific, res_writer, error_writer)
 
-def cox_fit(df, prior, later, nindivs, res_writer, error_writer):
+def cox_fit(df, prior, later, nindivs, is_sex_specific, res_writer, error_writer):
     """Fit the data for the Cox regression and write output to result file"""
     logger.info("Computing Cox regression")
     cph = CoxPHFitter()
-    df = df.loc[:, ["duration", "outcome", "pred_prior", "birth_year", "SEX"]]
+
+    # Set covariates depending on outcome being sex-specific
+    cols = ["duration", "outcome", "pred_prior", "birth_year"]
+    if not is_sex_specific:
+        cols.append("SEX")
+    df = df.loc[:, cols]
 
     # Set default values in case of error
     pred_coef = np.nan
@@ -414,13 +431,14 @@ def cox_fit(df, prior, later, nindivs, res_writer, error_writer):
         year_pval = cph.summary.p["birth_year"]
         year_zval = cph.summary.z["birth_year"]
 
-        sex_coef = cph.params_["SEX"]
-        sex_se = cph.standard_errors_["SEX"]
-        sex_hr = np.exp(sex_coef)
-        sex_ci_lower = np.exp(sex_coef - 1.96 * sex_se)
-        sex_ci_upper = np.exp(sex_coef + 1.96 * sex_se)
-        sex_pval = cph.summary.p["SEX"]
-        sex_zval = cph.summary.z["SEX"]
+        if not is_sex_specific:
+            sex_coef = cph.params_["SEX"]
+            sex_se = cph.standard_errors_["SEX"]
+            sex_hr = np.exp(sex_coef)
+            sex_ci_lower = np.exp(sex_coef - 1.96 * sex_se)
+            sex_ci_upper = np.exp(sex_coef + 1.96 * sex_se)
+            sex_pval = cph.summary.p["SEX"]
+            sex_zval = cph.summary.z["SEX"]
 
         nsubjects = cph._n_examples
         nevents = cph.event_observed.sum()
@@ -471,6 +489,7 @@ if __name__ == '__main__':
     main(
         INPUT_PAIRS,
         INPUT_PHENOTYPES,
+        INPUT_DEFINITIONS,
         OUTPUT_NAME,
         OUTPUT_ERROR
     )
