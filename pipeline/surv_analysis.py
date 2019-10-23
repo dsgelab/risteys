@@ -149,6 +149,7 @@ def create_csv_writers(output_path, error_path):
         "prior",
         "later",
         "nindivs_prior_later",
+        "median_duration",
         "pred_coef",
         "pred_se",
         "pred_hr",
@@ -366,6 +367,9 @@ def cox_fit(df, prior, later, nindivs, is_sex_specific, res_writer, error_writer
         cols.append("SEX")
     df = df.loc[:, cols]
 
+    # Compute the median duration for those with the prior->outcome association
+    median_duration = df.loc[df.pred_prior & df.outcome, "duration"].median()
+
     # Set default values in case of error
     pred_coef = np.nan
     pred_se = np.nan
@@ -454,6 +458,7 @@ def cox_fit(df, prior, later, nindivs, is_sex_specific, res_writer, error_writer
         prior,
         later,
         nindivs,
+        median_duration,
         pred_coef,
         pred_se,
         pred_hr,
