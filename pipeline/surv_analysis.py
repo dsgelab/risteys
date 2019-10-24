@@ -22,12 +22,23 @@ Input files
 -----------
 - INPUT_PHENOTYPES
   The first-event phenotype file from FinnGen.
+  Source: FinnGen
 
 - INPUT_PAIRS
   CSV file containing a list of pairs to do survival analysis of.
   This file header is: prior,later
+  Source: previous pipeline step
 
-Output files
+- INPUT_DEFINITIONS
+  Endpoint definitions for FinnGen.
+  Source: FinnGen
+
+- INPUT_MIMINMUM
+  Minimum information file.
+  Each row is an individual, each column is a piece of information
+  such as sex or age at baseline.
+  Source: FinnGen
+
 ------------
 - OUTPUT_NAME
    Result file, as CSV, one line per endpoint pair.
@@ -85,6 +96,7 @@ logger.setLevel(level)
 INPUT_PHENOTYPES = Path(getenv("INPUT_PHENOTYPES"))
 INPUT_PAIRS = Path(getenv("INPUT_PAIRS"))
 INPUT_DEFINITIONS = Path(getenv("INPUT_DEFINITIONS"))
+INPUT_MINIMUM = Path(getenv("INPUT_MINIMUM"))
 OUTPUT_NAME = Path(getenv("OUTPUT_NAME"))
 OUTPUT_ERROR = Path(getenv("OUTPUT_ERROR"))
 
@@ -95,9 +107,9 @@ STUDY_ENDS = 2018.0
 
 # Columns to always keep
 KEEP = [
+    "FINNGENID",
     "BL_AGE", "BL_YEAR",
     "DEATH_AGE", "DEATH_YEAR", "DEATH",
-    "SEX"
 ]
 # Column suffixes
 SUFFIX_AGE = "_AGE"
@@ -107,21 +119,22 @@ SUFFIX_YEAR = "_YEAR"
 filterwarnings(action="error", module="lifelines")
 
 
-def prechecks(pairs_path, phenotypes_path, definitions_path, output_path, error_path):
+def prechecks(pairs_path, phenotypes_path, definitions_path, minimum_path, output_path, error_path):
     """Perform checks before running to fail early"""
     logger.info("Performing pre-checks")
     assert phenotypes_path.exists(), f"{phenotypes_path} doesn't exist"
     assert pairs_path.exists(), f"{pairs_path} doesn't exist"
     assert definitions_path.exists(), f"{definitions_path} doesn't exist"
+    assert minimum_path.exists(),  f"{minimum_path} doesn't exist"
     assert not output_path.exists(), f"{output_path} already exists, not overwriting it"
     assert not error_path.exists(), f"{error_path} already exists, not overwriting it"
 
 
-def main(pairs_path, phenotypes_path, definitions_path, output_path, error_path):
+def main(pairs_path, phenotypes_path, definitions_path, minimum_path, output_path, error_path):
     """Run Cox regressions on all provided pairs of endpoints"""
-    prechecks(pairs_path, phenotypes_path, definitions_path, output_path, error_path)
+    prechecks(pairs_path, phenotypes_path, definitions_path, minimum_path, output_path, error_path)
 
-    pairs, df, endpoints, definitions = load_data(pairs_path, phenotypes_path, definitions_path)
+    pairs, df, endpoints, definitions = load_data(pairs_path, phenotypes_path, definitions_path, minimum_path)
 
     df = clean_data(df, endpoints)
 
@@ -187,7 +200,7 @@ def create_csv_writers(output_path, error_path):
     return res_writer, res_file, error_writer, error_file
 
 
-def load_data(pairs_path, phenotypes_path, definitions_path):
+def load_data(pairs_path, phenotypes_path, definitions_path, minimum_path):
     """Load the relevant columns from the phenotype data"""
     logger.info("Loading data")
 
@@ -229,6 +242,22 @@ def load_data(pairs_path, phenotypes_path, definitions_path):
         dialect=csv.excel_tab,
         usecols=["NAME", "SEX"]
     )
+
+    # Minimum info file to get sex of each individual
+    sex_info = pd.read_csv(
+        minimum_path,
+        dialect=csv.excel_tab,
+        usecols=["FINNGENID", "SEX"]
+    )
+    # Merge sex info into the phenotypes Dataframe.
+    # This can remove individuals as it leaves only the indviduals
+    # that are both in the phenotypes file and the minimum file. We
+    # need this to have event data and sex information.
+    nindivs_before = phenotypes.shape[0]
+    phenotypes = phenotypes.merge(sex_info, on="FINNGENID")
+    diff_nindivs = phenotypes.shape[0] - nindivs_before
+    if diff_nindivs < 0:
+        logger.warning(f"Removed {abs(diff_nindivs)}/{nindivs_before} indivs when getting the sex information.")
 
     return pairs, phenotypes, endpoints, definitions
 
@@ -490,6 +519,7 @@ if __name__ == '__main__':
         INPUT_PAIRS,
         INPUT_PHENOTYPES,
         INPUT_DEFINITIONS,
+        INPUT_MINIMUM,
         OUTPUT_NAME,
         OUTPUT_ERROR
     )
