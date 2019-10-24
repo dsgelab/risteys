@@ -216,7 +216,8 @@ def load_data(pairs_path, phenotypes_path, definitions_path, minimum_path):
     # Get all endpoints in the pair list that are part of the first-event file.
     endpoints = set.union(set(pairs.prior), set(pairs.later))
     if not endpoints.issubset(set(pheno_cols)):
-        logger.warning("Some endpoints in the pair list are not part of the first-event file.")
+        diff_endpoints = endpoints - set(pheno_cols)
+        logger.warning(f"Some endpoints in the pair list are not part of the first-event file:\n{diff_endpoints}")
     endpoints = set.intersection(endpoints, set(pheno_cols))
     # Remove inacessible endpoints from the list of pairs
     pairs = pairs[
