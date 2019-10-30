@@ -4,8 +4,48 @@
 #   mix run import_coxhr.exs <csv-file-cox>
 #
 # where <csv-file-cox> is a CSV file with data for many pairs of
-# endpoints, with the following header:
-# prior,later,hr,ci_lower,ci_upper,p-value,concordance,nindivs_prior_later
+# endpoints, with the following header columns:
+# - prior
+# - later
+# - nindivs_prior_later
+# - median_duration
+# - pred_coef
+# - pred_se
+# - pred_hr
+# - pred_ci_lower
+# - pred_ci_upper
+# - pred_pval
+# - pred_zval
+# - year_coef
+# - year_se
+# - year_hr
+# - year_ci_lower
+# - year_ci_upper
+# - year_pval
+# - year_zval
+# - sex_coef
+# - sex_se
+# - sex_hr
+# - sex_ci_lower
+# - sex_ci_upper
+# - sex_pval
+# - sex_zval
+# - nsubjects
+# - nevents
+# - partial_log_likelihood
+# - concordance
+# - log_likelihood_ratio_test
+# - log_likelihood_ndf
+# - log_likelihood_pval
+#
+# NOTE For now only the following information is imported:
+# - prior
+# - later
+# - pred_hr
+# - pred_ci_lower
+# - pred_ci_upper
+# - pred_pval
+# - nindivs_prior_later
 
 
 alias Risteys.{Repo, CoxHR, Phenocode}
@@ -20,10 +60,10 @@ coxhr_filepath
 |> Enum.each(fn %{
                   "prior" => prior,
                   "later" => outcome,
-                  "hr" => hr,
-                  "ci_lower" => ci_min,
-                  "ci_upper" => ci_max,
-                  "p-value" => pvalue,
+                  "pred_hr" => hr,
+                  "pred_ci_lower" => ci_min,
+                  "pred_ci_upper" => ci_max,
+                  "pred_pval" => pvalue,
                   "nindivs_prior_later" => n_individuals
                 } ->
   Logger.debug("Processing pair: #{prior} -> #{outcome}")
