@@ -3,12 +3,14 @@
 # NOTE! Before using this script, the endpoint Excel file has to be converted to CSV.
 #
 # Usage:
-# mix run import_endpoint_csv.exs <path-to-endpoints-file> <path-to-categories-file>
+# mix run import_endpoint_csv.exs <path-to-endpoints-file> <path-to-categories-file> <path-to-demo-endpoints-file>
 #
 # where <path-to-endpoints-file> points to the Endpoint file (provided by Aki) in CSV format.
 # This file usually have the name "Endpoint_definitions_FINNGEN_ENDPOINTS_DFxxx.tsv"
 #
 # where <path-to-categories-file> is the JSON file with the mapping of TAG -> category name.
+#
+# where <path-to-demo-endpoints-file> is a CSV file with the header "NAME" and a list of #DEMO endpoints.
 #
 # After that, this script can be used. It will:
 # 1. Get the list of ICD-9s and ICD-10s from the database.
@@ -25,7 +27,7 @@ require Logger
 alias Risteys.{Repo, Phenocode, Icd10, Icd9, PhenocodeIcd10, PhenocodeIcd9}
 
 Logger.configure(level: :info)
-[endpoints_path, categories_path | _] = System.argv()
+[endpoints_path, categories_path, demos_path | _] = System.argv()
 
 defmodule RegexICD do
   import Ecto.Query
@@ -101,7 +103,6 @@ defmodule AssocICDs do
   end
 end
 
-
 ###
 # PARSE CATEGORIES
 ###
@@ -110,14 +111,14 @@ categories =
   |> File.read!()
   |> Jason.decode!()
 
-
 ###
 # IMPORT ENDPOINTS
 ###
 endpoints_path
 |> File.stream!()
 |> CSV.decode!(separator: ?\t, headers: true)
-|> Enum.drop(1)  # Omit first line of data: it is a comment line
+# Omit first line of data: it is a comment line
+|> Enum.drop(1)
 |> Enum.each(fn %{
                   "TAGS" => tags,
                   "LEVEL" => level,
@@ -155,7 +156,7 @@ endpoints_path
                   "CANC_MORPH" => canc_morph,
                   "CANC_BEHAV" => canc_behav,
                   "Special" => special,
-                  "version" => version,
+                  "version" => version
                 } ->
   Logger.info("Processing phenocode: #{name}")
 
@@ -183,6 +184,7 @@ endpoints_path
     tags
     |> String.split(",")
     |> hd()
+
   category = Map.get(categories, first_tag, "Unknown")
 
   hd_mainonly =
@@ -271,7 +273,7 @@ endpoints_path
       canc_morph: canc_morph,
       canc_behav: canc_behav,
       special: special,
-      version: version,
+      version: version
     })
 
   case Repo.insert(phenocode) do
@@ -288,5 +290,26 @@ endpoints_path
 
     {:error, changeset} ->
       Logger.warn("Could not insert #{name}: #{inspect(changeset)}")
+  end
+end)
+
+###
+# ADD DEMO TAG
+###
+demos_path
+|> File.stream!()
+|> CSV.decode!(headers: true)
+|> Enum.each(fn %{"NAME" => name} ->
+  case Repo.get_by(Phenocode, name: name) do
+    nil ->
+      Logger.warn("Could not find phenocode #{name} to tag as a demo endpoint")
+
+    pheno ->
+      # Mark the endpoint as "#DEMO" if not already set
+      if "#DEMO" not in String.split(pheno.tags, ",") do
+        pheno
+        |> Phenocode.changeset(%{tags: pheno.tags <> ",#DEMO"})
+        |> Repo.update!()
+      end
   end
 end)
