@@ -156,8 +156,6 @@ endpoints_path
                   "CANC_BEHAV" => canc_behav,
                   "Special" => special,
                   "version" => version,
-                  "source" => source,
-                  "PHEWEB" => pheweb
                 } ->
   Logger.info("Processing phenocode: #{name}")
 
@@ -237,13 +235,6 @@ endpoints_path
       _ -> String.to_integer(canc_behav)
     end
 
-  # Pheweb
-  pheweb =
-    case pheweb do
-      "" -> nil
-      "1" -> true
-    end
-
   Logger.debug("Inserting phenocode #{name} in DB")
 
   phenocode =
@@ -281,8 +272,6 @@ endpoints_path
       canc_behav: canc_behav,
       special: special,
       version: version,
-      source: source,
-      pheweb: pheweb
     })
 
   case Repo.insert(phenocode) do

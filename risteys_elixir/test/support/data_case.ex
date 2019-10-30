@@ -94,8 +94,6 @@ defmodule Risteys.DataCase do
         canc_behav: 0,
         special: "",
         version: "",
-        source: "",
-        pheweb: false,
         distrib_year: %{},
         distrib_age: %{},
         validation_article: nil,

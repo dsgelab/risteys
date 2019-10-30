@@ -36,8 +36,6 @@ defmodule Risteys.Phenocode do
     field :canc_behav, :integer
     field :special, :string
     field :version, :string
-    field :source, :string
-    field :pheweb, :boolean
     field :validation_article, :string
     field :ontology, {:map, {:array, :string}}
     # used for the search feature
@@ -86,8 +84,6 @@ defmodule Risteys.Phenocode do
       :canc_behav,
       :special,
       :version,
-      :source,
-      :pheweb,
       :validation_article,
       :ontology,
       :description
