@@ -216,7 +216,7 @@ end)
 # Clean-up endpoints without stats
 ###
 keep =
-  Repo.all(from p in Phenocode, right_join: s in StatsSex, select: s.phenocode_id)
+  Repo.all(from s in StatsSex, select: s.phenocode_id)
   |> MapSet.new()
 all =
   Repo.all(from p in Phenocode, select: p.id)
