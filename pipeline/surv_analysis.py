@@ -339,47 +339,52 @@ def compute_coxhr(pair, df, definitions, res_writer, error_writer):
     has_prior_after_later = df[prior] & df[later] & (df[prior_age] > df[later_age])
     nindivs, _ = df[has_prior_before_later].shape
 
-    no_prior = df.loc[has_no_prior, :].copy()
-    no_prior["outcome"] = no_prior[later]
-    no_prior["pred_prior"] = False
+    if nindivs > 5:  # aggregate-level data
+        no_prior = df.loc[has_no_prior, :].copy()
+        no_prior["outcome"] = no_prior[later]
+        no_prior["pred_prior"] = False
 
-    prior_after_later = df.loc[has_prior_after_later, :].copy()
-    prior_after_later["outcome"] = True
-    prior_after_later["pred_prior"] = False  # ignored since happens after the outcome
+        prior_after_later = df.loc[has_prior_after_later, :].copy()
+        prior_after_later["outcome"] = True
+        prior_after_later["pred_prior"] = False  # ignored since happens after the outcome
 
-    unexposed = df.loc[has_only_prior | has_prior_before_later, :].copy()
-    unexposed["stop_age"] = unexposed[prior_age]
-    unexposed["pred_prior"] = False
-    unexposed["outcome"] = False
+        unexposed = df.loc[has_only_prior | has_prior_before_later, :].copy()
+        unexposed["stop_age"] = unexposed[prior_age]
+        unexposed["pred_prior"] = False
+        unexposed["outcome"] = False
 
-    exposed = df.loc[has_only_prior | has_prior_before_later, :].copy()
-    n_exposed, _ = exposed.shape
-    if n_exposed > 0:  # prevent Pandas error of creating column on empty DataFrame
-        exposed["start_age"] = exposed[prior_age]
-        exposed["pred_prior"] = True
-        exposed.loc[has_only_prior, "outcome"] = False
-        exposed.loc[has_prior_before_later, "outcome"] = True
+        exposed = df.loc[has_only_prior | has_prior_before_later, :].copy()
+        n_exposed, _ = exposed.shape
+        if n_exposed > 0:  # prevent Pandas error of creating column on empty DataFrame
+            exposed["start_age"] = exposed[prior_age]
+            exposed["pred_prior"] = True
+            exposed.loc[has_only_prior, "outcome"] = False
+            exposed.loc[has_prior_before_later, "outcome"] = True
 
-    df = pd.concat([no_prior, unexposed, exposed])
+        df = pd.concat([no_prior, unexposed, exposed])
 
-    # Compute durations
-    df["duration"] = df["stop_age"] - df["start_age"]
+        # Compute durations
+        df["duration"] = df["stop_age"] - df["start_age"]
 
-    # Due to float precision, events happening on the same day can
-    # cause duration to be very close to, but not exactly, 0. So we
-    # set durations to 0 for those that are < 𝜀.
-    epsilon = 1e-5
-    df.loc[df.duration < epsilon, "duration"] = 0
+        # Due to float precision, events happening on the same day can
+        # cause duration to be very close to, but not exactly, 0. So we
+        # set durations to 0 for those that are < 𝜀.
+        epsilon = 1e-5
+        df.loc[df.duration < epsilon, "duration"] = 0
 
-    # Make sure that all durations are >0
-    neg_durations = df["duration"] < 0
-    try:
-        assert (~ neg_durations).all(), f"Some durations are < 0:\n{df.loc[neg_durations, [prior, later, 'duration']]}"
-    except AssertionError as e:
-        logger.warning("Some durations < 0")
-        error_writer.writerow([prior, later, "AssertionError", e])
+        # Make sure that all durations are >0
+        neg_durations = df["duration"] < 0
+        try:
+            assert (~ neg_durations).all(), f"Some durations are < 0:\n{df.loc[neg_durations, [prior, later, 'duration']]}"
+        except AssertionError as e:
+            logger.warning("Some durations < 0")
+            error_writer.writerow([prior, later, "AssertionError", e])
+        else:
+            cox_fit(df, prior, later, nindivs, is_sex_specific, res_writer, error_writer)
+
     else:
-        cox_fit(df, prior, later, nindivs, is_sex_specific, res_writer, error_writer)
+        error_writer.writerow([prior, later, "", f"skipping, individual-level data N={nindivs}"])
+
 
 def cox_fit(df, prior, later, nindivs, is_sex_specific, res_writer, error_writer):
     """Fit the data for the Cox regression and write output to result file"""
