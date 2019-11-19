@@ -191,6 +191,7 @@ def create_csv_writers(output_path, error_path):
         "log_likelihood_ratio_test",
         "log_likelihood_ndf",
         "log_likelihood_pval",
+        "step_size",
     ])
 
     error_file = open(error_path, "x", buffering=line_buffering)
@@ -389,7 +390,12 @@ def compute_coxhr(pair, df, definitions, res_writer, error_writer):
 def cox_fit(df, prior, later, nindivs, is_sex_specific, res_writer, error_writer):
     """Fit the data for the Cox regression and write output to result file"""
     logger.info("Computing Cox regression")
+    # First try with a somewhat big step_size to go fast, retry later
+    # with a lower step_size to help with convergence.
+    step_size = 1.0
+
     cph = CoxPHFitter()
+    cox_fit_success = False  # keep track of when we need to write out the results
 
     # Set covariates depending on outcome being sex-specific
     cols = ["duration", "outcome", "pred_prior", "birth_year"]
@@ -439,15 +445,31 @@ def cox_fit(df, prior, later, nindivs, is_sex_specific, res_writer, error_writer
             duration_col="duration",
             event_col="outcome",
             show_progress=False,
-            # step_size=0.1,  # may help with convergence
+            step_size=step_size,
         )
-    except ConvergenceError as e:
-        logger.warning(f"Could not fit Cox model for pair ({prior}, {later})")
-        error_writer.writerow([prior, later, "ConvergenceError", e])
-    except Warning as e:
-        logger.warning(f"Warning emitted")
-        error_writer.writerow([prior, later, "Warning", e])
+    except (ConvergenceError, Warning):
+        logger.debug(f"Failed to fit Cox model for pair ({prior}, {later}) with step_size={step_size}, retrying with lower step_size")
+
+        # Retry with lower step_size to help with convergence
+        step_size = 0.1
+        try:
+            cph.fit(
+                df,
+                duration_col="duration",
+                event_col="outcome",
+                show_progress=False,
+                step_size=step_size,
+            )
+        except (ConvergenceError, Warning) as e:
+            logger.warning(f"Failed to fit Cox model for pair ({prior}, {later}) after lowering step_size to {step_size} to fit Cox model")
+            error_writer.writerow([prior, later, type(e), e])
+        else:
+            logger.debug(f"Success when retrying with lower step_size={step_size}")
+            cox_fit_success = True
     else:
+        cox_fit_success = True
+
+    if cox_fit_success:
         # Save results
         pred_coef = cph.params_["pred_prior"]
         pred_se = cph.standard_errors_["pred_prior"]
@@ -517,6 +539,7 @@ def cox_fit(df, prior, later, nindivs, is_sex_specific, res_writer, error_writer
         log_likelihood_ratio_test,
         log_likelihood_ndf,
         log_likelihood_pval,
+        step_size,
     ])
 
 
