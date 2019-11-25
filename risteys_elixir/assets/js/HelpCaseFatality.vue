@@ -5,40 +5,40 @@
 			<thead>
 				<tr>
 					<th>ID</th>
-					<th>age</th>
 					<th>phenocode</th>
+					<th>age</th>
 				</tr>
 			</thead>
 			<tbody>
 				<tr class="help-highlight">
 					<th>FG1</th>
-					<td>45</td>
 					<td>{{ phenocode }}</td>
+					<td>45</td>
 				</tr>
 				<tr style="color: grey">
 					<th>FG1</th>
-					<td>46</td>
 					<td>XYZ_ENDPOINT</td>
+					<td>46</td>
 				</tr>
 				<tr style="color: grey; border-bottom-width: 1px" class="help-highlight">
 					<th>FG1</th>
-					<td>47</td>
 					<td>DEATH</td>
+					<td>47</td>
 				</tr>
 				<tr>
 					<th class="help-highlight">FG2</th>
-					<td>30</td>
 					<td class="help-highlight">{{ phenocode }}</td>
+					<td>30</td>
 				</tr>
 				<tr style="border-bottom-width: 1px">
 					<th>FG2</th>
-					<td>30.1</td>
 					<td>{{ phenocode }}</td>
+					<td>30.1</td>
 				</tr>
 				<tr style="color: grey; border-bottom-width: 1px">
 					<th>FG3</th>
-					<td>50</td>
 					<td>XYZ_ENDPOINT</td>
+					<td>50</td>
 				</tr>
 			</tbody>
 		</table>
