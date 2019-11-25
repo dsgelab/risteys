@@ -18,7 +18,7 @@
 				<tr style="color: grey">
 					<th>FG1</th>
 					<td>XYZ_ENDPOINT</td>
-					<td>55</td>
+					<td>46</td>
 				</tr>
 				<tr style="color: grey; border-bottom-width: 1px">
 					<th>FG1</th>

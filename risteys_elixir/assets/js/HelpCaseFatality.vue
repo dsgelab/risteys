@@ -17,7 +17,7 @@
 				</tr>
 				<tr style="color: grey">
 					<th>FG1</th>
-					<td>55</td>
+					<td>46</td>
 					<td>XYZ_ENDPOINT</td>
 				</tr>
 				<tr style="color: grey; border-bottom-width: 1px" class="help-highlight">
