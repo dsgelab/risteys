@@ -119,6 +119,7 @@ SUFFIX_YEAR = "_YEAR"
 filterwarnings(action="error", module="lifelines")
 
 
+
 def prechecks(pairs_path, phenotypes_path, definitions_path, minimum_path, output_path, error_path):
     """Perform checks before running to fail early"""
     logger.info("Performing pre-checks")
@@ -162,6 +163,7 @@ def create_csv_writers(output_path, error_path):
         "prior",
         "later",
         "nindivs_prior_later",
+        "lagged_hr_cut_year",
         "median_duration",
         "pred_coef",
         "pred_se",
@@ -196,7 +198,7 @@ def create_csv_writers(output_path, error_path):
 
     error_file = open(error_path, "x", buffering=line_buffering)
     error_writer = csv.writer(error_file)
-    error_writer.writerow(["prior", "later", "type", "message"])
+    error_writer.writerow(["prior", "later", "lagged_hr_cut_year", "type", "message"])
 
     return res_writer, res_file, error_writer, error_file
 
@@ -299,15 +301,79 @@ def clean_data(df, endpoints):
 
 
 def compute_coxhr(pair, df, definitions, res_writer, error_writer):
-    """Shape the data for the Cox regression, then do the regression"""
+    "Shape the data and do Cox regressions to have standard and lagged HRs"
     prior, later = pair
-    logger.info(f"Preparing data for Cox regression on ({prior}, {later})")
+    logger.info(f"Computing Cox HR for pair {prior} -> {later}")
+
+    no_prior, unexposed, exposed = set_timeline(pair, df)
+
+    # Remove the sex covariate when fitting the Cox model
+    is_sex_specific = pd.notna(definitions.loc[definitions.NAME == later, "SEX"].iloc[0])
+
+    # Standard Cox regression on the whole timeline
+    lagged_hr_cut_year = np.nan
+    nindivs, _ = exposed[exposed.outcome].shape
+    try:
+        durations_std = set_durations(prior, later, no_prior, unexposed, exposed)
+    except AssertionError as exc:
+        logger.warning(exc)
+        error_writer.writerow([prior, later, lagged_hr_cut_year, "AssertionError", exc])
+    else:
+        cox_fit(durations_std, prior, later, nindivs, lagged_hr_cut_year, is_sex_specific, res_writer, error_writer)
+
+    # 1 year lag
+    lagged_hr_cut_year = 1.0
+    exposed_1y = set_exposed_lag(exposed, lagged_hr_cut_year)
+    nindivs, _ = exposed_1y[exposed_1y.outcome].shape
+    try:
+        durations_1y = set_durations(prior, later, no_prior, unexposed, exposed_1y)
+    except AssertionError as exc:
+        logger.warning(exc)
+        error_writer.writerow([prior, later, lagged_hr_cut_year, "AssertionError", exc])
+    else:
+        cox_fit(durations_1y, prior, later, nindivs, lagged_hr_cut_year, is_sex_specific, res_writer, error_writer)
+
+    # 5 year lag
+    lagged_hr_cut_year = 5.0
+    exposed_5y = set_exposed_lag(exposed, lagged_hr_cut_year)
+    nindivs, _ = exposed_5y[exposed_5y.outcome].shape
+    try:
+        durations_5y = set_durations(prior, later, no_prior, unexposed, exposed_5y)
+    except AssertionError as exc:
+        logger.warning(exc)
+        error_writer.writerow([prior, later, lagged_hr_cut_year, "AssertionError", exc])
+    else:
+        cox_fit(durations_5y, prior, later, nindivs, lagged_hr_cut_year, is_sex_specific, res_writer, error_writer)
+
+    # 15 year lag
+    lagged_hr_cut_year = 15.0
+    exposed_15y = set_exposed_lag(exposed, lagged_hr_cut_year)
+    nindivs, _ = exposed_15y[exposed_15y.outcome].shape
+    try:
+        durations_15y = set_durations(prior, later, no_prior, unexposed, exposed_15y)
+    except AssertionError as exc:
+        logger.warning(exc)
+        error_writer.writerow([prior, later, lagged_hr_cut_year, "AssertionError", exc])
+    else:
+        cox_fit(durations_15y, prior, later, nindivs, lagged_hr_cut_year, is_sex_specific, res_writer, error_writer)
+
+
+def set_timeline(pair, df):
+    """Set the unexposed and exposed timeline with prior and outcome information.
+
+
+    Example timeline for an individual:
+
+    study starts   prior  outcome     study ends
+    |              |      |           |
+    |--------------=======XXXXXXXXXXXX|
+    [  unexposed  ][     exposed      ]
+    """
+    prior, later = pair
+    logger.debug("Setting unexposed/exposed timeline for Cox regression")
 
     prior_age = prior + SUFFIX_AGE
     later_age = later + SUFFIX_AGE
-
-    # Check if outcome endpoint is sex-specific
-    is_sex_specific = pd.notna(definitions.loc[definitions.NAME == later, "SEX"].iloc[0])
 
     # Remove individuals having "later" event (prevalent) before study starts
     pseudo_later_year = df["birth_year"] + df[later_age]
@@ -338,58 +404,73 @@ def compute_coxhr(pair, df, definitions, res_writer, error_writer):
     has_only_prior = df[prior] & (~ df[later])
     has_prior_before_later = df[prior] & df[later] & (df[prior_age] < df[later_age])
     has_prior_after_later = df[prior] & df[later] & (df[prior_age] > df[later_age])
-    nindivs, _ = df[has_prior_before_later].shape
 
-    if nindivs > 5:  # aggregate-level data
-        no_prior = df.loc[has_no_prior, :].copy()
-        no_prior["outcome"] = no_prior[later]
-        no_prior["pred_prior"] = False
+    no_prior = df.loc[has_no_prior, :].copy()
+    no_prior["outcome"] = no_prior[later]
+    no_prior["pred_prior"] = False
 
-        prior_after_later = df.loc[has_prior_after_later, :].copy()
-        prior_after_later["outcome"] = True
-        prior_after_later["pred_prior"] = False  # ignored since happens after the outcome
+    prior_after_later = df.loc[has_prior_after_later, :].copy()
+    prior_after_later["outcome"] = True
+    prior_after_later["pred_prior"] = False  # ignored since happens after the outcome
 
-        unexposed = df.loc[has_only_prior | has_prior_before_later, :].copy()
-        unexposed["stop_age"] = unexposed[prior_age]
-        unexposed["pred_prior"] = False
-        unexposed["outcome"] = False
+    unexposed = df.loc[has_only_prior | has_prior_before_later, :].copy()
+    unexposed["stop_age"] = unexposed[prior_age]
+    unexposed["pred_prior"] = False
+    unexposed["outcome"] = False
 
-        exposed = df.loc[has_only_prior | has_prior_before_later, :].copy()
-        n_exposed, _ = exposed.shape
-        if n_exposed > 0:  # prevent Pandas error of creating column on empty DataFrame
-            exposed["start_age"] = exposed[prior_age]
-            exposed["pred_prior"] = True
-            exposed.loc[has_only_prior, "outcome"] = False
-            exposed.loc[has_prior_before_later, "outcome"] = True
+    exposed = df.loc[has_only_prior | has_prior_before_later, :].copy()
 
-        df = pd.concat([no_prior, unexposed, exposed])
+    # Standard exposed times, not lagged
+    n_exposed, _ = exposed.shape
+    if n_exposed > 0:  # prevent Pandas error of creating column on empty DataFrame
+        exposed["start_age"] = exposed[prior_age]
+        exposed["pred_prior"] = True
+        exposed.loc[has_only_prior, "outcome"] = False
+        exposed.loc[has_prior_before_later, "outcome"] = True
 
-        # Compute durations
-        df["duration"] = df["stop_age"] - df["start_age"]
-
-        # Due to float precision, events happening on the same day can
-        # cause duration to be very close to, but not exactly, 0. So we
-        # set durations to 0 for those that are < 𝜀.
-        epsilon = 1e-5
-        df.loc[df.duration < epsilon, "duration"] = 0
-
-        # Make sure that all durations are >0
-        neg_durations = df["duration"] < 0
-        try:
-            assert (~ neg_durations).all(), f"Some durations are < 0:\n{df.loc[neg_durations, [prior, later, 'duration']]}"
-        except AssertionError as e:
-            logger.warning("Some durations < 0")
-            error_writer.writerow([prior, later, "AssertionError", e])
-        else:
-            cox_fit(df, prior, later, nindivs, is_sex_specific, res_writer, error_writer)
-
-    else:
-        error_writer.writerow([prior, later, "", f"skipping, individual-level data N={nindivs}"])
+    return no_prior, unexposed, exposed
 
 
-def cox_fit(df, prior, later, nindivs, is_sex_specific, res_writer, error_writer):
+def set_durations(prior, later, no_prior, unexposed, exposed):
+    "Data check and compute durations from the provided timeline data"
+    # Make sure we deal with aggregate data
+    n_indivs, _ = exposed[exposed.outcome].shape
+    assert n_indivs > 5, f"Individual-level data  (N={n_indivs})"
+
+    # The lifetimes lib needs all data into 1 dataframe
+    df = pd.concat([no_prior, unexposed, exposed])
+
+    # Compute durations
+    df["duration"] = df["stop_age"] - df["start_age"]
+
+    # Due to float precision error, events happening at the same
+    # time can cause duration to be very close to, but not
+    # exactly, 0. So we set durations to 0 for those that are < 𝜀.
+    epsilon = 1e-5
+    df.loc[df.duration < epsilon, "duration"] = 0
+
+    # Make sure that all durations are >0
+    neg_durations = df["duration"] < 0
+    assert (~ neg_durations).all(), f"Some durations are < 0:\n{df.loc[neg_durations, [prior, later, 'duration']]}"
+
+    return df
+
+
+def set_exposed_lag(exposed, cut_year):
+    "Cut the exposed time-window after a given amount of years"
+    df = exposed.copy()
+    stop_after_cut = exposed.stop_age - exposed.start_age > cut_year
+
+    # The stop time as changed, so need to reset outcome and stop_age
+    df.loc[stop_after_cut, "outcome"] = False
+    df.loc[stop_after_cut, "stop_age"] = df.loc[stop_after_cut, "start_age"] + cut_year
+
+    return df
+
+
+def cox_fit(df, prior, later, nindivs, lagged_hr_cut_year, is_sex_specific, res_writer, error_writer):
     """Fit the data for the Cox regression and write output to result file"""
-    logger.info("Computing Cox regression")
+    logger.info(f"Fitting data to Cox model  (lag: {lagged_hr_cut_year})")
     # First try with a somewhat big step_size to go fast, retry later
     # with a lower step_size to help with convergence.
     step_size = 1.0
@@ -462,7 +543,7 @@ def cox_fit(df, prior, later, nindivs, is_sex_specific, res_writer, error_writer
             )
         except (ConvergenceError, Warning) as e:
             logger.warning(f"Failed to fit Cox model for pair ({prior}, {later}) after lowering step_size to {step_size} to fit Cox model")
-            error_writer.writerow([prior, later, type(e), e])
+            error_writer.writerow([prior, later, lagged_hr_cut_year, type(e), e])
         else:
             logger.debug(f"Success when retrying with lower step_size={step_size}")
             cox_fit_success = True
@@ -510,6 +591,7 @@ def cox_fit(df, prior, later, nindivs, is_sex_specific, res_writer, error_writer
         prior,
         later,
         nindivs,
+        lagged_hr_cut_year,
         median_duration,
         pred_coef,
         pred_se,
