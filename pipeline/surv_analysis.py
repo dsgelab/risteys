@@ -315,11 +315,10 @@ def compute_coxhr(pair, df, definitions, res_writer, error_writer):
     nindivs, _ = exposed[exposed.outcome].shape
     try:
         durations_std = set_durations(prior, later, no_prior, unexposed, exposed)
-    except AssertionError as exc:
-        logger.warning(exc)
-        error_writer.writerow([prior, later, lagged_hr_cut_year, "AssertionError", exc])
-    else:
         cox_fit(durations_std, prior, later, nindivs, lagged_hr_cut_year, is_sex_specific, res_writer, error_writer)
+    except (AssertionError, RuntimeWarning) as exc:
+        logger.warning(exc)
+        error_writer.writerow([prior, later, lagged_hr_cut_year, type(exc), exc])
 
     # 1 year lag
     lagged_hr_cut_year = 1.0
@@ -327,11 +326,10 @@ def compute_coxhr(pair, df, definitions, res_writer, error_writer):
     nindivs, _ = exposed_1y[exposed_1y.outcome].shape
     try:
         durations_1y = set_durations(prior, later, no_prior, unexposed, exposed_1y)
-    except AssertionError as exc:
-        logger.warning(exc)
-        error_writer.writerow([prior, later, lagged_hr_cut_year, "AssertionError", exc])
-    else:
         cox_fit(durations_1y, prior, later, nindivs, lagged_hr_cut_year, is_sex_specific, res_writer, error_writer)
+    except (AssertionError, RuntimeWarning) as exc:
+        logger.warning(exc)
+        error_writer.writerow([prior, later, lagged_hr_cut_year, type(exc), exc])
 
     # 5 year lag
     lagged_hr_cut_year = 5.0
@@ -339,11 +337,10 @@ def compute_coxhr(pair, df, definitions, res_writer, error_writer):
     nindivs, _ = exposed_5y[exposed_5y.outcome].shape
     try:
         durations_5y = set_durations(prior, later, no_prior, unexposed, exposed_5y)
-    except AssertionError as exc:
-        logger.warning(exc)
-        error_writer.writerow([prior, later, lagged_hr_cut_year, "AssertionError", exc])
-    else:
         cox_fit(durations_5y, prior, later, nindivs, lagged_hr_cut_year, is_sex_specific, res_writer, error_writer)
+    except (AssertionError, RuntimeWarning) as exc:
+        logger.warning(exc)
+        error_writer.writerow([prior, later, lagged_hr_cut_year, type(exc), exc])
 
     # 15 year lag
     lagged_hr_cut_year = 15.0
@@ -351,11 +348,10 @@ def compute_coxhr(pair, df, definitions, res_writer, error_writer):
     nindivs, _ = exposed_15y[exposed_15y.outcome].shape
     try:
         durations_15y = set_durations(prior, later, no_prior, unexposed, exposed_15y)
-    except AssertionError as exc:
-        logger.warning(exc)
-        error_writer.writerow([prior, later, lagged_hr_cut_year, "AssertionError", exc])
-    else:
         cox_fit(durations_15y, prior, later, nindivs, lagged_hr_cut_year, is_sex_specific, res_writer, error_writer)
+    except (AssertionError, RuntimeWarning) as exc:
+        logger.warning(exc)
+        error_writer.writerow([prior, later, lagged_hr_cut_year, type(exc), exc])
 
 
 def set_timeline(pair, df):
