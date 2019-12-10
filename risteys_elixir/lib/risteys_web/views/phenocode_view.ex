@@ -207,11 +207,15 @@ defmodule RisteysWeb.PhenocodeView do
     # Print the given pvalue using scientific notation, display
     # "<1e-100" if very low.
     cond do
-      is_nil pvalue -> "N/A"
-      pvalue < 1.0e-100 -> "<1e-100"
+      is_nil(pvalue) ->
+        "N/A"
+
+      pvalue < 1.0e-100 ->
+        "<1e-100"
+
       true ->
-	# See http://erlang.org/doc/man/io.html#format-2
-	:io_lib.format("~.2. e", [pvalue]) |> to_string()
+        # See http://erlang.org/doc/man/io.html#format-2
+        :io_lib.format("~.2. e", [pvalue]) |> to_string()
     end
   end
 
@@ -249,7 +253,8 @@ defmodule RisteysWeb.PhenocodeView do
       "ci_min" => nil,
       "ci_max" => nil,
       "pvalue" => nil,
-      "nindivs" => nil
+      "nindivs" => nil,
+      "lagged_hr_cut_year" => nil
     }
 
     rows =
@@ -257,16 +262,96 @@ defmodule RisteysWeb.PhenocodeView do
         to_record(acc, assoc, pheno_id)
       end)
 
-    Enum.map(rows, fn {other_id, info} ->
-      before = Map.get(info, "before", no_stats)
-      after_ = Map.get(info, "after", no_stats)
+    Enum.map(rows, fn {other_id, lag_data} ->
+      no_lag_before =
+        case get_in(lag_data, [0, "before"]) do
+          nil ->
+            no_stats
+
+          stats ->
+            stats
+        end
+      no_lag_after =
+        case get_in(lag_data, [0, "after"]) do
+          nil ->
+            no_stats
+
+          stats ->
+            stats
+        end
+
+      lag_1y_before =
+        case get_in(lag_data, [1, "before"]) do
+          nil ->
+            no_stats
+
+          stats ->
+            stats
+        end
+      lag_1y_after =
+        case get_in(lag_data, [1, "after"]) do
+          nil ->
+            no_stats
+
+          stats ->
+            stats
+        end
+
+      lag_5y_before =
+        case get_in(lag_data, [5, "before"]) do
+          nil ->
+            no_stats
+
+          stats ->
+            stats
+        end
+      lag_5y_after =
+        case get_in(lag_data, [5, "after"]) do
+          nil ->
+            no_stats
+
+          stats ->
+            stats
+        end
+
+      lag_15y_before =
+        case get_in(lag_data, [15, "before"]) do
+          nil ->
+            no_stats
+
+          stats ->
+            stats
+        end
+      lag_15y_after =
+        case get_in(lag_data, [15, "after"]) do
+          nil ->
+            no_stats
+
+          stats ->
+            stats
+        end
+      
 
       %{
         "id" => other_id,
-	"name" => info["name"],
-        "longname" => info["longname"],
-        "before" => before,
-        "after" => after_
+        "name" => lag_data["name"],
+        "longname" => lag_data["longname"],
+        "all" => %{
+          "before" => no_lag_before,
+          "after" => no_lag_after
+        },
+        "lagged_1y" => %{
+          "before" => lag_1y_before,
+          "after" => lag_1y_after
+	},
+        "lagged_5y" => %{
+          "before" => lag_5y_before,
+          "after" => lag_5y_after
+	},
+        "lagged_15y" => %{
+          "before" => lag_15y_before,
+          "after" => lag_15y_after
+	}
       }
     end)
   end
@@ -280,7 +365,7 @@ defmodule RisteysWeb.PhenocodeView do
           "after",
           %{
             id: assoc.outcome_id,
-	    name: assoc.outcome_name,
+            name: assoc.outcome_name,
             longname: assoc.outcome_longname
           }
         ]
@@ -289,11 +374,13 @@ defmodule RisteysWeb.PhenocodeView do
           "before",
           %{
             id: assoc.prior_id,
-	    name: assoc.prior_name,
+            name: assoc.prior_name,
             longname: assoc.prior_longname
           }
         ]
       end
+
+    lag = assoc.lagged_hr_cut_year
 
     new_stats = %{
       "hr" => round(assoc.hr, 2),
@@ -304,21 +391,25 @@ defmodule RisteysWeb.PhenocodeView do
       "nindivs" => assoc.nindivs
     }
 
-    record =
-      case Map.get(res, other_pheno.id) do
-        nil ->
-          %{
-	    "name" => other_pheno.name,
-            "longname" => other_pheno.longname,
-            dir => new_stats
-          }
-
-        existing ->
-          Map.merge(existing, %{
-            dir => new_stats
-          })
+    # Create pheno mapping if not existing
+    res =
+      if is_nil(Map.get(res, other_pheno.id)) do
+        Map.put(res, other_pheno.id, %{})
+      else
+        res
       end
 
-    Map.put(res, other_pheno.id, record)
+    # Create inner lag mapping if not existing
+    res =
+      if is_nil(get_in(res, [other_pheno.id, lag])) do
+        put_in(res, [other_pheno.id, lag], %{})
+      else
+        res
+      end
+
+    res
+    |> put_in([other_pheno.id, lag, dir], new_stats)
+    |> put_in([other_pheno.id, "name"], other_pheno.name)
+    |> put_in([other_pheno.id, "longname"], other_pheno.longname)
   end
 end

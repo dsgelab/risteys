@@ -209,6 +209,7 @@ defmodule RisteysWeb.PhenocodeController do
           outcome_name: outcome.name,
           outcome_longname: outcome.longname,
           outcome_category: outcome.category,
+	  lagged_hr_cut_year: assoc.lagged_hr_cut_year,
           hr: assoc.hr,
           ci_min: assoc.ci_min,
           ci_max: assoc.ci_max,
