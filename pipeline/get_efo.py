@@ -37,7 +37,9 @@ def main(data_directory):
     output_path = data_directory / OUTPUT_FILE
     prechecks(input_endpoint_path, input_ontology_path, output_path)
 
-    endpoint_doids = map_endpoint_doids(input_endpoint_path)
+    endpoint_doids, endpoint_mesh = map_endpoint_doids_mesh(input_endpoint_path)
+    all_endpoints = set(endpoint_doids)
+    all_endpoints = all_endpoints.union(endpoint_mesh)
 
     logger.info("Parsing ontology file to map EFO->[]DOIDS")
     path = str(input_ontology_path)  # 'Ontology' takes only str as input
@@ -45,7 +47,7 @@ def main(data_directory):
 
     efo_doids = map_efo_doids(ontology)
     endpoint_efos = map_endpoint_efos(endpoint_doids, efo_doids)
-    endpoint_refs = get_endpoint_refs(ontology, endpoint_efos)
+    endpoint_refs = get_endpoint_refs(all_endpoints, ontology, endpoint_efos, endpoint_mesh)
 
     logger.info(f"Writing endpoint refs to file {output_path}")
     with open(output_path, "x") as f:
@@ -54,26 +56,32 @@ def main(data_directory):
     logger.info("Done.")
 
 
-def map_endpoint_doids(endpoints_path):
-    """Build a map of endpoint -> list of DOIDs"""
-    logger.info("Mapping endpoint name to list of DOIDs")
-    res = {}
+def map_endpoint_doids_mesh(endpoints_path):
+    """Build 2 maps, one for endpoint -> list of DOIDs, and one for endpoint -> MESH"""
+    logger.info("Mapping endpoint name to MESH and DOIDs")
+    map_doids = {}
+    map_mesh = {}
     df = pd.read_csv(
         endpoints_path,
         dialect=excel_tab,
-        usecols=["NAME", "best_doid"]
+        usecols=["NAME", "best_doid", "MESH"]
     )
 
     for elem in df.itertuples():
         name = elem.NAME
         doids = elem.best_doid
 
-        if not pd.isna(doids):
+        # Get DOID
+        if pd.notna(doids):
             doids = doids.split(",")
             doids = set(map(lambda d: d.lstrip("DOID:"), doids))
-            res[name] = doids
+            map_doids[name] = doids
 
-    return res
+        # Get MESH
+        if pd.notna(elem.MESH):
+            map_mesh[name] = elem.MESH
+
+    return map_doids, map_mesh
 
 
 def map_efo_doids(ontology):
@@ -135,12 +143,13 @@ def score_efo(endpoint_doids, efo_doids):
     return score
 
 
-def get_endpoint_refs(ontology, endpoint_efos):
+def get_endpoint_refs(all_endpoints, ontology, endpoint_efos, endpoint_mesh):
     """Attribute information to an endpoint from the EFO ontology"""
     logger.info("Building map of endpoint -> refs")
     res = {}
 
-    for endpoint, efo in endpoint_efos.items():
+    for endpoint in all_endpoints:
+        efo = endpoint_efos.get(endpoint)
         if efo is not None:
             term = "EFO:" + efo
             term = ontology.get(term)
@@ -149,8 +158,8 @@ def get_endpoint_refs(ontology, endpoint_efos):
 
             xrefs = term.other.get('xref', [])
             doids = find_xrefs("DOID", xrefs)
-            meshs = find_xrefs("MESH", xrefs)
             snomeds = find_xrefs("SCTID", xrefs)
+            meshs = find_xrefs("MESH", xrefs)
 
             res[endpoint] = {
                 "description": description,
@@ -161,6 +170,10 @@ def get_endpoint_refs(ontology, endpoint_efos):
             }
         else:
             res[endpoint] = {}
+
+        # MESH from the endpoint ontology file takes precedence over the EFO ontology file
+        if endpoint in endpoint_mesh:
+            res[endpoint]["MESH"] = endpoint_mesh[endpoint]
 
     return res
 
