@@ -173,7 +173,7 @@ def get_endpoint_refs(all_endpoints, ontology, endpoint_efos, endpoint_mesh):
 
         # MESH from the endpoint ontology file takes precedence over the EFO ontology file
         if endpoint in endpoint_mesh:
-            res[endpoint]["MESH"] = endpoint_mesh[endpoint]
+            res[endpoint]["MESH"] = [endpoint_mesh[endpoint]]
 
     return res
 
