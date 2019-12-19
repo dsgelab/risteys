@@ -51,7 +51,7 @@
 
 				<template v-if="unfolded.has(pheno.name)">
 					<!-- LAG 1 YEAR -->
-					<div v-bind:class="bg_even(idx)" class="text-right pr-5">1 year after prior event</div>
+					<div v-bind:class="bg_even(idx)" class="text-right pr-5">&lt;1 year follow-up</div>
 					<div v-bind:class="bg_even(idx)" v-if="pheno.lagged_1y.before.hr === null">N/A</div>
 					<div v-bind:class="bg_even(idx)" v-else>{{ pheno.lagged_1y.before.hr }}&nbsp;[{{ pheno.lagged_1y.before.ci_min }},&nbsp;{{ pheno.lagged_1y.before.ci_max }}]</div>
 
@@ -71,7 +71,7 @@
 					<div v-bind:class="bg_even(idx)" v-else>{{ pheno.lagged_1y.after.nindivs }}</div>
 
 					<!-- LAG 5 YEARS -->
-					<div v-bind:class="bg_even(idx)" class="text-right pr-5">5 years after prior event</div>
+					<div v-bind:class="bg_even(idx)" class="text-right pr-5">1-5 year follow-up</div>
 					<div v-bind:class="bg_even(idx)" v-if="pheno.lagged_5y.before.hr === null">N/A</div>
 					<div v-bind:class="bg_even(idx)" v-else>{{ pheno.lagged_5y.before.hr }}&nbsp;[{{ pheno.lagged_5y.before.ci_min }},&nbsp;{{ pheno.lagged_5y.before.ci_max }}]</div>
 
@@ -91,7 +91,7 @@
 					<div v-bind:class="bg_even(idx)" v-else>{{ pheno.lagged_5y.after.nindivs }}</div>
 
 					<!-- LAG 15 YEARS -->
-					<div v-bind:class="bg_even(idx)" class="text-right pr-5">15 years after prior event</div>
+					<div v-bind:class="bg_even(idx)" class="text-right pr-5">5-15 year follow-up</div>
 					<div v-bind:class="bg_even(idx)" v-if="pheno.lagged_15y.before.hr === null">N/A</div>
 					<div v-bind:class="bg_even(idx)" v-else>{{ pheno.lagged_15y.before.hr }}&nbsp;[{{ pheno.lagged_15y.before.ci_min }},&nbsp;{{ pheno.lagged_15y.before.ci_max }}]</div>
 
