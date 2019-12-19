@@ -73,6 +73,8 @@ defmodule RisteysWeb.PhenocodeController do
     |> assign(:distrib_age, distrib_age)
     |> assign(:description, description)
     |> assign(:data_assocs, data_assocs(phenocode))
+    |> assign(:h2_liab, phenocode.h2_liab)
+    |> assign(:h2_liab_se, phenocode.h2_liab_se)
     |> render("show.html")
   end
 
