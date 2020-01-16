@@ -1,10 +1,10 @@
 """
-Get a list of EFO ids for each endpoint.
+Get a list of ontology references for each endpoint.
 
 Usage:
-    python get_efo.py <path-to-data-directory>
+    python build_ontology.py <path-to-data-directory>
 
-Output: a JSON file with a mapping of endpoint name -> list of EFO ids
+Output: a JSON file with a mapping of endpoint name to DOID, MESH, EFO, SNOMED ids.
 """
 
 import json
@@ -18,7 +18,7 @@ from pronto import Ontology
 from log import logger
 
 
-INPUT_ENDPOINT_FILE = "endpoint_doid.tsv"
+INPUT_ENDPOINT_FILE = "all_matching_FG_DOID_MESH.txt"  # actually in TSV format
 INPUT_ONTOLOGY_FILE = "efo.owl"
 OUTPUT_FILE = "ontology.json"
 
@@ -49,9 +49,12 @@ def main(data_directory):
     endpoint_efos = map_endpoint_efos(endpoint_doids, efo_doids)
     endpoint_refs = get_endpoint_refs(all_endpoints, ontology, endpoint_efos, endpoint_mesh)
 
+    # Merge all the references into one coherent data structure
+    out = merge(endpoint_doids, endpoint_mesh, endpoint_refs)
+
     logger.info(f"Writing endpoint refs to file {output_path}")
     with open(output_path, "x") as f:
-        json.dump(endpoint_refs, f)
+        json.dump(out, f)
 
     logger.info("Done.")
 
@@ -147,6 +150,7 @@ def get_endpoint_refs(all_endpoints, ontology, endpoint_efos, endpoint_mesh):
     """Attribute information to an endpoint from the EFO ontology"""
     logger.info("Building map of endpoint -> refs")
     res = {}
+    max_doids = 3  # cut-off to not have 40+ DOIDs
 
     for endpoint in all_endpoints:
         efo = endpoint_efos.get(endpoint)
@@ -164,16 +168,12 @@ def get_endpoint_refs(all_endpoints, ontology, endpoint_efos, endpoint_mesh):
             res[endpoint] = {
                 "description": description,
                 "EFO": [efo],
-                "DOID": doids,
+                "DOID": doids[:max_doids],
                 "MESH": meshs,
                 "SNOMED": snomeds,
             }
         else:
             res[endpoint] = {}
-
-        # MESH from the endpoint ontology file takes precedence over the EFO ontology file
-        if endpoint in endpoint_mesh:
-            res[endpoint]["MESH"] = [endpoint_mesh[endpoint]]
 
     return res
 
@@ -183,6 +183,25 @@ def find_xrefs(name, xrefs):
     name = name + ":"
     res = filter(lambda x: x.startswith(name), xrefs)
     res = list(map(lambda x: x.lstrip(name), res))
+    return res
+
+
+def merge(endpoint_doids, endpoint_mesh, endpoint_refs):
+    """Attribute ontology references for each endpoint"""
+    logger.info("Merging all the ontology references into one data structure")
+    res = endpoint_refs
+
+    # Use DOIDs from the ontology file only if no DOID found in the EFO ontology file
+    for endpoint, doids in endpoint_doids.items():
+        if "DOID" not in res[endpoint]:
+            logger.debug(f"No DOID found in EFO ontology file for {endpoint}, using DOIDs from FinnGen ontology file")
+            res[endpoint]["DOID"] = list(doids)  # was a set, which can not be converted to JSON
+
+    # MESH from the endpoint ontology file takes precedence over the EFO ontology file
+    for endpoint, mesh in endpoint_mesh.items():
+        logger.debug(f"Using MESH from FinnGen ontology file for {endpoint}")
+        res[endpoint]["MESH"] = [mesh]
+
     return res
 
 

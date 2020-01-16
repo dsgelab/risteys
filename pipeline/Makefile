@@ -26,7 +26,7 @@ clean:
 # DATA FILE DEPENDENCIES
 #
 ontology.json: endpoint_doid.tsv efo.owl
-	python ${code_path}get_efo.py .
+	python ${code_path}build_ontology.py .
 
 # Here the 3 files are checked for QC, but only the longitudinal file is rewritten
 FINNGEN_ENDPOINTS_longitudinal_QCed.csv: FINNGEN_PHENOTYPES.txt FINNGEN_ENDPOINTS_longitudinal.txt FINNGEN_MINIMUM_DATA.txt
