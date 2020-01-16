@@ -2,7 +2,7 @@
 	<div class="help-widget">
 		<div class="help-button" v-on:click="toggleDisplay()">?</div>
 		<div class="help-content" v-bind:style="getDisplay()">
-			<button class="help-close button-out" v-on:click="hide()">🞫</button>
+			<button class="help-close button-out" v-on:click="hide()">X</button>
 			<slot></slot>
 		</div>
 	</div>
