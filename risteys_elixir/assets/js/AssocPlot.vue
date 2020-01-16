@@ -209,16 +209,6 @@ let makePlot = (data, ticks, categoryNames, other_pheno) => {
 		.attr("transform", "rotate(-90)")
 		.style("text-anchor", "middle");
 
-	// TODO remove this block when we have all the association data
-	// Notes on assocs
-	if (data.length < 200) {
-		var notes = "Not all associations have been computed for this endpoint yet."
-		svg.append("text")
-			.html(notes)
-			.style("font-size", "0.75rem")
-			.attr("y", 10);
-	}
-
 	// Scatter
 	let circles = g.selectAll("circle")
 		.data(data)
