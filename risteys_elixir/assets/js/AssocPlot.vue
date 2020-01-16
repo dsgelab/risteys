@@ -29,7 +29,7 @@ let tooltipMargin = {
 
 // Style
 let dot = {
-	opacity: 0.3,
+	opacity: 0.8,
 	size: 5,
 };
 
@@ -173,6 +173,11 @@ let makePlot = (data, ticks, categoryNames, other_pheno) => {
 
 	const g = svg.append("g")
 		.attr("transform", `translate(${margin.labelY + margin.axisY}, ${margin.title})`);
+
+	g.append("rect")
+		.attr("width", plotWidth)
+		.attr("height", plotHeight)
+		.style("fill", "#fafafa");
 
 	// X axis
 	let xAxis = d3.axisBottom(scales.x)
