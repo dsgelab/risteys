@@ -32,6 +32,10 @@ let dot = {
 	opacity: 0.8,
 	size: 5,
 };
+let square = {
+	opacity: 0.8,
+	size: 9,
+}
 
 // Category colormap
 let nCategories = 12;
@@ -174,6 +178,7 @@ let makePlot = (data, ticks, categoryNames, other_pheno) => {
 	const g = svg.append("g")
 		.attr("transform", `translate(${margin.labelY + margin.axisY}, ${margin.title})`);
 
+	// Grey background
 	g.append("rect")
 		.attr("width", plotWidth)
 		.attr("height", plotHeight)
@@ -193,14 +198,6 @@ let makePlot = (data, ticks, categoryNames, other_pheno) => {
 			.style("text-anchor", "start")
 			.style("font-size", "0.8rem");
 
-	// NOTE removed X axis label since we have ticks on the X axis
-	// X axis label
-	// svg.append("text")
-	// 	.text(labelX)
-	// 	.attr("dx", width / 2)
-	// 	.attr("dy", margin.title + plotHeight + margin.axisX)
-	// 	.attr("text-anchor", "middle");
-
 	// Y axis
 	svg.append("g")
 		.attr("transform", `translate(${margin.labelY + margin.axisY}, ${margin.title})`)
@@ -215,14 +212,28 @@ let makePlot = (data, ticks, categoryNames, other_pheno) => {
 		.style("text-anchor", "middle");
 
 	// Scatter
-	let circles = g.selectAll("circle")
-		.data(data)
+	let befores = filter(data, (d) => d.direction.toLowerCase() === "before");
+	let circles = g.selectAll("points")
+		.data(befores)
 		.enter()
 		.append("circle")
 		.attr("cx", (d) => scales.x(d.x))
 		.attr("cy", (d) => scales.y(d.y))
 		.attr("fill", (d) => d.color)
 		.attr("r", dot.size)
+		.attr("opacity", dot.opacity)
+		.on("mouseover", (d) => showTooltip(tooltip, d, other_pheno));
+
+	let afters = filter(data, (d) => d.direction.toLowerCase() === "after");
+	let squares = g.selectAll("points")
+		.data(afters)
+		.enter()
+		.append("rect")
+		.attr("x", (d) => scales.x(d.x))
+		.attr("y", (d) => scales.y(d.y))
+		.attr("fill", (d) => d.color)
+		.attr("height", square.size)
+		.attr("width", square.size)
 		.attr("opacity", dot.opacity)
 		.on("mouseover", (d) => showTooltip(tooltip, d, other_pheno));
 
