@@ -158,12 +158,12 @@ defmodule RisteysWeb.PhenocodeController do
     stats = Repo.all(from ss in StatsSex, where: ss.phenocode_id == ^phenocode.id)
 
     no_stats = %{
-      n_individuals: "N/A",
-      prevalence: "N/A",
-      mean_age: "N/A",
-      median_reoccurence: "N/A",
-      reoccurence_rate: "N/A",
-      case_fatality: "N/A",
+      n_individuals: "-",
+      prevalence: "-",
+      mean_age: "-",
+      median_reoccurence: "-",
+      reoccurence_rate: "-",
+      case_fatality: "-",
       distrib_year: [],
       distrib_age: []
     }

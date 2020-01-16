@@ -185,18 +185,18 @@ defmodule RisteysWeb.PhenocodeView do
 
   defp round(number, precision) do
     case number do
-      "N/A" -> "N/A"
+      "-" -> "-"
       _ -> Float.round(number, precision)
     end
   end
 
   defp percentage(number) do
     case number do
-      "N/A" ->
-        "N/A"
+      "-" ->
+        "-"
 
       nil ->
-        "N/A"
+        "-"
 
       _ ->
         number * 100
@@ -208,7 +208,7 @@ defmodule RisteysWeb.PhenocodeView do
     # "<1e-100" if very low.
     cond do
       is_nil(pvalue) ->
-        "N/A"
+        "-"
 
       pvalue < 1.0e-100 ->
         "<1e-100"

@@ -31,83 +31,83 @@
 					<a :href="'/phenocode/' + pheno.name" :title="pheno.name">{{ pheno.longname }}</a>
 				</div>
 
-				<div v-bind:class="bg_even(idx)" v-if="pheno.all.before.hr === null">N/A</div>
+				<div v-bind:class="bg_even(idx)" v-if="pheno.all.before.hr === null">-</div>
 				<div v-bind:class="bg_even(idx)" v-else>{{ pheno.all.before.hr }}&nbsp;[{{ pheno.all.before.ci_min }},&nbsp;{{ pheno.all.before.ci_max }}]</div>
 
-				<div v-bind:class="bg_even(idx)" v-if="pheno.all.before.pvalue === null">N/A</div>
+				<div v-bind:class="bg_even(idx)" v-if="pheno.all.before.pvalue === null">-</div>
 				<div v-bind:class="bg_even(idx)" v-else>{{ pheno.all.before.pvalue_str }}</div>
 
-				<div v-bind:class="bg_even(idx)" v-if="pheno.all.before.nindivs === null">N/A</div>
+				<div v-bind:class="bg_even(idx)" v-if="pheno.all.before.nindivs === null">-</div>
 				<div v-bind:class="bg_even(idx)" v-else>{{ pheno.all.before.nindivs }}</div>
 
-				<div v-bind:class="bg_even(idx)" v-if="pheno.all.after.hr === null">N/A</div>
+				<div v-bind:class="bg_even(idx)" v-if="pheno.all.after.hr === null">-</div>
 				<div v-bind:class="bg_even(idx)" v-else>{{ pheno.all.after.hr }}&nbsp;[{{ pheno.all.after.ci_min }},&nbsp;{{ pheno.all.after.ci_max }}]</div>
 				
-				<div v-bind:class="bg_even(idx)" v-if="pheno.all.after.pvalue === null">N/A</div>
+				<div v-bind:class="bg_even(idx)" v-if="pheno.all.after.pvalue === null">-</div>
 				<div v-bind:class="bg_even(idx)" v-else>{{ pheno.all.after.pvalue_str }}</div>
 				
-				<div v-bind:class="bg_even(idx)" v-if="pheno.all.after.nindivs === null">N/A</div>
+				<div v-bind:class="bg_even(idx)" v-if="pheno.all.after.nindivs === null">-</div>
 				<div v-bind:class="bg_even(idx)" v-else>{{ pheno.all.after.nindivs }}</div>
 
 				<template v-if="unfolded.has(pheno.name)">
 					<!-- LAG 1 YEAR -->
 					<div v-bind:class="bg_even(idx)" class="text-right pr-5">&lt;1 year follow-up</div>
-					<div v-bind:class="bg_even(idx)" v-if="pheno.lagged_1y.before.hr === null">N/A</div>
+					<div v-bind:class="bg_even(idx)" v-if="pheno.lagged_1y.before.hr === null">-</div>
 					<div v-bind:class="bg_even(idx)" v-else>{{ pheno.lagged_1y.before.hr }}&nbsp;[{{ pheno.lagged_1y.before.ci_min }},&nbsp;{{ pheno.lagged_1y.before.ci_max }}]</div>
 
-					<div v-bind:class="bg_even(idx)" v-if="pheno.lagged_1y.before.pvalue === null">N/A</div>
+					<div v-bind:class="bg_even(idx)" v-if="pheno.lagged_1y.before.pvalue === null">-</div>
 					<div v-bind:class="bg_even(idx)" v-else>{{ pheno.lagged_1y.before.pvalue_str }}</div>
 
-					<div v-bind:class="bg_even(idx)" v-if="pheno.lagged_1y.before.nindivs === null">N/A</div>
+					<div v-bind:class="bg_even(idx)" v-if="pheno.lagged_1y.before.nindivs === null">-</div>
 					<div v-bind:class="bg_even(idx)" v-else>{{ pheno.lagged_1y.before.nindivs }}</div>
 
-					<div v-bind:class="bg_even(idx)" v-if="pheno.lagged_1y.after.hr === null">N/A</div>
+					<div v-bind:class="bg_even(idx)" v-if="pheno.lagged_1y.after.hr === null">-</div>
 					<div v-bind:class="bg_even(idx)" v-else>{{ pheno.lagged_1y.after.hr }}&nbsp;[{{ pheno.lagged_1y.after.ci_min }},&nbsp;{{ pheno.lagged_1y.after.ci_max }}]</div>
 					
-					<div v-bind:class="bg_even(idx)" v-if="pheno.lagged_1y.after.pvalue === null">N/A</div>
+					<div v-bind:class="bg_even(idx)" v-if="pheno.lagged_1y.after.pvalue === null">-</div>
 					<div v-bind:class="bg_even(idx)" v-else>{{ pheno.lagged_1y.after.pvalue_str }}</div>
 					
-					<div v-bind:class="bg_even(idx)" v-if="pheno.lagged_1y.after.nindivs === null">N/A</div>
+					<div v-bind:class="bg_even(idx)" v-if="pheno.lagged_1y.after.nindivs === null">-</div>
 					<div v-bind:class="bg_even(idx)" v-else>{{ pheno.lagged_1y.after.nindivs }}</div>
 
 					<!-- LAG 5 YEARS -->
 					<div v-bind:class="bg_even(idx)" class="text-right pr-5">1-5 year follow-up</div>
-					<div v-bind:class="bg_even(idx)" v-if="pheno.lagged_5y.before.hr === null">N/A</div>
+					<div v-bind:class="bg_even(idx)" v-if="pheno.lagged_5y.before.hr === null">-</div>
 					<div v-bind:class="bg_even(idx)" v-else>{{ pheno.lagged_5y.before.hr }}&nbsp;[{{ pheno.lagged_5y.before.ci_min }},&nbsp;{{ pheno.lagged_5y.before.ci_max }}]</div>
 
-					<div v-bind:class="bg_even(idx)" v-if="pheno.lagged_5y.before.pvalue === null">N/A</div>
+					<div v-bind:class="bg_even(idx)" v-if="pheno.lagged_5y.before.pvalue === null">-</div>
 					<div v-bind:class="bg_even(idx)" v-else>{{ pheno.lagged_5y.before.pvalue_str }}</div>
 
-					<div v-bind:class="bg_even(idx)" v-if="pheno.lagged_5y.before.nindivs === null">N/A</div>
+					<div v-bind:class="bg_even(idx)" v-if="pheno.lagged_5y.before.nindivs === null">-</div>
 					<div v-bind:class="bg_even(idx)" v-else>{{ pheno.lagged_5y.before.nindivs }}</div>
 
-					<div v-bind:class="bg_even(idx)" v-if="pheno.lagged_5y.after.hr === null">N/A</div>
+					<div v-bind:class="bg_even(idx)" v-if="pheno.lagged_5y.after.hr === null">-</div>
 					<div v-bind:class="bg_even(idx)" v-else>{{ pheno.lagged_5y.after.hr }}&nbsp;[{{ pheno.lagged_5y.after.ci_min }},&nbsp;{{ pheno.lagged_5y.after.ci_max }}]</div>
 					
-					<div v-bind:class="bg_even(idx)" v-if="pheno.lagged_5y.after.pvalue === null">N/A</div>
+					<div v-bind:class="bg_even(idx)" v-if="pheno.lagged_5y.after.pvalue === null">-</div>
 					<div v-bind:class="bg_even(idx)" v-else>{{ pheno.lagged_5y.after.pvalue_str }}</div>
 					
-					<div v-bind:class="bg_even(idx)" v-if="pheno.lagged_5y.after.nindivs === null">N/A</div>
+					<div v-bind:class="bg_even(idx)" v-if="pheno.lagged_5y.after.nindivs === null">-</div>
 					<div v-bind:class="bg_even(idx)" v-else>{{ pheno.lagged_5y.after.nindivs }}</div>
 
 					<!-- LAG 15 YEARS -->
 					<div v-bind:class="bg_even(idx)" class="text-right pr-5">5-15 year follow-up</div>
-					<div v-bind:class="bg_even(idx)" v-if="pheno.lagged_15y.before.hr === null">N/A</div>
+					<div v-bind:class="bg_even(idx)" v-if="pheno.lagged_15y.before.hr === null">-</div>
 					<div v-bind:class="bg_even(idx)" v-else>{{ pheno.lagged_15y.before.hr }}&nbsp;[{{ pheno.lagged_15y.before.ci_min }},&nbsp;{{ pheno.lagged_15y.before.ci_max }}]</div>
 
-					<div v-bind:class="bg_even(idx)" v-if="pheno.lagged_15y.before.pvalue === null">N/A</div>
+					<div v-bind:class="bg_even(idx)" v-if="pheno.lagged_15y.before.pvalue === null">-</div>
 					<div v-bind:class="bg_even(idx)" v-else>{{ pheno.lagged_15y.before.pvalue_str }}</div>
 
-					<div v-bind:class="bg_even(idx)" v-if="pheno.lagged_15y.before.nindivs === null">N/A</div>
+					<div v-bind:class="bg_even(idx)" v-if="pheno.lagged_15y.before.nindivs === null">-</div>
 					<div v-bind:class="bg_even(idx)" v-else>{{ pheno.lagged_15y.before.nindivs }}</div>
 
-					<div v-bind:class="bg_even(idx)" v-if="pheno.lagged_15y.after.hr === null">N/A</div>
+					<div v-bind:class="bg_even(idx)" v-if="pheno.lagged_15y.after.hr === null">-</div>
 					<div v-bind:class="bg_even(idx)" v-else>{{ pheno.lagged_15y.after.hr }}&nbsp;[{{ pheno.lagged_15y.after.ci_min }},&nbsp;{{ pheno.lagged_15y.after.ci_max }}]</div>
 					
-					<div v-bind:class="bg_even(idx)" v-if="pheno.lagged_15y.after.pvalue === null">N/A</div>
+					<div v-bind:class="bg_even(idx)" v-if="pheno.lagged_15y.after.pvalue === null">-</div>
 					<div v-bind:class="bg_even(idx)" v-else>{{ pheno.lagged_15y.after.pvalue_str }}</div>
 					
-					<div v-bind:class="bg_even(idx)" v-if="pheno.lagged_15y.after.nindivs === null">N/A</div>
+					<div v-bind:class="bg_even(idx)" v-if="pheno.lagged_15y.after.nindivs === null">-</div>
 					<div v-bind:class="bg_even(idx)" v-else>{{ pheno.lagged_15y.after.nindivs }}</div>
 				</template>
 			</template>
