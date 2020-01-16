@@ -1,6 +1,7 @@
 <template>
 	<HelpButton>
 		<h4>Recurrence within 6 months</h4>
+		<p class="text-center">Using <b>example data</b>:</p>
 		<table>
 			<thead>
 				<tr>
@@ -12,12 +13,12 @@
 			<tbody>
 				<tr class="help-highlight">
 					<th>FG1</th>
-					<td>{{ phenocode }}</td>
+					<td>EXAMPLE_ENDPOINT</td>
 					<td>45</td>
 				</tr>
 				<tr style="color: grey">
 					<th>FG1</th>
-					<td>XYZ_ENDPOINT</td>
+					<td>ENDPOINT_XYZ</td>
 					<td>46</td>
 				</tr>
 				<tr style="color: grey; border-bottom-width: 1px">
@@ -27,17 +28,17 @@
 				</tr>
 				<tr>
 					<th class="help-highlight">FG2</th>
-					<td class="help-highlight">{{ phenocode }}</td>
+					<td class="help-highlight">EXAMPLE_ENDPOINT</td>
 					<td class="help-highlight">30</td>
 				</tr>
 				<tr style="border-bottom-width: 1px" class="help-highlight">
 					<th>FG2</th>
-					<td>{{ phenocode }}</td>
+					<td>EXAMPLE_ENDPOINT</td>
 					<td>30.1</td>
 				</tr>
 				<tr style="color: grey; border-bottom-width: 1px">
 					<th>FG3</th>
-					<td>XYZ_ENDPOINT</td>
+					<td>ENDPOINT_XYZ</td>
 					<td>50</td>
 				</tr>
 			</tbody>
@@ -46,11 +47,11 @@
 		<p>
 			The recurrence within 6 months is computed by:
 			<ul>
-				<li>selecting individuals with {{ phenocode }}:<br>FG1, FG2, so <b>2</b> individuals in total.</li>
-				<li>for each of them, checking if they have 2 events of {{ phenocode }} less than 6 months apart:
+				<li>selecting individuals with EXAMPLE_ENDPOINT:<br>FG1, FG2, so <b>2</b> individuals in total.</li>
+				<li>for each of them, checking if they have 2 events of EXAMPLE_ENDPOINT less than 6 months apart:
 					<ul>
-						<li>FG1 has only 1 event of {{ phenocode }} so FG1 is discarded.</li>
-						<li>FG2 has 2 events of {{ phenocode }} less than 6 months apart (one at age 30 and the other at age 30.1).</li>
+						<li>FG1 has only 1 event of EXAMPLE_ENDPOINT so FG1 is discarded.</li>
+						<li>FG2 has 2 events of EXAMPLE_ENDPOINT less than 6 months apart (one at age 30 and the other at age 30.1).</li>
 					</ul>
 				</li>
 				<li>counting the number of individuals with events less than 6 months apart:<br><b>1</b> in this case (FG2)</li>
@@ -66,9 +67,6 @@ import HelpButton from './HelpButton.vue';
 export default {
 	data () {
 		return {};
-	},
-	props: {
-		phenocode: String,
 	},
 	components: {
 		HelpButton

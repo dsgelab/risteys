@@ -1,6 +1,7 @@
 <template>
 	<HelpButton>
 		<h4>Median number of events per individual</h4>
+		<p class="text-center">Using <b>example data</b>:</p>
 		<table>
 			<thead>
 				<tr>
@@ -12,12 +13,12 @@
 			<tbody>
 				<tr>
 					<th class="help-highlight">FG1</th>
-					<td class="help-highlight">{{ phenocode }}</td>
+					<td class="help-highlight">EXAMPLE_ENDPOINT</td>
 					<td>45</td>
 				</tr>
 				<tr style="color: grey">
 					<th>FG1</th>
-					<td>XYZ_ENDPOINT</td>
+					<td>ENDPOINT_XYZ</td>
 					<td>46</td>
 				</tr>
 				<tr style="color: grey; border-bottom-width: 1px">
@@ -27,17 +28,17 @@
 				</tr>
 				<tr>
 					<th class="help-highlight">FG2</th>
-					<td class="help-highlight">{{ phenocode }}</td>
+					<td class="help-highlight">EXAMPLE_ENDPOINT</td>
 					<td>30</td>
 				</tr>
 				<tr style="border-bottom-width: 1px">
 					<th class="help-highlight">FG2</th>
-					<td class="help-highlight">{{ phenocode }}</td>
+					<td class="help-highlight">EXAMPLE_ENDPOINT</td>
 					<td>30.1</td>
 				</tr>
 				<tr style="color: grey; border-bottom-width: 1px">
 					<th>FG3</th>
-					<td>XYZ_ENDPOINT</td>
+					<td>ENDPOINT_XYZ</td>
 					<td>50</td>
 				</tr>
 			</tbody>
@@ -46,8 +47,8 @@
 		<p>
 			The median number of events is computed by:
 			<ul>
-				<li>selecting individuals with {{ phenocode }}:<br>FG1, FG2</li>
-				<li>counting the number of {{ phenocode }} events for each of these individuals:
+				<li>selecting individuals with EXAMPLE_ENDPOINT:<br>FG1, FG2</li>
+				<li>counting the number of EXAMPLE_ENDPOINT events for each of these individuals:
 					<ul>
 						<li>1 event for FG1</li>
 						<li>2 events for FG2</li>
@@ -66,9 +67,6 @@ import HelpButton from './HelpButton.vue';
 export default {
 	data () {
 		return {};
-	},
-	props: {
-		phenocode: String,
 	},
 	components: {
 		HelpButton

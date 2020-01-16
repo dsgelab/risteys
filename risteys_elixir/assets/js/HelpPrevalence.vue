@@ -1,6 +1,7 @@
 <template>
 	<HelpButton>
 		<h4>Unadjusted prevalence</h4>
+		<p class="text-center">Using <b>example data</b>:</p>
 		<table>
 			<thead>
 				<tr>
@@ -12,12 +13,12 @@
 			<tbody>
 				<tr>
 					<th class="help-highlight">FG1</th>
-					<td>{{ phenocode }}</td>
+					<td>EXAMPLE_ENDPOINT</td>
 					<td>45</td>
 				</tr>
 				<tr style="color: grey">
 					<th>FG1</th>
-					<td>XYZ_ENDPOINT</td>
+					<td>ENDPOINT_XYZ</td>
 					<td>46</td>
 				</tr>
 				<tr style="color: grey; border-bottom-width: 1px">
@@ -27,17 +28,17 @@
 				</tr>
 				<tr>
 					<th class="help-highlight">FG2</th>
-					<td>{{ phenocode }}</td>
+					<td>EXAMPLE_ENDPOINT</td>
 					<td>30</td>
 				</tr>
 				<tr style="border-bottom-width: 1px">
 					<th class="help-highlight">FG2</th>
-					<td>{{ phenocode }}</td>
+					<td>EXAMPLE_ENDPOINT</td>
 					<td>30.1</td>
 				</tr>
 				<tr style="color: grey; border-bottom-width: 1px">
 					<th>FG3</th>
-					<td>XYZ_ENDPOINT</td>
+					<td>ENDPOINT_XYZ</td>
 					<td>50</td>
 				</tr>
 			</tbody>
@@ -46,8 +47,8 @@
 		<p>The unadjusted prevalence is the number of individuals having an endpoint divided by the total number of individuals.</p>
 		<p>Here:
 		<ul>
-			<li>2 unique individuals (FG1 and FG2) have {{ phenocode }} events</li>
-			<li>1 individual (FG3) has no {{ phenocode }} event</li>
+			<li>2 unique individuals (FG1 and FG2) have EXAMPLE_ENDPOINT events</li>
+			<li>1 individual (FG3) has no EXAMPLE_ENDPOINT event</li>
 		</ul>
 		So the unadjusted prevalence is 2 / 3 = 66 %.</p>
 	</HelpButton>
@@ -59,9 +60,6 @@ import HelpButton from './HelpButton.vue';
 export default {
 	data () {
 		return {};
-	},
-	props: {
-		phenocode: String,
 	},
 	components: {
 		HelpButton

@@ -126,32 +126,32 @@ if (path.startsWith("/phenocode/")) {  // Load only on phenocode pages
     /* HELP BUTTONS */
     var help_button_nindivs = new Vue({
         el: '#help-button-nindivs',
-        template: `<HelpNumberIndividuals phenocode="${phenocode}"/>`,
+        template: `<HelpNumberIndividuals/>`,
         components: { HelpNumberIndividuals },
     });
     var help_button_prevalence = new Vue({
         el: '#help-button-prevalence',
-        template: `<HelpPrevalence phenocode="${phenocode}"/>`,
+        template: `<HelpPrevalence/>`,
         components: { HelpPrevalence },
     });
     var help_button_mean_age = new Vue({
         el: '#help-button-mean-age',
-        template: `<HelpMeanAge phenocode="${phenocode}"/>`,
+        template: `<HelpMeanAge/>`,
         components: { HelpMeanAge },
     });
     var help_button_case_fatality = new Vue({
         el: '#help-button-case-fatality',
-        template: `<HelpCaseFatality phenocode="${phenocode}"/>`,
+        template: `<HelpCaseFatality/>`,
         components: { HelpCaseFatality },
     });
     var help_button_median_events = new Vue({
         el: '#help-button-median-events',
-        template: `<HelpMedianEvents phenocode="${phenocode}"/>`,
+        template: `<HelpMedianEvents/>`,
         components: { HelpMedianEvents },
     });
     var help_button_recurrence = new Vue({
         el: '#help-button-recurrence',
-        template: `<HelpRecurrence phenocode="${phenocode}"/>`,
+        template: `<HelpRecurrence/>`,
         components: { HelpRecurrence },
     });
 
