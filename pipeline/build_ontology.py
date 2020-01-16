@@ -8,7 +8,6 @@ Output: a JSON file with a mapping of endpoint name to DOID, MESH, EFO, SNOMED i
 """
 
 import json
-from csv import excel_tab
 from pathlib import Path
 from sys import argv
 
@@ -18,7 +17,7 @@ from pronto import Ontology
 from log import logger
 
 
-INPUT_ENDPOINT_FILE = "all_matching_FG_DOID_MESH.txt"  # actually in TSV format
+INPUT_ENDPOINT_FILE = "all_matching_FG_DOID_MESH_excl.csv"
 INPUT_ONTOLOGY_FILE = "efo.owl"
 OUTPUT_FILE = "ontology.json"
 
@@ -66,7 +65,6 @@ def map_endpoint_doids_mesh(endpoints_path):
     map_mesh = {}
     df = pd.read_csv(
         endpoints_path,
-        dialect=excel_tab,
         usecols=["NAME", "best_doid", "MESH"]
     )
 
