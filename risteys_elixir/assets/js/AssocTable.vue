@@ -32,7 +32,7 @@
 				</div>
 
 				<div v-bind:class="bg_even(idx)" v-if="pheno.all.before.hr === null">-</div>
-				<div v-bind:class="bg_even(idx)" v-else-if="(pheno.all.before.hr > 100) | (pheno.all.before.ci_min > 100)">>&nbsp;100</div>
+				<div v-bind:class="bg_even(idx)" v-else-if="(pheno.all.before.hr > 100) | (pheno.all.before.ci_min > 100)">&gt;&nbsp;100</div>
 				<div v-bind:class="bg_even(idx)" v-else>{{ pheno.all.before.hr }}&nbsp;[{{ pheno.all.before.ci_min }},&nbsp;{{ pheno.all.before.ci_max }}]</div>
 
 				<div v-bind:class="bg_even(idx)" v-if="pheno.all.before.pvalue === null">-</div>
@@ -42,7 +42,7 @@
 				<div v-bind:class="bg_even(idx)" v-else>{{ pheno.all.before.nindivs }}</div>
 
 				<div v-bind:class="bg_even(idx)" v-if="pheno.all.after.hr === null">-</div>
-				<div v-bind:class="bg_even(idx)" v-else-if="(pheno.all.after.hr > 100) | (pheno.all.after.ci_min > 100)">>&nbsp;100</div>
+				<div v-bind:class="bg_even(idx)" v-else-if="(pheno.all.after.hr > 100) | (pheno.all.after.ci_min > 100)">&gt;&nbsp;100</div>
 				<div v-bind:class="bg_even(idx)" v-else>{{ pheno.all.after.hr }}&nbsp;[{{ pheno.all.after.ci_min }},&nbsp;{{ pheno.all.after.ci_max }}]</div>
 				
 				<div v-bind:class="bg_even(idx)" v-if="pheno.all.after.pvalue === null">-</div>
