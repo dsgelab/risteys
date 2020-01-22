@@ -11,8 +11,8 @@ defmodule RisteysWeb.PhenocodeView do
 
   defp table_data_sources(data_sources) do
     # Merge HD registry ICDs
-    hd_icd10s = render_icds("ICD-10: ", data_sources.hd_icd10s)
-    hd_icd9s = render_icds("ICD-9: ", data_sources.hd_icd9s)
+    hd_icd10s = render_icds("ICD-10: ", data_sources.hd_icd10s, true)
+    hd_icd9s = render_icds("ICD-9: ", data_sources.hd_icd9s, false)
 
     hd_icd8s =
       if not is_nil(data_sources.hd_icd8s) do
@@ -26,8 +26,8 @@ defmodule RisteysWeb.PhenocodeView do
     hd = Enum.intersperse(hd, ", ")
 
     # Merge COD registry ICDs
-    cod_icd10s = render_icds("ICD-10: ", data_sources.cod_icd10s)
-    cod_icd9s = render_icds("ICD-9: ", data_sources.cod_icd9s)
+    cod_icd10s = render_icds("ICD-10: ", data_sources.cod_icd10s, true)
+    cod_icd9s = render_icds("ICD-9: ", data_sources.cod_icd9s, false)
 
     cod_icd8s =
       if not is_nil(data_sources.cod_icd8s) do
@@ -40,7 +40,7 @@ defmodule RisteysWeb.PhenocodeView do
     cod = Enum.reject(cod, fn val -> val == "" end)
     cod = Enum.intersperse(cod, ", ")
 
-    kela_icd10s = render_icds("ICD-10: ", data_sources.kela_icd10s)
+    kela_icd10s = render_icds("ICD-10: ", data_sources.kela_icd10s, true)
 
     # Link to included phenocodes
     include =
@@ -88,13 +88,21 @@ defmodule RisteysWeb.PhenocodeView do
     Enum.reject(table, fn {_name, values} -> values in ["", nil, []] end)
   end
 
-  defp render_icds(_prefix, nil), do: ""
-  defp render_icds(_prefix, []), do: ""
+  defp render_icds(_prefix, nil, _url), do: ""
+  defp render_icds(_prefix, [], _url), do: ""
 
-  defp render_icds(prefix, icds) do
+  defp render_icds(prefix, icds, url?) do
     icds =
       icds
-      |> Enum.map(fn icd -> abbr(icd.code, icd.description) end)
+      |> Enum.map(fn icd ->
+        text = abbr(icd.code, icd.description)
+
+        if url? do
+          icd10_url(text, icd.code)
+        else
+          text
+        end
+      end)
       |> Enum.intersperse("/")
 
     [prefix | icds]
@@ -173,6 +181,10 @@ defmodule RisteysWeb.PhenocodeView do
 
   defp abbr(text, title) do
     content_tag(:abbr, text, [{:data, [title: title]}])
+  end
+
+  defp icd10_url(text, icd) do
+    ahref(text, "https://icd.who.int/browse10/2016/en#/#{icd}")
   end
 
   defp ahref(text, link) do
@@ -271,6 +283,7 @@ defmodule RisteysWeb.PhenocodeView do
           stats ->
             stats
         end
+
       no_lag_after =
         case get_in(lag_data, [0, "after"]) do
           nil ->
@@ -288,6 +301,7 @@ defmodule RisteysWeb.PhenocodeView do
           stats ->
             stats
         end
+
       lag_1y_after =
         case get_in(lag_data, [1, "after"]) do
           nil ->
@@ -305,6 +319,7 @@ defmodule RisteysWeb.PhenocodeView do
           stats ->
             stats
         end
+
       lag_5y_after =
         case get_in(lag_data, [5, "after"]) do
           nil ->
@@ -322,6 +337,7 @@ defmodule RisteysWeb.PhenocodeView do
           stats ->
             stats
         end
+
       lag_15y_after =
         case get_in(lag_data, [15, "after"]) do
           nil ->
@@ -330,7 +346,6 @@ defmodule RisteysWeb.PhenocodeView do
           stats ->
             stats
         end
-      
 
       %{
         "id" => other_id,
@@ -343,15 +358,15 @@ defmodule RisteysWeb.PhenocodeView do
         "lagged_1y" => %{
           "before" => lag_1y_before,
           "after" => lag_1y_after
-	},
+        },
         "lagged_5y" => %{
           "before" => lag_5y_before,
           "after" => lag_5y_after
-	},
+        },
         "lagged_15y" => %{
           "before" => lag_15y_before,
           "after" => lag_15y_after
-	}
+        }
       }
     end)
   end
