@@ -78,7 +78,7 @@ def prechecks(events_path, endpoints_path, icd_cm_path, icd_finn_path, output_pa
     """Perform checks before running to fail earlier rather than later"""
     logger.info("Performing pre-checks")
     assert events_path.exists(), f"{events_path} doesn't exist"
-    assert endpoints_path.exists(), f"{endpoints_path} does'nt exist"
+    assert endpoints_path.exists(), f"{endpoints_path} doesn't exist"
     assert icd_cm_path.exists(), f"{icd_cm_path} doesn't exist"
     assert icd_finn_path.exists(), f"{icd_finn_path} doesn't exist"
     assert not output_path.exists(), f"{output_path} already exists, not overwriting it"
@@ -218,13 +218,25 @@ def filter_overlapping_icds(pairs, endpoints, icds):
     logger.info("Filtering pairs by overlapping ICD-10s")
     res = []
 
-    # For each endpoint: assoc ICD list to all its regexes (complex: ~ 4k)
     endpoint_icds = map_endpoint_icds(endpoints, icds)
+    endpoint_parents = map_endpoint_parents(endpoints)
 
     for (prior, later) in pairs:
-        # TODO replace this call to a map.get
+        # ICDs of prior endpoint
         icds_prior = endpoint_icds[prior]
+        # ICDs of prior endpoint parents
+        parents_prior = endpoint_parents.get(prior, [])
+        for parent in parents_prior:
+            icds = endpoint_icds[parent]
+            icds_prior.update(icds)
+
+        # ICDs of later endpoint
         icds_later = endpoint_icds[later]
+        # ICDs of later endpoint parents
+        parents_later = endpoint_parents.get(later, [])
+        for parent in parents_later:
+            icds = endpoint_icds[parent]
+            icds_later.update(icds)
 
         if icds_prior.isdisjoint(icds_later):
             res.append((prior, later))
@@ -235,6 +247,7 @@ def filter_overlapping_icds(pairs, endpoints, icds):
 def map_endpoint_icds(definitions, icds):
     """Map each endpoint to its list of ICD-10s"""
     res = {}
+    known = {}  # memoize regex expansions
 
     for _, row in definitions.loc[:, ["NAME"] + ICD_COLS].iterrows():
         endpoint_icds = []
@@ -244,12 +257,38 @@ def map_endpoint_icds(definitions, icds):
         regexes = set(regexes)  # remove duplicates
 
         for regex in regexes:
-            for icd in icds:
-                match = re.match(regex, icd)
-                if match is not None:
-                    endpoint_icds.append(icd)
+            if regex in known:
+                endpoint_icds += known[regex]
+
+            else:
+                regex_icds = []
+                for icd in icds:
+                    match = re.match(regex, icd)
+                    if match is not None:
+                        endpoint_icds.append(icd)
+                        regex_icds.append(icd)
+
+                # Update regex -> ICDs memoization
+                known[regex] = regex_icds
 
         res[row.NAME] = set(endpoint_icds)
+
+    return res
+
+
+def map_endpoint_parents(endpoints):
+    """Map each endpoint to its direct parents"""
+    res = {}
+
+    for _, row in endpoints.iterrows():
+        name = row.NAME
+        if pd.notna(row.INCLUDE):
+            children = row.INCLUDE.split("|")
+
+            for child in children:
+                existing = res.get(child, [])
+                existing.append(name)
+                res[child] = existing
 
     return res
 
