@@ -184,6 +184,11 @@ defmodule RisteysWeb.PhenocodeView do
   end
 
   defp icd10_url(text, icd) do
+    # ICD browser uses X12.3 instead of X1234
+    short = String.slice(icd, 0..3)
+    {prefix, suffix} = String.split_at(short, 3)
+    icd = prefix <> "." <> suffix
+
     ahref(text, "https://icd.who.int/browse10/2016/en#/#{icd}")
   end
 
