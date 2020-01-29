@@ -2,7 +2,18 @@
 Get a list of ontology references for each endpoint.
 
 Usage:
-    python build_ontology.py <path-to-data-directory>
+    python build_ontology.py <path-to-endpoint-mapping> <path-to-efo-ontology> <output-path>
+
+Input Files:
+- Endpoint Mapping
+  Each row is a FinnGen endpoint, columns should contain:
+  . NAME: FinnGen endpoint short name
+  . best_doid: 1 or more DOID that relates to the endpoint
+  . MESH: 0 or 1 MESH id that relates to the endpoint
+  Source: FinnGen endpoint team
+- EFO
+  Ontology with EFO -> {DOID, MESH, SNOMED}
+  Source: https://github.com/EBISPOT/efo/
 
 Output: a JSON file with a mapping of endpoint name to DOID, MESH, EFO, SNOMED ids.
 """
@@ -17,25 +28,7 @@ from pronto import Ontology
 from log import logger
 
 
-INPUT_ENDPOINT_FILE = "all_matching_FG_DOID_MESH_excl.csv"
-INPUT_ONTOLOGY_FILE = "efo.owl"
-OUTPUT_FILE = "ontology.json"
-
-
-def prechecks(input_endpoint_path, input_ontology_path, output_path):
-    """Perform checks before running to fail earlier rather than later"""
-    logger.info("Performing pre-checks")
-    assert input_endpoint_path.exists()
-    assert input_ontology_path.exists()
-    assert not output_path.exists()
-
-
-def main(data_directory):
-    input_endpoint_path = data_directory / INPUT_ENDPOINT_FILE
-    input_ontology_path = data_directory / INPUT_ONTOLOGY_FILE
-    output_path = data_directory / OUTPUT_FILE
-    prechecks(input_endpoint_path, input_ontology_path, output_path)
-
+def main(input_endpoint_path, input_ontology_path, output_path):
     endpoint_doids, endpoint_mesh = map_endpoint_doids_mesh(input_endpoint_path)
     all_endpoints = set(endpoint_doids)
     all_endpoints = all_endpoints.union(endpoint_mesh)
@@ -204,5 +197,7 @@ def merge(endpoint_doids, endpoint_mesh, endpoint_refs):
 
 
 if __name__ == '__main__':
-    DATA_DIRECTORY = Path(argv[1])
-    main(DATA_DIRECTORY)
+    ENDPOINT_MAPPING = Path(argv[1])
+    EFO = Path(argv[2])
+    OUTPUT = Path(argv[3])
+    main(ENDPOINT_MAPPING, EFO, OUTPUT)
