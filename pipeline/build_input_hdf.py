@@ -9,7 +9,7 @@ Steps:
 - merge events that are within a 30-day time window
 
 Usage:
-    python build_input_hdf.py <path-to-data-dir>
+    python build_input_hdf.py <path-to-first-events> <path-to-longit> <path-to-info> <path-to-endpoint-defs> <path-to-samples> <output-output>
 
 Input files:
 - dense_first_events.csv
@@ -27,7 +27,6 @@ Input files:
   individuals will be used for data processing in PheWeb.
   Source: FinnGen data
 """
-from csv import excel_tab
 from pathlib import Path
 from sys import argv
 
@@ -36,40 +35,9 @@ import pandas as pd
 
 from log import logger
 
-INPUT_FIRST_EVENT = "dense_first_events.csv"
-INPUT_LONGIT = "FINNGEN_ENDPOINTS_longitudinal_QCed.csv"
-INPUT_INFO = "FINNGEN_MINIMUM_DATA.txt"
-INPUT_ENDPOINTS = "Endpoint_definitions_FINNGEN_ENDPOINTS.tsv"
-INPUT_SAMPLES = "COV_PHENO.txt"
-OUTPUT_NAME = "input.hdf5"
-
-
-def prechecks(first_event_path, longit_path, info_path, endpoints_path, samples_path, output_path):
-    """Perform checks before running to fail earlier rather than later"""
-    logger.info("Performing pre-checks")
-    assert first_event_path.exists()
-    assert longit_path.exists()
-    assert info_path.exists()
-    assert endpoints_path.exists()
-    assert samples_path.exists()
-    assert not output_path.exists()
-
-    # Check endpoint file headers
-    df = pd.read_csv(endpoints_path, dialect=excel_tab, nrows=0)
-    assert "NAME" in df.columns
-    assert "OMIT" in df.columns
-    assert "LEVEL" in df.columns
-    assert "TAGS" in df.columns
-
-    # Check samples file headers
-    df = pd.read_csv(samples_path, dialect=excel_tab, nrows=0)
-    assert "FINNGENID" in df.columns
-
 
 def main(first_event_path, longit_path, info_path, endpoints_path, samples_path, output_path):
     """Clean up and merge all the input files into one HDF5 file"""
-    prechecks(first_event_path, longit_path, info_path, endpoints_path, samples_path, output_path)
-
     # Load data
     df_fevent, df_longit = load_data(first_event_path, longit_path, info_path)
 
@@ -105,6 +73,7 @@ def load_data(first_event_path, longit_path, info_path):
     # First-event file
     logger.debug("Loading the first-event dense data")
     df_fevent = pd.read_csv(first_event_path)
+
     df_fevent = df_fevent.astype({
         "FINNGENID": np.object,
         "ENDPOINT": np.object,
@@ -127,7 +96,6 @@ def load_data(first_event_path, longit_path, info_path):
     logger.debug("Loading info data")
     dfsex = pd.read_csv(
         info_path,
-        dialect=excel_tab,
         usecols=["FINNGENID", "SEX"]
     )
     dfsex = dfsex.astype({
@@ -155,7 +123,7 @@ def filter_out_samples(data, samples_path):
     """Filter out samples, select only the one included in PheWeb."""
     logger.info("Filtering out the samples.")
     (nbefore, _) = data.shape
-    samples = pd.read_csv(samples_path, dialect=excel_tab, usecols=["FINNGENID"])
+    samples = pd.read_csv(samples_path, usecols=["FINNGENID"])
     data = data.merge(samples, on="FINNGENID")
     (nafter, _) = data.shape
 
@@ -167,7 +135,6 @@ def get_filtered_endpoints(filepath):
     """Get endpoints that are not too broad"""
     df = pd.read_csv(
         filepath,
-        dialect=excel_tab,
         usecols=["NAME", "OMIT", "LEVEL", "TAGS"],
         skiprows=[1]  # this row contains the comment info on the file version
     )
@@ -239,13 +206,18 @@ def merge_events(df):
 
 
 if __name__ == '__main__':
-    DATA_DIR = Path(argv[1])
+    INPUT_FIRST_EVENT = Path(argv[1])
+    INPUT_LONGIT = Path(argv[2])
+    INPUT_INFO = Path(argv[3])
+    INPUT_ENDPOINTS = Path(argv[4])
+    INPUT_SAMPLES = Path(argv[5])
+    OUTPUT_NAME = Path(argv[6])
 
     main(
-        DATA_DIR / INPUT_FIRST_EVENT,
-        DATA_DIR / INPUT_LONGIT,
-        DATA_DIR / INPUT_INFO,
-        DATA_DIR / INPUT_ENDPOINTS,
-        DATA_DIR / INPUT_SAMPLES,
-        DATA_DIR / OUTPUT_NAME,
+        INPUT_FIRST_EVENT,
+        INPUT_LONGIT,
+        INPUT_INFO,
+        INPUT_ENDPOINTS,
+        INPUT_SAMPLES,
+        OUTPUT_NAME,
     )
