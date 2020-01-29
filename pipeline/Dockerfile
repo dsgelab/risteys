@@ -1,6 +1,8 @@
-# no wheel for scipy on 3.8 yet
-FROM python:3.7
+FROM python:3
 
-RUN apt update && apt install -y libhdf5-dev
-ADD requirements.txt .
-RUN pip install -r requirements.txt
+# Don't copy the Python scripts here as it would make the whole
+# container being rebuilt each time there is a change in the scripts
+COPY requirements.txt /app/
+
+RUN pip install -r /app/requirements.txt
+COPY *.py /app/
