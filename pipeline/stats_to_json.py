@@ -3,7 +3,7 @@ Reads the stats from a HDF5 file and output them to a JSON file so
 they can be imported in a database afterwards.
 
 Usage:
-    python stats_to_json.py <path-to-data-dir>
+    python stats_to_json.py <input-path> <output-path>
 """
 import json
 from collections import defaultdict
@@ -15,9 +15,6 @@ import numpy as np
 
 from log import logger
 
-
-INPUT_FILENAME = "stats.hdf5"
-OUTPUT_FILENAME = "stats.json"
 
 LABELS_YEARS = [
     "≤1969",
@@ -45,11 +42,6 @@ LABELS_AGES = [
     "≥90",
 ]
 
-def prechecks(input_path, output_path):
-    """Perform early checks to fail earlier rather than later"""
-    assert input_path.exists(), f"{input_path} already exists, not overwritting it"
-    assert not output_path.exists(), f"{output_path} already exists, not overwritting it"
-
 
 def main(input_path, output_path):
     """Put the stats of the HDF5 input into a JSON output.
@@ -57,8 +49,6 @@ def main(input_path, output_path):
     Convert pandas objects to JSON and then merge all this objects
     into a single JSON output.
     """
-    prechecks(input_path, output_path)
-
     logger.info(f"Reading data from: {input_path}")
     agg_stats = (
         pd.read_hdf(input_path, "/stats")
@@ -136,7 +126,6 @@ def double_list(series, new_labels):
 
 
 if __name__ == '__main__':
-    DATA_DIR = Path(argv[1])
-    INPUT_PATH = DATA_DIR / INPUT_FILENAME
-    OUTPUT_PATH = DATA_DIR / OUTPUT_FILENAME
+    INPUT_PATH = Path(argv[1])
+    OUTPUT_PATH = Path(argv[2])
     main(INPUT_PATH, OUTPUT_PATH)

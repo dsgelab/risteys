@@ -38,7 +38,6 @@ statistical power.
 """
 
 from csv import excel_tab
-from pathlib import Path
 from sys import argv
 import re
 
@@ -49,14 +48,6 @@ from common import get_all_inclusions
 from log import logger
 
 
-# Files
-DATA_DIR = Path(argv[1])
-INPUT_EVENTS = "input.hdf5"
-INPUT_ENDPOINTS = "Endpoint_definitions_FINNGEN_ENDPOINTS.tsv"
-INPUT_ICD_CM = "icd10cm_codes_2019.tsv"
-INPUT_ICD_FINN = "ICD10_koodistopalvelu_2015-08_26_utf8.txt"
-OUTPUT_NAME = "filtered_pairs.csv"
-
 # Where to look for ICD in the endpoint definitions file
 ICD_COLS = [
     "OUTPAT_ICD",
@@ -65,24 +56,19 @@ ICD_COLS = [
     "KELA_REIMB_ICD"
 ]
 
+
 # Parameters
-CROSS_THRESHOLD = 5  # how many individuals to have, at least, in each
+CROSS_THRESHOLD = 10 # how many individuals to have, at least, in each
                      # cell of the frequency table
 LATER_THRESHOLD = 25 # how many individuals to have, at least, for the
                      # "later" endpoints
 STUDY_STARTS_AFTER = 1997  # Look at the data after this year
-STUDY_ENDS_BEFORE  = 2018  # Look at the data before this year
+STUDY_ENDS_BEFORE =  2019  # Look at the data before this year
 
 
-
-def prechecks(events_path, endpoints_path, icd_cm_path, icd_finn_path, output_path):
+def prechecks(events_path):
     """Perform checks before running to fail earlier rather than later"""
     logger.info("Performing pre-checks")
-    assert events_path.exists(), f"{events_path} doesn't exist"
-    assert endpoints_path.exists(), f"{endpoints_path} doesn't exist"
-    assert icd_cm_path.exists(), f"{icd_cm_path} doesn't exist"
-    assert icd_finn_path.exists(), f"{icd_finn_path} doesn't exist"
-    assert not output_path.exists(), f"{output_path} already exists, not overwriting it"
 
     # Check event file headers
     df = pd.read_hdf(events_path, "/first_event", stop=0)
@@ -93,7 +79,7 @@ def prechecks(events_path, endpoints_path, icd_cm_path, icd_finn_path, output_pa
 
 def main(events_path, endpoints_path, icd_cm_path, icd_finn_path, output_path):
     """Get a selection of pairs of endpoints to do survival analysis on"""
-    prechecks(events_path, endpoints_path, icd_cm_path, icd_finn_path, output_path)
+    prechecks(events_path)
 
     # Load data
     df = load_data(events_path)
@@ -125,7 +111,7 @@ def load_data(events_path):
     # Read the longitudinal file
     df = pd.read_hdf(events_path, "/first_event")
 
-    # Keep only events in [1998, 2018[, the period we have all
+    # Keep only events in [1998, 2019[, the period we have all
     # registry data.
     df = df[df.YEAR.gt(STUDY_STARTS_AFTER) & df.YEAR.lt(STUDY_ENDS_BEFORE)]
 
@@ -137,8 +123,7 @@ def load_endpoints(endpoints_path):
     df = pd.read_csv(
         endpoints_path,
         usecols=["NAME", "INCLUDE"] + ICD_COLS,
-        skiprows=[1],  # comment line in the endpoints file
-        dialect=excel_tab
+        skiprows=[1]  # comment line in the endpoints file
     )
     return df
 
@@ -372,9 +357,9 @@ def write_output(pairs, output_path):
 
 if __name__ == '__main__':
     main(
-        DATA_DIR / INPUT_EVENTS,
-        DATA_DIR / INPUT_ENDPOINTS,
-        DATA_DIR / INPUT_ICD_CM,
-        DATA_DIR / INPUT_ICD_FINN,
-        DATA_DIR / OUTPUT_NAME,
+        events_path=argv[1],
+        endpoints_path=argv[2],
+        icd_cm_path=argv[3],
+        icd_finn_path=argv[4],
+        output_path=argv[5],
     )

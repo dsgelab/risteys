@@ -2,12 +2,11 @@
 Aggregate data by endpoint on a couple of metrics, for female, male and all sex.
 
 Usage:
-    python aggregate_by_endpoint.py <path-to-data-dir>
+    python aggregate_by_endpoint.py <path-to-input> <output-path>
 
 Output:
 - stats.df5: HDF5 file with statistics and distributions for each endpoint
 """
-from csv import excel_tab
 from pathlib import Path
 from sys import argv
 
@@ -16,10 +15,6 @@ import pandas as pd
 
 from log import logger
 
-
-# Input / output files
-INPUT_FILENAME = "input.hdf5"
-OUTPUT_FILENAME = "stats.hdf5"
 
 # Treshold below which data is considered individual-level data
 INDIV_TRESHOLD = 6
@@ -51,18 +46,8 @@ MALE_COLS = [
 ]
 
 
-def prechecks(input_file):
-    """Perform checks before running to fail earlier rather than later"""
-    logger.info("Performing pre-checks")
-    assert input_file.exists(), f"{input_file} doesn't exist"
-    assert not OUTPUT_PATH.exists(), f"{OUTPUT_PATH} already exists, not overwritting it"
-    assert not OUTPUT_RECOVERY.exists(), f"{OUTPUT_RECOVERY} already exists, not overwritting it"
-
-
-def main(input_path):
+def main(input_path, output_path):
     """Compute statistics on input data and put them into an HDF5 file"""
-    prechecks(input_path)
-
     # Loading input data
     df_fevent = pd.read_hdf(input_path, "/first_event")
     df_longit = pd.read_hdf(input_path, "/longit")
@@ -70,28 +55,28 @@ def main(input_path):
 
     # Building up the aggregated statisitcs by endpoint
     stats = compute_prevalence(df_fevent, stats)
-    stats.to_hdf(OUTPUT_RECOVERY, "/stats")
+    stats.to_hdf(output_path, "/stats")
 
     stats = compute_mean_age(df_fevent, stats)
-    stats.to_hdf(OUTPUT_RECOVERY, "/stats")
+    stats.to_hdf(output_path, "/stats")
 
     stats = compute_case_fatality(df_fevent, stats)
-    stats.to_hdf(OUTPUT_RECOVERY, "/stats")
+    stats.to_hdf(output_path, "/stats")
 
     stats = compute_median_events(df_longit, stats)  # needs longitudinal data
-    stats.to_hdf(OUTPUT_RECOVERY, "/stats")
+    stats.to_hdf(output_path, "/stats")
 
     stats = compute_recurrence(df_longit, stats)  # needs longitudinal data
-    stats.to_hdf(OUTPUT_RECOVERY, "/stats")
+    stats.to_hdf(output_path, "/stats")
 
     # Making the distributions by endpoint
     distrib_age = compute_age_distribution(df_fevent)
     logger.debug("Writing age distribution to HDF5")
-    distrib_age.to_hdf(OUTPUT_RECOVERY, "/distrib/age")
+    distrib_age.to_hdf(output_path, "/distrib/age")
 
     distrib_year = compute_year_distribution(df_fevent)
     logger.debug("Writing year distribution to HDF5")
-    distrib_year.to_hdf(OUTPUT_RECOVERY, "/distrib/year")
+    distrib_year.to_hdf(output_path, "/distrib/year")
 
     # Checking that we don't miss any column with individual-level data
     expected_columns = set(ALL_COLS + FEMALE_COLS + MALE_COLS)
@@ -99,16 +84,13 @@ def main(input_path):
 
     # Filtering the data to remove individual-level data
     filter_stats(stats)
-    stats.to_hdf(OUTPUT_RECOVERY, "/stats")
+    stats.to_hdf(output_path, "/stats")
 
     filter_distrib(distrib_age)
-    distrib_age.to_hdf(OUTPUT_RECOVERY, "/distrib/age")
+    distrib_age.to_hdf(output_path, "/distrib/age")
 
     filter_distrib(distrib_year)
-    distrib_year.to_hdf(OUTPUT_RECOVERY, "/distrib/year")
-
-    # Everything went fine, moving recovery file to proper output path
-    OUTPUT_RECOVERY.rename(OUTPUT_PATH)
+    distrib_year.to_hdf(output_path, "/distrib/year")
 
     logger.info("Done.")
 
@@ -462,10 +444,7 @@ def filter_distrib(distrib):
 
 if __name__ == '__main__':
     # Get filenames from the command line arguments
-    DATA_DIR = Path(argv[1])
-    INPUT_PATH = DATA_DIR / INPUT_FILENAME
+    INPUT = Path(argv[1])
+    OUTPUT = Path(argv[2])
 
-    OUTPUT_PATH = DATA_DIR / OUTPUT_FILENAME
-    OUTPUT_RECOVERY = OUTPUT_PATH.with_suffix(".hdf5.recovery")
-
-    main(INPUT_PATH)
+    main(INPUT, OUTPUT)

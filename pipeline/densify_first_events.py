@@ -3,11 +3,11 @@ Make a dense first-event file from the original sparse first-event file.
 
 Usage
 -----
-  python densify_first_events.py <path-to-data-dir>
+  python densify_first_events.py <path-to-first-events> <output-path>
 
 Input file
 ----------
-- FINNGEN_PHENOTYPES.txt:
+- First Events
   Original first-event file with a matrix-like structure:
   - columns: endpoints, and additional columns for age and year at
     first-event and number of events for each endpoint
@@ -16,7 +16,7 @@ Input file
 
 Output file
 -----------
-- dense_first_events.csv:
+- Dense First Events: CSV
   - columns: individual ID, endpoint, age at first-event, year at first-event, number of events
   - lines: each line is the endpoint information for one individual
 
@@ -112,6 +112,7 @@ def main(input_path, output_path):
                 output.write(f"{finngenid},{endpoint},{age},{year},{nevt}\n")
 
     output.close()
+    logger.info("Densifying done.")
 
 
 if __name__ == '__main__':

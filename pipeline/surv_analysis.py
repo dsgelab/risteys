@@ -103,7 +103,7 @@ OUTPUT_ERROR = Path(getenv("OUTPUT_ERROR"))
 
 # Year of study starts
 STUDY_STARTS = 1998.0
-STUDY_ENDS = 2018.0
+STUDY_ENDS = 2019.0
 
 # Columns to always keep
 KEEP = [
