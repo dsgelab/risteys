@@ -9,7 +9,6 @@ defmodule RisteysWeb.HomeController do
     {phenos_group1, phenos_group2} = get_demo_phenos()
 
     conn
-    |> assign(:user_is_authenticated, get_session(conn, :user_is_authenticated))
     |> assign(:phenos_group1, phenos_group1)
     |> assign(:phenos_group2, phenos_group2)
     |> render("index.html")

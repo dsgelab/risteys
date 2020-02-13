@@ -20,15 +20,6 @@ config :risteys, RisteysWeb.Endpoint,
 # Do not print debug messages in production
 config :logger, level: :info
 
-# Ueberauth / Google OAuth
-config :ueberauth, Ueberauth,
-  providers: [
-    google: {Ueberauth.Strategy.Google, [
-      # Put the URL in order to force the use of httpS.
-      callback_url: "https://risteys.finngen.fi/auth/google/callback"
-    ]}
-  ]
-
 
 # ## SSL Support
 #
