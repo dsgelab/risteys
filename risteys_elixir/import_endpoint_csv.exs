@@ -5,12 +5,33 @@
 #
 # Usage
 # -----
-# mix run import_endpoint_csv.exs <path-to-endpoints-file> <path-to-categories-file>
+# mix run import_endpoint_csv.exs <path-to-endpoints-file> <path-to-tagged-ordered-endpoints-file> <path-to-categories-file>
 #
-# where <path-to-categories-file> is the JSON file with the mapping of TAG -> category name.
+# <path-to-endpoints-file>
+#   Endpoint file in CSV format.
+#   Provided in the FinnGen data.
+#   This file usually have the name "finngen_RX_endpoint_definitions.txt" and is
+#
+# <path-to-tagged-ordered-endpoints-file>
+#   CSV file with header: TAG,CLASS,NAME
+#   Provided by Aki.
+#   It is used to get the main tag for each endpoint.
+#
+# <path-to-taglist-file>
+#   CSV file with header: code,CHAPTER,OTHER
+#   Provided by Aki.
+#   It is used to map endpoints to categories.
 #
 #
-# After that, this script can be used. It will:
+# Notes
+# -----
+# This is a 3-step process.
+#
+# First step is to parse the endpoint main tag.
+#
+# Second step is to parse the endpoint categories.
+#
+# Third step is to parse endpoint definition file and import endpoints into the database:
 # 1. Get the list of ICD-9s and ICD-10s from the database.
 #    So these should be imported before running this script, see:
 #    - import_icd10.exs
@@ -25,7 +46,7 @@ require Logger
 alias Risteys.{Repo, Phenocode, Icd10, Icd9, PhenocodeIcd10, PhenocodeIcd9}
 
 Logger.configure(level: :info)
-[endpoints_path, categories_path | _] = System.argv()
+[endpoints_path, tagged_path, categories_path | _] = System.argv()
 
 defmodule RegexICD do
   import Ecto.Query
@@ -38,6 +59,9 @@ defmodule RegexICD do
 
     case regex do
       "" ->
+        []
+
+      "NA" ->
         []
 
       # not a valid ICD
@@ -102,19 +126,45 @@ defmodule AssocICDs do
 end
 
 ###
+# PARSE MAIN TAG
+###
+main_tags =
+  tagged_path
+  |> File.stream!()
+  |> CSV.decode!(headers: true)
+  |> Enum.reduce(%{}, fn %{"TAG" => tag, "NAME" => name}, acc ->
+    Map.put(acc, name, tag)
+  end)
+
+###
 # PARSE CATEGORIES
 ###
 categories =
   categories_path
-  |> File.read!()
-  |> Jason.decode!()
+  |> File.stream!()
+  |> CSV.decode!(headers: true)
+  |> Enum.reduce(
+    %{},
+    fn %{"code" => code, "CHAPTER" => chapter, "OTHER" => other}, acc ->
+      category =
+        cond do
+          chapter != "" ->
+            chapter
+
+          other != "" ->
+            other
+        end
+
+      Map.put(acc, code, category)
+    end
+  )
 
 ###
 # IMPORT ENDPOINTS
 ###
 endpoints_path
 |> File.stream!()
-|> CSV.decode!(separator: ?\t, headers: true)
+|> CSV.decode!(headers: true)
 # Omit first line of data: it is a comment line
 |> Enum.drop(1)
 |> Enum.each(fn %{
@@ -160,34 +210,30 @@ endpoints_path
 
   omit =
     case omit do
-      "" -> false
+      "NA" -> false
       "1" -> true
       "2" -> true
     end
 
   level =
     case level do
-      "" -> nil
+      "NA" -> nil
       _ -> level
     end
 
   sex =
     case sex do
-      "" -> nil
+      "NA" -> nil
       _ -> String.to_integer(sex)
     end
 
   # Set category
-  first_tag =
-    tags
-    |> String.split(",")
-    |> hd()
-
-  category = Map.get(categories, first_tag, "Unknown")
+  main_tag = Map.get(main_tags, name)
+  category = Map.get(categories, main_tag, "Unknown")
 
   hd_mainonly =
     case hd_mainonly do
-      "" -> nil
+      "NA" -> nil
       "YES" -> true
     end
 
@@ -224,14 +270,14 @@ endpoints_path
   # Cause of death
   cod_mainonly =
     case cod_mainonly do
-      "" -> nil
+      "NA" -> nil
       "YES" -> true
     end
 
   # Cancer
   canc_behav =
     case canc_behav do
-      "" -> nil
+      "NA" -> nil
       _ -> String.to_integer(canc_behav)
     end
 
