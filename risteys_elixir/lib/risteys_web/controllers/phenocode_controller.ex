@@ -108,6 +108,8 @@ defmodule RisteysWeb.PhenocodeController do
     hd_icd9s = filter_icds_registry(icd9s, "HD")
     cod_icd9s = filter_icds_registry(icd9s, "COD")
 
+    IO.inspect phenocode
+    
     %{
       level: phenocode.level,
       omit: phenocode.omit,
@@ -117,6 +119,7 @@ defmodule RisteysWeb.PhenocodeController do
       conditions: phenocode.conditions,
       outpat_icd: phenocode.outpat_icd,
       hd_mainonly: phenocode.hd_mainonly,
+      hd_icd_10_atc: phenocode.hd_icd_10_atc,
       hd_icd10s: hd_icd10s,
       hd_icd9s: hd_icd9s,
       hd_icd8s: phenocode.hd_icd_8,
@@ -140,7 +143,8 @@ defmodule RisteysWeb.PhenocodeController do
       kela_atc: phenocode.kela_atc,
       canc_topo: phenocode.canc_topo,
       canc_morph: phenocode.canc_morph,
-      version: phenocode.version
+      version: phenocode.version,
+      latin: phenocode.latin,
     }
   end
 

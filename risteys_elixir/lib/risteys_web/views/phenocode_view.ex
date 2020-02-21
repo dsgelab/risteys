@@ -60,6 +60,7 @@ defmodule RisteysWeb.PhenocodeView do
       {"Hospital Discharge registry: exclude ICD-9", data_sources.hd_icd9s_excl},
       {"Hospital Discharge registry: exclude ICD-8", data_sources.hd_icd8s_excl},
       {"Hospital Discharge registry: only main entry used", data_sources.hd_mainonly},
+      {"Hospital Discharge: ATC drug used", data_sources.hd_icd_10_atc},
       {"Cause of Death registry", cod},
       {"Cause of Death registry: exclude ICD-10", data_sources.cod_icd10s_excl},
       {"Cause of Death registry: exclude ICD-9", data_sources.cod_icd9s_excl},
@@ -81,7 +82,8 @@ defmodule RisteysWeb.PhenocodeView do
       {"Conditions required", data_sources.conditions},
       {"Include", include},
       {"Level in the ICD-hierarchy", data_sources.level},
-      {"First defined in version", data_sources.version}
+      {"First defined in version", data_sources.version},
+      {"Latin name", data_sources.latin}
     ]
 
     # Discard table rows with no values

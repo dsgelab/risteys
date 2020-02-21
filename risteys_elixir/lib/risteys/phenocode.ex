@@ -15,6 +15,7 @@ defmodule Risteys.Phenocode do
     field :conditions, :string
     field :outpat_icd, :string
     field :hd_mainonly, :boolean
+    field :hd_icd_10_atc, :string
     field :hd_icd_8, :string
     field :hd_icd_10_excl, :string
     field :hd_icd_9_excl, :string
@@ -36,6 +37,7 @@ defmodule Risteys.Phenocode do
     field :canc_behav, :integer
     field :special, :string
     field :version, :string
+    field :latin, :string
     field :validation_article, :string
     field :ontology, {:map, {:array, :string}}
     # used for the search feature
@@ -65,6 +67,7 @@ defmodule Risteys.Phenocode do
       :conditions,
       :outpat_icd,
       :hd_mainonly,
+      :hd_icd_10_atc,
       :hd_icd_8,
       :hd_icd_10_excl,
       :hd_icd_9_excl,
@@ -86,6 +89,7 @@ defmodule Risteys.Phenocode do
       :canc_behav,
       :special,
       :version,
+      :latin,
       :validation_article,
       :ontology,
       :description,
