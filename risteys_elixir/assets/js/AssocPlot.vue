@@ -159,7 +159,7 @@ let hideTooltip = (tooltip) => {
 };
 
 let makePlot = (data, ticks, categoryNames, other_pheno) => {
-	let labelX = "Associations grouped by category";
+	let labelX = "Survival analyses grouped by category";
 	let labelY = "-log₁₀ (p)";
 	let scales = getScales(data);
 
