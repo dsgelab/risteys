@@ -16,17 +16,11 @@ let margin = {
 		axisY: 40,
 		right: 10,  // extra blank space, otherwise it cuts some dots
 	},
-	legend = {
-		width: 100,
-		height: 45,
-		rowHeight: 20,
-		marginX: 20,
-	},
 	plotWidth = 1000,
 	plotHeight = 300;
 
 let width = margin.labelY + margin.axisY + plotWidth + margin.right;
-let height = margin.labelX + margin.axisX + plotHeight + legend.height + legend.height;
+let height = margin.labelX + margin.axisX + plotHeight;
 
 let tooltipMargin = {
 	x: 20,
@@ -180,37 +174,9 @@ let makePlot = (data, ticks, categoryNames, other_pheno) => {
 		.attr("width", width)
 		.attr("height", height);
 
-	// Legend //
-	const glegend = svg.append("g")
-		.attr("transform", `translate(${width - legend.width}, 0)`);
-	glegend.append("rect")
-		.attr("width", legend.width)
-		.attr("height", legend.height)
-		.attr("stroke", "black")
-		.attr("fill-opacity", 0);
-	// Plot style: before
-	glegend.append("circle")
-		.attr("cx", 10)  // manually positioned
-		.attr("cy", 15)  // manually positioned
-		.attr("r", dot.size);
-	glegend.append("text")
-		.text("before")
-		.attr("x", legend.marginX)
-		.attr("y", legend.rowHeight);
-	// Plot style: after
-	glegend.append("rect")
-		.attr("x", 5)  // manually positioned
-		.attr("y", 30)  // manually positioned
-		.attr("height", square.size)
-		.attr("width", square.size);
-	glegend.append("text")
-		.text("after")
-		.attr("x", legend.marginX)
-		.attr("y", 2 * legend.rowHeight);
-
 	// Main plot surface
 	const g = svg.append("g")
-		.attr("transform", `translate(${margin.labelY + margin.axisY}, ${legend.height})`);
+		.attr("transform", `translate(${margin.labelY + margin.axisY}, 0)`);
 
 	// Grey background
 	g.append("rect")
@@ -223,7 +189,7 @@ let makePlot = (data, ticks, categoryNames, other_pheno) => {
 		.tickValues(ticks)
 		.tickFormat( (d, i) => categoryNames[i] );
 	svg.append("g")
-		.attr("transform", `translate(${margin.labelY + margin.axisY}, ${legend.height + plotHeight})`)
+		.attr("transform", `translate(${margin.labelY + margin.axisY}, ${plotHeight})`)
 		.call(xAxis)
 		// Rotate category names
 		.selectAll("text")
@@ -234,13 +200,13 @@ let makePlot = (data, ticks, categoryNames, other_pheno) => {
 
 	// Y axis
 	svg.append("g")
-		.attr("transform", `translate(${margin.labelY + margin.axisY}, ${legend.height})`)
+		.attr("transform", `translate(${margin.labelY + margin.axisY}, 0)`)
 		.call(d3.axisLeft(scales.y));
 
 	// Y label
 	svg.append("text")
 		.html(labelY)
-		.attr("x", - plotHeight / 2 - legend.height)
+		.attr("x", - plotHeight / 2)
 		.attr("y", margin.labelY)
 		.attr("transform", "rotate(-90)")
 		.style("text-anchor", "middle");
