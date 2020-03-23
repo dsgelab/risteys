@@ -33,7 +33,6 @@ To solve this, this script split the original first-event file on the
 columns, then it creates a file with a dense format, where there is no
 irrelevant information.
 """
-from csv import excel_tab
 from sys import argv
 from pathlib import Path
 
@@ -43,26 +42,21 @@ import pandas as pd
 from log import logger
 
 
-FIRST_EVENT_FILE = "FINNGEN_PHENOTYPES.txt"
-OUTPUT_FILE = "dense_first_events.csv"
-
-# Number of groups of columns
+# Number of groups of columns.
+# Empiric testing indicates lower means faster, though lower means
+# more RAM usage and possible process being OOM killed.
 N_CHUNKS = 10
 
 
-def prechecks(input_path, output_path):
-    """Check existence of input and output files"""
-    logger.info("Performing pre-checks")
-    assert input_path.exists()
-    assert not output_path.exists()
-
-
 def main(input_path, output_path):
-    """Write a dense fisrt-event file"""
-    prechecks(input_path, output_path)
+    """Write a dense first-event file"""
+    # Create the CSV output file
+    output = open(output_path, "x")
+    output.write("FINNGENID,ENDPOINT,AGE,YEAR,NEVT\n")
 
     # Get the headers
-    df = pd.read_csv(input_path, dialect=excel_tab, nrows=0)
+    logger.info("Getting the header")
+    df = pd.read_csv(input_path, nrows=0)
     headers = set(df.columns)
     endpoints = {
         e for e in headers
@@ -71,10 +65,7 @@ def main(input_path, output_path):
         and e + "_NEVT" in headers
     }
 
-    # Create the CSV output file
-    output = open(output_path, "x")
-    output.write("FINNGENID,ENDPOINT,AGE,YEAR,NEVT\n")
-
+    logger.info("Computing")
     # Get the data by group of endpoints
     chunks = np.array_split(list(endpoints), N_CHUNKS)
     for idx_chunk, chunk_endpoints in enumerate(chunks):
@@ -95,7 +86,6 @@ def main(input_path, output_path):
         df = pd.read_csv(
             input_path,
             usecols=chunk_headers,
-            dialect=excel_tab
         )
         # Set the correct header types
         types = {}
@@ -125,8 +115,7 @@ def main(input_path, output_path):
 
 
 if __name__ == '__main__':
-    DATA_DIR = Path(argv[1])
     main(
-        DATA_DIR / FIRST_EVENT_FILE,
-        DATA_DIR / OUTPUT_FILE
+        input_path=Path(argv[1]),
+        output_path=Path(argv[2])
     )
