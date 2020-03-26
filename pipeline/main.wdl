@@ -75,7 +75,7 @@ task ontology {
 		cpu: "1"
 		memory: "2 GB"
 		zones: "europe-west1-b"
-		preemptible: 1
+		preemptible: 0
 		noAddress: true
 	}
 }
@@ -101,7 +101,7 @@ task QC {
 		memory: "52 GB"
 		disks: "local-disk 50 SSD"
 		zones: "europe-west1-b"
-		preemptible: 1
+		preemptible: 0
 		noAddress: true
 	}
 }
@@ -127,7 +127,7 @@ task densify_first_events {
 		memory: "52 GB"
 		disks: "local-disk 50 SSD"
 		zones: "europe-west1-b"
-		preemptible: 1
+		preemptible: 0
 		noAddress: true
 	}
 }
@@ -155,7 +155,7 @@ task build_input {
 		memory: "52 GB"
 		disks: "local-disk 50 SSD"
 		zones: "europe-west1-b"
-		preemptible: 1
+		preemptible: 0
 		noAddress: true
 	}
 }
@@ -181,7 +181,34 @@ task aggregate_stats {
 		memory: "26 GB"
 		disks: "local-disk 50 SSD"
 		zones: "europe-west1-b"
-		preemptible: 1
+		preemptible: 0
+		noAddress: true
+	}
+}
+
+
+task filtered_pairs {
+	File input_hdf
+	File fg_endpoint_defs
+	File icd10cm
+	File icd10finn
+	String filtered_pairs_output
+
+	command {
+		python3 /app/surv_endpoints.py ${input_hdf} ${fg_endpoint_defs} ${icd10cm} ${icd10finn} ${filtered_pairs_output}
+	}
+
+	output {
+		File out = "${filtered_pairs_output}"
+	}
+
+	runtime {
+		docker: "eu.gcr.io/finngen-refinery-dsgelab/wdl-risteys"
+		cpu: "1"
+		memory: "26 GB"
+		disks: "local-disk 50 SSD"
+		zones: "europe-west1-b"
+		preemptible: 0
 		noAddress: true
 	}
 }

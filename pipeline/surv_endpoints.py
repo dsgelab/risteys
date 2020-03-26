@@ -3,20 +3,25 @@ Select pairs of endpoints to do survival analysis on.
 
 Usage
 -----
-    python surv_endpoints.py <path-to-data-dir>
+python surv_endpoints.py \
+    <first-events-hdf5> \
+    <endpoint-definitions> \
+    <icd-cm> \
+    <icd-finland> \
+    <output-path>
 
 Input files
 -----------
-- input.hdf5  /first_event
+- first-events-hdf5  /first_event
   Each row is the first-event of an endpoint for an individual.
   Source: previous pipeline step
-- Endpoint_definitions_FINNGEN_ENDPOINTS.tsv
+- endpoint-definitions
   Each row is an endpoint definition.
   Source: FinnGen data
-- icd10cm_codes_2019.tsv
+- icd-cm
   Official ICD-10-CM file.
   Source: ftp://ftp.cdc.gov/pub/Health_Statistics/NCHS/Publications/ICD10CM/2019/
-- ICD10_koodistopalvelu_2015-08_26_utf8.txt
+- icd-finland
   Finnish ICD code definitions.
   Source: Aki, then converted to utf8 with "iconv -f MAC -t UTF8"
 
