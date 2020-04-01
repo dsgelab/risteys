@@ -1,21 +1,27 @@
 workflow RisteysPipelineMain {
-	# Ontology
-	File endpoint_mapping
-	File EFO
-	String ontology_output
-
 	# FinnGen data
 	File fg_minimum_data
 	File fg_first_events
 	File fg_longit
 	File fg_endpoint_defs
 	File fg_samples
+	File icd10cm
+	File icd10finn
 
+	# Ontology
+	File endpoint_mapping
+	File EFO
+	String ontology_output
+
+	# Summary stats
 	String qc_output
 	String dense_output
 	String hdf_output
 	String stats_hdf
 	String stats_json
+
+	# Associations
+	String filtered_pairs
 
 	call ontology {
 		input:
@@ -54,6 +60,15 @@ workflow RisteysPipelineMain {
 			input_hdf=build_input.out,
 			hdf_output=stats_hdf,
 			json_output=stats_json
+	}
+
+	call surv_endpoints {
+		input:
+			input_hdf=build_input.out,
+			fg_endpoint_defs=fg_endpoint_defs,
+			icd10cm=icd10cm,
+			icd10finn=icd10finn,
+			soutput=filtered_pairs
 	}
 }
 
@@ -187,19 +202,19 @@ task aggregate_stats {
 }
 
 
-task filtered_pairs {
+task surv_endpoints {
 	File input_hdf
 	File fg_endpoint_defs
 	File icd10cm
 	File icd10finn
-	String filtered_pairs_output
+	String soutput
 
 	command {
-		python3 /app/surv_endpoints.py ${input_hdf} ${fg_endpoint_defs} ${icd10cm} ${icd10finn} ${filtered_pairs_output}
+		python3 /app/surv_endpoints.py ${input_hdf} ${fg_endpoint_defs} ${icd10cm} ${icd10finn} ${soutput}
 	}
 
 	output {
-		File out = "${filtered_pairs_output}"
+		File out = "${soutput}"
 	}
 
 	runtime {
