@@ -210,7 +210,6 @@ def load_data(pairs_path, phenotypes_path, definitions_path, minimum_path):
     # Check all columns of phenotype file
     pheno_cols = pd.read_csv(
         phenotypes_path,
-        dialect=csv.excel_tab,
         nrows=0  # get only the header
     )
 
@@ -236,21 +235,18 @@ def load_data(pairs_path, phenotypes_path, definitions_path, minimum_path):
 
     phenotypes = pd.read_csv(
         phenotypes_path,
-        dialect=csv.excel_tab,
         usecols=cols
     )
 
     # Endpoint definitions to check for sex-specific endpoints
     definitions = pd.read_csv(
         definitions_path,
-        dialect=csv.excel_tab,
         usecols=["NAME", "SEX"]
     )
 
     # Minimum info file to get sex of each individual
     sex_info = pd.read_csv(
         minimum_path,
-        dialect=csv.excel_tab,
         usecols=["FINNGENID", "SEX"]
     )
     # Merge sex info into the phenotypes Dataframe.
@@ -362,6 +358,7 @@ def set_timeline(pair, df):
 
     study starts   prior  outcome     study ends
     |              |      |           |
+    V              V      V           V
     |--------------=======XXXXXXXXXXXX|
     [  unexposed  ][     exposed      ]
     """
