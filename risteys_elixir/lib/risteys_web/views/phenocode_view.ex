@@ -205,7 +205,7 @@ defmodule RisteysWeb.PhenocodeView do
   defp round(number, precision) do
     case number do
       "-" -> "-"
-      _ -> Float.round(number, precision)
+      _ -> :io_lib.format("~.#{precision}. f", [number]) |> to_string()
     end
   end
 
@@ -236,6 +236,11 @@ defmodule RisteysWeb.PhenocodeView do
         # See http://erlang.org/doc/man/io.html#format-2
         :io_lib.format("~.2. e", [pvalue]) |> to_string()
     end
+  end
+
+  defp atc_link_wikipedia(atc) do
+    short = String.slice(atc, 0..2)
+    "https://en.wikipedia.org/wiki/ATC_code_#{short}##{atc}"
   end
 
   defp data_assocs_plot(phenocode, assocs) do

@@ -1,6 +1,6 @@
 defmodule RisteysWeb.PhenocodeController do
   use RisteysWeb, :controller
-  alias Risteys.{Repo, CoxHR, Icd9, Icd10, Phenocode, PhenocodeIcd10, PhenocodeIcd9, StatsSex}
+  alias Risteys.{Repo, CoxHR, DrugStats, Icd9, Icd10, Phenocode, PhenocodeIcd10, PhenocodeIcd9, StatsSex}
   import Ecto.Query
 
   def show(conn, %{"name" => name}) do
@@ -72,6 +72,7 @@ defmodule RisteysWeb.PhenocodeController do
     |> assign(:distrib_year, distrib_year)
     |> assign(:distrib_age, distrib_age)
     |> assign(:description, description)
+    |> assign(:drug_stats, get_drug_stats(phenocode))
     |> assign(:data_assocs, data_assocs(phenocode))
     |> assign(:h2_liab, phenocode.h2_liab)
     |> assign(:h2_liab_se, phenocode.h2_liab_se)
@@ -195,6 +196,13 @@ defmodule RisteysWeb.PhenocodeController do
       female: stats_female,
       male: stats_male
     }
+  end
+
+  defp get_drug_stats(phenocode) do
+    Repo.all(from dstats in DrugStats,
+      where: dstats.phenocode_id == ^phenocode.id,
+      order_by: [desc: :score],
+      limit: 10)
   end
 
   defp data_assocs(phenocode) do
