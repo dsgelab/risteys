@@ -25,6 +25,7 @@ icd10finn = Path.join(data_dir, "ICD10_finn_codedesc.tsv")
 
 # US ICD-10s
 Logger.info("Loading ICD-10-CM")
+
 icd10s =
   icd10cm
   |> File.stream!()
@@ -35,6 +36,7 @@ icd10s =
 
 # Finnish ICD-10s
 Logger.info("Loading Finnish ICD-10s")
+
 icd10s =
   icd10finn
   |> File.stream!()
@@ -45,6 +47,7 @@ icd10s =
   end)
 
 Logger.info("Inserting ICD-10s in the database.")
+
 icd10s
 |> Enum.map(fn {code, description} ->
   Repo.insert!(%Icd10{code: code, description: description})

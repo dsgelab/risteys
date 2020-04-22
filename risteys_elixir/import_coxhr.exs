@@ -50,14 +50,30 @@
 # - nindivs_prior_later
 
 alias Risteys.{Repo, CoxHR, Phenocode}
+import Ecto.Query
 require Logger
 
 Logger.configure(level: :info)
 [coxhr_filepath | _] = System.argv()
 
+phenos = Repo.all(from p in Phenocode, select: p.name) |> MapSet.new()
+
 coxhr_filepath
 |> File.stream!()
 |> CSV.decode!(headers: true)
+|> Stream.filter(fn %{"prior" => prior, "later" => outcome} ->
+  prior_in_phenos = MapSet.member?(phenos, prior)
+  if not prior_in_phenos do
+    Logger.warn("Prior #{prior} not found in phenos")
+  end
+
+  outcome_in_phenos = MapSet.member?(phenos, outcome)
+  if not outcome_in_phenos do
+    Logger.warn("Outcome #{outcome} not found in phenos")
+  end
+
+  prior_in_phenos and outcome_in_phenos
+end)
 |> Stream.with_index()
 |> Enum.each(fn {%{
                    "prior" => prior,

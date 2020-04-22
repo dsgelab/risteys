@@ -218,6 +218,7 @@ end)
 keep =
   Repo.all(from s in StatsSex, select: s.phenocode_id)
   |> MapSet.new()
+
 all =
   Repo.all(from p in Phenocode, select: p.id)
   |> MapSet.new()

@@ -169,178 +169,177 @@ endpoints_path
   for {header, value} <- headers_values, into: %{} do
     value =
       case value do
-	"NA" -> nil
-	val -> val
+        "NA" -> nil
+        val -> val
       end
+
     {header, value}
   end
 end)
-|> Enum.each(
-  fn %{
-       "TAGS" => tags,
-       "LEVEL" => level,
-       "OMIT" => omit,
-       "NAME" => name,
-       "LONGNAME" => longname,
-       "SEX" => sex,
-       "INCLUDE" => include,
-       "PRE_CONDITIONS" => pre_conditions,
-       "CONDITIONS" => conditions,
-       "OUTPAT_ICD" => outpat_icd,
-       "HD_MAINONLY" => hd_mainonly,
-       "HD_ICD_10_ATC" => hd_icd_10_atc,
-       "HD_ICD_10" => hd_icd_10,
-       "HD_ICD_9" => hd_icd_9,
-       "HD_ICD_8" => hd_icd_8,
-       "HD_ICD_10_EXCL" => hd_icd_10_excl,
-       "HD_ICD_9_EXCL" => hd_icd_9_excl,
-       "HD_ICD_8_EXCL" => hd_icd_8_excl,
-       "COD_MAINONLY" => cod_mainonly,
-       "COD_ICD_10" => cod_icd_10,
-       "COD_ICD_9" => cod_icd_9,
-       "COD_ICD_8" => cod_icd_8,
-       "COD_ICD_10_EXCL" => cod_icd_10_excl,
-       "COD_ICD_9_EXCL" => cod_icd_9_excl,
-       "COD_ICD_8_EXCL" => cod_icd_8_excl,
-       "OPER_NOM" => oper_nom,
-       "OPER_HL" => oper_hl,
-       "OPER_HP1" => oper_hp1,
-       "OPER_HP2" => oper_hp2,
-       "KELA_REIMB" => kela_reimb,
-       "KELA_REIMB_ICD" => kela_reimb_icd,
-       "KELA_ATC_NEEDOTHER" => kela_atc_needother,
-       "KELA_ATC" => kela_atc,
-       "CANC_TOPO" => canc_topo,
-       "CANC_MORPH" => canc_morph,
-       "CANC_BEHAV" => canc_behav,
-       "Special" => special,
-       "version" => version,
-       "Latin" => latin
-     } ->
-    Logger.info("Processing phenocode: #{name}")
+|> Enum.each(fn %{
+                  "TAGS" => tags,
+                  "LEVEL" => level,
+                  "OMIT" => omit,
+                  "NAME" => name,
+                  "LONGNAME" => longname,
+                  "SEX" => sex,
+                  "INCLUDE" => include,
+                  "PRE_CONDITIONS" => pre_conditions,
+                  "CONDITIONS" => conditions,
+                  "OUTPAT_ICD" => outpat_icd,
+                  "HD_MAINONLY" => hd_mainonly,
+                  "HD_ICD_10_ATC" => hd_icd_10_atc,
+                  "HD_ICD_10" => hd_icd_10,
+                  "HD_ICD_9" => hd_icd_9,
+                  "HD_ICD_8" => hd_icd_8,
+                  "HD_ICD_10_EXCL" => hd_icd_10_excl,
+                  "HD_ICD_9_EXCL" => hd_icd_9_excl,
+                  "HD_ICD_8_EXCL" => hd_icd_8_excl,
+                  "COD_MAINONLY" => cod_mainonly,
+                  "COD_ICD_10" => cod_icd_10,
+                  "COD_ICD_9" => cod_icd_9,
+                  "COD_ICD_8" => cod_icd_8,
+                  "COD_ICD_10_EXCL" => cod_icd_10_excl,
+                  "COD_ICD_9_EXCL" => cod_icd_9_excl,
+                  "COD_ICD_8_EXCL" => cod_icd_8_excl,
+                  "OPER_NOM" => oper_nom,
+                  "OPER_HL" => oper_hl,
+                  "OPER_HP1" => oper_hp1,
+                  "OPER_HP2" => oper_hp2,
+                  "KELA_REIMB" => kela_reimb,
+                  "KELA_REIMB_ICD" => kela_reimb_icd,
+                  "KELA_ATC_NEEDOTHER" => kela_atc_needother,
+                  "KELA_ATC" => kela_atc,
+                  "CANC_TOPO" => canc_topo,
+                  "CANC_MORPH" => canc_morph,
+                  "CANC_BEHAV" => canc_behav,
+                  "Special" => special,
+                  "version" => version,
+                  "Latin" => latin
+                } ->
+  Logger.info("Processing phenocode: #{name}")
 
-    omit =
-      case omit do
-        nil -> false
-        "1" -> true
-        "2" -> true
-      end
-
-    sex =
-      case sex do
-        nil -> nil
-        _ -> String.to_integer(sex)
-      end
-
-    # Set category
-    main_tag = Map.get(main_tags, name)
-    category = Map.get(categories, main_tag, "Unknown")
-
-    hd_mainonly =
-      case hd_mainonly do
-        nil -> nil
-        "YES" -> true
-      end
-
-    # Parse some ICD-10 columns
-    Logger.debug("Parsing ICD-10s for #{name}")
-    icd_10_regex = hd_icd_10
-    hd_icd_10 = RegexICD.expand_icd10(hd_icd_10)
-
-    cod_icd_10 =
-      case cod_icd_10 do
-        ^icd_10_regex -> hd_icd_10
-        _ -> RegexICD.expand_icd10(cod_icd_10)
-      end
-
-    kela_reimb_icd = RegexICD.expand_icd10(kela_reimb_icd)
-
-    # Parse some ICD-9 columns
-    Logger.debug("Parsing ICD-9s #{name}")
-    icd_9_regex = hd_icd_9
-    hd_icd_9 = RegexICD.expand_icd9(icd_9_regex)
-
-    cod_icd_9 =
-      case hd_icd_9 do
-        ^icd_9_regex -> hd_icd_9
-        _ -> RegexICD.expand_icd9(cod_icd_9)
-      end
-
-    # Remove $!$ from ICD-8
-    hd_icd_8 = if hd_icd_8 == "$!$", do: "", else: hd_icd_8
-    hd_icd_8_excl = if hd_icd_8_excl == "$!$", do: "", else: hd_icd_8_excl
-    cod_icd_8 = if cod_icd_8 == "$!$", do: "", else: cod_icd_8
-    cod_icd_8_excl = if cod_icd_8_excl == "$!$", do: "", else: cod_icd_8_excl
-
-    # Cause of death
-    cod_mainonly =
-      case cod_mainonly do
-        nil -> nil
-        "YES" -> true
-      end
-
-    # Cancer
-    canc_behav =
-      case canc_behav do
-        nil -> nil
-        _ -> String.to_integer(canc_behav)
-      end
-
-    Logger.debug("Inserting phenocode #{name} in DB")
-
-    phenocode =
-      Phenocode.changeset(%Phenocode{}, %{
-        name: name,
-        longname: longname,
-        tags: tags,
-        category: category,
-        level: level,
-        omit: omit,
-        sex: sex,
-        include: include,
-        pre_conditions: pre_conditions,
-        conditions: conditions,
-        outpat_icd: outpat_icd,
-        hd_mainonly: hd_mainonly,
-        hd_icd_10_atc: hd_icd_10_atc,
-        hd_icd_8: hd_icd_8,
-        hd_icd_10_excl: hd_icd_10_excl,
-        hd_icd_9_excl: hd_icd_9_excl,
-        hd_icd_8_excl: hd_icd_8_excl,
-        cod_mainonly: cod_mainonly,
-        cod_icd_8: cod_icd_8,
-        cod_icd_10_excl: cod_icd_10_excl,
-        cod_icd_9_excl: cod_icd_9_excl,
-        cod_icd_8_excl: cod_icd_8_excl,
-        oper_nom: oper_nom,
-        oper_hl: oper_hl,
-        oper_hp1: oper_hp1,
-        oper_hp2: oper_hp2,
-        kela_reimb: kela_reimb,
-        kela_atc_needother: kela_atc_needother,
-        kela_atc: kela_atc,
-        canc_topo: canc_topo,
-        canc_morph: canc_morph,
-        canc_behav: canc_behav,
-        special: special,
-        version: version,
-        latin: latin
-      })
-
-    case Repo.insert(phenocode) do
-      {:ok, struct} ->
-        Logger.debug("Successfully inserted #{name}.")
-        # Build Phenocode<->ICD-{10,9} associations
-        Logger.debug("Inserting ICD associations for #{name}")
-        AssocICDs.insert("HD", 10, struct.id, hd_icd_10)
-        AssocICDs.insert("COD", 10, struct.id, cod_icd_10)
-        AssocICDs.insert("KELA_REIMB", 10, struct.id, kela_reimb_icd)
-
-        AssocICDs.insert("HD", 9, struct.id, hd_icd_9)
-        AssocICDs.insert("COD", 9, struct.id, cod_icd_9)
-
-      {:error, changeset} ->
-        Logger.warn("Could not insert #{name}: #{inspect(changeset)}")
+  omit =
+    case omit do
+      nil -> false
+      "1" -> true
+      "2" -> true
     end
+
+  sex =
+    case sex do
+      nil -> nil
+      _ -> String.to_integer(sex)
+    end
+
+  # Set category
+  main_tag = Map.get(main_tags, name)
+  category = Map.get(categories, main_tag, "Unknown")
+
+  hd_mainonly =
+    case hd_mainonly do
+      nil -> nil
+      "YES" -> true
+    end
+
+  # Parse some ICD-10 columns
+  Logger.debug("Parsing ICD-10s for #{name}")
+  icd_10_regex = hd_icd_10
+  hd_icd_10 = RegexICD.expand_icd10(hd_icd_10)
+
+  cod_icd_10 =
+    case cod_icd_10 do
+      ^icd_10_regex -> hd_icd_10
+      _ -> RegexICD.expand_icd10(cod_icd_10)
+    end
+
+  kela_reimb_icd = RegexICD.expand_icd10(kela_reimb_icd)
+
+  # Parse some ICD-9 columns
+  Logger.debug("Parsing ICD-9s #{name}")
+  icd_9_regex = hd_icd_9
+  hd_icd_9 = RegexICD.expand_icd9(icd_9_regex)
+
+  cod_icd_9 =
+    case hd_icd_9 do
+      ^icd_9_regex -> hd_icd_9
+      _ -> RegexICD.expand_icd9(cod_icd_9)
+    end
+
+  # Remove $!$ from ICD-8
+  hd_icd_8 = if hd_icd_8 == "$!$", do: "", else: hd_icd_8
+  hd_icd_8_excl = if hd_icd_8_excl == "$!$", do: "", else: hd_icd_8_excl
+  cod_icd_8 = if cod_icd_8 == "$!$", do: "", else: cod_icd_8
+  cod_icd_8_excl = if cod_icd_8_excl == "$!$", do: "", else: cod_icd_8_excl
+
+  # Cause of death
+  cod_mainonly =
+    case cod_mainonly do
+      nil -> nil
+      "YES" -> true
+    end
+
+  # Cancer
+  canc_behav =
+    case canc_behav do
+      nil -> nil
+      _ -> String.to_integer(canc_behav)
+    end
+
+  Logger.debug("Inserting phenocode #{name} in DB")
+
+  phenocode =
+    Phenocode.changeset(%Phenocode{}, %{
+      name: name,
+      longname: longname,
+      tags: tags,
+      category: category,
+      level: level,
+      omit: omit,
+      sex: sex,
+      include: include,
+      pre_conditions: pre_conditions,
+      conditions: conditions,
+      outpat_icd: outpat_icd,
+      hd_mainonly: hd_mainonly,
+      hd_icd_10_atc: hd_icd_10_atc,
+      hd_icd_8: hd_icd_8,
+      hd_icd_10_excl: hd_icd_10_excl,
+      hd_icd_9_excl: hd_icd_9_excl,
+      hd_icd_8_excl: hd_icd_8_excl,
+      cod_mainonly: cod_mainonly,
+      cod_icd_8: cod_icd_8,
+      cod_icd_10_excl: cod_icd_10_excl,
+      cod_icd_9_excl: cod_icd_9_excl,
+      cod_icd_8_excl: cod_icd_8_excl,
+      oper_nom: oper_nom,
+      oper_hl: oper_hl,
+      oper_hp1: oper_hp1,
+      oper_hp2: oper_hp2,
+      kela_reimb: kela_reimb,
+      kela_atc_needother: kela_atc_needother,
+      kela_atc: kela_atc,
+      canc_topo: canc_topo,
+      canc_morph: canc_morph,
+      canc_behav: canc_behav,
+      special: special,
+      version: version,
+      latin: latin
+    })
+
+  case Repo.insert(phenocode) do
+    {:ok, struct} ->
+      Logger.debug("Successfully inserted #{name}.")
+      # Build Phenocode<->ICD-{10,9} associations
+      Logger.debug("Inserting ICD associations for #{name}")
+      AssocICDs.insert("HD", 10, struct.id, hd_icd_10)
+      AssocICDs.insert("COD", 10, struct.id, cod_icd_10)
+      AssocICDs.insert("KELA_REIMB", 10, struct.id, kela_reimb_icd)
+
+      AssocICDs.insert("HD", 9, struct.id, hd_icd_9)
+      AssocICDs.insert("COD", 9, struct.id, cod_icd_9)
+
+    {:error, changeset} ->
+      Logger.warn("Could not insert #{name}: #{inspect(changeset)}")
   end
-)
+end)

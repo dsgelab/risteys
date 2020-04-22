@@ -20,7 +20,7 @@ h2_file
 |> Enum.each(fn %{
                   "phenocode" => phenocode,
                   "h2_liab" => h2_liab,
-                  "se_liab" => h2_liab_se,
+                  "se_liab" => h2_liab_se
                 } ->
   Logger.info("Importing h2 for #{phenocode}")
 
@@ -32,8 +32,8 @@ h2_file
       h2 =
         pheno_cs
         |> Phenocode.changeset(%{
-            h2_liab: h2_liab,
-	    h2_liab_se: h2_liab_se,
+          h2_liab: h2_liab,
+          h2_liab_se: h2_liab_se
         })
         |> Repo.update()
 

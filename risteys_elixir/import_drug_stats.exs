@@ -4,8 +4,8 @@ alias Risteys.{Repo, Phenocode, DrugStats}
 Logger.configure(level: :info)
 [drug_scores_path | _] = System.argv()
 
-
 Logger.info("Inserting/Updating drug stats")
+
 drug_scores_path
 |> File.stream!()
 |> CSV.decode!(headers: true)
@@ -33,12 +33,12 @@ end)
                   "atc" => atc,
                   "score" => score,
                   "stderr" => stderr,
-		  "pvalue" => pvalue,
-		  "n_indivs" => n_indivs,
-                  "desc" => name,
-            } ->
-    Logger.debug("Data for #{endpoint} / #{atc}")
-    pheno = Repo.get_by(Phenocode, name: endpoint)
+                  "pvalue" => pvalue,
+                  "n_indivs" => n_indivs,
+                  "desc" => name
+                } ->
+  Logger.debug("Data for #{endpoint} / #{atc}")
+  pheno = Repo.get_by(Phenocode, name: endpoint)
 
   if not is_nil(pheno) do
     drug_stats =
@@ -58,8 +58,8 @@ end)
         name: name,
         score: score |> String.to_float(),
         stderr: stderr |> String.to_float(),
-	pvalue: pvalue |> String.to_float(),
-	n_indivs: n_indivs |> String.to_integer()
+        pvalue: pvalue |> String.to_float(),
+        n_indivs: n_indivs |> String.to_integer()
       })
       |> Repo.insert_or_update()
 
