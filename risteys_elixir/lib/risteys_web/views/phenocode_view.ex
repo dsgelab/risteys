@@ -244,7 +244,11 @@ defmodule RisteysWeb.PhenocodeView do
   end
 
   defp data_assocs_plot(phenocode, assocs) do
-    Enum.map(assocs, fn assoc ->
+    assocs
+    |> Enum.filter(fn %{"lagged_hr_cut_year": cut} ->
+      cut == 0  # keep only non-lagged HR on plot
+    end)
+    |> Enum.map(fn assoc ->
       # Find direction given phenocode of interest
       {other_pheno_name, other_pheno_longname, other_pheno_category, direction} =
         if phenocode.name == assoc.prior_name do
