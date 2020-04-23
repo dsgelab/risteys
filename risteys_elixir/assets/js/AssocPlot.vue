@@ -1,5 +1,7 @@
 <template>
-	<div id="d3-assoc-plot">
+	<div>
+		<button v-on:click="toggle_yaxis()" class="button-faded">toggle Y: p / HR</button>
+		<div id="d3-assoc-plot"></div>
 	</div>
 </template>
 
@@ -41,7 +43,7 @@ let nCategories = 12;
 let colormap = [
 	"#2779bd",
 	"#d33c8e",
-	"#aaa"  // Other
+	"#aaa"  // p-value >= 0.05
 ]
 
 /* Group data by category, name the top 7, order by number of associations. */
@@ -78,7 +80,7 @@ let dataPlot = (data) => {
 	let other = drop(reversed, nCategories);
 	other = flatten(other);
 	other = map(other, (assoc) => {
-		assoc.categoryColor = 2;  // the "Other" color
+		assoc.categoryColor = nCategories % 2;  // alternate color after last category
 		return assoc;
 	})
 
@@ -89,16 +91,30 @@ let dataPlot = (data) => {
 	};
 };
 
-let toPlotSpace = (data) => {
+let toPlotSpace = (data, y_axis) => {
 	// TODO removing data with p-value = 0 for now, as it stretch the Y axis to +∞...
 	let filtered = filter(data, (d) => d.pvalue_num > 1e-323);
 
 	let res = [];
 	for (const [index, element] of filtered.entries()) {
+		// Set y value to be either p-value or HR
+		if (y_axis === "pvalue") {
+			var y = - Math.log10(element.pvalue_num);
+		} else if (y_axis === "hr") {
+			var y = - Math.log10(element.hr);
+		}
+
+		// Grey color for non-low p-values
+		if (element.pvalue_num < 0.05) {
+			var color = colormap[element.categoryColor];
+		} else {
+			var color = colormap[2];
+		}
+
 		res.push({
 			x: index,
-			y: - Math.log10(element.pvalue_num),
-			color: colormap[element.categoryColor],
+			y: y,
+			color: color,
 			category: element.category,
 			hr: element.hr,
 			ci_min: element.ci_min,
@@ -158,9 +174,18 @@ let hideTooltip = (tooltip) => {
 		.style("display", "none");
 };
 
-let makePlot = (data, ticks, categoryNames, other_pheno) => {
+let makePlot = (data, y_axis, ticks, categoryNames, other_pheno) => {
+	// Remove a previous assoc plot if it existed, for example before we toggled the Y-axis that triggered this method to be re-run.
+	// TODO this could be enhanced by updating data only via D3, instead of destroying everything and re-creating everything.
+	d3.select("#d3-assoc-plot").select("svg").remove();
+
 	let labelX = "Survival analyses grouped by category";
-	let labelY = "-log₁₀ (p)";
+
+	if (y_axis === "pvalue") {
+		var labelY = "-log₁₀ (p)";
+	} else if (y_axis === "hr") {
+		var labelY = "-log₁₀ (HR)";
+	}
 	let scales = getScales(data);
 
 	let tooltip = d3.select("#d3-assoc-plot")
@@ -241,13 +266,31 @@ let makePlot = (data, ticks, categoryNames, other_pheno) => {
 	svg.on("mouseleave", () => hideTooltip(tooltip));
 };
 
+
 export default {
 	data () {
-		return {}
+		return {
+			y_axis: "hr"
+		}
 	},
 	props: {
 		assocs: Array,
 		phenocode: String,
+	},
+	methods: {
+		toggle_yaxis() {
+			if (this.y_axis === "hr") {
+				this.y_axis = "pvalue";
+			} else if (this.y_axis === "pvalue") {
+				this.y_axis = "hr";
+			}
+			this.comp();  // refresh plot
+		},
+		comp() {
+			let dp = dataPlot(this.assocs);
+			let data = toPlotSpace(dp.data, this.y_axis);
+			makePlot(data, this.y_axis, dp.ticks, dp.categoryNames, this.phenocode);
+		}
 	},
 	mounted() {
 		/* "mounted" is the earliest time in the Vue instance lifecycle
@@ -255,9 +298,7 @@ export default {
 		 * by d3.
 		 * https://vuejs.org/v2/guide/instance.html#Lifecycle-Diagram
 		 */
-		let dp = dataPlot(this.assocs);
-		let data = toPlotSpace(dp.data);
-		makePlot(data, dp.ticks, dp.categoryNames, this.phenocode);
+		this.comp();
 	}
 }
 </script>
