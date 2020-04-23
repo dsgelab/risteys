@@ -33,6 +33,7 @@ import HelpMeanAge from './HelpMeanAge.vue';
 import HelpCaseFatality from './HelpCaseFatality.vue';
 import HelpMedianEvents from './HelpMedianEvents.vue';
 import HelpRecurrence from './HelpRecurrence.vue';
+import HelpDrugScore from './HelpDrugScore.vue';
 
 
 var path = window.location.pathname;
@@ -153,6 +154,11 @@ if (path.startsWith("/phenocode/")) {  // Load only on phenocode pages
         el: '#help-button-recurrence',
         template: `<HelpRecurrence/>`,
         components: { HelpRecurrence },
+    });
+    var help_button_drug_score = new Vue({
+        el: '#help-button-drug-score',
+        template: `<HelpDrugScore/>`,
+        components: { HelpDrugScore },
     });
 
     /* HISTOGRAMS */
