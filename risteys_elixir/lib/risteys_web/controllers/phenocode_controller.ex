@@ -200,7 +200,8 @@ defmodule RisteysWeb.PhenocodeController do
     Repo.all(from dstats in DrugStats,
       where: dstats.phenocode_id == ^phenocode.id,
       order_by: [desc: :score],
-      limit: 10)
+      limit: 20
+    )
   end
 
   defp data_assocs(phenocode) do
