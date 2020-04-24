@@ -1,6 +1,13 @@
 <template>
 	<div>
-		<button v-on:click="toggle_yaxis()" class="button-faded">toggle Y: p / HR</button>
+		<p>Y:
+			<label v-on:click="set_yaxis('pvalue')">
+				<input type="radio" id="pvalue" value="pvalue" v-model="y_axis" checked> p-value
+			</label>
+			<label v-on:click="set_yaxis('hr')">
+				<input type="radio" id="hr" value="hr" v-model="y_axis"> HR
+			</label>
+		</p>
 		<div id="d3-assoc-plot"></div>
 	</div>
 </template>
@@ -12,7 +19,7 @@ import { drop, filter, flatten, groupBy, map, mapValues, reverse, sortBy, take }
 
 // Layout, data independent
 let margin = {
-		labelX: 90,
+		labelX: 120,
 		labelY: 20,
 		axisX: 40,
 		axisY: 40,
@@ -39,11 +46,11 @@ let square = {
 }
 
 // Category colormap
-let nCategories = 12;
+let nCategories = 8;
 let colormap = [
 	"#2779bd",
 	"#d33c8e",
-	"#aaa"  // p-value >= 0.05
+	"#cecece"  // p-value >= 0.05
 ]
 
 /* Group data by category, name the top 7, order by number of associations. */
@@ -101,7 +108,7 @@ let toPlotSpace = (data, y_axis) => {
 		if (y_axis === "pvalue") {
 			var y = - Math.log10(element.pvalue_num);
 		} else if (y_axis === "hr") {
-			var y = - Math.log10(element.hr);
+			var y = element.hr;
 		}
 
 		// Grey color for non-low p-values
@@ -184,7 +191,7 @@ let makePlot = (data, y_axis, ticks, categoryNames, other_pheno) => {
 	if (y_axis === "pvalue") {
 		var labelY = "-log₁₀ (p)";
 	} else if (y_axis === "hr") {
-		var labelY = "-log₁₀ (HR)";
+		var labelY = "Hazard Ratio";
 	}
 	let scales = getScales(data);
 
@@ -270,7 +277,7 @@ let makePlot = (data, y_axis, ticks, categoryNames, other_pheno) => {
 export default {
 	data () {
 		return {
-			y_axis: "hr"
+			y_axis: "pvalue",
 		}
 	},
 	props: {
@@ -278,12 +285,8 @@ export default {
 		phenocode: String,
 	},
 	methods: {
-		toggle_yaxis() {
-			if (this.y_axis === "hr") {
-				this.y_axis = "pvalue";
-			} else if (this.y_axis === "pvalue") {
-				this.y_axis = "hr";
-			}
+		set_yaxis(metric) {
+			this.y_axis = metric;
 			this.comp();  // refresh plot
 		},
 		comp() {
