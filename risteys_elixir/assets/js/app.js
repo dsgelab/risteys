@@ -157,7 +157,7 @@ if (path.startsWith("/phenocode/")) {  // Load only on phenocode pages
     });
     var help_button_drug_score = new Vue({
         el: '#help-button-drug-score',
-        template: `<HelpDrugScore/>`,
+        template: `<HelpDrugScore phenocode="${phenocode}" />`,
         components: { HelpDrugScore },
     });
 
