@@ -1,12 +1,7 @@
 <template>
 	<div>
 		<p>Y:
-			<label v-on:click="set_yaxis('pvalue')">
-				<input type="radio" id="pvalue" value="pvalue" v-model="y_axis" checked> p-value
-			</label>
-			<label v-on:click="set_yaxis('hr')">
-				<input type="radio" id="hr" value="hr" v-model="y_axis"> HR
-			</label>
+			<input type="radio" id="pvalue" value="pvalue" v-model="y_axis" checked><label v-on:click="set_yaxis('pvalue')" for="pvalue" class="radio-left">p-value</label><input type="radio" id="hr" value="hr" v-model="y_axis"><label v-on:click="set_yaxis('hr')" for="hr" class="radio-right">HR</label>
 		</p>
 		<div id="d3-assoc-plot"></div>
 	</div>
