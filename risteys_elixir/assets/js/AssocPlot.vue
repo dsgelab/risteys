@@ -66,7 +66,14 @@ let dataPlot = (data) => {
 	}
 
 	// Get category names
-	let categoryNames = map(topCategories, (assocs) => assocs[0].category );
+	let categoryNames = map(topCategories, (assocs) => {
+		let name = assocs[0].category;
+		if (name.length < 50) {
+			return name;
+		} else {
+			return name.substr(0, 50) + "…";
+		}
+	});
 	categoryNames.push("Other");
 
 	// Assign different category for Top7
