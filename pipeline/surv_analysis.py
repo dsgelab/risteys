@@ -208,14 +208,17 @@ def load_data(pairs_path, phenotypes_path, definitions_path, minimum_path):
     logger.info("Loading data")
 
     # Check all columns of phenotype file
+    logger.debug("Loading headers from phenotypes file")
     pheno_cols = pd.read_csv(
         phenotypes_path,
         nrows=0  # get only the header
     )
 
+    logger.debug("Reading CSV of pairs")
     pairs = pd.read_csv(pairs_path)
 
     # Get all endpoints in the pair list that are part of the first-event file.
+    logger.debug("Checking endpoints from pairs are in phenotypes file")
     endpoints = set.union(set(pairs.prior), set(pairs.later))
     if not endpoints.issubset(set(pheno_cols)):
         diff_endpoints = endpoints - set(pheno_cols)
@@ -227,38 +230,44 @@ def load_data(pairs_path, phenotypes_path, definitions_path, minimum_path):
         & pairs.later.isin(endpoints)
     ]
 
+    logger.debug("Building columns to keep")
     cols = []
     for endpoint in endpoints:
         cols.append(endpoint)
         cols.append(endpoint + SUFFIX_AGE)
     cols += KEEP
 
+    logger.debug("Reading first-event file, keeping only columns in pairs.")
     phenotypes = pd.read_csv(
         phenotypes_path,
         usecols=cols
     )
 
     # Endpoint definitions to check for sex-specific endpoints
+    logger.debug("Reading CSV definition file")
     definitions = pd.read_csv(
         definitions_path,
         usecols=["NAME", "SEX"]
     )
 
     # Minimum info file to get sex of each individual
+    logger.debug("Reading CSV minimum info file")
     sex_info = pd.read_csv(
         minimum_path,
         usecols=["FINNGENID", "SEX"]
     )
     # Merge sex info into the phenotypes Dataframe.
-    # This can remove individuals as it leaves only the indviduals
+    # This can remove individuals as it leaves only the individuals
     # that are both in the phenotypes file and the minimum file. We
     # need this to have event data and sex information.
+    logger.info("Merging phenotypes file and minimum info file")
     nindivs_before = phenotypes.shape[0]
     phenotypes = phenotypes.merge(sex_info, on="FINNGENID")
     diff_nindivs = phenotypes.shape[0] - nindivs_before
     if diff_nindivs < 0:
         logger.warning(f"Removed {abs(diff_nindivs)}/{nindivs_before} indivs when getting the sex information.")
 
+    logger.info("Done loading data")
     return pairs, phenotypes, endpoints, definitions
 
 
@@ -425,7 +434,9 @@ def set_timeline(pair, df):
 
 
 def set_durations(prior, later, no_prior, unexposed, exposed):
-    "Data check and compute durations from the provided timeline data"
+    """Data check and compute durations from the provided timeline data"""
+    logger.debug("Setting durations for no_prior, unexposed and exposed.")
+
     # Make sure we deal with aggregate data
     n_indivs, _ = exposed[exposed.outcome].shape
     assert n_indivs > 5, f"Individual-level data  (N={n_indivs})"
