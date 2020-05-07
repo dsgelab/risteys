@@ -61,6 +61,7 @@ References
 
 import csv
 import logging
+from copy import copy
 from pathlib import Path
 from os import getenv
 from warnings import filterwarnings
@@ -309,6 +310,14 @@ def compute_coxhr(pair, df, definitions, res_writer, error_writer):
     "Shape the data and do Cox regressions to have standard and lagged HRs"
     prior, later = pair
     logger.info(f"Computing Cox HR for pair {prior} -> {later}")
+
+    # Sub-select DataFrame with necessary columns only: increases performance drastically.
+    logger.debug("Triming DataFrame to only the useful columns")
+    cols = copy(KEEP)  # otherwise cols is a ref to KEEP, and KEEP will be changed, we don't want that
+    cols += [prior, prior + SUFFIX_AGE] + [later, later + SUFFIX_AGE]
+    cols += ["SEX"]  # added when merging with minimum info file
+    cols += ["birth_year", "study_starts_age", "study_ends_age"]  # added in clean_data
+    df = df.loc[:, cols].copy(deep=True)
 
     no_prior, unexposed, exposed = set_timeline(pair, df)
 
