@@ -139,7 +139,7 @@ let toPlotSpace = (data, y_axis) => {
 };
 
 
-let getScales = (data) => {
+let getScales = (data, y_axis) => {
 	// X axis
 	let xMin = d3.min(data, (d) => d.x);
 	let xMax = d3.max(data, (d) => d.x);
@@ -148,13 +148,22 @@ let getScales = (data) => {
 	let yMin = d3.min(data, (d) => d.y);
 	let yMax = d3.max(data, (d) => d.y);
 
-	// Scales
+	// X Scale
 	let xScale = d3.scaleLinear().domain([xMin, xMax]).range([0, plotWidth]);
-	let yScale = d3.scaleLinear().domain([yMin, yMax]).range([plotHeight, 0]);
+
+	// Y Scale
+	if (y_axis === "pvalue") {
+		var yScale = d3.scaleLinear().domain([yMin, yMax]).nice().range([plotHeight, 0]);
+		var yFmt = yScale.tickFormat();  // use the default tick format
+	} else if (y_axis === "hr") {
+		var yScale = d3.scaleLog().domain([yMin, yMax]).range([plotHeight, 0]);
+		var yFmt = yScale.tickFormat(100, "");
+	}
 
 	return {
 		x: xScale,
 		y: yScale,
+		yFmt: yFmt,
 	}
 };
 
@@ -195,7 +204,7 @@ let makePlot = (data, y_axis, ticks, categoryNames, other_pheno) => {
 	} else if (y_axis === "hr") {
 		var labelY = "Hazard Ratio";
 	}
-	let scales = getScales(data);
+	let scales = getScales(data, y_axis);
 
 	let tooltip = d3.select("#d3-assoc-plot")
 		.append("div")
@@ -235,7 +244,7 @@ let makePlot = (data, y_axis, ticks, categoryNames, other_pheno) => {
 	// Y axis
 	svg.append("g")
 		.attr("transform", `translate(${margin.labelY + margin.axisY}, 0)`)
-		.call(d3.axisLeft(scales.y));
+		.call(d3.axisLeft(scales.y).tickFormat(scales.yFmt));
 
 	// Y label
 	svg.append("text")
@@ -244,6 +253,13 @@ let makePlot = (data, y_axis, ticks, categoryNames, other_pheno) => {
 		.attr("y", margin.labelY)
 		.attr("transform", "rotate(-90)")
 		.style("text-anchor", "middle");
+
+	// HR middle-line
+	if (y_axis === "hr") {
+		g.append("path")
+			.attr("d", d3.line()([[scales.x(0), scales.y(1)], [plotWidth, scales.y(1)]]))
+			.attr("stroke", "#65727d");
+	}
 
 	// Scatter
 	let befores = filter(data, (d) => d.direction.toLowerCase() === "before");
