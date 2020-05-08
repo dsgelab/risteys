@@ -41,7 +41,7 @@ let square = {
 }
 
 // Category colormap
-let nCategories = 8;
+let nCategories = 18;
 let colormap = [
 	"#2779bd",
 	"#d33c8e",

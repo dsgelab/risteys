@@ -245,7 +245,7 @@ defmodule RisteysWeb.PhenocodeView do
 
   defp data_assocs_plot(phenocode, assocs) do
     assocs
-    |> Enum.filter(fn %{"lagged_hr_cut_year": cut} ->
+    |> Enum.filter(fn %{lagged_hr_cut_year: cut} ->
       cut == 0  # keep only non-lagged HR on plot
     end)
     |> Enum.map(fn assoc ->
