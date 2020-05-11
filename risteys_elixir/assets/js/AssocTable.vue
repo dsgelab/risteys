@@ -250,7 +250,7 @@ export default {
 }
 </script>
 
-<style type="text/css">
+<style type="text/css" scoped>
 .assoc-grid {
     --width-table: 1140px;
     display: grid;

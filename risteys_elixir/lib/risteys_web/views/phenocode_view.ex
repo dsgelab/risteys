@@ -443,4 +443,20 @@ defmodule RisteysWeb.PhenocodeView do
     |> put_in([other_pheno.id, "name"], other_pheno.name)
     |> put_in([other_pheno.id, "longname"], other_pheno.longname)
   end
+
+  defp drugs_table(stats) do
+    bg_grey = "bg-grey-lightest"
+
+    stats
+    |> Enum.with_index()
+    |> Enum.map(fn {val, idx} ->
+      bg_class =
+        if Integer.mod(idx, 2) ==  0 do
+	  ""
+	else
+	  bg_grey
+	end
+      Map.put_new(val, :bg_class, bg_class)
+    end)
+  end
 end
