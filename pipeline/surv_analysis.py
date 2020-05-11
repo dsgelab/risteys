@@ -61,7 +61,6 @@ References
 
 import csv
 import logging
-from copy import copy
 from pathlib import Path
 from os import getenv
 from warnings import filterwarnings
@@ -313,8 +312,8 @@ def compute_coxhr(pair, df, definitions, res_writer, error_writer):
 
     # Sub-select DataFrame with necessary columns only: increases performance drastically.
     logger.debug("Triming DataFrame to only the useful columns")
-    cols = copy(KEEP)  # otherwise cols is a ref to KEEP, and KEEP will be changed, we don't want that
-    cols += [prior, prior + SUFFIX_AGE] + [later, later + SUFFIX_AGE]
+    cols = ["FINNGENID", "BL_AGE", "BL_YEAR"]  # columns we will always need
+    cols += [prior, prior + SUFFIX_AGE] + [later, later + SUFFIX_AGE]  # prior or later can be "DEATH"
     cols += ["SEX"]  # added when merging with minimum info file
     cols += ["birth_year", "study_starts_age", "study_ends_age"]  # added in clean_data
     df = df.loc[:, cols].copy(deep=True)
