@@ -107,8 +107,6 @@ defmodule RisteysWeb.PhenocodeController do
     hd_icd9s = filter_icds_registry(icd9s, "HD")
     cod_icd9s = filter_icds_registry(icd9s, "COD")
 
-    IO.inspect phenocode
-    
     %{
       level: phenocode.level,
       omit: phenocode.omit,
