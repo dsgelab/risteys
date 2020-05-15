@@ -32,8 +32,8 @@
 				</div>
 
 				<div v-bind:class="bg_even(idx)" v-if="pheno.all.before.hr === null">-</div>
-				<div v-bind:class="bg_even(idx)" v-else-if="(pheno.all.before.hr > 100) | (pheno.all.before.ci_min > 100)">&gt;&nbsp;100</div>
-				<div v-bind:class="bg_even(idx)" v-else>{{ pheno.all.before.hr }}&nbsp;[{{ pheno.all.before.ci_min }},&nbsp;{{ pheno.all.before.ci_max }}]</div>
+				<div v-bind:class="bg_even(idx)" v-else-if="pheno.all.before.hr > 100">&gt;&nbsp;100</div>
+				<div v-bind:class="bg_even(idx)" v-else>{{ pheno.all.before.hr_str }}&nbsp;[{{ pheno.all.before.ci_min }},&nbsp;{{ pheno.all.before.ci_max }}]</div>
 
 				<div v-bind:class="bg_even(idx)" v-if="pheno.all.before.pvalue === null">-</div>
 				<div v-bind:class="bg_even(idx)" v-else>{{ pheno.all.before.pvalue_str }}</div>
@@ -42,8 +42,8 @@
 				<div v-bind:class="bg_even(idx)" v-else>{{ pheno.all.before.nindivs }}</div>
 
 				<div v-bind:class="bg_even(idx)" v-if="pheno.all.after.hr === null">-</div>
-				<div v-bind:class="bg_even(idx)" v-else-if="(pheno.all.after.hr > 100) | (pheno.all.after.ci_min > 100)">&gt;&nbsp;100</div>
-				<div v-bind:class="bg_even(idx)" v-else>{{ pheno.all.after.hr }}&nbsp;[{{ pheno.all.after.ci_min }},&nbsp;{{ pheno.all.after.ci_max }}]</div>
+				<div v-bind:class="bg_even(idx)" v-else-if="pheno.all.after.hr > 100">&gt;&nbsp;100</div>
+				<div v-bind:class="bg_even(idx)" v-else>{{ pheno.all.after.hr_str }}&nbsp;[{{ pheno.all.after.ci_min }},&nbsp;{{ pheno.all.after.ci_max }}]</div>
 				
 				<div v-bind:class="bg_even(idx)" v-if="pheno.all.after.pvalue === null">-</div>
 				<div v-bind:class="bg_even(idx)" v-else>{{ pheno.all.after.pvalue_str }}</div>
@@ -55,7 +55,7 @@
 					<!-- LAG 1 YEAR -->
 					<div v-bind:class="bg_even(idx)" class="text-right pr-5">&lt;1 year follow-up</div>
 					<div v-bind:class="bg_even(idx)" v-if="pheno.lagged_1y.before.hr === null">-</div>
-					<div v-bind:class="bg_even(idx)" v-else>{{ pheno.lagged_1y.before.hr }}&nbsp;[{{ pheno.lagged_1y.before.ci_min }},&nbsp;{{ pheno.lagged_1y.before.ci_max }}]</div>
+					<div v-bind:class="bg_even(idx)" v-else>{{ pheno.lagged_1y.before.hr_str }}&nbsp;[{{ pheno.lagged_1y.before.ci_min }},&nbsp;{{ pheno.lagged_1y.before.ci_max }}]</div>
 
 					<div v-bind:class="bg_even(idx)" v-if="pheno.lagged_1y.before.pvalue === null">-</div>
 					<div v-bind:class="bg_even(idx)" v-else>{{ pheno.lagged_1y.before.pvalue_str }}</div>
@@ -64,7 +64,7 @@
 					<div v-bind:class="bg_even(idx)" v-else>{{ pheno.lagged_1y.before.nindivs }}</div>
 
 					<div v-bind:class="bg_even(idx)" v-if="pheno.lagged_1y.after.hr === null">-</div>
-					<div v-bind:class="bg_even(idx)" v-else>{{ pheno.lagged_1y.after.hr }}&nbsp;[{{ pheno.lagged_1y.after.ci_min }},&nbsp;{{ pheno.lagged_1y.after.ci_max }}]</div>
+					<div v-bind:class="bg_even(idx)" v-else>{{ pheno.lagged_1y.after.hr_str }}&nbsp;[{{ pheno.lagged_1y.after.ci_min }},&nbsp;{{ pheno.lagged_1y.after.ci_max }}]</div>
 					
 					<div v-bind:class="bg_even(idx)" v-if="pheno.lagged_1y.after.pvalue === null">-</div>
 					<div v-bind:class="bg_even(idx)" v-else>{{ pheno.lagged_1y.after.pvalue_str }}</div>
@@ -75,7 +75,7 @@
 					<!-- LAG 5 YEARS -->
 					<div v-bind:class="bg_even(idx)" class="text-right pr-5">1-5 year follow-up</div>
 					<div v-bind:class="bg_even(idx)" v-if="pheno.lagged_5y.before.hr === null">-</div>
-					<div v-bind:class="bg_even(idx)" v-else>{{ pheno.lagged_5y.before.hr }}&nbsp;[{{ pheno.lagged_5y.before.ci_min }},&nbsp;{{ pheno.lagged_5y.before.ci_max }}]</div>
+					<div v-bind:class="bg_even(idx)" v-else>{{ pheno.lagged_5y.before.hr_str }}&nbsp;[{{ pheno.lagged_5y.before.ci_min }},&nbsp;{{ pheno.lagged_5y.before.ci_max }}]</div>
 
 					<div v-bind:class="bg_even(idx)" v-if="pheno.lagged_5y.before.pvalue === null">-</div>
 					<div v-bind:class="bg_even(idx)" v-else>{{ pheno.lagged_5y.before.pvalue_str }}</div>
@@ -84,7 +84,7 @@
 					<div v-bind:class="bg_even(idx)" v-else>{{ pheno.lagged_5y.before.nindivs }}</div>
 
 					<div v-bind:class="bg_even(idx)" v-if="pheno.lagged_5y.after.hr === null">-</div>
-					<div v-bind:class="bg_even(idx)" v-else>{{ pheno.lagged_5y.after.hr }}&nbsp;[{{ pheno.lagged_5y.after.ci_min }},&nbsp;{{ pheno.lagged_5y.after.ci_max }}]</div>
+					<div v-bind:class="bg_even(idx)" v-else>{{ pheno.lagged_5y.after.hr_str }}&nbsp;[{{ pheno.lagged_5y.after.ci_min }},&nbsp;{{ pheno.lagged_5y.after.ci_max }}]</div>
 					
 					<div v-bind:class="bg_even(idx)" v-if="pheno.lagged_5y.after.pvalue === null">-</div>
 					<div v-bind:class="bg_even(idx)" v-else>{{ pheno.lagged_5y.after.pvalue_str }}</div>
@@ -95,7 +95,7 @@
 					<!-- LAG 15 YEARS -->
 					<div v-bind:class="bg_even(idx)" class="text-right pr-5">5-15 year follow-up</div>
 					<div v-bind:class="bg_even(idx)" v-if="pheno.lagged_15y.before.hr === null">-</div>
-					<div v-bind:class="bg_even(idx)" v-else>{{ pheno.lagged_15y.before.hr }}&nbsp;[{{ pheno.lagged_15y.before.ci_min }},&nbsp;{{ pheno.lagged_15y.before.ci_max }}]</div>
+					<div v-bind:class="bg_even(idx)" v-else>{{ pheno.lagged_15y.before.hr_str }}&nbsp;[{{ pheno.lagged_15y.before.ci_min }},&nbsp;{{ pheno.lagged_15y.before.ci_max }}]</div>
 
 					<div v-bind:class="bg_even(idx)" v-if="pheno.lagged_15y.before.pvalue === null">-</div>
 					<div v-bind:class="bg_even(idx)" v-else>{{ pheno.lagged_15y.before.pvalue_str }}</div>
@@ -104,7 +104,7 @@
 					<div v-bind:class="bg_even(idx)" v-else>{{ pheno.lagged_15y.before.nindivs }}</div>
 
 					<div v-bind:class="bg_even(idx)" v-if="pheno.lagged_15y.after.hr === null">-</div>
-					<div v-bind:class="bg_even(idx)" v-else>{{ pheno.lagged_15y.after.hr }}&nbsp;[{{ pheno.lagged_15y.after.ci_min }},&nbsp;{{ pheno.lagged_15y.after.ci_max }}]</div>
+					<div v-bind:class="bg_even(idx)" v-else>{{ pheno.lagged_15y.after.hr_str }}&nbsp;[{{ pheno.lagged_15y.after.ci_min }},&nbsp;{{ pheno.lagged_15y.after.ci_max }}]</div>
 					
 					<div v-bind:class="bg_even(idx)" v-if="pheno.lagged_15y.after.pvalue === null">-</div>
 					<div v-bind:class="bg_even(idx)" v-else>{{ pheno.lagged_15y.after.pvalue_str }}</div>
@@ -119,6 +119,7 @@
 
 <script>
 import { concat, filter, partition, reverse, sortBy } from 'lodash-es';
+
 
 let compute_table = (col_filter, sort_by, sort_order, table) => {
 	let result;

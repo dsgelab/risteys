@@ -262,7 +262,8 @@ defmodule RisteysWeb.PhenocodeView do
         "longname" => other_pheno_longname,
         "category" => other_pheno_category,
         "direction" => direction,
-        "hr" => round(assoc.hr, 2),
+        "hr" => assoc.hr,
+	"hr_str" => round(assoc.hr, 2),
         "ci_min" => round(assoc.ci_min, 2),
         "ci_max" => round(assoc.ci_max, 2),
         "pvalue_str" => pvalue_str(assoc.pvalue),
@@ -278,6 +279,7 @@ defmodule RisteysWeb.PhenocodeView do
     # "before" and "after" associations with the given pheno_id.
     no_stats = %{
       "hr" => nil,
+      "hr_str" => nil,
       "ci_min" => nil,
       "ci_max" => nil,
       "pvalue" => nil,
@@ -414,7 +416,8 @@ defmodule RisteysWeb.PhenocodeView do
     lag = assoc.lagged_hr_cut_year
 
     new_stats = %{
-      "hr" => round(assoc.hr, 2),
+      "hr" => assoc.hr,
+      "hr_str" => round(assoc.hr, 2),
       "ci_min" => round(assoc.ci_min, 2),
       "ci_max" => round(assoc.ci_max, 2),
       "pvalue" => assoc.pvalue,
