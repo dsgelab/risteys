@@ -9,7 +9,7 @@
 				<input
 					type="text"
 					placeholder="filter by name"
-					v-on:keyup.stop="comp_table"  
+					v-on:keyup.stop="comp_table"
 					v-model="pheno_filter">
 			</div>
 			<div class="font-bold col-interactive" v-on:click="sort_table('before_hr')">{{ symbol_sort("before_hr") }} HR [95%&nbsp;CI]</div>
@@ -17,11 +17,13 @@
 			<div class="font-bold col-interactive" v-on:click="sort_table('before_nindivs')">{{ symbol_sort("before_nindivs") }}
 				<abbr data-title="Number of overlapping individuals">N</abbr>
 			</div>
+			<div><HelpCompBox /></div>
 			<div class="font-bold col-interactive" v-on:click="sort_table('after_hr')">{{ symbol_sort("after_hr") }} HR [95%&nbsp;CI]</div>
 			<div class="font-bold col-interactive" v-on:click="sort_table('after_pvalue')">{{ symbol_sort("after_pvalue") }} p</div>
 			<div class="font-bold col-interactive" v-on:click="sort_table('after_nindivs')">{{ symbol_sort("after_nindivs") }}
 				<abbr data-title="Number of overlapping individuals">N</abbr>
 			</div>
+			<div><HelpCompBox /></div>
 		</div>
 
 		<div class="assoc-grid assoc-data">
@@ -41,15 +43,38 @@
 				<div v-bind:class="bg_even(idx)" v-if="pheno.all.before.nindivs === null">-</div>
 				<div v-bind:class="bg_even(idx)" v-else>{{ pheno.all.before.nindivs }}</div>
 
+
+				<div
+					v-if="pheno.all.before.hr_norm === null"
+					v-bind:class="bg_even(idx)">
+					-
+				</div>
+				<div
+					v-else
+					v-bind:class="bg_even(idx)"
+					v-html="compBox(pheno.all.before.hr_norm, pheno.all.before.hr_norm_min, pheno.all.before.hr_norm_max)">
+				</div>
+
 				<div v-bind:class="bg_even(idx)" v-if="pheno.all.after.hr === null">-</div>
 				<div v-bind:class="bg_even(idx)" v-else-if="pheno.all.after.hr > 100">&gt;&nbsp;100</div>
 				<div v-bind:class="bg_even(idx)" v-else>{{ pheno.all.after.hr_str }}&nbsp;[{{ pheno.all.after.ci_min }},&nbsp;{{ pheno.all.after.ci_max }}]</div>
-				
+
 				<div v-bind:class="bg_even(idx)" v-if="pheno.all.after.pvalue === null">-</div>
 				<div v-bind:class="bg_even(idx)" v-else>{{ pheno.all.after.pvalue_str }}</div>
-				
+
 				<div v-bind:class="bg_even(idx)" v-if="pheno.all.after.nindivs === null">-</div>
 				<div v-bind:class="bg_even(idx)" v-else>{{ pheno.all.after.nindivs }}</div>
+
+				<div
+					v-if="pheno.all.after.hr_norm === null"
+					v-bind:class="bg_even(idx)">
+					-
+				</div>
+				<div
+					v-else
+					v-bind:class="bg_even(idx)"
+					v-html="compBox(pheno.all.after.hr_norm, pheno.all.after.hr_norm_min, pheno.all.after.hr_norm_max)">
+				</div>
 
 				<template v-if="unfolded.has(pheno.name)">
 					<!-- LAG 1 YEAR -->
@@ -63,14 +88,19 @@
 					<div v-bind:class="bg_even(idx)" v-if="pheno.lagged_1y.before.nindivs === null">-</div>
 					<div v-bind:class="bg_even(idx)" v-else>{{ pheno.lagged_1y.before.nindivs }}</div>
 
+					<div v-bind:class="bg_even(idx)">-</div>
+
 					<div v-bind:class="bg_even(idx)" v-if="pheno.lagged_1y.after.hr === null">-</div>
 					<div v-bind:class="bg_even(idx)" v-else>{{ pheno.lagged_1y.after.hr_str }}&nbsp;[{{ pheno.lagged_1y.after.ci_min }},&nbsp;{{ pheno.lagged_1y.after.ci_max }}]</div>
-					
+
 					<div v-bind:class="bg_even(idx)" v-if="pheno.lagged_1y.after.pvalue === null">-</div>
 					<div v-bind:class="bg_even(idx)" v-else>{{ pheno.lagged_1y.after.pvalue_str }}</div>
-					
+
 					<div v-bind:class="bg_even(idx)" v-if="pheno.lagged_1y.after.nindivs === null">-</div>
 					<div v-bind:class="bg_even(idx)" v-else>{{ pheno.lagged_1y.after.nindivs }}</div>
+
+					<div v-bind:class="bg_even(idx)">-</div>
+
 
 					<!-- LAG 5 YEARS -->
 					<div v-bind:class="bg_even(idx)" class="text-right pr-5">1-5 year follow-up</div>
@@ -83,14 +113,18 @@
 					<div v-bind:class="bg_even(idx)" v-if="pheno.lagged_5y.before.nindivs === null">-</div>
 					<div v-bind:class="bg_even(idx)" v-else>{{ pheno.lagged_5y.before.nindivs }}</div>
 
+					<div v-bind:class="bg_even(idx)">-</div>
+
 					<div v-bind:class="bg_even(idx)" v-if="pheno.lagged_5y.after.hr === null">-</div>
 					<div v-bind:class="bg_even(idx)" v-else>{{ pheno.lagged_5y.after.hr_str }}&nbsp;[{{ pheno.lagged_5y.after.ci_min }},&nbsp;{{ pheno.lagged_5y.after.ci_max }}]</div>
-					
+
 					<div v-bind:class="bg_even(idx)" v-if="pheno.lagged_5y.after.pvalue === null">-</div>
 					<div v-bind:class="bg_even(idx)" v-else>{{ pheno.lagged_5y.after.pvalue_str }}</div>
-					
+
 					<div v-bind:class="bg_even(idx)" v-if="pheno.lagged_5y.after.nindivs === null">-</div>
 					<div v-bind:class="bg_even(idx)" v-else>{{ pheno.lagged_5y.after.nindivs }}</div>
+
+					<div v-bind:class="bg_even(idx)">-</div>
 
 					<!-- LAG 15 YEARS -->
 					<div v-bind:class="bg_even(idx)" class="text-right pr-5">5-15 year follow-up</div>
@@ -103,14 +137,18 @@
 					<div v-bind:class="bg_even(idx)" v-if="pheno.lagged_15y.before.nindivs === null">-</div>
 					<div v-bind:class="bg_even(idx)" v-else>{{ pheno.lagged_15y.before.nindivs }}</div>
 
+					<div v-bind:class="bg_even(idx)">-</div>
+
 					<div v-bind:class="bg_even(idx)" v-if="pheno.lagged_15y.after.hr === null">-</div>
 					<div v-bind:class="bg_even(idx)" v-else>{{ pheno.lagged_15y.after.hr_str }}&nbsp;[{{ pheno.lagged_15y.after.ci_min }},&nbsp;{{ pheno.lagged_15y.after.ci_max }}]</div>
-					
+
 					<div v-bind:class="bg_even(idx)" v-if="pheno.lagged_15y.after.pvalue === null">-</div>
 					<div v-bind:class="bg_even(idx)" v-else>{{ pheno.lagged_15y.after.pvalue_str }}</div>
-					
+
 					<div v-bind:class="bg_even(idx)" v-if="pheno.lagged_15y.after.nindivs === null">-</div>
 					<div v-bind:class="bg_even(idx)" v-else>{{ pheno.lagged_15y.after.nindivs }}</div>
+
+					<div v-bind:class="bg_even(idx)">-</div>
 				</template>
 			</template>
 		</div>
@@ -119,6 +157,8 @@
 
 <script>
 import { concat, filter, partition, reverse, sortBy } from 'lodash-es';
+import { drawCompBox } from './CompBox.js';
+import HelpCompBox from './HelpCompBox.vue';
 
 
 let compute_table = (col_filter, sort_by, sort_order, table) => {
@@ -189,11 +229,17 @@ export default {
 			unfolded: new Set(),
 		}
 	},
+	components: {
+		HelpCompBox,
+	},
 	props: {
 		table: Array,
 		phenocode: String,
 	},
 	methods: {
+		compBox(hr, hr_min, hr_max) {
+			return drawCompBox(hr, hr_min, hr_max);
+		},
 		comp_table() {
 			this.assoc_table = compute_table(
 				this.pheno_filter,
@@ -253,25 +299,27 @@ export default {
 
 <style type="text/css" scoped>
 .assoc-grid {
-    --width-table: 1140px;
+    --width-table: 1200px;
     display: grid;
     grid-template-columns:
-        calc(40 / 100 * var(--width-table))
-        calc(15 / 100 * var(--width-table))
-        calc(10 / 100 * var(--width-table))
-        calc( 5 / 100 * var(--width-table))
-        calc(15 / 100 * var(--width-table))
-        calc(10 / 100 * var(--width-table))
-        calc( 5 / 100 * var(--width-table));
+        calc(30 / 100 * var(--width-table))   /* Phenocode name */
+        calc(15 / 100 * var(--width-table))   /* before: HR */
+        calc( 7 / 100 * var(--width-table))   /* before: p */
+        calc( 5 / 100 * var(--width-table))   /* before: N */
+        calc( 5 / 100 * var(--width-table))   /* before: compBox */
+        calc(16 / 100 * var(--width-table))   /* after: HR */
+        calc( 6 / 100 * var(--width-table))   /* after: p */
+        calc( 5 / 100 * var(--width-table))   /* after: N */
+        calc( 6 / 100 * var(--width-table));  /* after: compBox */
 }
 .thead > div {
     @apply bg-grey-lightest;
 }
 .thead .before {
-    grid-column: 2 / 5;
+    grid-column: 2 / 6;
 }
 .thead .after {
-    grid-column: 5 / 8;
+    grid-column: 6 / 10;
 }
 .assoc-data {
     max-height: 500px;
@@ -281,19 +329,19 @@ export default {
     text-align: center;
 }
 
-.thead div:nth-child(1),
-.thead div:nth-child(2),
-.thead div:nth-child(3) {
+.thead > div:nth-child(1),
+.thead > div:nth-child(2),
+.thead > div:nth-child(3) {
     @apply border-t-2;
 }
-.thead div:nth-child(1),
-.thead div:nth-child(2),
-.thead div:nth-child(3),
-.thead div:nth-child(4),
-.thead div:nth-child(7), 
-.assoc-data div:nth-child(7n+1),
-.assoc-data div:nth-child(7n+2),
-.assoc-data div:nth-child(7n+5) {
+.thead > div:nth-child(1),           /* header "before Phenocode" */
+.thead > div:nth-child(2),           /* header "after Phenocode"  */
+.thead > div:nth-child(3),           /* header "Phenocode"        */
+.thead > div:nth-child(4),           /* header "HR" (before)      */
+.thead > div:nth-child(8),           /* header "HR" (after)       */
+.assoc-data div:nth-child(9n+1),     /* value "Phenocode"         */
+.assoc-data div:nth-child(9n+2),     /* value "HR" (before)       */
+.assoc-data div:nth-child(9n+6) {    /* value "HR" (after)        */
     @apply border-l-2;
 }
 .thead div:nth-child(3),
@@ -302,22 +350,21 @@ export default {
 .thead div:nth-child(6),
 .thead div:nth-child(7),
 .thead div:nth-child(8),
-.thead div:nth-child(9) {
+.thead div:nth-child(9),
+.thead div:nth-child(10),
+.thead div:nth-child(11) {
     @apply border-b-2;
 }
 .thead div:nth-child(2),
-.thead div:nth-child(9) {
+.thead div:nth-child(11) {
     @apply border-r-2;
 }
 
 .assoc-grid div, .assoc-data div {
     @apply py-1;
 }
-.assoc-grid.thead > div {
+.thead div:nth-child(1), .thead div:nth-child(2) {
 	text-align: center;
-}
-.assoc-grid.thead > div:nth-child(3) { /* phenocode column */
-	text-align: left;
 }
 
 
