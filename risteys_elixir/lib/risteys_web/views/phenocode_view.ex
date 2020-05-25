@@ -2,10 +2,15 @@ defmodule RisteysWeb.PhenocodeView do
   use RisteysWeb, :view
   require Integer
 
-  def render("assocs.json", %{phenocode: phenocode, assocs: assocs}) do
+  def render("assocs.json", %{
+        phenocode: phenocode,
+        assocs: assocs,
+        hr_prior_distribs: hr_prior_distribs,
+        hr_outcome_distribs: hr_outcome_distribs
+      }) do
     %{
       "plot" => data_assocs_plot(phenocode, assocs),
-      "table" => data_assocs_table(phenocode.id, assocs)
+      "table" => data_assocs_table(phenocode.id, assocs, hr_prior_distribs, hr_outcome_distribs)
     }
   end
 
@@ -246,7 +251,8 @@ defmodule RisteysWeb.PhenocodeView do
   defp data_assocs_plot(phenocode, assocs) do
     assocs
     |> Enum.filter(fn %{lagged_hr_cut_year: cut} ->
-      cut == 0  # keep only non-lagged HR on plot
+      # keep only non-lagged HR on plot
+      cut == 0
     end)
     |> Enum.map(fn assoc ->
       # Find direction given phenocode of interest
@@ -263,7 +269,7 @@ defmodule RisteysWeb.PhenocodeView do
         "category" => other_pheno_category,
         "direction" => direction,
         "hr" => assoc.hr,
-	"hr_str" => round(assoc.hr, 2),
+        "hr_str" => round(assoc.hr, 2),
         "ci_min" => round(assoc.ci_min, 2),
         "ci_max" => round(assoc.ci_max, 2),
         "pvalue_str" => pvalue_str(assoc.pvalue),
@@ -273,19 +279,34 @@ defmodule RisteysWeb.PhenocodeView do
     end)
   end
 
-  defp data_assocs_table(pheno_id, assocs) do
+  defp data_assocs_table(pheno_id, assocs, hr_prior_distribs, hr_outcome_distribs) do
     # Takes the associations from the database and transform them to
     # values for the assocation table, such that each table row has
     # "before" and "after" associations with the given pheno_id.
     no_stats = %{
       "hr" => nil,
       "hr_str" => nil,
+      "hr_norm" => nil,
+      "hr_norm_min" => nil,
+      "hr_norm_max" => nil,
       "ci_min" => nil,
       "ci_max" => nil,
       "pvalue" => nil,
       "nindivs" => nil,
       "lagged_hr_cut_year" => nil
     }
+
+    %{
+      distribs: prior_distribs,
+      min: prior_min,
+      max: prior_max
+    } = hr_prior_distribs
+
+    %{
+      distribs: outcome_distribs,
+      min: outcome_min,
+      max: outcome_max
+    } = hr_outcome_distribs
 
     rows =
       Enum.reduce(assocs, %{}, fn assoc, acc ->
@@ -299,7 +320,16 @@ defmodule RisteysWeb.PhenocodeView do
             no_stats
 
           stats ->
-            stats
+            hr_norm = Map.get(prior_distribs, other_id)
+
+            Map.merge(
+              stats,
+              %{
+                "hr_norm" => hr_norm,
+                "hr_norm_min" => prior_min,
+                "hr_norm_max" => prior_max
+              }
+            )
         end
 
       no_lag_after =
@@ -308,7 +338,16 @@ defmodule RisteysWeb.PhenocodeView do
             no_stats
 
           stats ->
-            stats
+            hr_norm = Map.get(outcome_distribs, other_id)
+
+            Map.merge(
+              stats,
+              %{
+                "hr_norm" => hr_norm,
+                "hr_norm_min" => outcome_min,
+                "hr_norm_max" => outcome_max
+              }
+            )
         end
 
       lag_1y_before =
@@ -454,11 +493,12 @@ defmodule RisteysWeb.PhenocodeView do
     |> Enum.with_index()
     |> Enum.map(fn {val, idx} ->
       bg_class =
-        if Integer.mod(idx, 2) ==  0 do
-	  ""
-	else
-	  bg_grey
-	end
+        if Integer.mod(idx, 2) == 0 do
+          ""
+        else
+          bg_grey
+        end
+
       Map.put_new(val, :bg_class, bg_class)
     end)
   end

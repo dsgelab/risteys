@@ -1,6 +1,18 @@
 defmodule RisteysWeb.PhenocodeController do
   use RisteysWeb, :controller
-  alias Risteys.{Repo, CoxHR, DrugStats, Icd9, Icd10, Phenocode, PhenocodeIcd10, PhenocodeIcd9, StatsSex}
+
+  alias Risteys.{
+    Repo,
+    CoxHR,
+    DrugStats,
+    Icd9,
+    Icd10,
+    Phenocode,
+    PhenocodeIcd10,
+    PhenocodeIcd9,
+    StatsSex
+  }
+
   import Ecto.Query
 
   def show(conn, %{"name" => name}) do
@@ -21,10 +33,14 @@ defmodule RisteysWeb.PhenocodeController do
   def get_assocs(conn, %{"name" => name}) do
     phenocode = Repo.get_by(Phenocode, name: name)
     assocs = data_assocs(phenocode)
+    prior_distribs = hr_distribs(phenocode, :prior)
+    outcome_distribs = hr_distribs(phenocode, :outcome)
 
     conn
     |> assign(:phenocode, phenocode)
     |> assign(:assocs, assocs)
+    |> assign(:hr_prior_distribs, prior_distribs)
+    |> assign(:hr_outcome_distribs, outcome_distribs)
     |> render("assocs.json")
   end
 
@@ -141,7 +157,7 @@ defmodule RisteysWeb.PhenocodeController do
       canc_topo: phenocode.canc_topo,
       canc_morph: phenocode.canc_morph,
       version: phenocode.version,
-      latin: phenocode.latin,
+      latin: phenocode.latin
     }
   end
 
@@ -195,9 +211,10 @@ defmodule RisteysWeb.PhenocodeController do
   end
 
   defp get_drug_stats(phenocode) do
-    Repo.all(from dstats in DrugStats,
-      where: dstats.phenocode_id == ^phenocode.id,
-      order_by: [desc: :score]
+    Repo.all(
+      from dstats in DrugStats,
+        where: dstats.phenocode_id == ^phenocode.id,
+        order_by: [desc: :score]
     )
   end
 
@@ -219,7 +236,7 @@ defmodule RisteysWeb.PhenocodeController do
           outcome_name: outcome.name,
           outcome_longname: outcome.longname,
           outcome_category: outcome.category,
-	  lagged_hr_cut_year: assoc.lagged_hr_cut_year,
+          lagged_hr_cut_year: assoc.lagged_hr_cut_year,
           hr: assoc.hr,
           ci_min: assoc.ci_min,
           ci_max: assoc.ci_max,
@@ -228,5 +245,97 @@ defmodule RisteysWeb.PhenocodeController do
         }
 
     Repo.all(query)
+  end
+
+  defp hr_distribs(phenocode, direction) do
+    hrs_norm =
+      case direction do
+        :prior ->
+          hr_prior_distribs(phenocode)
+
+        :outcome ->
+          hr_outcome_distribs(phenocode)
+      end
+
+    distribs =
+      Enum.reduce(
+        hrs_norm,
+        %{},
+        fn %{assoc_id: id, hr_norm: value}, acc ->
+          Map.put_new(acc, id, value)
+        end
+      )
+
+    hr_min =
+      distribs
+      |> Map.values()
+      |> Enum.min(fn -> nil end)
+
+    hr_max =
+      distribs
+      |> Map.values()
+      |> Enum.max(fn -> nil end)
+
+    %{
+      distribs: distribs,
+      min: hr_min,
+      max: hr_max
+    }
+  end
+
+  defp hr_prior_distribs(phenocode) do
+    prior_distribs =
+      from c in CoxHR,
+        where: c.lagged_hr_cut_year == 0,
+        group_by: c.prior_id,
+        select: %{
+          prior_id: c.prior_id,
+          mu: avg(c.hr),
+          sigma: fragment("stddev_pop(?)", c.hr),
+          cnt: count(c.prior_id)
+        }
+
+    Repo.all(
+      from c in CoxHR,
+        join: distrib in subquery(prior_distribs),
+        on: c.prior_id == distrib.prior_id,
+        # 30 to be able to approximate a normal distribution
+        where:
+          c.outcome_id == ^phenocode.id and
+            c.lagged_hr_cut_year == 0 and
+            distrib.cnt > 30,
+        select: %{
+          assoc_id: c.prior_id,
+          hr_norm: (c.hr - distrib.mu) / distrib.sigma
+        }
+    )
+  end
+
+  defp hr_outcome_distribs(phenocode) do
+    outcome_distribs =
+      from c in CoxHR,
+        where: c.lagged_hr_cut_year == 0,
+        group_by: c.outcome_id,
+        select: %{
+          outcome_id: c.outcome_id,
+          mu: avg(c.hr),
+          sigma: fragment("stddev_pop(?)", c.hr),
+          cnt: count(c.outcome_id)
+        }
+
+    Repo.all(
+      from c in CoxHR,
+        join: distrib in subquery(outcome_distribs),
+        on: c.outcome_id == distrib.outcome_id,
+        # 30 to be able to approximate a normal distribution
+        where:
+          c.prior_id == ^phenocode.id and
+            c.lagged_hr_cut_year == 0 and
+            distrib.cnt > 30,
+        select: %{
+          assoc_id: c.outcome_id,
+          hr_norm: (c.hr - distrib.mu) / distrib.sigma
+        }
+    )
   end
 end
