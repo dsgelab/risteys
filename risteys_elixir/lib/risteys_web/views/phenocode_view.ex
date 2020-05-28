@@ -14,6 +14,27 @@ defmodule RisteysWeb.PhenocodeView do
     }
   end
 
+  def render("drugs.json", %{drug_stats: drug_stats}) do
+    Enum.map(drug_stats, fn drug ->
+      ci_min = drug.score - 1.96 * drug.stderr
+      ci_max = drug.score + 1.96 * drug.stderr
+      %{
+	name: drug.name,
+	score_num: drug.score,
+	score_str: round(drug.score, 2),
+	ci_min_num: ci_min,
+	ci_min_str: round(ci_min, 2),
+	ci_max_num: ci_max,
+	ci_max_str: round(ci_max, 2),
+	pvalue_num: drug.pvalue,
+	pvalue_str: pvalue_str(drug.pvalue),
+	n_indivs: drug.n_indivs,
+	atc: drug.atc,
+	atc_link: atc_link_wikipedia(drug.atc)
+       }
+    end)
+  end
+
   defp table_data_sources(data_sources) do
     # Merge HD registry ICDs
     hd_icd10s = render_icds("ICD-10: ", data_sources.hd_icd10s, true)

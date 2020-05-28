@@ -44,6 +44,20 @@ defmodule RisteysWeb.PhenocodeController do
     |> render("assocs.json")
   end
 
+  def get_drugs(conn, %{"name" => name}) do
+    phenocode = Repo.get_by(Phenocode, name: name)
+
+    drug_stats = Repo.all(
+      from dstats in DrugStats,
+        where: dstats.phenocode_id == ^phenocode.id,
+        order_by: [desc: :score]
+    )
+
+    conn
+    |> assign(:drug_stats, drug_stats)
+    |> render("drugs.json")
+  end
+
   defp show_phenocode(conn, phenocode) do
     description =
       if not is_nil(phenocode.description) do
@@ -88,7 +102,6 @@ defmodule RisteysWeb.PhenocodeController do
     |> assign(:distrib_year, distrib_year)
     |> assign(:distrib_age, distrib_age)
     |> assign(:description, description)
-    |> assign(:drug_stats, get_drug_stats(phenocode))
     |> assign(:data_assocs, data_assocs(phenocode))
     |> render("show.html")
   end
@@ -208,14 +221,6 @@ defmodule RisteysWeb.PhenocodeController do
       female: stats_female,
       male: stats_male
     }
-  end
-
-  defp get_drug_stats(phenocode) do
-    Repo.all(
-      from dstats in DrugStats,
-        where: dstats.phenocode_id == ^phenocode.id,
-        order_by: [desc: :score]
-    )
   end
 
   defp data_assocs(phenocode) do
