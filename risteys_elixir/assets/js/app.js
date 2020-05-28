@@ -18,12 +18,13 @@ import "phoenix_html";
 // Local files can be imported directly using relative paths, for example:
 //// import slider_component from "./MySlider.vue"
 import {makeHistogram, toggleCumulative} from "./plots.js";
-import AssocPlot from './AssocPlot.vue';
-import AssocTable from './AssocTable.vue';
-import Search from './Search.vue';
-import SearchBox from './SearchBox.vue';
 import {search_channel} from "./socket";
 import { forEach } from "lodash-es";
+import AssocPlot from './AssocPlot.vue';
+import AssocTable from './AssocTable.vue';
+import DrugTable from './DrugTable.vue';
+import Search from './Search.vue';
+import SearchBox from './SearchBox.vue';
 
 // Help buttons
 import HelpButton from './HelpButton.vue';
@@ -33,7 +34,6 @@ import HelpMeanAge from './HelpMeanAge.vue';
 import HelpCaseFatality from './HelpCaseFatality.vue';
 import HelpMedianEvents from './HelpMedianEvents.vue';
 import HelpRecurrence from './HelpRecurrence.vue';
-import HelpDrugScore from './HelpDrugScore.vue';
 
 
 var path = window.location.pathname;
@@ -155,11 +155,6 @@ if (path.startsWith("/phenocode/")) {  // Load only on phenocode pages
         template: `<HelpRecurrence/>`,
         components: { HelpRecurrence },
     });
-    var help_button_drug_score = new Vue({
-        el: '#help-button-drug-score',
-        template: `<HelpDrugScore phenocode="${phenocode}" />`,
-        components: { HelpDrugScore },
-    });
 
     /* HISTOGRAMS */
     makeHistogram("Year distribution",
@@ -206,4 +201,20 @@ if (path.startsWith("/phenocode/")) {  // Load only on phenocode pages
         });
     });
 
+
+    /* DRUG TABLE */
+    fetch('/api/phenocode/' + phenocode + '/drugs.json', {
+        cache: 'default',
+        mode: 'same-origin'
+    }).then((response) => {
+        return response.json();
+    }).then((drug_data) => {
+        new Vue({
+            el: '#drug-table',
+            data: {
+                drug_data: drug_data
+            },
+            components: { DrugTable },
+        });
+    });
 }

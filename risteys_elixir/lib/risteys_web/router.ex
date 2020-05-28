@@ -26,5 +26,6 @@ defmodule RisteysWeb.Router do
     pipe_through :api
 
     get "/phenocode/:name/assocs.json", PhenocodeController, :get_assocs
+    get "/phenocode/:name/drugs.json", PhenocodeController, :get_drugs
   end
 end
