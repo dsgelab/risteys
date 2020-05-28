@@ -8,7 +8,7 @@ defmodule Risteys.StatsSex do
 
     field :case_fatality, :float
     field :mean_age, :float
-    field :median_reoccurence, :integer
+    field :median_reoccurence, :float
     field :n_individuals, :integer
     field :prevalence, :float
     field :reoccurence_rate, :float

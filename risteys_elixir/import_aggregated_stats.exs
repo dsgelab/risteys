@@ -138,21 +138,6 @@ stats
       nindivs_all = if is_nil(nindivs_all), do: nil, else: floor(nindivs_all)
       nindivs_female = if is_nil(nindivs_female), do: nil, else: floor(nindivs_female)
       nindivs_male = if is_nil(nindivs_male), do: nil, else: floor(nindivs_male)
-      median_events_all = if is_nil(median_events_all), do: nil, else: floor(median_events_all)
-
-      median_events_female =
-        if is_nil(median_events_female) do
-          nil
-        else
-          floor(median_events_female)
-        end
-
-      median_events_male =
-        if is_nil(median_events_male) do
-          nil
-        else
-          floor(median_events_male)
-        end
 
       # sex: all
       # Don't import anything if Nindivs = 0 (really no events with this phenotype) or
