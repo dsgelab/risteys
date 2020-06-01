@@ -6,7 +6,7 @@
 					type="text"
 					placeholder="filter by drug name or ATC"
 					v-model="drug_filter"
-					v-on:keyup="refresh_table()"
+					v-on:keyup.stop="refresh_table()"
 					>
 			</div>
 			<div>
