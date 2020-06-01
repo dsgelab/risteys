@@ -232,7 +232,6 @@ defmodule RisteysWeb.PhenocodeController do
         join: outcome in Phenocode,
         on: assoc.outcome_id == outcome.id,
         where: assoc.prior_id == ^phenocode.id or assoc.outcome_id == ^phenocode.id,
-        order_by: [desc: assoc.hr],
         select: %{
           prior_id: prior.id,
           prior_name: prior.name,

@@ -9,21 +9,30 @@
 				<input
 					type="text"
 					placeholder="filter by name"
-					v-on:keyup.stop="comp_table"
+					v-on:keyup.stop="refresh_table()"
 					v-model="pheno_filter">
 			</div>
-			<div class="font-bold col-interactive" v-on:click="sort_table('before_hr')">{{ symbol_sort("before_hr") }} HR [95%&nbsp;CI]</div>
-			<div class="font-bold col-interactive" v-on:click="sort_table('before_pvalue')">{{ symbol_sort("before_pvalue") }} p</div>
-			<div class="font-bold col-interactive" v-on:click="sort_table('before_nindivs')">{{ symbol_sort("before_nindivs") }}
-				<abbr data-title="Number of overlapping individuals">N</abbr>
+			<div class="font-bold">HR [95%&nbsp;CI] <br>
+				<input type="radio" id="hr_before_desc" value="hr_before_desc" v-model="sorter" v-on:change="refresh_table()" checked><label for="hr_before_desc" class="radio-left">▼</label><input type="radio" id="hr_before_asc" value="hr_before_asc" v-model="sorter" v-on:change="refresh_table()"><label for="hr_before_asc" class="radio-right">▲</label>
 			</div>
-			<div><HelpCompBox /></div>
-			<div class="font-bold col-interactive" v-on:click="sort_table('after_hr')">{{ symbol_sort("after_hr") }} HR [95%&nbsp;CI]</div>
-			<div class="font-bold col-interactive" v-on:click="sort_table('after_pvalue')">{{ symbol_sort("after_pvalue") }} p</div>
-			<div class="font-bold col-interactive" v-on:click="sort_table('after_nindivs')">{{ symbol_sort("after_nindivs") }}
-				<abbr data-title="Number of overlapping individuals">N</abbr>
+			<div class="font-bold">p <br>
+				<input type="radio" id="pvalue_before_desc" value="pvalue_before_desc" v-model="sorter" v-on:change="refresh_table()"><label for="pvalue_before_desc" class="radio-left">▼</label><input type="radio" id="pvalue_before_asc" value="pvalue_before_asc" v-model="sorter" v-on:change="refresh_table()"><label for="pvalue_before_asc" class="radio-right">▲</label></div>
+			<div class="font-bold">
+				<abbr data-title="Number of overlapping individuals">N</abbr> <br>
+				<input type="radio" id="nindivs_before_desc" value="nindivs_before_desc" v-model="sorter" v-on:change="refresh_table()"><label for="nindivs_before_desc" class="radio-left">▼</label><input type="radio" id="nindivs_before_asc" value="nindivs_before_asc" v-model="sorter" v-on:change="refresh_table()"><label for="nindivs_before_asc" class="radio-right">▲</label>
 			</div>
-			<div><HelpCompBox /></div>
+			<div><HelpCompBox /> <br>
+				<input type="radio" id="compbox_before_desc" value="compbox_before_desc" v-model="sorter" v-on:change="refresh_table()" checked><label for="compbox_before_desc" class="radio-left">▼</label><input type="radio" id="compbox_before_asc" value="compbox_before_asc" v-model="sorter" v-on:change="refresh_table()"><label for="compbox_before_asc" class="radio-right">▲</label></div>
+			<div class="font-bold">HR [95%&nbsp;CI] <br>
+				<input type="radio" id="hr_after_desc" value="hr_after_desc" v-model="sorter" v-on:change="refresh_table()"><label for="hr_after_desc" class="radio-left">▼</label><input type="radio" id="hr_after_asc" value="hr_after_asc" v-model="sorter" v-on:change="refresh_table()"><label for="hr_after_asc" class="radio-right">▲</label></div>
+			<div class="font-bold">p <br>
+				<input type="radio" id="pvalue_after_desc" value="pvalue_after_desc" v-model="sorter" v-on:change="refresh_table()"><label for="pvalue_after_desc" class="radio-left">▼</label><input type="radio" id="pvalue_after_asc" value="pvalue_after_asc" v-model="sorter" v-on:change="refresh_table()"><label for="pvalue_after_asc" class="radio-right">▲</label></div>
+			<div class="font-bold">
+				<abbr data-title="Number of overlapping individuals">N</abbr> <br>
+				<input type="radio" id="nindivs_after_desc" value="nindivs_after_desc" v-model="sorter" v-on:change="refresh_table()"><label for="nindivs_after_desc" class="radio-left">▼</label><input type="radio" id="nindivs_after_asc" value="nindivs_after_asc" v-model="sorter" v-on:change="refresh_table()"><label for="nindivs_after_asc" class="radio-right">▲</label>
+			</div>
+			<div><HelpCompBox /> <br>
+				<input type="radio" id="compbox_after_desc" value="compbox_after_desc" v-model="sorter" v-on:change="refresh_table()" checked><label for="compbox_after_desc" class="radio-left">▼</label><input type="radio" id="compbox_after_asc" value="compbox_after_asc" v-model="sorter" v-on:change="refresh_table()"><label for="compbox_after_asc" class="radio-right">▲</label></div>
 		</div>
 
 		<div class="assoc-grid assoc-data">
@@ -177,7 +186,7 @@ import { drawCompBox } from './CompBox.js';
 import HelpCompBox from './HelpCompBox.vue';
 
 
-let compute_table = (col_filter, sort_by, sort_order, table) => {
+let compute_table = (col_filter, sorter, table) => {
 	let result;
 
 	// Filter rows
@@ -196,25 +205,57 @@ let compute_table = (col_filter, sort_by, sort_order, table) => {
 	}
 
 	// Sort rows
-	switch (sort_by) {
-		case "before_hr":
-			result = sortByNull(result, (pheno) => pheno.all.before.hr, sort_order);
+	switch (sorter) {
+		case "hr_before_desc":
+			result = sortByNull(result, (pheno) => pheno.all.before.hr, "desc");
 			break;
-		case "before_pvalue":
-			result = sortByNull(result, (pheno) => pheno.all.before.pvalue, sort_order);
+		case "hr_before_asc":
+			result = sortByNull(result, (pheno) => pheno.all.before.hr, "asc");
 			break;
-		case "before_nindivs":
-			result = sortByNull(result, (pheno) => pheno.all.before.nindivs, sort_order);
+		case "pvalue_before_desc":
+			result = sortByNull(result, (pheno) => pheno.all.before.pvalue, "desc");
 			break;
-		case "after_hr":
-			result = sortByNull(result, (pheno) => pheno.all.after.hr, sort_order);
+		case "pvalue_before_asc":
+			result = sortByNull(result, (pheno) => pheno.all.before.pvalue, "asc");
 			break;
-		case "after_pvalue":
-			result = sortByNull(result, (pheno) => pheno.all.after.pvalue, sort_order);
+		case "nindivs_before_desc":
+			result = sortByNull(result, (pheno) => pheno.all.before.nindivs, "desc");
 			break;
-		case "after_nindivs":
-			result = sortByNull(result, (pheno) => pheno.all.after.nindivs, sort_order);
+		case "nindivs_before_asc":
+			result = sortByNull(result, (pheno) => pheno.all.before.nindivs, "asc");
 			break;
+		case "compbox_before_desc":
+			result = sortByNull(result, (pheno) => pheno.all.before.hr_norm, "desc");
+			break;
+		case "compbox_before_asc":
+			result = sortByNull(result, (pheno) => pheno.all.before.hr_norm, "asc");
+			break;
+		case "hr_after_desc":
+			result = sortByNull(result, (pheno) => pheno.all.after.hr, "desc");
+			break;
+		case "hr_after_asc":
+			result = sortByNull(result, (pheno) => pheno.all.after.hr, "asc");
+			break;
+		case "pvalue_after_desc":
+			result = sortByNull(result, (pheno) => pheno.all.after.pvalue, "desc");
+			break;
+		case "pvalue_after_asc":
+			result = sortByNull(result, (pheno) => pheno.all.after.pvalue, "asc");
+			break;
+		case "nindivs_after_desc":
+			result = sortByNull(result, (pheno) => pheno.all.after.nindivs, "desc");
+			break;
+		case "nindivs_after_asc":
+			result = sortByNull(result, (pheno) => pheno.all.after.nindivs, "asc");
+			break;
+		case "compbox_after_desc":
+			result = sortByNull(result, (pheno) => pheno.all.after.hr_norm, "desc");
+			break;
+		case "compbox_after_asc":
+			result = sortByNull(result, (pheno) => pheno.all.after.hr_norm, "asc");
+			break;
+		default:
+			console.log("Unrecognized sorter:", sorter);
 	}
 
 	return result
@@ -241,7 +282,7 @@ export default {
 			full_table: [],  // keep a copy of the original
 			assoc_table: [],
 			pheno_filter: "",
-			sort_by: ["before_hr", "desc"],
+			sorter: "hr_before_desc",
 			unfolded: new Set(),
 		}
 	},
@@ -256,38 +297,12 @@ export default {
 		compBox(hr, hr_min, hr_max, lop, q1, median, q3, hip) {
 			return drawCompBox(hr, hr_min, hr_max, lop,  q1, median, q3, hip);
 		},
-		comp_table() {
+		refresh_table() {
 			this.assoc_table = compute_table(
 				this.pheno_filter,
-				this.sort_by[0],
-				this.sort_by[1],
+				this.sorter,
 				this.full_table
 			)
-		},
-		sort_table(col) {
-			if (this.sort_by[0] === col) {
-				// reverse order
-				if (this.sort_by[1] === "desc") {
-					this.sort_by[1] = "asc";
-				} else {
-					this.sort_by[1] = "desc";
-				}
-			} else {
-				// sort by new col, descending
-				this.sort_by = [col, "desc"];
-			}
-
-			// Update the table
-			this.comp_table();
-		},
-		symbol_sort(col) {
-			if (this.sort_by[0] === col && this.sort_by[1] === "desc") {
-				return  "▼";
-			} else if (this.sort_by[0] === col && this.sort_by[1] === "asc") {
-				return  "▲";
-			} else {
-				return "";
-			}
 		},
 		toggle_fold(phenocode) {
 			// Create a copy of the set otherwise VueJS doesn't update the HTML
@@ -308,7 +323,7 @@ export default {
 	created () {
 		this.full_table = this.table;
 		this.assoc_table = this.table;
-		this.comp_table();
+		this.refresh_table();
 	}
 }
 </script>
@@ -381,15 +396,6 @@ export default {
 }
 .thead div:nth-child(1), .thead div:nth-child(2) {
 	text-align: center;
-}
-
-
-/* interactive elements */
-#assoc-table .col-interactive {
-    cursor: pointer;
-}
-#assoc-table .col-interactive:hover {
-    background-color: #e9e9e9;
 }
 
 
