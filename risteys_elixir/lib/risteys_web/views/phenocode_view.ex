@@ -18,20 +18,21 @@ defmodule RisteysWeb.PhenocodeView do
     Enum.map(drug_stats, fn drug ->
       ci_min = drug.score - 1.96 * drug.stderr
       ci_max = drug.score + 1.96 * drug.stderr
+
       %{
-	name: drug.name,
-	score_num: drug.score,
-	score_str: round(drug.score, 2),
-	ci_min_num: ci_min,
-	ci_min_str: round(ci_min, 2),
-	ci_max_num: ci_max,
-	ci_max_str: round(ci_max, 2),
-	pvalue_num: drug.pvalue,
-	pvalue_str: pvalue_str(drug.pvalue),
-	n_indivs: drug.n_indivs,
-	atc: drug.atc,
-	atc_link: atc_link_wikipedia(drug.atc)
-       }
+        name: drug.name,
+        score_num: drug.score,
+        score_str: round(drug.score, 2),
+        ci_min_num: ci_min,
+        ci_min_str: round(ci_min, 2),
+        ci_max_num: ci_max,
+        ci_max_str: round(ci_max, 2),
+        pvalue_num: drug.pvalue,
+        pvalue_str: pvalue_str(drug.pvalue),
+        n_indivs: drug.n_indivs,
+        atc: drug.atc,
+        atc_link: atc_link_wikipedia(drug.atc)
+      }
     end)
   end
 
@@ -307,14 +308,29 @@ defmodule RisteysWeb.PhenocodeView do
     no_stats = %{
       "hr" => nil,
       "hr_str" => nil,
-      "hr_norm" => nil,
-      "hr_norm_min" => nil,
-      "hr_norm_max" => nil,
       "ci_min" => nil,
       "ci_max" => nil,
       "pvalue" => nil,
       "nindivs" => nil,
-      "lagged_hr_cut_year" => nil
+      "lagged_hr_cut_year" => nil,
+      # Values for CompBox plot
+      "hr_norm" => nil,
+      "hr_norm_min" => nil,
+      "hr_norm_max" => nil,
+      "hr_norm_lop" => nil,
+      "hr_norm_q1" => nil,
+      "hr_norm_median" => nil,
+      "hr_norm_q3" => nil,
+      "hr_norm_hip" => nil
+    }
+
+    no_hr_norm_stats = %{
+      hr: nil,
+      lop: nil,
+      q1: nil,
+      median: nil,
+      q3: nil,
+      hip: nil
     }
 
     %{
@@ -341,14 +357,19 @@ defmodule RisteysWeb.PhenocodeView do
             no_stats
 
           stats ->
-            hr_norm = Map.get(prior_distribs, other_id)
+            hr_stats = Map.get(prior_distribs, other_id, no_hr_norm_stats)
 
             Map.merge(
               stats,
               %{
-                "hr_norm" => hr_norm,
+                "hr_norm" => hr_stats.hr,
                 "hr_norm_min" => prior_min,
-                "hr_norm_max" => prior_max
+                "hr_norm_max" => prior_max,
+                "hr_norm_lop" => hr_stats.lop,
+                "hr_norm_q1" => hr_stats.q1,
+                "hr_norm_median" => hr_stats.median,
+                "hr_norm_q3" => hr_stats.q3,
+                "hr_norm_hip" => hr_stats.hip
               }
             )
         end
@@ -359,14 +380,23 @@ defmodule RisteysWeb.PhenocodeView do
             no_stats
 
           stats ->
-            hr_norm = Map.get(outcome_distribs, other_id)
+            hr_stats = Map.get(outcome_distribs, other_id, no_hr_norm_stats)
+
+            if hr_stats.hr > 6 and not is_nil(hr_stats.hr) do
+              IO.inspect(hr_stats.hr)
+            end
 
             Map.merge(
               stats,
               %{
-                "hr_norm" => hr_norm,
+                "hr_norm" => hr_stats.hr,
                 "hr_norm_min" => outcome_min,
-                "hr_norm_max" => outcome_max
+                "hr_norm_max" => outcome_max,
+                "hr_norm_lop" => hr_stats.lop,
+                "hr_norm_q1" => hr_stats.q1,
+                "hr_norm_median" => hr_stats.median,
+                "hr_norm_q3" => hr_stats.q3,
+                "hr_norm_hip" => hr_stats.hip
               }
             )
         end

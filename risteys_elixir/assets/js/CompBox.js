@@ -34,30 +34,25 @@ let toBoxSpace = (x, hr_min, hr_max) => {
 	return (x - hr_min) / (hr_max - hr_min) * dim.svgWidth;
 };
 
-let drawCompBox = (hr_norm, hr_min, hr_max) => {
+let drawCompBox = (hr, hr_min, hr_max, lop, q1, median, q3, hip) => {
 	var hr_min = Math.min(hr_min - 1, dim.hrMin);
 	var hr_max = Math.max(hr_max + 1, dim.hrMax);
-
-	const loq = -0.67;  // 25% quartile on normal distribution
-	const hiq =  0.67;  // 75% quartile on normal distribution
-	const lop = -1.96;  // 2.5%  percentile on normal distribution
-	const hip =  1.96;  // 97.5% percentile on normal distribution
 
 	const background = drawRect(0, 0, dim.svgWidth, dim.svgHeight, "none", "#ffffff");
 	const outline = drawRect(0, 0, dim.svgWidth, dim.svgHeight, "black", "none");
 
-	const mean0_plot = toBoxSpace(0, hr_min, hr_max);
-	const mean0 = drawLine(mean0_plot, 0, mean0_plot, dim.svgHeight, "#666");
+	const median_plot = toBoxSpace(median, hr_min, hr_max);
+	const median_line = drawLine(median_plot, 0, median_plot, dim.svgHeight, "#666");
 
-	const loq_plot = toBoxSpace(loq, hr_min, hr_max);
-	const hiq_plot = toBoxSpace(hiq, hr_min, hr_max);
-	const quart_box = drawRect(loq_plot, 0, hiq_plot, dim.svgHeight, "none", "#cacaca");
+	const q1_plot = toBoxSpace(q1, hr_min, hr_max);
+	const q3_plot = toBoxSpace(q3, hr_min, hr_max);
+	const quart_box = drawRect(q1_plot, 0, q3_plot, dim.svgHeight, "none", "#cacaca");
 
 	const lop_plot = toBoxSpace(lop, hr_min, hr_max);
 	const hip_plot = toBoxSpace(hip, hr_min, hr_max);
 	const perc_box = drawRect(lop_plot, 0, hip_plot, dim.svgHeight, "none", "#ececec");
 
-	const hr_plot = toBoxSpace(hr_norm, hr_min, hr_max);
+	const hr_plot = toBoxSpace(hr, hr_min, hr_max);
 	const hr_dot = svgCircle(
 		hr_plot,            // x position
 		dim.svgHeight / 2,  // y position
@@ -70,7 +65,7 @@ let drawCompBox = (hr_norm, hr_min, hr_max) => {
 		${background}
 		${perc_box}
 		${quart_box}
-		${mean0}
+		${median_line}
 		${hr_dot}
 		${outline}
 	</svg>`

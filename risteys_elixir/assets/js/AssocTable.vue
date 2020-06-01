@@ -52,7 +52,15 @@
 				<div
 					v-else
 					v-bind:class="bg_even(idx)"
-					v-html="compBox(pheno.all.before.hr_norm, pheno.all.before.hr_norm_min, pheno.all.before.hr_norm_max)">
+					v-html="compBox(
+						pheno.all.before.hr_norm,
+						pheno.all.before.hr_norm_min,
+						pheno.all.before.hr_norm_max,
+						pheno.all.before.hr_norm_lop,
+						pheno.all.before.hr_norm_q1,
+						pheno.all.before.hr_norm_median,
+						pheno.all.before.hr_norm_q3,
+						pheno.all.before.hr_norm_hip)">
 				</div>
 
 				<div v-bind:class="bg_even(idx)" v-if="pheno.all.after.hr === null">-</div>
@@ -73,7 +81,15 @@
 				<div
 					v-else
 					v-bind:class="bg_even(idx)"
-					v-html="compBox(pheno.all.after.hr_norm, pheno.all.after.hr_norm_min, pheno.all.after.hr_norm_max)">
+					v-html="compBox(
+						pheno.all.after.hr_norm,
+						pheno.all.after.hr_norm_min,
+						pheno.all.after.hr_norm_max,
+						pheno.all.after.hr_norm_lop,
+						pheno.all.after.hr_norm_q1,
+						pheno.all.after.hr_norm_median,
+						pheno.all.after.hr_norm_q3,
+						pheno.all.after.hr_norm_hip)">
 				</div>
 
 				<template v-if="unfolded.has(pheno.name)">
@@ -237,8 +253,8 @@ export default {
 		phenocode: String,
 	},
 	methods: {
-		compBox(hr, hr_min, hr_max) {
-			return drawCompBox(hr, hr_min, hr_max);
+		compBox(hr, hr_min, hr_max, lop, q1, median, q3, hip) {
+			return drawCompBox(hr, hr_min, hr_max, lop,  q1, median, q3, hip);
 		},
 		comp_table() {
 			this.assoc_table = compute_table(

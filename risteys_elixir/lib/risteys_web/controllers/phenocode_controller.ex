@@ -47,11 +47,12 @@ defmodule RisteysWeb.PhenocodeController do
   def get_drugs(conn, %{"name" => name}) do
     phenocode = Repo.get_by(Phenocode, name: name)
 
-    drug_stats = Repo.all(
-      from dstats in DrugStats,
-        where: dstats.phenocode_id == ^phenocode.id,
-        order_by: [desc: :score]
-    )
+    drug_stats =
+      Repo.all(
+        from dstats in DrugStats,
+          where: dstats.phenocode_id == ^phenocode.id,
+          order_by: [desc: :score]
+      )
 
     conn
     |> assign(:drug_stats, drug_stats)
@@ -253,32 +254,24 @@ defmodule RisteysWeb.PhenocodeController do
   end
 
   defp hr_distribs(phenocode, direction) do
-    hrs_norm =
-      case direction do
-        :prior ->
-          hr_prior_distribs(phenocode)
-
-        :outcome ->
-          hr_outcome_distribs(phenocode)
-      end
-
     distribs =
-      Enum.reduce(
-        hrs_norm,
+      hr_distribs_query(phenocode, direction)
+      |> Enum.reduce(
         %{},
-        fn %{assoc_id: id, hr_norm: value}, acc ->
-          Map.put_new(acc, id, value)
+        fn distrib, acc ->
+          {id, stats} = Map.pop(distrib, :assoc_id)
+          Map.put_new(acc, id, stats)
         end
       )
 
     hr_min =
       distribs
-      |> Map.values()
+      |> Enum.map(fn {_key, %{hr: hr}} -> hr end)
       |> Enum.min(fn -> nil end)
 
     hr_max =
       distribs
-      |> Map.values()
+      |> Enum.map(fn {_key, %{hr: hr}} -> hr end)
       |> Enum.max(fn -> nil end)
 
     %{
@@ -288,58 +281,57 @@ defmodule RisteysWeb.PhenocodeController do
     }
   end
 
-  defp hr_prior_distribs(phenocode) do
-    prior_distribs =
+  defp hr_distribs_query(phenocode, direction) do
+    # Since this function is generic on the "direction", we set what are the fields to select.
+    # "main" means the id of the phenocode of interest.
+    # "distrib" means ids of the associated phenocodes.
+    {field_main_id, field_distrib_id} =
+      case direction do
+        :prior ->
+          {:outcome_id, :prior_id}
+
+        :outcome ->
+          {:prior_id, :outcome_id}
+      end
+
+    distribs =
       from c in CoxHR,
         where: c.lagged_hr_cut_year == 0,
-        group_by: c.prior_id,
+        group_by: field(c, ^field_distrib_id),
         select: %{
-          prior_id: c.prior_id,
-          mu: avg(c.hr),
-          sigma: fragment("stddev_pop(?)", c.hr),
-          cnt: count(c.prior_id)
+          distrib_id: field(c, ^field_distrib_id),
+          cnt: count(field(c, ^field_distrib_id)),
+          # Using PostgreSQL specific functions to compute stats on the HR distributions.
+          # https://www.postgresql.org/docs/current/functions-aggregate.html
+          # Note that we are using ln(HR) to compute everything in the ln space.
+          mu: fragment("avg(ln(?))", c.hr),
+          sigma: fragment("stddev_pop(ln(?))", c.hr),
+          lop: fragment("percentile_cont(0.025) WITHIN GROUP (ORDER BY ln(?))", c.hr),
+          q1: fragment("percentile_cont(0.25) WITHIN GROUP (ORDER BY ln(?))", c.hr),
+          median: fragment("percentile_cont(0.5) WITHIN GROUP (ORDER BY ln(?))", c.hr),
+          q3: fragment("percentile_cont(0.75) WITHIN GROUP (ORDER BY ln(?))", c.hr),
+          hip: fragment("percentile_cont(0.975) WITHIN GROUP (ORDER BY ln(?))", c.hr)
         }
 
     Repo.all(
       from c in CoxHR,
-        join: distrib in subquery(prior_distribs),
-        on: c.prior_id == distrib.prior_id,
+        join: distrib in subquery(distribs),
+        on: field(c, ^field_distrib_id) == distrib.distrib_id,
         # 30 to be able to approximate a normal distribution
         where:
-          c.outcome_id == ^phenocode.id and
+          field(c, ^field_main_id) == ^phenocode.id and
             c.lagged_hr_cut_year == 0 and
             distrib.cnt > 30,
         select: %{
-          assoc_id: c.prior_id,
-          hr_norm: (c.hr - distrib.mu) / distrib.sigma
-        }
-    )
-  end
-
-  defp hr_outcome_distribs(phenocode) do
-    outcome_distribs =
-      from c in CoxHR,
-        where: c.lagged_hr_cut_year == 0,
-        group_by: c.outcome_id,
-        select: %{
-          outcome_id: c.outcome_id,
-          mu: avg(c.hr),
-          sigma: fragment("stddev_pop(?)", c.hr),
-          cnt: count(c.outcome_id)
-        }
-
-    Repo.all(
-      from c in CoxHR,
-        join: distrib in subquery(outcome_distribs),
-        on: c.outcome_id == distrib.outcome_id,
-        # 30 to be able to approximate a normal distribution
-        where:
-          c.prior_id == ^phenocode.id and
-            c.lagged_hr_cut_year == 0 and
-            distrib.cnt > 30,
-        select: %{
-          assoc_id: c.outcome_id,
-          hr_norm: (c.hr - distrib.mu) / distrib.sigma
+          assoc_id: distrib.distrib_id,
+          # Centered and normalized values
+          # Don't forget to ln(HR) here, other values are already in ln space
+          hr: (fragment("ln(?)", c.hr) - distrib.mu) / distrib.sigma,
+          lop: (distrib.lop - distrib.mu) / distrib.sigma,
+          q1: (distrib.q1 - distrib.mu) / distrib.sigma,
+          median: (distrib.median - distrib.mu) / distrib.sigma,
+          q3: (distrib.q3 - distrib.mu) / distrib.sigma,
+          hip: (distrib.hip - distrib.mu) / distrib.sigma
         }
     )
   end
