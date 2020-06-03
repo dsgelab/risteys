@@ -11,16 +11,16 @@
 			</div>
 			<div>
 				<div style="position: relative; left: -34px"><HelpDrugScore v-bind:phenocode="this.phenocode" /> Score</div>
-				<input type="radio" id="score_desc" value="score_desc" v-model="sorter" v-on:change="refresh_table()" checked><label for="score_desc" class="radio-left">▼</label><input type="radio" id="score_asc" value="score_asc" v-model="sorter" v-on:change="refresh_table()"><label for="score_asc" class="radio-right">▲</label>
+				<input type="radio" id="score_asc" value="score_asc" v-model="sorter" v-on:change="refresh_table()" checked><label for="score_asc" class="radio-left">▲</label><input type="radio" id="score_desc" value="score_desc" v-model="sorter" v-on:change="refresh_table()"><label for="score_desc" class="radio-right">▼</label>
 			</div>
 			<div>[95% CI] <br>
 			</div>
 			<div>p <br>
-			<input type="radio" id="pvalue_desc" value="pvalue_desc" v-model="sorter" v-on:change="refresh_table()"><label for="pvalue_desc" class="radio-left">▼</label><input type="radio" id="pvalue_asc" value="pvalue_asc" v-model="sorter" v-on:change="refresh_table()"><label for="pvalue_asc" class="radio-right">▲</label></div>
+			<input type="radio" id="pvalue_asc" value="pvalue_asc" v-model="sorter" v-on:change="refresh_table()"><label for="pvalue_asc" class="radio-left">▲</label><input type="radio" id="pvalue_desc" value="pvalue_desc" v-model="sorter" v-on:change="refresh_table()"><label for="pvalue_desc" class="radio-right">▼</label></div>
 			<div>N <br>
-			<input type="radio" id="nindivs_desc" value="nindivs_desc" v-model="sorter" v-on:change="refresh_table()"><label for="nindivs_desc" class="radio-left">▼</label><input type="radio" id="nindivs_asc" value="nindivs_asc" v-model="sorter" v-on:change="refresh_table()"><label for="nindivs_asc" class="radio-right">▲</label></div>
+			<input type="radio" id="nindivs_asc" value="nindivs_asc" v-model="sorter" v-on:change="refresh_table()"><label for="nindivs_asc" class="radio-left">▲</label><input type="radio" id="nindivs_desc" value="nindivs_desc" v-model="sorter" v-on:change="refresh_table()"><label for="nindivs_desc" class="radio-right">▼</label></div>
 			<div>ATC code <br>
-			<input type="radio" id="atc_desc" value="atc_desc" v-model="sorter" v-on:change="refresh_table()"><label for="atc_desc" class="radio-left">▼</label><input type="radio" id="atc_asc" value="atc_asc" v-model="sorter" v-on:change="refresh_table()"><label for="atc_asc" class="radio-right">▲</label></div>
+			<input type="radio" id="atc_asc" value="atc_asc" v-model="sorter" v-on:change="refresh_table()"><label for="atc_asc" class="radio-left">▲</label><input type="radio" id="atc_desc" value="atc_desc" v-model="sorter" v-on:change="refresh_table()"><label for="atc_desc" class="radio-right">▼</label></div>
 		</div>
 
 		<div v-if="drug_table.length > 0"

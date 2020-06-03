@@ -13,26 +13,26 @@
 					v-model="pheno_filter">
 			</div>
 			<div class="font-bold">HR [95%&nbsp;CI] <br>
-				<input type="radio" id="hr_before_desc" value="hr_before_desc" v-model="sorter" v-on:change="refresh_table()" checked><label for="hr_before_desc" class="radio-left">▼</label><input type="radio" id="hr_before_asc" value="hr_before_asc" v-model="sorter" v-on:change="refresh_table()"><label for="hr_before_asc" class="radio-right">▲</label>
+				<input type="radio" id="hr_before_asc" value="hr_before_asc" v-model="sorter" v-on:change="refresh_table()" checked><label for="hr_before_asc" class="radio-left">▲</label><input type="radio" id="hr_before_desc" value="hr_before_desc" v-model="sorter" v-on:change="refresh_table()"><label for="hr_before_desc" class="radio-right">▼</label>
 			</div>
 			<div class="font-bold">p <br>
-				<input type="radio" id="pvalue_before_desc" value="pvalue_before_desc" v-model="sorter" v-on:change="refresh_table()"><label for="pvalue_before_desc" class="radio-left">▼</label><input type="radio" id="pvalue_before_asc" value="pvalue_before_asc" v-model="sorter" v-on:change="refresh_table()"><label for="pvalue_before_asc" class="radio-right">▲</label></div>
+				<input type="radio" id="pvalue_before_asc" value="pvalue_before_asc" v-model="sorter" v-on:change="refresh_table()"><label for="pvalue_before_asc" class="radio-left">▲</label><input type="radio" id="pvalue_before_desc" value="pvalue_before_desc" v-model="sorter" v-on:change="refresh_table()"><label for="pvalue_before_desc" class="radio-right">▼</label></div>
 			<div class="font-bold">
 				<abbr data-title="Number of overlapping individuals">N</abbr> <br>
-				<input type="radio" id="nindivs_before_desc" value="nindivs_before_desc" v-model="sorter" v-on:change="refresh_table()"><label for="nindivs_before_desc" class="radio-left">▼</label><input type="radio" id="nindivs_before_asc" value="nindivs_before_asc" v-model="sorter" v-on:change="refresh_table()"><label for="nindivs_before_asc" class="radio-right">▲</label>
+				<input type="radio" id="nindivs_before_asc" value="nindivs_before_asc" v-model="sorter" v-on:change="refresh_table()"><label for="nindivs_before_asc" class="radio-left">▲</label><input type="radio" id="nindivs_before_desc" value="nindivs_before_desc" v-model="sorter" v-on:change="refresh_table()"><label for="nindivs_before_desc" class="radio-right">▼</label>
 			</div>
 			<div><HelpCompBox /> <br>
-				<input type="radio" id="compbox_before_desc" value="compbox_before_desc" v-model="sorter" v-on:change="refresh_table()" checked><label for="compbox_before_desc" class="radio-left">▼</label><input type="radio" id="compbox_before_asc" value="compbox_before_asc" v-model="sorter" v-on:change="refresh_table()"><label for="compbox_before_asc" class="radio-right">▲</label></div>
+				<input type="radio" id="compbox_before_asc" value="compbox_before_asc" v-model="sorter" v-on:change="refresh_table()" checked><label for="compbox_before_asc" class="radio-left">▲</label><input type="radio" id="compbox_before_desc" value="compbox_before_desc" v-model="sorter" v-on:change="refresh_table()"><label for="compbox_before_desc" class="radio-right">▼</label></div>
 			<div class="font-bold">HR [95%&nbsp;CI] <br>
-				<input type="radio" id="hr_after_desc" value="hr_after_desc" v-model="sorter" v-on:change="refresh_table()"><label for="hr_after_desc" class="radio-left">▼</label><input type="radio" id="hr_after_asc" value="hr_after_asc" v-model="sorter" v-on:change="refresh_table()"><label for="hr_after_asc" class="radio-right">▲</label></div>
+				<input type="radio" id="hr_after_asc" value="hr_after_asc" v-model="sorter" v-on:change="refresh_table()"><label for="hr_after_asc" class="radio-left">▲</label><input type="radio" id="hr_after_desc" value="hr_after_desc" v-model="sorter" v-on:change="refresh_table()"><label for="hr_after_desc" class="radio-right">▼</label></div>
 			<div class="font-bold">p <br>
-				<input type="radio" id="pvalue_after_desc" value="pvalue_after_desc" v-model="sorter" v-on:change="refresh_table()"><label for="pvalue_after_desc" class="radio-left">▼</label><input type="radio" id="pvalue_after_asc" value="pvalue_after_asc" v-model="sorter" v-on:change="refresh_table()"><label for="pvalue_after_asc" class="radio-right">▲</label></div>
+				<input type="radio" id="pvalue_after_asc" value="pvalue_after_asc" v-model="sorter" v-on:change="refresh_table()"><label for="pvalue_after_asc" class="radio-left">▲</label><input type="radio" id="pvalue_after_desc" value="pvalue_after_desc" v-model="sorter" v-on:change="refresh_table()"><label for="pvalue_after_desc" class="radio-right">▼</label></div>
 			<div class="font-bold">
 				<abbr data-title="Number of overlapping individuals">N</abbr> <br>
-				<input type="radio" id="nindivs_after_desc" value="nindivs_after_desc" v-model="sorter" v-on:change="refresh_table()"><label for="nindivs_after_desc" class="radio-left">▼</label><input type="radio" id="nindivs_after_asc" value="nindivs_after_asc" v-model="sorter" v-on:change="refresh_table()"><label for="nindivs_after_asc" class="radio-right">▲</label>
+				<input type="radio" id="nindivs_after_asc" value="nindivs_after_asc" v-model="sorter" v-on:change="refresh_table()"><label for="nindivs_after_asc" class="radio-left">▲</label><input type="radio" id="nindivs_after_desc" value="nindivs_after_desc" v-model="sorter" v-on:change="refresh_table()"><label for="nindivs_after_desc" class="radio-right">▼</label>
 			</div>
 			<div><HelpCompBox /> <br>
-				<input type="radio" id="compbox_after_desc" value="compbox_after_desc" v-model="sorter" v-on:change="refresh_table()" checked><label for="compbox_after_desc" class="radio-left">▼</label><input type="radio" id="compbox_after_asc" value="compbox_after_asc" v-model="sorter" v-on:change="refresh_table()"><label for="compbox_after_asc" class="radio-right">▲</label></div>
+				<input type="radio" id="compbox_after_asc" value="compbox_after_asc" v-model="sorter" v-on:change="refresh_table()" checked><label for="compbox_after_asc" class="radio-left">▲</label><input type="radio" id="compbox_after_desc" value="compbox_after_desc" v-model="sorter" v-on:change="refresh_table()"><label for="compbox_after_desc" class="radio-right">▼</label></div>
 		</div>
 
 		<div class="assoc-grid assoc-data">
