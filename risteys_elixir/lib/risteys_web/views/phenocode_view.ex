@@ -14,6 +14,31 @@ defmodule RisteysWeb.PhenocodeView do
     }
   end
 
+  def render("assocs.csv", %{assocs: assocs}) do
+    header =
+      ~w(prior_name outcome_name hr_lag prior_longname outcome_longname hr ci_min ci_max p N)
+
+    assocs =
+      Enum.map(assocs, fn assoc ->
+        [
+          assoc.prior_name,
+          assoc.outcome_name,
+          assoc.lagged_hr_cut_year,
+          assoc.prior_longname,
+          assoc.outcome_longname,
+          assoc.hr,
+          assoc.ci_min,
+          assoc.ci_max,
+          assoc.pvalue,
+          assoc.nindivs
+        ]
+      end)
+
+    Enum.concat([header], assocs)
+    |> CSV.encode()
+    |> Enum.join()
+  end
+
   def render("drugs.json", %{drug_stats: drug_stats}) do
     Enum.map(drug_stats, fn drug ->
       ci_min = drug.score - 1.96 * drug.stderr
@@ -34,6 +59,22 @@ defmodule RisteysWeb.PhenocodeView do
         atc_link: atc_link_wikipedia(drug.atc)
       }
     end)
+  end
+
+  def render("drugs.csv", %{drug_stats: drug_stats}) do
+    header = ~w(ATC name score score_ci_min score_ci_max p N)
+
+    stats =
+      Enum.map(drug_stats, fn drug ->
+        ci_min = drug.score - 1.96 * drug.stderr
+        ci_max = drug.score + 1.96 * drug.stderr
+
+        [drug.atc, drug.name, drug.score, ci_min, ci_max, drug.pvalue, drug.n_indivs]
+      end)
+
+    Enum.concat([header], stats)
+    |> CSV.encode()
+    |> Enum.join()
   end
 
   defp table_data_sources(data_sources) do

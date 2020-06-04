@@ -10,7 +10,7 @@ defmodule RisteysWeb.Router do
   end
 
   pipeline :api do
-    plug :accepts, ["json"]
+    plug :accepts, ["csv", "json"]
   end
 
   scope "/", RisteysWeb do
@@ -25,7 +25,9 @@ defmodule RisteysWeb.Router do
   scope "/api", RisteysWeb do
     pipe_through :api
 
-    get "/phenocode/:name/assocs.json", PhenocodeController, :get_assocs
-    get "/phenocode/:name/drugs.json", PhenocodeController, :get_drugs
+    get "/phenocode/:name/assocs.json", PhenocodeController, :get_assocs_json
+    get "/phenocode/:name/assocs.csv", PhenocodeController, :get_assocs_csv
+    get "/phenocode/:name/drugs.json", PhenocodeController, :get_drugs_json
+    get "/phenocode/:name/drugs.csv", PhenocodeController, :get_drugs_csv
   end
 end

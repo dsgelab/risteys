@@ -30,21 +30,48 @@ defmodule RisteysWeb.PhenocodeController do
     end
   end
 
-  def get_assocs(conn, %{"name" => name}) do
-    phenocode = Repo.get_by(Phenocode, name: name)
-    assocs = data_assocs(phenocode)
-    prior_distribs = hr_distribs(phenocode, :prior)
-    outcome_distribs = hr_distribs(phenocode, :outcome)
-
-    conn
-    |> assign(:phenocode, phenocode)
-    |> assign(:assocs, assocs)
-    |> assign(:hr_prior_distribs, prior_distribs)
-    |> assign(:hr_outcome_distribs, outcome_distribs)
-    |> render("assocs.json")
+  def get_assocs_json(conn, params) do
+    get_assocs(conn, params, :json)
   end
 
-  def get_drugs(conn, %{"name" => name}) do
+  def get_assocs_csv(conn, params) do
+    get_assocs(conn, params, :csv)
+  end
+
+  defp get_assocs(conn, %{"name" => name}, format) do
+    phenocode = Repo.get_by(Phenocode, name: name)
+    assocs = data_assocs(phenocode)
+
+    conn =
+      conn
+      |> assign(:phenocode, phenocode)
+      |> assign(:assocs, assocs)
+
+    case format do
+      :json ->
+        # These are only needed on the JSON API
+        prior_distribs = hr_distribs(phenocode, :prior)
+        outcome_distribs = hr_distribs(phenocode, :outcome)
+
+        conn
+        |> assign(:hr_prior_distribs, prior_distribs)
+        |> assign(:hr_outcome_distribs, outcome_distribs)
+        |> render("assocs.json")
+
+      :csv ->
+        render(conn, "assocs.csv")
+    end
+  end
+
+  def get_drugs_json(conn, params) do
+    get_drugs(conn, params, :json)
+  end
+
+  def get_drugs_csv(conn, params) do
+    get_drugs(conn, params, :csv)
+  end
+
+  defp get_drugs(conn, %{"name" => name}, format) do
     phenocode = Repo.get_by(Phenocode, name: name)
 
     drug_stats =
@@ -54,9 +81,12 @@ defmodule RisteysWeb.PhenocodeController do
           order_by: [desc: :score]
       )
 
-    conn
-    |> assign(:drug_stats, drug_stats)
-    |> render("drugs.json")
+    conn = assign(conn, :drug_stats, drug_stats)
+
+    case format do
+      :json -> render(conn, "drugs.json")
+      :csv -> render(conn, "drugs.csv")
+    end
   end
 
   defp show_phenocode(conn, phenocode) do
