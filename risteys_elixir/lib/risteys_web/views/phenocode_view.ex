@@ -423,10 +423,6 @@ defmodule RisteysWeb.PhenocodeView do
           stats ->
             hr_stats = Map.get(outcome_distribs, other_id, no_hr_norm_stats)
 
-            if hr_stats.hr > 6 and not is_nil(hr_stats.hr) do
-              IO.inspect(hr_stats.hr)
-            end
-
             Map.merge(
               stats,
               %{
