@@ -39,6 +39,9 @@ defmodule RisteysWeb.PhenocodeController do
   end
 
   defp get_assocs(conn, %{"name" => name}, format) do
+    # Set filename to have the endpoint name, for clarity to the users once the file is downloaded
+    conn = set_filename(conn, name <> "_survival-analyses.csv")
+
     phenocode = Repo.get_by(Phenocode, name: name)
     assocs = data_assocs(phenocode)
 
@@ -72,6 +75,7 @@ defmodule RisteysWeb.PhenocodeController do
   end
 
   defp get_drugs(conn, %{"name" => name}, format) do
+    conn = set_filename(conn, name <> "_drugs.csv")
     phenocode = Repo.get_by(Phenocode, name: name)
 
     drug_stats =
@@ -364,5 +368,15 @@ defmodule RisteysWeb.PhenocodeController do
           hip: (distrib.hip - distrib.mu) / distrib.sigma
         }
     )
+  end
+
+  defp set_filename(conn, filename) do
+    resp_headers =
+      Enum.concat(
+        conn.resp_headers,
+        [{"content-disposition", "attachment; filename=\"#{filename}\""}]
+      )
+
+    struct!(conn, resp_headers: resp_headers)
   end
 end
