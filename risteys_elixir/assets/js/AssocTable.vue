@@ -1,182 +1,263 @@
 <template>
-	<div>
-		<div class="assoc-grid thead">
-			<div class="before"><b>before</b> {{ phenocode }}</div>
-			<div class="after"><b>after</b> {{ phenocode }}</div>
+	<div class="scrolling">
+		<table>
+			<col>
+			<colgroup span="4"></colgroup>
+			<colgroup span="4"></colgroup>
+			<thead>
+				<tr>
+					<th rowspan="2">
+						<div class="border-t border-b h-full pl-2 pt-4">  <!-- div hack to have the borders stay in place on scroll -->
+							Endpoint<br>
+							<input
+								type="text"
+								placeholder="filter by name"
+								v-on:keyup.stop="refresh_table()"
+								v-model="pheno_filter"
+								class="mt-2">
+						</div>
+					</th>
+					<th colspan="4" scope="colgroup">
+						<div class="border-t h-full pt-2">Before {{ phenocode }}</div>
+					</th>
+					<th colspan="4" scope="colgroup">
+						<div class="border-t h-full pt-2">After {{ phenocode }}</div>
+					</th>
+				</tr>
+				<tr>
+					<th scope="col">
+						<div class="border-b h-full">
+							HR [95%&nbsp;CI] <br>
+							<input type="radio" id="hr_before_asc" value="hr_before_asc" v-model="sorter" v-on:change="refresh_table()" checked><label for="hr_before_asc" class="radio-left">▲</label><input type="radio" id="hr_before_desc" value="hr_before_desc" v-model="sorter" v-on:change="refresh_table()"><label for="hr_before_desc" class="radio-right">▼</label>
+						</div>
+					</th>
+					<th scope="col">
+						<div class="border-b h-full">
+							p <br>
+							<input type="radio" id="pvalue_before_asc" value="pvalue_before_asc" v-model="sorter" v-on:change="refresh_table()"><label for="pvalue_before_asc" class="radio-left">▲</label><input type="radio" id="pvalue_before_desc" value="pvalue_before_desc" v-model="sorter" v-on:change="refresh_table()"><label for="pvalue_before_desc" class="radio-right">▼</label>
+						</div>
+					</th>
+					<th scope="col">
+						<div class="border-b h-full">
+							<abbr data-title="Number of overlapping individuals">N</abbr> <br>
+							<input type="radio" id="nindivs_before_asc" value="nindivs_before_asc" v-model="sorter" v-on:change="refresh_table()"><label for="nindivs_before_asc" class="radio-left">▲</label><input type="radio" id="nindivs_before_desc" value="nindivs_before_desc" v-model="sorter" v-on:change="refresh_table()"><label for="nindivs_before_desc" class="radio-right">▼</label>
+						</div>
+					</th>
+					<th scope="col">
+						<div class="border-b h-full">
+							<HelpCompBox /> <br>
+							<input type="radio" id="compbox_before_asc" value="compbox_before_asc" v-model="sorter" v-on:change="refresh_table()" checked><label for="compbox_before_asc" class="radio-left">▲</label><input type="radio" id="compbox_before_desc" value="compbox_before_desc" v-model="sorter" v-on:change="refresh_table()"><label for="compbox_before_desc" class="radio-right">▼</label>
+						</div>
+					</th>
+					<th scope="col">
+						<div class="border-b h-full">
+							HR [95%&nbsp;CI] <br>
+							<input type="radio" id="hr_after_asc" value="hr_after_asc" v-model="sorter" v-on:change="refresh_table()"><label for="hr_after_asc" class="radio-left">▲</label><input type="radio" id="hr_after_desc" value="hr_after_desc" v-model="sorter" v-on:change="refresh_table()"><label for="hr_after_desc" class="radio-right">▼</label>
+						</div>
+					</th>
+					<th scope="col">
+						<div class="border-b h-full">
+							p <br>
+							<input type="radio" id="pvalue_after_asc" value="pvalue_after_asc" v-model="sorter" v-on:change="refresh_table()"><label for="pvalue_after_asc" class="radio-left">▲</label><input type="radio" id="pvalue_after_desc" value="pvalue_after_desc" v-model="sorter" v-on:change="refresh_table()"><label for="pvalue_after_desc" class="radio-right">▼</label>
+						</div>
+					</th>
+					<th scope="col">
+						<div class="border-b h-full">
+							<abbr data-title="Number of overlapping individuals">N</abbr> <br>
+							<input type="radio" id="nindivs_after_asc" value="nindivs_after_asc" v-model="sorter" v-on:change="refresh_table()"><label for="nindivs_after_asc" class="radio-left">▲</label><input type="radio" id="nindivs_after_desc" value="nindivs_after_desc" v-model="sorter" v-on:change="refresh_table()"><label for="nindivs_after_desc" class="radio-right">▼</label>
+						</div>
+					</th>
+					<th scope="col">
+						<div class="border-b h-full">
+							<HelpCompBox /> <br>
+							<input type="radio" id="compbox_after_asc" value="compbox_after_asc" v-model="sorter" v-on:change="refresh_table()" checked><label for="compbox_after_asc" class="radio-left">▲</label><input type="radio" id="compbox_after_desc" value="compbox_after_desc" v-model="sorter" v-on:change="refresh_table()"><label for="compbox_after_desc" class="radio-right">▼</label>
+						</div>
+					</th>
+				</tr>
+			</thead>
+			<tbody>
+				<template v-for="(pheno, idx) in assoc_table">
+					<!-- LAG: no lag -->
+					<tr v-bind:class="bg_even(idx)">
+						<!-- ENDPOINT NAME -->
+						<th v-bind:class="bg_even(idx)">
+							<img src="/images/explag.svg" v-on:click="toggle_fold(pheno.name)" alt="expand data" class="cursor-pointer mini-button">
+							<a :href="'/phenocode/' + pheno.name" :title="pheno.name">{{ pheno.longname }}</a>
+						</th>
 
-			<div class="font-bold">
-				Phenocode<br>
-				<input
-					type="text"
-					placeholder="filter by name"
-					v-on:keyup.stop="refresh_table()"
-					v-model="pheno_filter">
-			</div>
-			<div class="font-bold">HR [95%&nbsp;CI] <br>
-				<input type="radio" id="hr_before_asc" value="hr_before_asc" v-model="sorter" v-on:change="refresh_table()" checked><label for="hr_before_asc" class="radio-left">▲</label><input type="radio" id="hr_before_desc" value="hr_before_desc" v-model="sorter" v-on:change="refresh_table()"><label for="hr_before_desc" class="radio-right">▼</label>
-			</div>
-			<div class="font-bold">p <br>
-				<input type="radio" id="pvalue_before_asc" value="pvalue_before_asc" v-model="sorter" v-on:change="refresh_table()"><label for="pvalue_before_asc" class="radio-left">▲</label><input type="radio" id="pvalue_before_desc" value="pvalue_before_desc" v-model="sorter" v-on:change="refresh_table()"><label for="pvalue_before_desc" class="radio-right">▼</label></div>
-			<div class="font-bold">
-				<abbr data-title="Number of overlapping individuals">N</abbr> <br>
-				<input type="radio" id="nindivs_before_asc" value="nindivs_before_asc" v-model="sorter" v-on:change="refresh_table()"><label for="nindivs_before_asc" class="radio-left">▲</label><input type="radio" id="nindivs_before_desc" value="nindivs_before_desc" v-model="sorter" v-on:change="refresh_table()"><label for="nindivs_before_desc" class="radio-right">▼</label>
-			</div>
-			<div><HelpCompBox /> <br>
-				<input type="radio" id="compbox_before_asc" value="compbox_before_asc" v-model="sorter" v-on:change="refresh_table()" checked><label for="compbox_before_asc" class="radio-left">▲</label><input type="radio" id="compbox_before_desc" value="compbox_before_desc" v-model="sorter" v-on:change="refresh_table()"><label for="compbox_before_desc" class="radio-right">▼</label></div>
-			<div class="font-bold">HR [95%&nbsp;CI] <br>
-				<input type="radio" id="hr_after_asc" value="hr_after_asc" v-model="sorter" v-on:change="refresh_table()"><label for="hr_after_asc" class="radio-left">▲</label><input type="radio" id="hr_after_desc" value="hr_after_desc" v-model="sorter" v-on:change="refresh_table()"><label for="hr_after_desc" class="radio-right">▼</label></div>
-			<div class="font-bold">p <br>
-				<input type="radio" id="pvalue_after_asc" value="pvalue_after_asc" v-model="sorter" v-on:change="refresh_table()"><label for="pvalue_after_asc" class="radio-left">▲</label><input type="radio" id="pvalue_after_desc" value="pvalue_after_desc" v-model="sorter" v-on:change="refresh_table()"><label for="pvalue_after_desc" class="radio-right">▼</label></div>
-			<div class="font-bold">
-				<abbr data-title="Number of overlapping individuals">N</abbr> <br>
-				<input type="radio" id="nindivs_after_asc" value="nindivs_after_asc" v-model="sorter" v-on:change="refresh_table()"><label for="nindivs_after_asc" class="radio-left">▲</label><input type="radio" id="nindivs_after_desc" value="nindivs_after_desc" v-model="sorter" v-on:change="refresh_table()"><label for="nindivs_after_desc" class="radio-right">▼</label>
-			</div>
-			<div><HelpCompBox /> <br>
-				<input type="radio" id="compbox_after_asc" value="compbox_after_asc" v-model="sorter" v-on:change="refresh_table()" checked><label for="compbox_after_asc" class="radio-left">▲</label><input type="radio" id="compbox_after_desc" value="compbox_after_desc" v-model="sorter" v-on:change="refresh_table()"><label for="compbox_after_desc" class="radio-right">▼</label></div>
-		</div>
+						<!-- (before) HR -->
+						<td v-if="pheno.all.before.hr === null">-</td>
+						<td v-else-if="pheno.all.before.hr > 100">&gt;&nbsp;100</td>
+						<td v-else>{{ pheno.all.before.hr_str }}&nbsp;[{{ pheno.all.before.ci_min }},&nbsp;{{ pheno.all.before.ci_max }}]</td>
 
-		<div class="assoc-grid assoc-data">
-			<template v-for="(pheno, idx) in assoc_table">
-				<div v-bind:class="bg_even(idx)">
-					<img src="/images/explag.svg" v-on:click="toggle_fold(pheno.name)" alt="expand data" class="cursor-pointer mini-button">
-					<a :href="'/phenocode/' + pheno.name" :title="pheno.name">{{ pheno.longname }}</a>
-				</div>
+						<!-- (before) P-VALUE -->
+						<td v-if="pheno.all.before.pvalue === null">-</td>
+						<td v-else>{{ pheno.all.before.pvalue_str }}</td>
 
-				<div v-bind:class="bg_even(idx)" v-if="pheno.all.before.hr === null">-</div>
-				<div v-bind:class="bg_even(idx)" v-else-if="pheno.all.before.hr > 100">&gt;&nbsp;100</div>
-				<div v-bind:class="bg_even(idx)" v-else>{{ pheno.all.before.hr_str }}&nbsp;[{{ pheno.all.before.ci_min }},&nbsp;{{ pheno.all.before.ci_max }}]</div>
+						<!-- (before) N-INDIVS -->
+						<td v-if="pheno.all.before.nindivs === null">-</td>
+						<td v-else>{{ pheno.all.before.nindivs }}</td>
 
-				<div v-bind:class="bg_even(idx)" v-if="pheno.all.before.pvalue === null">-</div>
-				<div v-bind:class="bg_even(idx)" v-else>{{ pheno.all.before.pvalue_str }}</div>
+						<!-- (before) COMPBOX -->
+						<td v-if="pheno.all.before.hr_norm === null">-</td>
+						<td
+							v-else
+							v-html="compBox(
+								pheno.all.before.hr_norm,
+								pheno.all.before.hr_norm_min,
+								pheno.all.before.hr_norm_max,
+								pheno.all.before.hr_norm_lop,
+								pheno.all.before.hr_norm_q1,
+								pheno.all.before.hr_norm_median,
+								pheno.all.before.hr_norm_q3,
+								pheno.all.before.hr_norm_hip)">
+						</td>
 
-				<div v-bind:class="bg_even(idx)" v-if="pheno.all.before.nindivs === null">-</div>
-				<div v-bind:class="bg_even(idx)" v-else>{{ pheno.all.before.nindivs }}</div>
+						<!-- (after) HR -->
+						<td v-if="pheno.all.after.hr === null">-</td>
+						<td v-else-if="pheno.all.after.hr > 100">&gt;&nbsp;100</td>
+						<td v-else>{{ pheno.all.after.hr_str }}&nbsp;[{{ pheno.all.after.ci_min }},&nbsp;{{ pheno.all.after.ci_max }}]</td>
 
+						<!-- (after) P-VALUE -->
+						<td v-if="pheno.all.after.pvalue === null">-</td>
+						<td v-else>{{ pheno.all.after.pvalue_str }}</td>
 
-				<div
-					v-if="pheno.all.before.hr_norm === null"
-					v-bind:class="bg_even(idx)">
-					-
-				</div>
-				<div
-					v-else
-					v-bind:class="bg_even(idx)"
-					v-html="compBox(
-						pheno.all.before.hr_norm,
-						pheno.all.before.hr_norm_min,
-						pheno.all.before.hr_norm_max,
-						pheno.all.before.hr_norm_lop,
-						pheno.all.before.hr_norm_q1,
-						pheno.all.before.hr_norm_median,
-						pheno.all.before.hr_norm_q3,
-						pheno.all.before.hr_norm_hip)">
-				</div>
+						<!-- (after) N-INDIVS -->
+						<td v-if="pheno.all.after.nindivs === null">-</td>
+						<td v-else>{{ pheno.all.after.nindivs }}</td>
 
-				<div v-bind:class="bg_even(idx)" v-if="pheno.all.after.hr === null">-</div>
-				<div v-bind:class="bg_even(idx)" v-else-if="pheno.all.after.hr > 100">&gt;&nbsp;100</div>
-				<div v-bind:class="bg_even(idx)" v-else>{{ pheno.all.after.hr_str }}&nbsp;[{{ pheno.all.after.ci_min }},&nbsp;{{ pheno.all.after.ci_max }}]</div>
+						<!-- (after) COMPBOX -->
+						<td v-if="pheno.all.after.hr_norm === null">-</td>
+						<td
+							v-else
+							v-html="compBox(
+								pheno.all.after.hr_norm,
+								pheno.all.after.hr_norm_min,
+								pheno.all.after.hr_norm_max,
+								pheno.all.after.hr_norm_lop,
+								pheno.all.after.hr_norm_q1,
+								pheno.all.after.hr_norm_median,
+								pheno.all.after.hr_norm_q3,
+								pheno.all.after.hr_norm_hip)">
+						</td>
+					</tr>
 
-				<div v-bind:class="bg_even(idx)" v-if="pheno.all.after.pvalue === null">-</div>
-				<div v-bind:class="bg_even(idx)" v-else>{{ pheno.all.after.pvalue_str }}</div>
+					<!-- LAG: 1 YEAR -->
+					<tr v-bind:class="bg_even(idx)" v-if="unfolded.has(pheno.name)">
+						<!-- LAG -->
+						<th v-bind:class="bg_even(idx)" class="text-right pr-5">&lt;1 year follow-up</th>
 
-				<div v-bind:class="bg_even(idx)" v-if="pheno.all.after.nindivs === null">-</div>
-				<div v-bind:class="bg_even(idx)" v-else>{{ pheno.all.after.nindivs }}</div>
+						<!-- (before) HR -->
+						<td v-if="pheno.lagged_1y.before.hr === null">-</td>
+						<td v-else-if="pheno.lagged_1y.before.hr > 100">&gt;&nbsp;100</td>
+						<td v-else>{{ pheno.lagged_1y.before.hr_str }}&nbsp;[{{ pheno.lagged_1y.before.ci_min }},&nbsp;{{ pheno.lagged_1y.before.ci_max }}]</td>
 
-				<div
-					v-if="pheno.all.after.hr_norm === null"
-					v-bind:class="bg_even(idx)">
-					-
-				</div>
-				<div
-					v-else
-					v-bind:class="bg_even(idx)"
-					v-html="compBox(
-						pheno.all.after.hr_norm,
-						pheno.all.after.hr_norm_min,
-						pheno.all.after.hr_norm_max,
-						pheno.all.after.hr_norm_lop,
-						pheno.all.after.hr_norm_q1,
-						pheno.all.after.hr_norm_median,
-						pheno.all.after.hr_norm_q3,
-						pheno.all.after.hr_norm_hip)">
-				</div>
+						<!-- (before) P-VALUE -->
+						<td v-if="pheno.lagged_1y.before.pvalue === null">-</td>
+						<td v-else>{{ pheno.lagged_1y.before.pvalue_str }}</td>
 
-				<template v-if="unfolded.has(pheno.name)">
-					<!-- LAG 1 YEAR -->
-					<div v-bind:class="bg_even(idx)" class="text-right pr-5">&lt;1 year follow-up</div>
-					<div v-bind:class="bg_even(idx)" v-if="pheno.lagged_1y.before.hr === null">-</div>
-					<div v-bind:class="bg_even(idx)" v-else>{{ pheno.lagged_1y.before.hr_str }}&nbsp;[{{ pheno.lagged_1y.before.ci_min }},&nbsp;{{ pheno.lagged_1y.before.ci_max }}]</div>
+						<!-- (before) N-INDIVS -->
+						<td v-if="pheno.lagged_1y.before.nindivs === null">-</td>
+						<td v-else>{{ pheno.lagged_1y.before.nindivs }}</td>
 
-					<div v-bind:class="bg_even(idx)" v-if="pheno.lagged_1y.before.pvalue === null">-</div>
-					<div v-bind:class="bg_even(idx)" v-else>{{ pheno.lagged_1y.before.pvalue_str }}</div>
+						<!-- (before) COMPBOX -->
+						<td>-</td>
 
-					<div v-bind:class="bg_even(idx)" v-if="pheno.lagged_1y.before.nindivs === null">-</div>
-					<div v-bind:class="bg_even(idx)" v-else>{{ pheno.lagged_1y.before.nindivs }}</div>
+						<!-- (after) HR -->
+						<td v-if="pheno.lagged_1y.after.hr === null">-</td>
+						<td v-else-if="pheno.lagged_1y.after.hr > 100">&gt;&nbsp;100</td>
+						<td v-else>{{ pheno.lagged_1y.after.hr_str }}&nbsp;[{{ pheno.lagged_1y.after.ci_min }},&nbsp;{{ pheno.lagged_1y.after.ci_max }}]</td>
 
-					<div v-bind:class="bg_even(idx)">-</div>
+						<!-- (after) P-VALUE -->
+						<td v-if="pheno.lagged_1y.after.pvalue === null">-</td>
+						<td v-else>{{ pheno.lagged_1y.after.pvalue_str }}</td>
 
-					<div v-bind:class="bg_even(idx)" v-if="pheno.lagged_1y.after.hr === null">-</div>
-					<div v-bind:class="bg_even(idx)" v-else>{{ pheno.lagged_1y.after.hr_str }}&nbsp;[{{ pheno.lagged_1y.after.ci_min }},&nbsp;{{ pheno.lagged_1y.after.ci_max }}]</div>
+						<!-- (after) N-INDIVS -->
+						<td v-if="pheno.lagged_1y.after.nindivs === null">-</td>
+						<td v-else>{{ pheno.lagged_1y.after.nindivs }}</td>
 
-					<div v-bind:class="bg_even(idx)" v-if="pheno.lagged_1y.after.pvalue === null">-</div>
-					<div v-bind:class="bg_even(idx)" v-else>{{ pheno.lagged_1y.after.pvalue_str }}</div>
+						<!-- (after) COMPBOX -->
+						<td>-</td>
+					</tr>
 
-					<div v-bind:class="bg_even(idx)" v-if="pheno.lagged_1y.after.nindivs === null">-</div>
-					<div v-bind:class="bg_even(idx)" v-else>{{ pheno.lagged_1y.after.nindivs }}</div>
+					<!-- LAG: 5 YEARS -->
+					<tr v-bind:class="bg_even(idx)" v-if="unfolded.has(pheno.name)">
+						<!-- LAG -->
+						<th v-bind:class="bg_even(idx)" class="text-right pr-5">&lt;1-5 year follow-up</th>
 
-					<div v-bind:class="bg_even(idx)">-</div>
+						<!-- (before) HR -->
+						<td v-if="pheno.lagged_5y.before.hr === null">-</td>
+						<td v-else-if="pheno.lagged_5y.before.hr > 100">&gt;&nbsp;100</td>
+						<td v-else>{{ pheno.lagged_5y.before.hr_str }}&nbsp;[{{ pheno.lagged_5y.before.ci_min }},&nbsp;{{ pheno.lagged_5y.before.ci_max }}]</td>
 
+						<!-- (before) P-VALUE -->
+						<td v-if="pheno.lagged_5y.before.pvalue === null">-</td>
+						<td v-else>{{ pheno.lagged_5y.before.pvalue_str }}</td>
 
-					<!-- LAG 5 YEARS -->
-					<div v-bind:class="bg_even(idx)" class="text-right pr-5">1-5 year follow-up</div>
-					<div v-bind:class="bg_even(idx)" v-if="pheno.lagged_5y.before.hr === null">-</div>
-					<div v-bind:class="bg_even(idx)" v-else>{{ pheno.lagged_5y.before.hr_str }}&nbsp;[{{ pheno.lagged_5y.before.ci_min }},&nbsp;{{ pheno.lagged_5y.before.ci_max }}]</div>
+						<!-- (before) N-INDIVS -->
+						<td v-if="pheno.lagged_5y.before.nindivs === null">-</td>
+						<td v-else>{{ pheno.lagged_5y.before.nindivs }}</td>
 
-					<div v-bind:class="bg_even(idx)" v-if="pheno.lagged_5y.before.pvalue === null">-</div>
-					<div v-bind:class="bg_even(idx)" v-else>{{ pheno.lagged_5y.before.pvalue_str }}</div>
+						<!-- (before) COMPBOX -->
+						<td>-</td>
 
-					<div v-bind:class="bg_even(idx)" v-if="pheno.lagged_5y.before.nindivs === null">-</div>
-					<div v-bind:class="bg_even(idx)" v-else>{{ pheno.lagged_5y.before.nindivs }}</div>
+						<!-- (after) HR -->
+						<td v-if="pheno.lagged_5y.after.hr === null">-</td>
+						<td v-else-if="pheno.lagged_5y.after.hr > 100">&gt;&nbsp;100</td>
+						<td v-else>{{ pheno.lagged_5y.after.hr_str }}&nbsp;[{{ pheno.lagged_5y.after.ci_min }},&nbsp;{{ pheno.lagged_5y.after.ci_max }}]</td>
 
-					<div v-bind:class="bg_even(idx)">-</div>
+						<!-- (after) P-VALUE -->
+						<td v-if="pheno.lagged_5y.after.pvalue === null">-</td>
+						<td v-else>{{ pheno.lagged_5y.after.pvalue_str }}</td>
 
-					<div v-bind:class="bg_even(idx)" v-if="pheno.lagged_5y.after.hr === null">-</div>
-					<div v-bind:class="bg_even(idx)" v-else>{{ pheno.lagged_5y.after.hr_str }}&nbsp;[{{ pheno.lagged_5y.after.ci_min }},&nbsp;{{ pheno.lagged_5y.after.ci_max }}]</div>
+						<!-- (after) N-INDIVS -->
+						<td v-if="pheno.lagged_5y.after.nindivs === null">-</td>
+						<td v-else>{{ pheno.lagged_5y.after.nindivs }}</td>
 
-					<div v-bind:class="bg_even(idx)" v-if="pheno.lagged_5y.after.pvalue === null">-</div>
-					<div v-bind:class="bg_even(idx)" v-else>{{ pheno.lagged_5y.after.pvalue_str }}</div>
+						<!-- (after) COMPBOX -->
+						<td>-</td>
+					</tr>
 
-					<div v-bind:class="bg_even(idx)" v-if="pheno.lagged_5y.after.nindivs === null">-</div>
-					<div v-bind:class="bg_even(idx)" v-else>{{ pheno.lagged_5y.after.nindivs }}</div>
+					<!-- LAG: 15 YEARS -->
+					<tr v-bind:class="bg_even(idx)" v-if="unfolded.has(pheno.name)">
+						<!-- LAG -->
+						<th v-bind:class="bg_even(idx)" class="text-right pr-5">&lt;5-15 year follow-up</th>
 
-					<div v-bind:class="bg_even(idx)">-</div>
+						<!-- (before) HR -->
+						<td v-if="pheno.lagged_15y.before.hr === null">-</td>
+						<td v-else-if="pheno.lagged_15y.before.hr > 100">&gt;&nbsp;100</td>
+						<td v-else>{{ pheno.lagged_15y.before.hr_str }}&nbsp;[{{ pheno.lagged_15y.before.ci_min }},&nbsp;{{ pheno.lagged_15y.before.ci_max }}]</td>
 
-					<!-- LAG 15 YEARS -->
-					<div v-bind:class="bg_even(idx)" class="text-right pr-5">5-15 year follow-up</div>
-					<div v-bind:class="bg_even(idx)" v-if="pheno.lagged_15y.before.hr === null">-</div>
-					<div v-bind:class="bg_even(idx)" v-else>{{ pheno.lagged_15y.before.hr_str }}&nbsp;[{{ pheno.lagged_15y.before.ci_min }},&nbsp;{{ pheno.lagged_15y.before.ci_max }}]</div>
+						<!-- (before) P-VALUE -->
+						<td v-if="pheno.lagged_15y.before.pvalue === null">-</td>
+						<td v-else>{{ pheno.lagged_15y.before.pvalue_str }}</td>
 
-					<div v-bind:class="bg_even(idx)" v-if="pheno.lagged_15y.before.pvalue === null">-</div>
-					<div v-bind:class="bg_even(idx)" v-else>{{ pheno.lagged_15y.before.pvalue_str }}</div>
+						<!-- (before) N-INDIVS -->
+						<td v-if="pheno.lagged_15y.before.nindivs === null">-</td>
+						<td v-else>{{ pheno.lagged_15y.before.nindivs }}</td>
 
-					<div v-bind:class="bg_even(idx)" v-if="pheno.lagged_15y.before.nindivs === null">-</div>
-					<div v-bind:class="bg_even(idx)" v-else>{{ pheno.lagged_15y.before.nindivs }}</div>
+						<!-- (before) COMPBOX -->
+						<td>-</td>
 
-					<div v-bind:class="bg_even(idx)">-</div>
+						<!-- (after) HR -->
+						<td v-if="pheno.lagged_15y.after.hr === null">-</td>
+						<td v-else-if="pheno.lagged_15y.after.hr > 100">&gt;&nbsp;100</td>
+						<td v-else>{{ pheno.lagged_15y.after.hr_str }}&nbsp;[{{ pheno.lagged_15y.after.ci_min }},&nbsp;{{ pheno.lagged_15y.after.ci_max }}]</td>
 
-					<div v-bind:class="bg_even(idx)" v-if="pheno.lagged_15y.after.hr === null">-</div>
-					<div v-bind:class="bg_even(idx)" v-else>{{ pheno.lagged_15y.after.hr_str }}&nbsp;[{{ pheno.lagged_15y.after.ci_min }},&nbsp;{{ pheno.lagged_15y.after.ci_max }}]</div>
+						<!-- (after) P-VALUE -->
+						<td v-if="pheno.lagged_15y.after.pvalue === null">-</td>
+						<td v-else>{{ pheno.lagged_15y.after.pvalue_str }}</td>
 
-					<div v-bind:class="bg_even(idx)" v-if="pheno.lagged_15y.after.pvalue === null">-</div>
-					<div v-bind:class="bg_even(idx)" v-else>{{ pheno.lagged_15y.after.pvalue_str }}</div>
+						<!-- (after) N-INDIVS -->
+						<td v-if="pheno.lagged_15y.after.nindivs === null">-</td>
+						<td v-else>{{ pheno.lagged_15y.after.nindivs }}</td>
 
-					<div v-bind:class="bg_even(idx)" v-if="pheno.lagged_15y.after.nindivs === null">-</div>
-					<div v-bind:class="bg_even(idx)" v-else>{{ pheno.lagged_15y.after.nindivs }}</div>
-
-					<div v-bind:class="bg_even(idx)">-</div>
+						<!-- (after) COMPBOX -->
+						<td>-</td>
+					</tr>
 				</template>
-			</template>
-		</div>
+			</tbody>
+		</table>
 	</div>
 </template>
 
@@ -317,6 +398,8 @@ export default {
 		bg_even(index) {
 			if (index % 2 === 1) {
 				return "bg-grey-lightest"
+			} else {
+				return "bg-white"
 			}
 		}
 	},
@@ -329,77 +412,73 @@ export default {
 </script>
 
 <style type="text/css" scoped>
-.assoc-grid {
-    --width-table: 1200px;
-    display: grid;
-    grid-template-columns:
-        calc(30 / 100 * var(--width-table))   /* Phenocode name */
-        calc(15 / 100 * var(--width-table))   /* before: HR */
-        calc( 7 / 100 * var(--width-table))   /* before: p */
-        calc( 5 / 100 * var(--width-table))   /* before: N */
-        calc( 5 / 100 * var(--width-table))   /* before: compBox */
-        calc(16 / 100 * var(--width-table))   /* after: HR */
-        calc( 6 / 100 * var(--width-table))   /* after: p */
-        calc( 5 / 100 * var(--width-table))   /* after: N */
-        calc( 6 / 100 * var(--width-table));  /* after: compBox */
-}
-.thead > div {
-    @apply bg-grey-lightest;
-}
-.thead .before {
-    grid-column: 2 / 6;
-}
-.thead .after {
-    grid-column: 6 / 10;
-}
-.assoc-data {
-    max-height: 500px;
-    overflow: auto;
-}
-.thead .after, .thead .before {
-    text-align: center;
+div.scrolling {
+	max-width: 100%;
+	max-height: 500px;
+	overflow: scroll;
+	position: relative;
+
+	font-size: 0.8rem;
 }
 
-.thead > div:nth-child(1),
-.thead > div:nth-child(2),
-.thead > div:nth-child(3) {
-    @apply border-t-2;
-}
-.thead > div:nth-child(1),           /* header "before Phenocode" */
-.thead > div:nth-child(2),           /* header "after Phenocode"  */
-.thead > div:nth-child(3),           /* header "Phenocode"        */
-.thead > div:nth-child(4),           /* header "HR" (before)      */
-.thead > div:nth-child(8),           /* header "HR" (after)       */
-.assoc-data div:nth-child(9n+1),     /* value "Phenocode"         */
-.assoc-data div:nth-child(9n+2),     /* value "HR" (before)       */
-.assoc-data div:nth-child(9n+6) {    /* value "HR" (after)        */
-    @apply border-l-2;
-}
-.thead div:nth-child(3),
-.thead div:nth-child(4),
-.thead div:nth-child(5),
-.thead div:nth-child(6),
-.thead div:nth-child(7),
-.thead div:nth-child(8),
-.thead div:nth-child(9),
-.thead div:nth-child(10),
-.thead div:nth-child(11) {
-    @apply border-b-2;
-}
-.thead div:nth-child(2),
-.thead div:nth-child(11) {
-    @apply border-r-2;
+.scrolling table {
+	position: relative;
+	border-collapse: collapse;
 }
 
-.assoc-grid div, .assoc-data div {
-    @apply py-1;
-}
-.thead div:nth-child(1), .thead div:nth-child(2) {
-	text-align: center;
+.scrolling th, .scrolling td {
+	@apply px-1;
 }
 
+/* Allow div hack that shows borders on scroll */
+.scrolling thead th, .scrolling thead td {
+	padding: 0;
+}
 
-.mini-button {
-    box-shadow: 0 0 5px rgba(0, 0, 0, 0.5);
+/* thead gray background */
+.scrolling thead th {
+	@apply bg-grey-lightest;
+}
+
+/* thead: endpoint cell */
+.scrolling thead tr:first-child th:first-child {
+	left: 0;
+	z-index: 1;
+	height: 100px;
+}
+
+/* thead: top row */
+.scrolling thead tr:nth-child(1) th {
+	position: sticky;
+
+	top: 0;
+	height: 40px;
+}
+
+/* thead: bottom row */;
+.scrolling thead tr:nth-child(2) th {
+	position: sticky;
+
+	top: 40px;
+	height: 60px;
+	line-height: 1.5;
+}
+
+/* tbody: leftmost column */
+.scrolling tbody th {
+  position: -webkit-sticky; /* for Safari */
+  position: sticky;
+  left: 0;
+  font-weight: normal;
+}
+
+@media (min-width: 650px) {
+	div.scrolling {
+		font-size: 1rem;
+	}
+
+	.scrolling th, .scrolling td {
+		@apply px-3;
+	}
 }
 </style>

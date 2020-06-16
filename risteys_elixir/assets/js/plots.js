@@ -1,15 +1,27 @@
 import * as d3 from "d3";
 
-var width = 600,
-    height = width / 2,
-    label_margin = 30,
-    margin = {
-        top: 0,
-        right: 0,
-        bottom: 20 + label_margin,
-        left: 40 + label_margin,
-    },
-    isCumulative = false;
+var bars, xLabel, yLabel, xTicks, yTicks, subtitle;
+
+const initWidth = 500;
+let setDim = (width, isMobile) => {
+    const ratio = isMobile ? 1.3 : 2;  // more square on mobile to improve readability
+    bars   = {w: width, h: width / ratio};
+    xLabel = {w: bars.w, h: 30};
+    yLabel = {w: 15, h: bars.h};
+    xTicks = {w: bars.w, h: 20, angledExtra: -20};
+    yTicks = {w: 20, h: bars.h, marginTop: 15};
+    subtitle = {marginTop: 30};
+};
+let surface =  (angledXAxis) => {
+    let xExtra = angledXAxis ? xTicks.angledExtra : 0;
+    return {
+        w: bars.w + yTicks.w + yLabel.w,
+        h: bars.h + xTicks.h + xLabel.h + xExtra
+    }
+};
+
+var isCumulative = false;
+
 
 let accumulate = (data) => {
     let sum_data = [];
@@ -68,87 +80,103 @@ let removeNaN = (data) => {
     return data.filter(item => ! isNaN(item.value))
 }
 
-let makeHistogram = (title, xlabel, ylabel, angleXAxis, div_name, data) => {
+let makeHistogram = (xlabel, ylabel, angleXAxis, div_name, data, width, isMobile) => {
     let nanTails = hasNaN(data);
     if (nanTails) {
         data = removeNaN(data);
     }
 
-    prepareHistogram(title, nanTails, xlabel, ylabel, angleXAxis, div_name, data);
+    // We rebuild the histogram on window resize, better remove the old one if it exists!
+    d3.select("#" + div_name).selectAll("*").remove();
+    // and update the dimensions
+    setDim(width, isMobile);
+
+    prepareHistogram(nanTails, xlabel, ylabel, angleXAxis, div_name, data);
     putData(angleXAxis, div_name, data);
 }
 
-let prepareHistogram = (title, nanTails, xlabel, ylabel, angleXAxis, div_name, data) => {
+let prepareHistogram = (nanTails, xlabel, ylabel, angleXAxis, div_name, data) => {
     let selector = "#" + div_name;
-    let id_bins = "#" + div_name + "_rects";
 
-    let plot_height = height;
-    if (angleXAxis) {
-        plot_height += 30;
-    }
+    // The whole surface dimensions
+    let surf = surface(angleXAxis);
 
     let svg = d3.select(selector)
         .insert("svg", ":first-child")  // add svg as first item of selected <div>
-        .attr("width", width)
-        .attr("height", 310)
-        .attr("viewBox", "0 0 600 330")
+        .attr("width", surf.w)
+        .attr("height", surf.h)
+        .attr("viewBox", `0 0 ${surf.w} ${surf.h}`)
         .attr("class", "font-sans");
 
+    /* Tooltip */
     let tooltip = d3.select(selector)
         .append("div")
         .attr("id", div_name + "_tooltip")
         .attr("class", "tooltip")
         .style("display", "none");
 
+    /* Bars */
     svg.append("g")
         .attr("id", div_name + "_rects")
         .attr("fill", "#2779bd")
-        .attr("transform", "translate(0, 300) scale(1, -1)");
+        .attr("transform", `translate(${yLabel.w + yTicks.w}, ${bars.h}) scale(1, -1)`);
 
+    /* X axis */
     svg.append("g")
         .attr("id", div_name + "_xaxis");
 
+    /* Y axis */
     svg.append("g")
         .attr("id", div_name + "_yaxis");
 
-    // Title
-    svg.append("text")
-        .attr("transform",
-            `translate(${width / 2}, 15)`)
-        .attr("class", "font-bold")
-        .style("text-anchor", "middle")
-        .text(title);
-
     // Subtitle if NaN tails
+    const bin_msg_pos = yLabel.w + yTicks.w + bars.w / 2;
     if (nanTails) {
         svg.append("text")
-            .attr("transform", `translate(${width / 2}, 30)`)
+            .attr("transform", `translate(${bin_msg_pos}, ${subtitle.marginTop})`)
             .style("text-anchor", "middle")
             .style("font-size", "0.8rem")
             .text("(bins with 1 to 5 individuals are not shown)");
     }
 
     // X axis label
+    const extra = angleXAxis ? 0 : xTicks.angledExtra;
+    const xLabelPos = {
+        x: yLabel.w + yTicks.w + bars.w / 2,
+        y: bars.h + xTicks.h + extra
+    };
     svg.append("text")
         .attr("transform",
-              `translate(${width / 2}, ${plot_height - 10})`)  // "10" to make the label fully inside the SVG
+              `translate(${xLabelPos.x}, ${xLabelPos.y})`)
         .style("text-anchor", "middle")
         .text(xlabel);
 
+
     // Y axis label
+    const yLabelPos = {
+        x: yLabel.w,
+        y: - bars.h / 2
+    };
     svg.append("text")
-        .attr("transform", `rotate(-90) translate(${- plot_height / 2}, ${label_margin})`)
+        .attr("transform", `rotate(-90) translate(${yLabelPos.y}, ${yLabelPos.x})`)
         .style("text-anchor", "middle")
         .text(ylabel);
 };
 
 
-let toggleCumulative = (div_name, angleXAxis) => {
+let toggleCumulative = (div_name, switchToCumulative, angleXAxis) => {
+    /* Abort if not changing the state */
+    if (switchToCumulative === isCumulative) {
+        return;
+    } else {
+        isCumulative = !isCumulative;
+    }
+
     let selector = "#" + div_name;
     let id_bins = "#" + div_name + "_rects";
     let svg = d3.select(selector);
-    isCumulative = !isCumulative;
     let data = svg.select(id_bins).selectAll("rect").data();
+
     if (isCumulative) {
         putData(angleXAxis, div_name, accumulate(data));
     } else {
@@ -162,17 +190,22 @@ let putData = (angleXAxis, div_name, data) => {
     let id_bins = "#" + div_name + "_rects";
     let id_tooltip = "#" + div_name + "_tooltip";
 
+    const surf = surface(angleXAxis);
+
+    /* X scale */
     let x = d3.scaleBand()
         .domain(data.map(d => d.name))
-        .range([margin.left, width - margin.right])
-        .padding(0.2);
+        .range([yLabel.w + yTicks.w, bars.w])
+        .paddingInner(0.05);
 
+    /* Y scale */
     let y = d3.scaleLinear()
         .domain([0, d3.max(data, d => d.value)]).nice()
-        .range([height - margin.bottom, margin.top + 20]);
+        .range([bars.h - (xLabel.h + xTicks.h), yTicks.marginTop]);
 
+    /* X axis */
     let xAxis = (g) => {
-        let elem = g.attr("transform", `translate(0, ${height - margin.bottom})`)
+        let elem = g.attr("transform", `translate(${yLabel.w + yTicks.w}, ${bars.h - (xLabel.h + xTicks.h)})`)
                         .call(d3.axisBottom(x).tickSizeOuter(0));
         if (angleXAxis) {
             elem = elem.selectAll("text")
@@ -182,8 +215,14 @@ let putData = (angleXAxis, div_name, data) => {
         return elem
     }
 
+    /* Y axis */
+    const yTicksPos = {
+        // Not sure why putting "2 *" makes this work, maybe have to do with D3 putting a "text-anchor: end"?
+        x: 2 * (yLabel.w + yTicks.w),
+        y: 0
+    };
     let yAxis = (g) => g
-        .attr("transform", `translate(${margin.left}, 0)`)
+        .attr("transform", `translate(${yTicksPos.x}, ${yTicksPos.y})`)
         .call(d3.axisLeft(y));
 
     d3.select(id_xaxis)
@@ -217,7 +256,7 @@ let putData = (angleXAxis, div_name, data) => {
             update => update.call(update => drawBin(update.transition().duration(100))),
         )
         .attr("x", d => x(d.name))
-        .attr("y", margin.bottom)
+        .attr("y", xTicks.h + xLabel.h)
         .attr("width", x.bandwidth());
 };
 

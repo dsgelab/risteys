@@ -178,64 +178,24 @@ defmodule RisteysWeb.PhenocodeView do
     [prefix | icds]
   end
 
-  defp table_ontology(ontology) do
-    display = %{
-      "DOID" => %{
-        display: "DOID",
-        url: fn doid ->
-          link = "https://www.ebi.ac.uk/ols/search?q=" <> doid <> "&ontology=doid"
-          ahref(doid, link)
-        end
-      },
-      "EFO" => %{
-        display: "GWAS catalog",
-        url: fn efo ->
-          link = "https://www.ebi.ac.uk/gwas/efotraits/EFO_" <> efo
-          ahref(efo, link)
-        end
-      },
-      "MESH" => %{
-        display: "MESH",
-        url: fn mesh ->
-          link = "https://meshb.nlm.nih.gov/record/ui?ui=" <> mesh
-          ahref(mesh, link)
-        end
-      },
-      "SNOMED" => %{
-        display: "SNOMED CT",
-        url: fn snomed ->
-          link =
-            "https://browser.ihtsdotools.org/?perspective=full&conceptId1=" <>
-              snomed <> "&edition=en-edition"
+  defp ontology_links(ontology) do
+    # Helper function to link to external resources
+    linker = fn source, id ->
+      link = case source do
+	"DOID" -> "https://www.ebi.ac.uk/ols/search?q=" <> id <> "&ontology=doid"
+	"EFO" -> "https://www.ebi.ac.uk/gwas/efotraits/EFO_" <> id
+	"MESH" -> "https://meshb.nlm.nih.gov/record/ui?ui=" <> id
+	"SNOMED" ->             "https://browser.ihtsdotools.org/?perspective=full&conceptId1=" <> id <> "&edition=en-edition"
+	     end
+      ahref(source, link)
+    end
 
-          ahref(snomed, link)
-        end
-      }
-    }
+    ontology = Enum.reject(ontology, fn {_source, ids} -> ids == [] end)
 
-    table =
-      for {source, values} <- ontology, into: %{} do
-        values =
-          Enum.map(values, fn id ->
-            fun =
-              display
-              |> Map.fetch!(source)
-              |> Map.fetch!(:url)
-
-            fun.(id)
-          end)
-
-        source =
-          display
-          |> Map.fetch!(source)
-          |> Map.fetch!(:display)
-
-        values = Enum.intersperse(values, ", ")
-
-        {source, values}
-      end
-
-    Enum.reject(table, fn {_name, values} -> values == [] end)
+    for {source, ids} <- ontology, into: [] do
+      first_id = Enum.at(ids, 0)
+      linker.(source, first_id)
+    end
   end
 
   defp distrib_values(distrib) do
@@ -250,7 +210,7 @@ defmodule RisteysWeb.PhenocodeView do
   end
 
   defp abbr(text, title) do
-    content_tag(:abbr, text, [{:data, [title: title]}])
+    content_tag(:abbr, text, title: title)
   end
 
   defp icd10_url(text, icd) do

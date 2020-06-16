@@ -1,6 +1,6 @@
 <template>
 	<div>
-		<p>Y:
+		<p class="mb-2">Y:
 			<input type="radio" id="pvalue" value="pvalue" v-model="y_axis" checked><label v-on:click="set_yaxis('pvalue')" for="pvalue" class="radio-left">p-value</label><input type="radio" id="hr" value="hr" v-model="y_axis"><label v-on:click="set_yaxis('hr')" for="hr" class="radio-right">HR</label>
 		</p>
 		<div id="d3-assoc-plot"></div>
@@ -43,8 +43,8 @@ let square = {
 // Category colormap
 let nCategories = 18;
 let colormap = [
-	"#2779bd",
-	"#d33c8e",
+	"#4e98e1",
+	"#9f0065",
 	"#cecece"  // p-value >= 0.05
 ]
 
