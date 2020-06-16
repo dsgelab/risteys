@@ -18,8 +18,7 @@
 			   :aria-activedescendant="getItemIdSelected()"
 			   placeholder="click or type 's' to search for disease, ICD code, endpoint"
 			   id="search-input"
-			   autocomplete="off"
-			   class="font-mono">
+			   autocomplete="off">
 
 		<div id="search-results" class="results" role="grid">
 			<div class="category" v-for="(category, idx_category) in results">
@@ -55,10 +54,14 @@ div[role="combobox"] > input {
     box-shadow: inset 0 0 15px rgba(0, 0, 0, 0.1);
 	@apply p-3;
     @apply w-full;
+
+    @apply border-2;
+    @apply border-grey;
 }
 
 div[role="combobox"] > input:focus {
     box-shadow: none;
+    @apply border-blue-dark;
 }
 
 .results {

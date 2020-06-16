@@ -33,7 +33,7 @@ export default {
 }
 </script>
 
-<style type="text/css">
+<style type="text/css" scoped>
 p {
 	margin-top: 0.5rem;
 }

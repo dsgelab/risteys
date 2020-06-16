@@ -1,45 +1,68 @@
 <template>
-	<div>
-		<div class="drugs-grid thead">
-			<div>Name <br>
-				<input
-					type="text"
-					placeholder="filter by drug name or ATC"
-					v-model="drug_filter"
-					v-on:keyup.stop="refresh_table()"
-					>
-			</div>
-			<div>
-				<div style="position: relative; left: -34px"><HelpDrugScore v-bind:phenocode="this.phenocode" /> Score</div>
-				<input type="radio" id="score_asc" value="score_asc" v-model="sorter" v-on:change="refresh_table()" checked><label for="score_asc" class="radio-left">▲</label><input type="radio" id="score_desc" value="score_desc" v-model="sorter" v-on:change="refresh_table()"><label for="score_desc" class="radio-right">▼</label>
-			</div>
-			<div>[95% CI] <br>
-			</div>
-			<div>p <br>
-			<input type="radio" id="pvalue_asc" value="pvalue_asc" v-model="sorter" v-on:change="refresh_table()"><label for="pvalue_asc" class="radio-left">▲</label><input type="radio" id="pvalue_desc" value="pvalue_desc" v-model="sorter" v-on:change="refresh_table()"><label for="pvalue_desc" class="radio-right">▼</label></div>
-			<div>N <br>
-			<input type="radio" id="nindivs_asc" value="nindivs_asc" v-model="sorter" v-on:change="refresh_table()"><label for="nindivs_asc" class="radio-left">▲</label><input type="radio" id="nindivs_desc" value="nindivs_desc" v-model="sorter" v-on:change="refresh_table()"><label for="nindivs_desc" class="radio-right">▼</label></div>
-			<div>ATC code <br>
-			<input type="radio" id="atc_asc" value="atc_asc" v-model="sorter" v-on:change="refresh_table()"><label for="atc_asc" class="radio-left">▲</label><input type="radio" id="atc_desc" value="atc_desc" v-model="sorter" v-on:change="refresh_table()"><label for="atc_desc" class="radio-right">▼</label></div>
-		</div>
-
-		<div v-if="drug_table.length > 0"
-			class="drugs-grid drugs-data">
-			<template v-for="(drug, idx) in drug_table">
-				<div v-bind:class="bg_class(idx)">{{ drug.name }}</div>
-				<div v-bind:class="bg_class(idx)">{{ drug.score_str }}</div>
-				<div v-bind:class="bg_class(idx)">[{{ drug.ci_min_str }}, {{ drug.ci_max_str }}]</div>
-				<div v-bind:class="bg_class(idx)">{{ drug.pvalue_str }}</div>
-				<div v-bind:class="bg_class(idx)">{{ drug.n_indivs }}</div>
-				<div v-bind:class="bg_class(idx)">
-					<a v-bind:href="drug.atc_link" target="_blank" rel="noopener noreferrer external">{{ drug.atc }}</a>
-				</div>
-			</template>
-		</div>
-		<div v-else
-			class="drugs-grid drugs-data">
+	<div class="scrolling">
+		<template v-if="drug_table.length > 0">
+			<table class="w-full">
+				<thead>
+					<tr>
+						<th>
+							<div class="h-full border-b border-t pl-2 pt-4">  <!-- div hack to have the borders stay in place on scroll -->
+								Name <br>
+								<input
+									type="text"
+									placeholder="filter by drug name or ATC"
+									v-model="drug_filter"
+									v-on:keyup.stop="refresh_table()"
+									>
+							</div>
+						</th>
+						<th>
+							<div class="h-full border-t border-b">
+								<div><HelpDrugScore v-bind:phenocode="this.phenocode" /> Score</div>
+						<input type="radio" id="score_asc" value="score_asc" v-model="sorter" v-on:change="refresh_table()" checked><label for="score_asc" class="radio-left">▲</label><input type="radio" id="score_desc" value="score_desc" v-model="sorter" v-on:change="refresh_table()"><label for="score_desc" class="radio-right">▼</label>
+							</div>
+						</th>
+						<th>
+							<div class="h-full border-t border-b">
+								[95% CI]
+							</div>
+						</th>
+						<th>
+							<div class="h-full border-t border-b">
+								p <br>
+					<input type="radio" id="pvalue_asc" value="pvalue_asc" v-model="sorter" v-on:change="refresh_table()"><label for="pvalue_asc" class="radio-left">▲</label><input type="radio" id="pvalue_desc" value="pvalue_desc" v-model="sorter" v-on:change="refresh_table()"><label for="pvalue_desc" class="radio-right">▼</label>
+							</div>
+						</th>
+						<th>
+							<div class="h-full border-t border-b">
+								N <br>
+					<input type="radio" id="nindivs_asc" value="nindivs_asc" v-model="sorter" v-on:change="refresh_table()"><label for="nindivs_asc" class="radio-left">▲</label><input type="radio" id="nindivs_desc" value="nindivs_desc" v-model="sorter" v-on:change="refresh_table()"><label for="nindivs_desc" class="radio-right">▼</label>
+							</div>
+						</th>
+						<th>
+							<div class="h-full border-t border-b">
+								ATC code <br>
+					<input type="radio" id="atc_asc" value="atc_asc" v-model="sorter" v-on:change="refresh_table()"><label for="atc_asc" class="radio-left">▲</label><input type="radio" id="atc_desc" value="atc_desc" v-model="sorter" v-on:change="refresh_table()"><label for="atc_desc" class="radio-right">▼</label>
+							</div>
+						</th>
+					</tr>
+				</thead>
+				<tbody>
+					<template v-for="(drug, idx) in drug_table">
+						<tr v-bind:class="bg_class(idx)">
+							<th v-bind:class="bg_class(idx)">{{ drug.name }}</th>
+							<td>{{ drug.score_str }}</td>
+							<td>[{{ drug.ci_min_str }}, {{ drug.ci_max_str }}]</td>
+							<td>{{ drug.pvalue_str }}</td>
+							<td>{{ drug.n_indivs }}</td>
+							<td><a v-bind:href="drug.atc_link" target="_blank" rel="noopener noreferrer external">{{ drug.atc }}</a></td>
+						</tr>
+					</template>
+				</tbody>
+			</table>
+		</template>
+		<template v-else>
 			<p>No data.</p>
-		</div>
+		</template>
 	</div>
 </template>
 
@@ -116,6 +139,8 @@ export default {
 		bg_class(idx) {
 			if (idx % 2 === 1) {
 				return "bg-grey-lightest"
+			} else {
+				return "bg-white"
 			}
 		},
 		refresh_table() {
@@ -135,31 +160,66 @@ export default {
 </script>
 
 
-<style>
-.drugs-grid {
-    display: grid;
-    grid-template-columns:
-        590px
-        116px
-        130px
-        104px
-        87px
-        113px;
+<style scoped>
+div.scrolling {
+	max-width: 100%;
+	max-height: 500px;
+	overflow: scroll;
+	position: relative;
+
+	font-size: 0.8rem;
 }
 
-.drugs-grid.thead {
-    @apply font-bold;
-    @apply bg-grey-lightest;
-    @apply border-t;
-    @apply border-b;
-    margin-bottom: 1px;
+.scrolling table {
+	position: relative;
+	border-collapse: collapse;
 }
 
-.drugs-data {
-    max-height: 500px;
-    overflow: auto;
+.scrolling th, .scrolling td {
+	@apply px-1;
 }
-.drugs-data > div, .drugs-grid.thead > div {
-    @apply py-1;
+
+/* Allow div hack that shows borders on scroll */
+.scrolling thead th, .scrolling thead td {
+	padding: 0;
+}
+
+/* thead gray background */
+.scrolling thead th {
+	@apply bg-grey-lightest;
+}
+
+/* thead: drug cell */
+.scrolling thead tr:first-child th:first-child {
+	left: 0;
+	z-index: 1;
+	height: 80px;
+}
+
+/* thead: row */
+.scrolling thead tr th {
+	position: sticky;
+
+	top: 0;
+	line-height: 1.5;
+	height: 80px;
+}
+
+/* tbody: leftmost column */
+.scrolling tbody th {
+  position: -webkit-sticky; /* for Safari */
+  position: sticky;
+  left: 0;
+  font-weight: normal;
+}
+
+@media (min-width: 650px) {
+	div.scrolling {
+		font-size: 1rem;
+	}
+
+	.scrolling th, .scrolling td {
+		@apply px-3;
+	}
 }
 </style>

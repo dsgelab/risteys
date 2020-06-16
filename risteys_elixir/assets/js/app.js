@@ -23,7 +23,6 @@ import { forEach } from "lodash-es";
 import AssocPlot from './AssocPlot.vue';
 import AssocTable from './AssocTable.vue';
 import DrugTable from './DrugTable.vue';
-import Search from './Search.vue';
 import SearchBox from './SearchBox.vue';
 
 // Help buttons
@@ -37,7 +36,6 @@ import HelpRecurrence from './HelpRecurrence.vue';
 
 
 var path = window.location.pathname;
-
 
 
 /*
@@ -73,6 +71,52 @@ let hideHelpContent = (closeButton) => {
 let closeButtons = document.querySelectorAll(".help-close");
 forEach(closeButtons, (elem) => elem.addEventListener("click", () => hideHelpContent(elem)));
 
+
+let getPlotInfo = (windowWidth) => {
+    const
+        maxWidth = 500,
+        minWidth = 300,
+        margin = 90,
+        narrowScreen = 650,  // This is also defined in the CSS
+        isMobile = windowWidth < narrowScreen;
+
+    var res;
+
+    if (isMobile) {
+        res = Math.max(windowWidth, minWidth);  // TODO maybe sub a margin
+        res = res - margin;
+    } else {  // Computer view
+        res = Math.min(
+            windowWidth / 2,  // There are 2 plots on 1 line when in computer view
+            maxWidth
+        );
+    }
+
+    return {
+        isMobile: isMobile,
+        width: res
+    }
+};
+
+
+/* ≡ MOBILE MENU */
+let elNav = document.getElementById("nav-narrow");
+if (elNav !== null) {  // we are a page with the Nav button
+    let elToggle = document.getElementById("toggle-nav-menu");
+    let displayNav = false;  // initial state: hidden
+    elToggle.addEventListener('click', event => {
+        displayNav = !displayNav;
+
+        if (displayNav) {
+            elNav.style.display = "unset";
+        } else {
+            elNav.style.display = "none";
+        }
+    });
+}
+
+
+
 /*
  *  HOME PAGE
  */
@@ -80,11 +124,11 @@ if (path === "/") {
     /* SEARCH */
     var app_search_results = new Vue({
         el: '#app-search-results',
-        template: '<Search v-bind:results="search_results"/>',
+        template: '<SearchBox class="frontpage" v-bind:results="search_results"/>',
         data: {
             search_results: [],
         },
-        components: { Search }
+        components: { SearchBox }
     });
 
     search_channel.on("results", payload => {
@@ -110,6 +154,8 @@ if (path.startsWith("/phenocode/")) {  // Load only on phenocode pages
     let phenocode = path.split("/")[2];
 
     init_search_key();
+
+
 
     /* SEARCH BOX */
     var pheno_search_results = new Vue({
@@ -157,22 +203,50 @@ if (path.startsWith("/phenocode/")) {  // Load only on phenocode pages
     });
 
     /* HISTOGRAMS */
-    makeHistogram("Year distribution",
-        "year",
-        "number of individuals",
-        true,
-        "plot_events_by_year",
-        events_by_year);
-    makeHistogram("Age distribution",
-        "age bracket",
-        "number of individuals",
-        false,
-        "plot_bin_by_age",
-        bin_by_age);
+    let plotInfo = getPlotInfo(window.innerWidth);
+    let makeHistYear = (w, isMobile) => {
+        makeHistogram(
+            "year",
+            "number of individuals",
+            true,
+            "plot_events_by_year",
+            events_by_year,
+            w,
+            isMobile
+        );
+    };
+    let makeHistAge = (w, isMobile) => {
+        const angledLabels = isMobile;
+        makeHistogram(
+            "age bracket",
+            "number of individuals",
+            angledLabels,
+            "plot_bin_by_age",
+            bin_by_age,
+            w,
+            isMobile
+        );
+    };
 
-    let button = document.getElementById("toggle_year_cumulative");
-    button.addEventListener('click', event => {
-        toggleCumulative("plot_events_by_year", true);
+    // Actually plot the histograms on page load
+    makeHistYear(plotInfo.width, plotInfo.isMobile);
+    makeHistAge(plotInfo.width, plotInfo.isMobile);
+
+    // Replot the histograms on window resize
+    window.addEventListener('resize', () => {
+        let newPlotInfo = getPlotInfo(window.innerWidth)
+        makeHistYear(newPlotInfo.width, newPlotInfo.isMobile);
+        makeHistAge(newPlotInfo.width, newPlotInfo.isMobile);
+    });
+
+    let cumulativeOn = document.getElementById("cumulative-on");
+    cumulativeOn.addEventListener('click', event => {
+        toggleCumulative("plot_events_by_year", true, true);
+    });
+
+    let cumulativeOff = document.getElementById("cumulative-off");
+    cumulativeOff.addEventListener('click', event => {
+        toggleCumulative("plot_events_by_year", false, true);
     });
 
     /* ASSOC DATA */
