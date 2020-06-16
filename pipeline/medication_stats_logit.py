@@ -3,11 +3,12 @@ Compute drug scores related to a given endpoint.
 
 Usage:
     python3 medication_stats_logit.py \
-        <ENDPOINT> \             # FinnGen endpoint for which to compute associated drug scores
-        <PATH_FIRST_EVENTS> \    # Path to the first events file from FinnGen
-        <PATH_DETAILED_LOGIT> \  # Path to the detailed longitudinal file from FinnGen
-        <PATH_MINIMUM_INFO> \    # Path to the minimum file from FinnGen
-        <OUTPUT_DIRECTORY>       # Path to where to put the output files
+        <ENDPOINT> \                  # FinnGen endpoint for which to compute associated drug scores
+        <PATH_FIRST_EVENTS> \         # Path to the first events file from FinnGen
+        <PATH_DETAILED_LOGIT> \       # Path to the detailed longitudinal file from FinnGen
+        <PATH_ENDPOINT_DEFINITIONS \  # Path to the endpoint definitions file from FinnGen
+        <PATH_MINIMUM_INFO> \         # Path to the minimum file from FinnGen
+        <OUTPUT_DIRECTORY>            # Path to where to put the output files
 
 Outputs:
 - <ENDPOINT>_scores.csv: CSV file with score and standard error for each drug
@@ -50,7 +51,7 @@ PRED_YOB = 1960
 PRED_FG_ENDPOINT_YEAR = 2018
 
 
-def main(fg_endpoint, first_events, detailed_longit, minimum_info, output_dir):
+def main(fg_endpoint, first_events, detailed_longit, endpoint_defs, minimum_info, output_dir):
     """Compute a score for the association of a given drug to a FinnGen endpoint"""
     line_buffering = 1
 
@@ -77,21 +78,27 @@ def main(fg_endpoint, first_events, detailed_longit, minimum_info, output_dir):
     ])
 
     # Load endpoint and drug data
-    df_logit = load_data(fg_endpoint, first_events, detailed_longit, minimum_info)
+    df_logit, endpoint_def = load_data(
+        fg_endpoint,
+        first_events,
+        detailed_longit,
+        endpoint_defs,
+        minimum_info)
+    is_sex_specific = endpoint_def.SEX.notna()
 
     for drug in df_logit.ATC.unique():
-        data_comp_logit(df_logit, fg_endpoint, drug, res_writer, counts_writer)
+        data_comp_logit(df_logit, fg_endpoint, drug, is_sex_specific, res_writer, counts_writer)
 
     scores_file.close()
     counts_file.close()
 
 
-def load_data(fg_endpoint, first_events, detailed_longit, minimum_info):
+def load_data(fg_endpoint, first_events, detailed_longit, endpoint_defs, minimum_info):
     """Load the data for the given endpoint and all the drug events"""
     fg_endpoint_age = fg_endpoint + "_AGE"
     fg_endpoint_year = fg_endpoint + "_YEAR"
 
-    # ENDPOINT DATA (for Logit model)
+    # FIRST-EVENT DATA (for logit model)
     logger.info("Loading endpoint data")
     df_endpoint = pd.read_csv(
         first_events,
@@ -141,15 +148,23 @@ def load_data(fg_endpoint, first_events, detailed_longit, minimum_info):
     df_info["female"] = df_info.SEX.apply(lambda d: 1.0 if d == "female" else 0.0)
     df_info = df_info.drop(columns=["SEX"])
 
+
+    # ENDPOINT DEFINITION
+    df_endpoint_defs = pd.read_csv(
+        endpoint_defs,
+        usecols=["NAME", "SEX"]
+        dialect=csv.excel_tab)
+    endpoint_def = df_endpoint_defs.loc[df_endpoint_defs.NAME == fg_endpoint, :].iloc[0]
+
     # Merge the data into a single DataFrame
     logger.info("Merging dataframes")
     df_logit = df_info.merge(df_endpoint, on="FINNGENID")
     df_logit = df_logit.merge(df_drug, on="FINNGENID")
 
-    return df_logit
+    return df_logit, endpoint_def
 
 
-def data_comp_logit(df, fg_endpoint, drug, res_writer, counts_writer):
+def data_comp_logit(df, fg_endpoint, drug, is_sex_specific, res_writer, counts_writer):
     logger.info(f"Computing for: {fg_endpoint} / {drug}")
     df_stats, counts = logit_controls_cases(
         df,
@@ -176,7 +191,7 @@ def data_comp_logit(df, fg_endpoint, drug, res_writer, counts_writer):
 
     # Compute the score for the given endpoint / drug
     try:
-        score, stderr = comp_score_logit(df_stats)
+        score, stderr = comp_score_logit(df_stats, is_sex_specific)
     except LinAlgError as exc:
         logger.warning(f"LinAlgError: {exc}")
     else:
@@ -250,12 +265,15 @@ def logit_controls_cases(
     return df_stats, counts
 
 
-def comp_score_logit(df):
+def comp_score_logit(df, is_sex_specific):
     logger.info("Model computation score")
+    # Remove the sex covariate for sex-specific endpoints, otherwise
+    # it will fail since there will be no females or no males.
+    model = 'drug ~ yob + yob*yob + fg_endpoint_year + fg_endpoint_year*fg_endpoint_year'
+    if not is_sex_specific:
+        model += ' + female'
     # Compute score using Logistic model, predict using fixed values
-    mod = logit(
-        'drug ~ female + yob + yob*yob + fg_endpoint_year + fg_endpoint_year*fg_endpoint_year',
-        df)
+    mod = logit(model, df)
     res = mod.fit(disp=False)  # fit() without displaying convergence messages
     predict_data = pd.DataFrame({
         "Intercept": [1.0],
@@ -278,6 +296,7 @@ if __name__ == '__main__':
         fg_endpoint=argv[1],
         first_events=Path(argv[2]),
         detailed_longit=Path(argv[3]),
-        minimum_info=Path(argv[4]),
-        output_dir=Path(argv[5])
+        endpoint_defs=Path(argv[4]),
+        minimum_info=Path(argv[5]),
+        output_dir=Path(argv[6])
     )

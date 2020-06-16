@@ -3,6 +3,7 @@ defmodule RisteysWeb.PhenocodeController do
 
   alias Risteys.{
     Repo,
+    ATCDrug,
     CoxHR,
     DrugStats,
     Icd9,
@@ -81,8 +82,18 @@ defmodule RisteysWeb.PhenocodeController do
     drug_stats =
       Repo.all(
         from dstats in DrugStats,
+          join: drug in ATCDrug,
+          on: drug.id == dstats.atc_id,
           where: dstats.phenocode_id == ^phenocode.id,
-          order_by: [desc: :score]
+          order_by: [desc: :score],
+          select: %{
+            description: drug.description,
+            score: dstats.score,
+            pvalue: dstats.pvalue,
+            stderr: dstats.stderr,
+            n_indivs: dstats.n_indivs,
+            atc: drug.atc
+          }
       )
 
     conn = assign(conn, :drug_stats, drug_stats)

@@ -1,3 +1,5 @@
+# NOTE: This migration and the table structure is overseeded by a newer migration.
+
 defmodule Risteys.Repo.Migrations.CreateDrugStats do
   use Ecto.Migration
 

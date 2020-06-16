@@ -45,7 +45,7 @@ defmodule RisteysWeb.PhenocodeView do
       ci_max = drug.score + 1.96 * drug.stderr
 
       %{
-        name: drug.name,
+        name: drug.description,
         score_num: drug.score,
         score_str: round(drug.score, 2),
         ci_min_num: ci_min,
