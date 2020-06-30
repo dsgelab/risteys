@@ -17,7 +17,6 @@
 			   aria-controls="search-results"
 			   :aria-activedescendant="getItemIdSelected()"
 			   placeholder="click or type 's' to search for disease, ICD code, endpoint"
-			   autofocus="autofocus"
 			   id="search-input"
 			   autocomplete="off"
 			   class="font-mono">
