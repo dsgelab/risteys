@@ -29,6 +29,9 @@ import pandas as pd
 from log import logger
 
 
+EVENT_YEAR_LESS_THAN = 2021
+
+
 def main(info_path, first_event_path, longit_path, longit_output_path):
     """Check the data for quality control"""
     qc_info_file(info_path)
@@ -75,11 +78,11 @@ def qc_longit_file(input_path, output_path):
 
 
 def check_year(df):
-    """Check "year" in the data is less than 2020.
+    """Check "year" in the data is meaningful.
 
     NOTE: the year will increase as new FinnGen data is released.
     """
-    assert (df.BL_YEAR < 2020).all()
+    assert (df.BL_YEAR < EVENT_YEAR_LESS_THAN).all()
 
 
 def check_age(df):

@@ -40,7 +40,7 @@ PRE_EXCLUSION = 1 * MONTH
 POST_DURATION = 5 * WEEK
 
 STUDY_STARTS = 1998  # inclusive, from 1998-01-01 onward
-STUDY_ENDS = 2019    # exclusive, up until 2018-12-31
+STUDY_ENDS = 2021    # exclusive, up until 2020-12-31
 STUDY_DURATION = 20 * YEAR
 
 MIN_CASES = 15
