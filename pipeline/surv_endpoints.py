@@ -68,7 +68,7 @@ CROSS_THRESHOLD = 10 # how many individuals to have, at least, in each
 LATER_THRESHOLD = 25 # how many individuals to have, at least, for the
                      # "later" endpoints
 STUDY_STARTS_AFTER = 1997  # Look at the data after this year
-STUDY_ENDS_BEFORE =  2019  # Look at the data before this year
+STUDY_ENDS_BEFORE =  2020  # Look at the data before this year
 
 
 def prechecks(events_path):
@@ -116,7 +116,7 @@ def load_data(events_path):
     # Read the longitudinal file
     df = pd.read_hdf(events_path, "/first_event")
 
-    # Keep only events in [1998, 2019[, the period we have all
+    # Keep only events in [1998, 2020[, the period we have all
     # registry data.
     df = df[df.YEAR.gt(STUDY_STARTS_AFTER) & df.YEAR.lt(STUDY_ENDS_BEFORE)]
 
