@@ -1,3 +1,11 @@
+"""
+DOCS TODO
+
+REFS:
+- CASE-COHORT
+  https://www.stata.com/meeting/nordic-and-baltic16/slides/norway16_johansson.pdf
+- NB COMO
+"""
 from csv import writer as csv_writer
 from pathlib import Path
 from sys import argv
@@ -13,9 +21,10 @@ from log import logger
 STUDY_STARTS = 1998.0  # inclusive
 STUDY_ENDS = 2019.99   # inclusive, using same number format as FinnGen data files
 
-MAX_CONTROLS = 10_000
-MIN_CASES = 10
-class NotEnoughCases(Exception):
+N_SUBCOHORT = 10_000
+MIN_ENDP_DEATH = 10  # Minimum number of individuals having both the endpoint and died
+
+class NotEnoughEndpDeath(Exception):
     pass
 
 
@@ -28,12 +37,12 @@ def main(path_definitions, path_dense_fevents, path_info, output_path):
 
     for _, endpoint in endpoints.iterrows():
         try:
-            df_durations = prep_coxhr(endpoint, df_events, df_info)
-            compute_coxhr(endpoint, df_durations, res_writer)
-        except NotEnoughCases:
-            logger.warning(f"Not enough cases for {endpoint.NAME}")
+            df_lifelines = prep_coxhr(endpoint, df_events, df_info)
+            compute_coxhr(endpoint, df_lifelines, res_writer)
+        except NotEnoughEndpDeath as exc:
+            logger.warning(exc)
         except ConvergenceError as exc:
-            logger.warning("Failed to run Cox.fit():\n{exc}")
+            logger.warning(f"Failed to run Cox.fit():\n{exc}")
 
     res_file.close()
 
@@ -117,45 +126,65 @@ def init_csv(res_file):
 
 def prep_coxhr(endpoint, df_events, df_info):
     logger.info(f"Preparing data before Cox fitting for {endpoint.NAME}")
-    all_indivs = set(df_events.FINNGENID)
-    with_endp  = set(df_events.loc[df_events.ENDPOINT == endpoint.NAME, "FINNGENID"])
-    with_death = set(df_events.loc[df_events.ENDPOINT == "DEATH", "FINNGENID"])
 
-    unexp           = all_indivs - with_endp - with_death  # control group
-    unexp_death     = with_death - with_endp
-    unexp_exp       = with_endp  - with_death
-    unexp_exp_death = with_endp  & with_death
+    # Define groups for the case-cohort design study.
+    # Naming follows Johansson-16 paper.
+    cohort = set(df_events.FINNGENID)
+    cases = set(df_events.loc[df_events.ENDPOINT == "DEATH", "FINNGENID"])
+    cc_subcohort = set(np.random.choice(list(cohort), N_SUBCOHORT, replace=False))
+    cc_m = len(cohort - cases)
+    cc_ms = len(cc_subcohort & (cohort - cases))
+    cc_pm = cc_ms / cc_m
+    cc_weight_non_cases = 1 / cc_pm
+    cc_sample = cases | cc_subcohort
 
-    assert len(all_indivs) == (len(unexp) + len(unexp_death) + len(unexp_exp) + len(unexp_exp_death))
-    if len(unexp_exp_death) < MIN_CASES:
-        raise NotEnoughCases
+    # Reduce the original population to be the smaller "sample" pop from the case-cohort study
+    df_events = df_events.loc[df_events.FINNGENID.isin(cc_sample), :]
+    df_info = df_info.loc[df_info.FINNGENID.isin(cc_sample), :]
+
+    # Assign case-cohort weight to each individual
+    df_weights = pd.DataFrame({"FINNGENID": list(cc_sample)})
+    df_weights["weight"] = 1.0
+    df_weights.loc[df_weights.FINNGENID.isin(cases), "weight"] = cc_weight_non_cases
+    df_info = df_info.merge(df_weights, on="FINNGENID")
+
+    # Define groups for the unexposed/exposed study
+    with_endp = set(df_events.loc[df_events.ENDPOINT == endpoint.NAME, "FINNGENID"])
+    unexp           = cohort - with_endp - cases
+    unexp_death     = cases - with_endp
+    unexp_exp       = with_endp - cases
+    unexp_exp_death = with_endp & cases
+
+    assert len(cohort) == (len(unexp) + len(unexp_death) + len(unexp_exp) + len(unexp_exp_death))
+    if len(unexp_exp_death) < MIN_ENDP_DEATH:
+        raise NotEnoughEndpDeath(f"Not enough individuals having endpoint({endpoint.NAME}) and death: {len(unexp_exp_death)} < {MIN_ENDP_DEATH}")
 
     # Merge endpoint data with info data
     df_endp = (
         df_events.loc[df_events.ENDPOINT == endpoint.NAME, ["FINNGENID", "AGE"]]
         .rename(columns={"AGE": "ENDPOINT_AGE"})
     )
-    df_merge = df_info.merge(df_endp, on="FINNGENID", how="left")
+    df_sample = df_info.merge(df_endp, on="FINNGENID", how="left")  # left join to keep individuals not having the endpoint
 
     # Move endpoint to study start if it happened before the study
-    exposed_before_study = df_merge.ENDPOINT_AGE < df_merge.START_AGE
-    df_merge.loc[exposed_before_study, "ENDPOINT_AGE"] = df_merge.loc[exposed_before_study, "START_AGE"]
+    exposed_before_study = df_sample.ENDPOINT_AGE < df_sample.START_AGE
+    df_sample.loc[exposed_before_study, "ENDPOINT_AGE"] = df_sample.loc[exposed_before_study, "START_AGE"]
 
     # Controls
-    controls = np.random.choice(list(unexp), MAX_CONTROLS, replace=False)
-    df_controls = df_merge.loc[df_merge.FINNGENID.isin(controls), :].copy()
+    controls = np.random.choice(list(unexp), N_SUBCOHORT, replace=False)
+    df_controls = df_sample.loc[df_sample.FINNGENID.isin(controls), :].copy()
     df_controls["duration"] = df_controls.END_AGE - df_controls.START_AGE
     df_controls["endpoint"] = False
     df_controls["death"] = False
 
     # Unexposed -> Death
-    df_unexp_death = df_merge.loc[df_merge.FINNGENID.isin(unexp_death), :].copy()
+    df_unexp_death = df_sample.loc[df_sample.FINNGENID.isin(unexp_death), :].copy()
     df_unexp_death["duration"] = df_unexp_death.DEATH_AGE - df_unexp_death.START_AGE
     df_unexp_death["endpoint"] = False
     df_unexp_death["death"] = True
 
     # Unexposed -> Exposed: need time-window splitting
-    df_unexp_exp = df_merge.loc[df_merge.FINNGENID.isin(unexp_exp), :].copy()
+    df_unexp_exp = df_sample.loc[df_sample.FINNGENID.isin(unexp_exp), :].copy()
     # Phase 1: unexposed
     df_unexp_exp_p1 = df_unexp_exp.copy()
     df_unexp_exp_p1["duration"] = df_unexp_exp_p1.ENDPOINT_AGE - df_unexp_exp_p1.START_AGE
@@ -168,7 +197,7 @@ def prep_coxhr(endpoint, df_events, df_info):
     df_unexp_exp_p2["death"] = False
 
     # Unexposed -> Exposed -> Death: need time-window splitting
-    df_tri = df_merge.loc[df_merge.FINNGENID.isin(unexp_exp_death), :].copy()
+    df_tri = df_sample.loc[df_sample.FINNGENID.isin(unexp_exp_death), :].copy()
     # Phase 1: unexposed
     df_tri_p1 = df_tri.copy()
     df_tri_p1["duration"] = df_tri_p1.ENDPOINT_AGE - df_tri_p1.START_AGE
@@ -180,8 +209,8 @@ def prep_coxhr(endpoint, df_events, df_info):
     df_tri_p2["endpoint"] = True
     df_tri_p2["death"] = True
 
-    keep_cols = ["duration", "endpoint", "BIRTH_TYEAR", "female", "death"]
-    df_durations = pd.concat([
+    keep_cols = ["duration", "endpoint", "BIRTH_TYEAR", "female", "death", "weight"]
+    df_lifelines = pd.concat([
         df_controls.loc[:, keep_cols],
         df_unexp_death.loc[:, keep_cols],
         df_unexp_exp_p1.loc[:, keep_cols],
@@ -191,7 +220,7 @@ def prep_coxhr(endpoint, df_events, df_info):
         ignore_index=True)
 
     logger.info("done preparing data")
-    return df_durations
+    return df_lifelines
 
 
 def compute_coxhr(endpoint, df, res_writer):
@@ -204,7 +233,14 @@ def compute_coxhr(endpoint, df, res_writer):
     # Fit Cox model
     cph = CoxPHFitter()
 
-    cph.fit(df, duration_col="duration", event_col="death")
+    cph.fit(
+        df,
+        duration_col="duration",
+        event_col="death",
+        # For the case-cohort study we need weights and robust errors:
+        weights_col="weight",
+        robust=True
+    )
 
     # Get values out of the fitted model
     endp_coef = cph.params_["endpoint"]
@@ -231,6 +267,14 @@ def compute_coxhr(endpoint, df, res_writer):
         sex_ci_upper = np.exp(sex_coef + 1.96 * sex_se)
         sex_pval = cph.summary.p["female"]
         sex_zval = cph.summary.z["female"]
+    else:
+        sex_coef = np.nan
+        sex_se = np.nan
+        sex_hr = np.nan
+        sex_ci_lower = np.nan
+        sex_ci_upper = np.nan
+        sex_pval = np.nan
+        sex_zval = np.nan        
 
     # Save values
     res_writer.writerow([
@@ -258,7 +302,7 @@ def compute_coxhr(endpoint, df, res_writer):
         sex_zval
     ])
     logger.info("done running Cox regression")
-    
+
 
 if __name__ == '__main__':
     INPUT_DEFINITIONS = Path(argv[1])
