@@ -88,8 +88,11 @@ def main(events_path, endpoints_path, icd_cm_path, icd_finn_path, output_path):
 
     # Load data
     df = load_data(events_path)
-    endpoints = load_endpoints(endpoints_path)
+    df_endpoints = load_endpoints(endpoints_path)
     icds = load_icds(icd_cm_path, icd_finn_path)
+
+    # Filter endpoints
+    df = filter_endpoints(df, df_endpoints)
 
     # Build list of pairs of endpoints
     matrix = build_matrix(df)
@@ -97,9 +100,9 @@ def main(events_path, endpoints_path, icd_cm_path, icd_finn_path, output_path):
 
     # Filter pairs
     logger.info(f"len(pairs): {len(pairs)}")
-    pairs = filter_overlapping_icds(pairs, endpoints, icds)
+    pairs = filter_overlapping_icds(pairs, df_endpoints, icds)
     logger.info(f"len(pairs): {len(pairs)}")
-    pairs = filter_descendants(pairs, endpoints)
+    pairs = filter_descendants(pairs, df_endpoints)
     logger.info(f"len(pairs): {len(pairs)}")
     pairs = filter_prior_later(pairs, matrix)
     logger.info(f"len(pairs): {len(pairs)}")
@@ -127,7 +130,6 @@ def load_endpoints(endpoints_path):
     """Load the endpoint definitions"""
     df = pd.read_csv(
         endpoints_path,
-        usecols=["NAME", "INCLUDE"] + ICD_COLS,
         skiprows=[1]  # comment line in the endpoints file
     )
     return df
@@ -162,6 +164,87 @@ def load_icds(icd_cm, icd_finn):
     icds = set(cm).union(finn)
 
     return icds
+
+
+def filter_endpoints(df, df_endpoints):
+    """Return endpoint definitions keeping only main endpoints"""
+    logger.info("Filtering out endpoints to keep only main endpoints")
+    to_keep = df_endpoints.loc[df_endpoints.apply(keep, axis="columns"), "NAME"]
+    df = df.loc[df.ENDPOINT.isin(to_keep), :]
+    return df
+
+
+def keep(endp):
+    return (
+        not broad(endp)
+        and not omit(endp)
+        and not comorb(endp)
+        and not pure_medication(endp)
+    )
+
+
+def broad(endp):
+    """Return True if the endpoint is broad, False otherwise"""
+    return endp.LEVEL == '1'
+
+
+def omit(endp):
+    """Return True if endpoint is to be omitted in GWAS, False otherwise"""
+    return pd.notna(endp.OMIT)
+
+
+def comorb(endp):
+    """Return True if the endpoint is a comorbidity, False otherwise"""
+    comorb_suffix = "_CM"
+    tags = endp.TAGS.split(",")
+    tags = map(lambda tag: tag.endswith(comorb_suffix), tags)
+    return all(tags)
+
+
+def pure_medication(endp):
+    """Return True if the endpoint is a pure medication endpoint, False otherwise"""
+    has_med = (
+        "#RX" in endp.TAGS.split(",")
+        or (pd.notna(endp.LONGNAME) and "purchase" in endp.LONGNAME)
+        or (pd.notna(endp.LONGNAME) and "medication" in endp.LONGNAME)
+        or pd.notna(endp.KELA_REIMB)
+        or pd.notna(endp.KELA_REIMB_ICD)
+        or pd.notna(endp.KELA_ATC_NEEDOTHER)
+        or pd.notna(endp.KELA_ATC)
+    )
+    has_other_info = (
+        pd.notna(endp.INCLUDE)
+        and pd.notna(endp.PRE_CONDITIONS)
+        and pd.notna(endp.CONDITIONS)
+        and pd.notna(endp.OUTPAT_ICD)
+        and pd.notna(endp.HD_MAINONLY)
+        and pd.notna(endp.HD_ICD_10)
+        and pd.notna(endp.HD_ICD_9)
+        and pd.notna(endp.HD_ICD_8)
+        and pd.notna(endp.HD_ICD_10_EXCL)
+        and pd.notna(endp.HD_ICD_9_EXCL)
+        and pd.notna(endp.HD_ICD_8_EXCL)
+        and pd.notna(endp.COD_MAINONLY)
+        and pd.notna(endp.COD_ICD_10)
+        and pd.notna(endp.COD_ICD_9)
+        and pd.notna(endp.COD_ICD_8)
+        and pd.notna(endp.COD_ICD_10_EXCL)
+        and pd.notna(endp.COD_ICD_9_EXCL)
+        and pd.notna(endp.COD_ICD_8_EXCL)
+        and pd.notna(endp.OPER_NOM)
+        and pd.notna(endp.OPER_HL)
+        and pd.notna(endp.OPER_HP1)
+        and pd.notna(endp.OPER_HP2)
+        and pd.notna(endp.KELA_VNRO_NEEDOTHER)
+        and pd.notna(endp.KELA_VNRO)
+        and pd.notna(endp.CANC_TOPO)
+        and pd.notna(endp.CANC_TOPO_EXCL)
+        and pd.notna(endp.CANC_MORPH)
+        and pd.notna(endp.CANC_MORPH_EXCL)
+        and pd.notna(endp.CANC_BEHAV)
+    )
+    is_pure_medication = has_med and not has_other_info
+    return is_pure_medication
 
 
 def build_matrix(df):

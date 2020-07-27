@@ -49,7 +49,6 @@ workflow RisteysPipelineMain {
 		input:
 			fg_longit=densify_first_events.out_longit_transient,
 			fg_minimum_data=fg_minimum_data,
-			fg_endpoint_defs=fg_endpoint_defs,
 			fg_samples=fg_samples,
 			dense_output=densify_first_events.out,
 			hdf_output=hdf_output
@@ -151,13 +150,12 @@ task densify_first_events {
 task build_input {
 	File fg_longit
 	File fg_minimum_data
-	File fg_endpoint_defs
 	File fg_samples
 	File dense_output
 	String hdf_output
 
 	command {
-		python3 /app/build_input_hdf.py ${dense_output} ${fg_longit} ${fg_minimum_data} ${fg_endpoint_defs} ${fg_samples} ${hdf_output}
+		python3 /app/build_input_hdf.py ${dense_output} ${fg_longit} ${fg_minimum_data} ${fg_samples} ${hdf_output}
 	}
 
 	output {

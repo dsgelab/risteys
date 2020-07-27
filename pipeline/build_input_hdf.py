@@ -36,7 +36,7 @@ import pandas as pd
 from log import logger
 
 
-def main(first_event_path, longit_path, info_path, endpoints_path, samples_path, output_path):
+def main(first_event_path, longit_path, info_path, samples_path, output_path):
     """Clean up and merge all the input files into one HDF5 file"""
     # Load data
     df_fevent, df_longit = load_data(first_event_path, longit_path, info_path)
@@ -44,13 +44,6 @@ def main(first_event_path, longit_path, info_path, endpoints_path, samples_path,
     # Filter out the individuals
     df_fevent = filter_out_samples(df_fevent, samples_path)
     df_longit = filter_out_samples(df_longit, samples_path)
-
-    # Filter out the endpoints
-    logger.info("Filtering out the endpoints for first-event and longitudinal data.")
-    endpoints = get_filtered_endpoints(endpoints_path)
-    # TODO maybe add the extras: BL_AGE, BL_YEAR, FU_END_AGE
-    df_fevent = filter_out_endpoints(df_fevent, endpoints)
-    df_longit = filter_out_endpoints(df_longit, endpoints)
 
     # Sort events for first-event data
     df_fevent = df_fevent.sort_values(by=["FINNGENID", "AGE"])
@@ -131,48 +124,8 @@ def filter_out_samples(data, samples_path):
     return data
 
 
-def get_filtered_endpoints(filepath):
-    """Get endpoints that are not too broad"""
-    df = pd.read_csv(
-        filepath,
-        usecols=["NAME", "OMIT", "LEVEL", "TAGS"],
-        skiprows=[1]  # this row contains the comment info on the file version
-    )
-    mask_level = df["LEVEL"] != '1'
-    mask_omit = df["OMIT"].isna()
-
-    comorb = df["TAGS"].apply(is_comorb)
-    mask_comorb = ~comorb
-
-    df = df[mask_level & mask_omit & mask_comorb]
-    endpoints = list(df.NAME.values)
-
-    return endpoints
-
-
-def filter_out_endpoints(df, endpoints):
-    """Filter out data based on the given endpoints"""
-    df_endpoints = pd.DataFrame({"ENDPOINT": endpoints})
-
-    (nbefore, _) = df.shape
-    df = df.merge(df_endpoints, on="ENDPOINT")
-    (nafter, _) = df.shape
-
-    log_event_reduction(nbefore, nafter)
-
-    return df
-
-
 def log_event_reduction(nbefore, nafter):
     logger.debug(f"Data reduced from {nbefore} to {nafter} (𝚫 = {nbefore - nafter}, {(nbefore - nafter) / nbefore * 100:.1f} %)")
-
-
-def is_comorb(tags):
-    """Return True if the endpoint is a comorbidity, False otherwise."""
-    comorb_suffix = "_CM"
-    tags = tags.split(",")
-    tags = map(lambda tag: tag.endswith(comorb_suffix), tags)
-    return all(tags)
 
 
 def sort_events(data):
@@ -209,15 +162,13 @@ if __name__ == '__main__':
     INPUT_FIRST_EVENT = Path(argv[1])
     INPUT_LONGIT = Path(argv[2])
     INPUT_INFO = Path(argv[3])
-    INPUT_ENDPOINTS = Path(argv[4])
-    INPUT_SAMPLES = Path(argv[5])
-    OUTPUT_NAME = Path(argv[6])
+    INPUT_SAMPLES = Path(argv[4])
+    OUTPUT_NAME = Path(argv[5])
 
     main(
         INPUT_FIRST_EVENT,
         INPUT_LONGIT,
         INPUT_INFO,
-        INPUT_ENDPOINTS,
         INPUT_SAMPLES,
         OUTPUT_NAME,
     )
