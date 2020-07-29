@@ -1,5 +1,6 @@
 """
-DOCS TODO
+TODO:
+- DOCS
 
 REFS:
 - CASE-COHORT
@@ -37,8 +38,8 @@ def main(path_definitions, path_dense_fevents, path_info, output_path):
 
     for _, endpoint in endpoints.iterrows():
         try:
-            df_lifelines = prep_coxhr(endpoint, df_events, df_info)
-            compute_coxhr(endpoint, df_lifelines, res_writer)
+            df_lifelines, nindivs = prep_coxhr(endpoint, df_events, df_info)
+            compute_coxhr(endpoint, df_lifelines, nindivs, res_writer)
         except NotEnoughEndpDeath as exc:
             logger.warning(exc)
         except ConvergenceError as exc:
@@ -98,6 +99,7 @@ def init_csv(res_file):
     res_writer = csv_writer(res_file)
     res_writer.writerow([
         "endpoint",
+        "nindivs_prior_later",
         "endpoint_coef",
         "endpoint_se",
         "endpoint_hr",
@@ -154,9 +156,11 @@ def prep_coxhr(endpoint, df_events, df_info):
     unexp_death     = cases - with_endp
     unexp_exp       = with_endp - cases
     unexp_exp_death = with_endp & cases
-
     assert len(cohort) == (len(unexp) + len(unexp_death) + len(unexp_exp) + len(unexp_exp_death))
-    if len(unexp_exp_death) < MIN_ENDP_DEATH:
+
+    # Check that we have enough individuals to do the study
+    nindivs = len(unexp_exp_death)
+    if nindivs < MIN_ENDP_DEATH:
         raise NotEnoughEndpDeath(f"Not enough individuals having endpoint({endpoint.NAME}) and death: {len(unexp_exp_death)} < {MIN_ENDP_DEATH}")
 
     # Merge endpoint data with info data
@@ -220,10 +224,10 @@ def prep_coxhr(endpoint, df_events, df_info):
         ignore_index=True)
 
     logger.info("done preparing data")
-    return df_lifelines
+    return df_lifelines, nindivs
 
 
-def compute_coxhr(endpoint, df, res_writer):
+def compute_coxhr(endpoint, df, nindivs, res_writer):
     logger.info(f"Running Cox regression")
     # Handle sex-specific endpoints
     is_sex_specific = pd.notna(endpoint.SEX)
@@ -279,6 +283,7 @@ def compute_coxhr(endpoint, df, res_writer):
     # Save values
     res_writer.writerow([
         endpoint.NAME,
+        nindivs,
         endp_coef,
         endp_se,
         endp_hr,
