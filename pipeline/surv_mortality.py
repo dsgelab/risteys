@@ -1,11 +1,15 @@
 """
-TODO:
-- DOCS
+Mortality statistics.
 
-REFS:
+This script compute statistics on mortality.
+It is done using survival analysis with the Cox PH method.
+
+References
+----------
 - CASE-COHORT
   https://www.stata.com/meeting/nordic-and-baltic16/slides/norway16_johansson.pdf
 - NB COMO
+  https://plana-ripoll.github.io/NB-COMO/
 """
 from csv import writer as csv_writer
 from pathlib import Path
@@ -25,9 +29,9 @@ STUDY_ENDS = 2019.99   # inclusive, using same number format as FinnGen data fil
 N_SUBCOHORT = 10_000
 # Minimum number of individuals having both the endpoint and died,
 # this must be > 5 to not be deemed as containing individual-level data.
-MIN_ENDP_DEATH = 10
+MIN_INDIVS = 10
 
-class NotEnoughEndpDeath(Exception):
+class NotEnoughIndividuals(Exception):
     pass
 
 # Column names for lagged HR
@@ -85,7 +89,7 @@ def main(path_definitions, path_dense_fevents, path_info, output_path):
                     nindivs,
                     res_writer
                 )
-        except NotEnoughEndpDeath as exc:
+        except NotEnoughIndividuals as exc:
             logger.warning(exc)
         except ConvergenceError as exc:
             logger.warning(f"Failed to run Cox.fit():\n{exc}")
@@ -207,8 +211,10 @@ def prep_coxhr(endpoint, df_events, df_info):
 
     # Check that we have enough individuals to do the study
     nindivs = len(unexp_exp_death)
-    if nindivs <= MIN_ENDP_DEATH:
-        raise NotEnoughEndpDeath(f"Not enough individuals having endpoint({endpoint.NAME}) and death: {len(unexp_exp_death)} <= {MIN_ENDP_DEATH}")
+    if nindivs < MIN_INDIVS:
+        raise NotEnoughIndividuals(f"Not enough individuals having endpoint({endpoint.NAME}) and death: {nindivs} < {MIN_INDIVS}")
+    elif len(unexp_exp) < MIN_INDIVS:
+        raise NotEnoughIndividuals(f"Not enougth individuals in group: endpoint({endpoint.NAME}) + no death, {len(unexp_exp)} < {MIN_INDIVS}")
 
     # Merge endpoint data with info data
     df_endp = (
@@ -309,8 +315,8 @@ def prep_lifelines(cols, df_controls, df_unexp_death, df_unexp_exp_p1, df_unexp_
     # since after setting the lag some individuals might not have the
     # death outcome anymore.
     nindivs, _ =  df_tri_p2.loc[df_tri_p2.endpoint & df_tri_p2.death, :].shape
-    if nindivs <= MIN_ENDP_DEATH:
-        raise NotEnoughEndpDeath(f"not enough individuals with lag")
+    if nindivs < MIN_INDIVS:
+        raise NotEnoughIndividuals(f"not enough individuals with lag")
 
     # Concatenate the data frames together
     keep_cols = ["duration", "endpoint", "BIRTH_TYEAR", "female", "death", "weight"]
