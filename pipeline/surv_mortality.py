@@ -23,10 +23,32 @@ STUDY_STARTS = 1998.0  # inclusive
 STUDY_ENDS = 2019.99   # inclusive, using same number format as FinnGen data files
 
 N_SUBCOHORT = 10_000
-MIN_ENDP_DEATH = 10  # Minimum number of individuals having both the endpoint and died
+# Minimum number of individuals having both the endpoint and died,
+# this must be > 5 to not be deemed as containing individual-level data.
+MIN_ENDP_DEATH = 10
 
 class NotEnoughEndpDeath(Exception):
     pass
+
+# Column names for lagged HR
+LAG_COLS = {
+    None: {
+        "duration": "duration",
+        "death": "death"
+    },
+    15: {
+        "duration": "duration_15y",
+        "death": "death_15y"
+    },
+    5: {
+        "duration": "duration_5y",
+        "death": "death_5y"
+    },
+    1: {
+        "duration": "duration_1y",
+        "death": "death_1y"
+    }
+}
 
 
 def main(path_definitions, path_dense_fevents, path_info, output_path):
@@ -38,8 +60,31 @@ def main(path_definitions, path_dense_fevents, path_info, output_path):
 
     for _, endpoint in endpoints.iterrows():
         try:
-            df_lifelines, nindivs = prep_coxhr(endpoint, df_events, df_info)
-            compute_coxhr(endpoint, df_lifelines, nindivs, res_writer)
+            (df_controls,
+             df_unexp_death,
+             df_unexp_exp_p1,
+             df_unexp_exp_p2,
+             df_tri_p1,
+             df_tri_p2) = prep_coxhr(endpoint, df_events, df_info)
+
+            for lag, cols in LAG_COLS.items():
+                logger.info(f"Setting HR lag to: {lag}")
+                nindivs, df_lifelines = prep_lifelines(
+                    cols,
+                    df_controls,
+                    df_unexp_death,
+                    df_unexp_exp_p1,
+                    df_unexp_exp_p2,
+                    df_tri_p1,
+                    df_tri_p2
+                )
+                compute_coxhr(
+                    endpoint,
+                    df_lifelines,
+                    lag,
+                    nindivs,
+                    res_writer
+                )
         except NotEnoughEndpDeath as exc:
             logger.warning(exc)
         except ConvergenceError as exc:
@@ -99,6 +144,7 @@ def init_csv(res_file):
     res_writer = csv_writer(res_file)
     res_writer.writerow([
         "endpoint",
+        "lag_hr",
         "nindivs_prior_later",
         "endpoint_coef",
         "endpoint_se",
@@ -160,8 +206,8 @@ def prep_coxhr(endpoint, df_events, df_info):
 
     # Check that we have enough individuals to do the study
     nindivs = len(unexp_exp_death)
-    if nindivs < MIN_ENDP_DEATH:
-        raise NotEnoughEndpDeath(f"Not enough individuals having endpoint({endpoint.NAME}) and death: {len(unexp_exp_death)} < {MIN_ENDP_DEATH}")
+    if nindivs <= MIN_ENDP_DEATH:
+        raise NotEnoughEndpDeath(f"Not enough individuals having endpoint({endpoint.NAME}) and death: {len(unexp_exp_death)} <= {MIN_ENDP_DEATH}")
 
     # Merge endpoint data with info data
     df_endp = (
@@ -196,9 +242,17 @@ def prep_coxhr(endpoint, df_events, df_info):
     df_unexp_exp_p1["death"] = False
     # Phase 2: exposed
     df_unexp_exp_p2 = df_unexp_exp.copy()
-    df_unexp_exp_p2["duration"] = df_unexp_exp_p2.END_AGE - df_unexp_exp_p2.ENDPOINT_AGE
     df_unexp_exp_p2["endpoint"] = True
-    df_unexp_exp_p2["death"] = False
+    for lag, cols in LAG_COLS.items():
+        if lag is None:  # no lag HR
+            duration = df_unexp_exp_p2.END_AGE - df_unexp_exp_p2.ENDPOINT_AGE
+        else:
+            duration = df_unexp_exp_p2.apply(
+                lambda r: min(r.END_AGE - r.ENDPOINT_AGE, lag),
+                axis="columns"
+            )
+        df_unexp_exp_p2[cols["duration"]] = duration
+        df_unexp_exp_p2[cols["death"]] = False
 
     # Unexposed -> Exposed -> Death: need time-window splitting
     df_tri = df_sample.loc[df_sample.FINNGENID.isin(unexp_exp_death), :].copy()
@@ -209,25 +263,70 @@ def prep_coxhr(endpoint, df_events, df_info):
     df_tri_p1["death"] = False
     # Phase 2: exposed
     df_tri_p2 = df_tri.copy()
-    df_tri_p2["duration"] = df_tri_p2.DEATH_AGE - df_tri.ENDPOINT_AGE
     df_tri_p2["endpoint"] = True
-    df_tri_p2["death"] = True
+    for lag, cols in LAG_COLS.items():
+        if lag is None:
+            duration = df_tri_p2.DEATH_AGE - df_tri.ENDPOINT_AGE
+            death = True
+        else:
+            duration = df_tri_p2.apply(
+                lambda r: min(r.DEATH_AGE - r.ENDPOINT_AGE, lag),
+                axis="columns"
+            )
+            death = (df_tri_p2.DEATH_AGE - df_tri_p2.ENDPOINT_AGE) < lag
+        df_tri_p2[cols["duration"]] = duration
+        df_tri_p2[cols["death"]] = death
 
+    logger.info("done preparing the data")
+    return (
+        df_controls,
+        df_unexp_death,
+        df_unexp_exp_p1,
+        df_unexp_exp_p2,
+        df_tri_p1,
+        df_tri_p2
+    )
+
+
+def prep_lifelines(cols, df_controls, df_unexp_death, df_unexp_exp_p1, df_unexp_exp_p2, df_tri_p1, df_tri_p2):
+    logger.info("Preparing lifelines dataframes")
+
+    # Rename lagged HR columns
+    col_duration = cols["duration"]
+    col_death = cols["death"]
+    keep_cols_p2 = [col_duration, "endpoint", "BIRTH_TYEAR", "female", col_death, "weight"]
+    df_unexp_exp_p2 = (
+        df_unexp_exp_p2.loc[:, keep_cols_p2]
+        .rename(columns={col_duration: "duration", col_death: "death"})
+    )
+    df_tri_p2 = (
+        df_tri_p2.loc[:, keep_cols_p2]
+        .rename(columns={col_duration: "duration", col_death: "death"})
+    )
+
+    # Re-check that there are enough individuals to do the study,
+    # since after setting the lag some individuals might not have the
+    # death outcome anymore.
+    nindivs, _ =  df_tri_p2.loc[df_tri_p2.endpoint & df_tri_p2.death, :].shape
+    if nindivs <= MIN_ENDP_DEATH:
+        raise NotEnoughEndpDeath(f"not enough individuals with lag")
+
+    # Concatenate the data frames together
     keep_cols = ["duration", "endpoint", "BIRTH_TYEAR", "female", "death", "weight"]
     df_lifelines = pd.concat([
         df_controls.loc[:, keep_cols],
         df_unexp_death.loc[:, keep_cols],
         df_unexp_exp_p1.loc[:, keep_cols],
-        df_unexp_exp_p2.loc[:, keep_cols],
+        df_unexp_exp_p2,
         df_tri_p1.loc[:, keep_cols],
-        df_tri_p2.loc[:, keep_cols]],
+        df_tri_p2],
         ignore_index=True)
 
-    logger.info("done preparing data")
-    return df_lifelines, nindivs
+    logger.info("done preparing lifelines dataframes")
+    return nindivs, df_lifelines
 
 
-def compute_coxhr(endpoint, df, nindivs, res_writer):
+def compute_coxhr(endpoint, df, lag, nindivs, res_writer):
     logger.info(f"Running Cox regression")
     # Handle sex-specific endpoints
     is_sex_specific = pd.notna(endpoint.SEX)
@@ -278,11 +377,12 @@ def compute_coxhr(endpoint, df, nindivs, res_writer):
         sex_ci_lower = np.nan
         sex_ci_upper = np.nan
         sex_pval = np.nan
-        sex_zval = np.nan        
+        sex_zval = np.nan
 
     # Save values
     res_writer.writerow([
         endpoint.NAME,
+        lag,
         nindivs,
         endp_coef,
         endp_se,
