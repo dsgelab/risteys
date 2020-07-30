@@ -146,6 +146,7 @@ def init_csv(res_file):
         "endpoint",
         "lag_hr",
         "nindivs_prior_later",
+        "absolute_risk",
         "endpoint_coef",
         "endpoint_se",
         "endpoint_hr",
@@ -345,6 +346,18 @@ def compute_coxhr(endpoint, df, lag, nindivs, res_writer):
         robust=True
     )
 
+    # Compute absolute risk
+    censored = df.endpoint & ~ df.death
+    if lag is None:
+        predict_at = STUDY_ENDS - STUDY_STARTS
+    else:
+        predict_at = lag
+    pred_risk = cph.predict_survival_function(
+        df.loc[censored, :],
+        times=[predict_at]
+    )
+    absolute_risk = pred_risk.mean(axis="columns").values[0]
+
     # Get values out of the fitted model
     endp_coef = cph.params_["endpoint"]
     endp_se = cph.standard_errors_["endpoint"]
@@ -384,6 +397,7 @@ def compute_coxhr(endpoint, df, lag, nindivs, res_writer):
         endpoint.NAME,
         lag,
         nindivs,
+        absolute_risk,
         endp_coef,
         endp_se,
         endp_hr,
