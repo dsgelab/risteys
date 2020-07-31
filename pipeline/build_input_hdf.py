@@ -9,12 +9,10 @@ Steps:
 - merge events that are within a 30-day time window
 
 Usage:
-    python build_input_hdf.py <path-to-first-events> <path-to-longit> <path-to-info> <path-to-endpoint-defs> <path-to-samples> <output-output>
+    python build_input_hdf.py <path-to-first-events> <path-to-info> <path-to-endpoint-defs> <path-to-samples> <output-output>
 
 Input files:
 - dense_first_events.csv
-  Source: previous pipeline step
-- FINNGEN_ENDPOINTS_longitudinal_QCed.csv
   Source: previous pipeline step
 - FINNGEN_MINIMUM_DATA.txt
   Each row is an individual in FinnGen with some information.
@@ -36,32 +34,26 @@ import pandas as pd
 from log import logger
 
 
-def main(first_event_path, longit_path, info_path, samples_path, output_path):
+def main(first_event_path, info_path, samples_path, output_path):
     """Clean up and merge all the input files into one HDF5 file"""
     # Load data
-    df_fevent, df_longit = load_data(first_event_path, longit_path, info_path)
+    df_fevent = load_data(first_event_path, info_path)
 
     # Filter out the individuals
     df_fevent = filter_out_samples(df_fevent, samples_path)
-    df_longit = filter_out_samples(df_longit, samples_path)
 
     # Sort events for first-event data
     df_fevent = df_fevent.sort_values(by=["FINNGENID", "AGE"])
     df_fevent = df_fevent.reset_index(drop=True)
     
-    # Event processing for longitudinal data
-    df_longit = sort_events(df_longit)
-    df_longit = merge_events(df_longit)
-
     # Write result to output
     logger.info(f"Writing merged and filtered input data to HDF5 file {output_path}")
     df_fevent.to_hdf(output_path, "/first_event")
-    df_longit.to_hdf(output_path, "/longit")
 
 
-def load_data(first_event_path, longit_path, info_path):
-    """Load the first-event and longitudinal data"""
-    logger.info("Loading first-event and longitudinal data")
+def load_data(first_event_path, info_path):
+    """Load the first-event data"""
+    logger.info("Loading first-event data")
 
     # First-event file
     logger.debug("Loading the first-event dense data")
@@ -73,16 +65,6 @@ def load_data(first_event_path, longit_path, info_path):
         "AGE": np.float64,
         "YEAR": np.int64,
         "NEVT": np.int64,
-    })
-
-    # Longitudinal data
-    logger.debug("Loading and cleaning longitudinal data")
-    df_longit = pd.read_csv(longit_path)
-    df_longit = df_longit.astype({
-        "FINNGENID": np.object,
-        "EVENT_AGE": np.float64,
-        "EVENT_YEAR": np.int64,
-        "ENDPOINT": np.object,
     })
 
     # Loading data file with ID -> SEX info
@@ -102,14 +84,13 @@ def load_data(first_event_path, longit_path, info_path):
     dfsex = pd.concat([dfsex, onehot], axis=1)
     dfsex = dfsex.drop("SEX", axis=1)
 
-    # Add SEX information to longitudinal DataFrame
+    # Add SEX information to DataFrame
     # NOTE: for some individuals there is no sex information, so
     # "female" and "male" columns will be NaN and of type float64.
     logger.debug("Merging sex information into the DataFrames")
-    df_longit = df_longit.merge(dfsex, on="FINNGENID", how="left")
     df_fevent = df_fevent.merge(dfsex, on="FINNGENID", how="left")
 
-    return df_fevent, df_longit
+    return df_fevent
 
 
 def filter_out_samples(data, samples_path):
@@ -160,14 +141,12 @@ def merge_events(df):
 
 if __name__ == '__main__':
     INPUT_FIRST_EVENT = Path(argv[1])
-    INPUT_LONGIT = Path(argv[2])
-    INPUT_INFO = Path(argv[3])
-    INPUT_SAMPLES = Path(argv[4])
-    OUTPUT_NAME = Path(argv[5])
+    INPUT_INFO = Path(argv[2])
+    INPUT_SAMPLES = Path(argv[3])
+    OUTPUT_NAME = Path(argv[4])
 
     main(
         INPUT_FIRST_EVENT,
-        INPUT_LONGIT,
         INPUT_INFO,
         INPUT_SAMPLES,
         OUTPUT_NAME,

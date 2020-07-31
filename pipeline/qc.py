@@ -2,7 +2,7 @@
 Performs quality control of the input data.
 
 Usage:
-    python qc.py <path-to-info> <path-to-first-events> <path-to-longitudinal> <output-path>
+    python qc.py <path-to-info> <path-to-first-events> <output-path>
 
 Input Files:
 - Info Data
@@ -11,14 +11,6 @@ Input Files:
 - First Events
   Each row is an individual, columns are endpoint data.
   Source: FinnGen data
-- Longitudinal
-  Each row is an event with FinnGen ID, Endpoint and time information.
-  Source: FinnGen data
-
-Output files:
-- Longitudinal QCed
-  CSV file with the same format as the original longitudinal file, but
-  with QC applied.
 """
 
 from pathlib import Path
@@ -32,11 +24,10 @@ from log import logger
 EVENT_YEAR_LESS_THAN = 2021
 
 
-def main(info_path, first_event_path, longit_path, longit_output_path):
+def main(info_path, first_event_path):
     """Check the data for quality control"""
     qc_info_file(info_path)
     qc_first_event_file(first_event_path)
-    qc_longit_file(longit_path, longit_output_path)
 
 
 def qc_info_file(input_path):
@@ -61,20 +52,6 @@ def qc_first_event_file(input_path):
     )
 
     check_age_death(df_first_event)
-
-
-def qc_longit_file(input_path, output_path):
-    logger.info("Performing QC for the longitudinal file")
-
-    df_longit = pd.read_csv(input_path)
-
-    try:
-        check_no_duplicates(df_longit)
-    except AssertionError:
-        logger.warning("Found duplicates in longitudinal file, cleaning.")
-        df_longit = remove_duplicates(df_longit)
-
-    df_longit.to_csv(output_path, index=False, mode="x")
 
 
 def check_year(df):
@@ -102,25 +79,10 @@ def check_age_death(df):
     assert (died.DEATH_AGE <= died.FU_END_AGE).all()
 
 
-def check_no_duplicates(df):
-    """Check that the longitudinal data file has no duplicate entries"""
-    dups = df.duplicated(keep=False)
-    assert (~ dups).all()  # True means there is no duplicate entries
-
-
-def remove_duplicates(df):
-    """Remove duplicated entries from the longitudinal file"""
-    return df.drop_duplicates()
-
-
 if __name__ == '__main__':
     INFO = Path(argv[1])
     FIRST_EVENTS = Path(argv[2])
-    LONGIT = Path(argv[3])
-    OUTPUT = Path(argv[4])
     main(
         INFO,
-        FIRST_EVENTS,
-        LONGIT,
-        OUTPUT
+        FIRST_EVENTS
     )
