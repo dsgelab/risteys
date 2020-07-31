@@ -5,7 +5,7 @@ Usage:
     python3 medication_stats_logit.py \
         <ENDPOINT> \                  # FinnGen endpoint for which to compute associated drug scores
         <PATH_FIRST_EVENTS> \         # Path to the first events file from FinnGen
-        <PATH_DETAILED_LOGIT> \       # Path to the detailed longitudinal file from FinnGen
+        <PATH_DETAILED_LONGIT> \      # Path to the detailed longitudinal file from FinnGen
         <PATH_ENDPOINT_DEFINITIONS \  # Path to the endpoint definitions file from FinnGen
         <PATH_MINIMUM_INFO> \         # Path to the minimum file from FinnGen
         <OUTPUT_DIRECTORY>            # Path to where to put the output files

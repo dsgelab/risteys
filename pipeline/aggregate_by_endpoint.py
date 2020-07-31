@@ -50,7 +50,6 @@ def main(input_path, output_path):
     """Compute statistics on input data and put them into an HDF5 file"""
     # Loading input data
     df_fevent = pd.read_hdf(input_path, "/first_event")
-    df_longit = pd.read_hdf(input_path, "/longit")
     stats = pd.DataFrame()
 
     # Building up the aggregated statisitcs by endpoint
@@ -58,15 +57,6 @@ def main(input_path, output_path):
     stats.to_hdf(output_path, "/stats")
 
     stats = compute_mean_age(df_fevent, stats)
-    stats.to_hdf(output_path, "/stats")
-
-    stats = compute_case_fatality(df_fevent, stats)
-    stats.to_hdf(output_path, "/stats")
-
-    stats = compute_median_events(df_longit, stats)  # needs longitudinal data
-    stats.to_hdf(output_path, "/stats")
-
-    stats = compute_recurrence(df_longit, stats)  # needs longitudinal data
     stats.to_hdf(output_path, "/stats")
 
     # Making the distributions by endpoint
@@ -177,144 +167,6 @@ def compute_mean_age(df, outdata):
     )
 
     return outdata
-
-
-def compute_case_fatality(df, outdata):
-    """Compute the 5-year case fatality rate"""
-    logger.info("Computing 5-year case fatality rate")
-    window = 5  # in years
-    # Finding death event for all individuals
-    logger.info("Finding death event for all individuals")
-    deaths = (
-        df.loc[df.ENDPOINT == "DEATH", ["FINNGENID", "AGE"]]
-        .rename(columns={"AGE": "DEATH_AGE"})
-    )
-    assert (~ deaths.FINNGENID.duplicated()).all(), "Some individuals with more than 1 death"
-
-    # Individuals not dead are not in the "deaths" DataFrame so using
-    # the default inner-join would remove all of them from the merged
-    # DataFrame. We want to keep them so we use a left-join.
-    logger.debug("Merging death event into DataFrame")
-    df = df.merge(deaths, on="FINNGENID", how="left")
-
-    logger.debug("Back to computing case fatality")
-    # sex: all
-    stat = (
-        df
-        .groupby(["ENDPOINT", "FINNGENID"])
-        ["AGE", "DEATH_AGE"]
-        .first()
-    )
-    stat = (stat["DEATH_AGE"] - stat["AGE"]) < window
-    stat = (
-        stat
-        .groupby("ENDPOINT")
-        .agg(lambda g: g[g == True].count() / g.count())
-    )
-    outdata["case_fatality_all"] = stat
-
-    # sex: female
-    stat = (
-        df[df.female > 0]
-        .groupby(["ENDPOINT", "FINNGENID"])
-        ["AGE", "DEATH_AGE"]
-        .first()
-    )
-    stat = (stat["DEATH_AGE"] - stat["AGE"]) < window
-    stat = (
-        stat
-        .groupby("ENDPOINT")
-        .agg(lambda g: g[g == True].count() / g.count()))
-    outdata["case_fatality_female"] = stat
-
-    # sex: male
-    stat = (
-        df[df.male > 0]
-        .groupby(["ENDPOINT", "FINNGENID"])
-        ["AGE", "DEATH_AGE"]
-        .first()
-    )
-    stat = (stat["DEATH_AGE"] - stat["AGE"]) < window
-    stat = (
-        stat
-        .groupby("ENDPOINT")
-        .agg(lambda g: g[g == True].count() / g.count()))
-    outdata["case_fatality_male"] = stat
-
-    return outdata
-
-
-def compute_median_events(df, outdata):
-    """Compute the median number of events by individual for each endpoint"""
-    logger.info("Computing median number of events")
-
-    # sex: all
-    outdata["median_events_all"] = (
-        df
-        .groupby(["ENDPOINT", "FINNGENID"])
-        ["EVENT_YEAR"].count()  # could have selected any column as we just count events
-        .groupby("ENDPOINT")
-        .median()
-    )
-
-    # sex: female
-    outdata["median_events_female"] = (
-        df[df["female"] == 1]
-        .groupby(["ENDPOINT", "FINNGENID"])
-        ["EVENT_YEAR"].count()
-        .groupby("ENDPOINT")
-        .median()
-    )
-
-    # sex: male
-    outdata["median_events_male"] = (
-        df[df["male"] == 1]
-        .groupby(["ENDPOINT", "FINNGENID"])
-        ["EVENT_YEAR"].count()
-        .groupby("ENDPOINT")
-        .median()
-    )
-
-    return outdata
-
-
-def compute_recurrence(df, outdata):
-    """Compute the recurrence rate within 6 months"""
-    logger.info("Computing recurrence within 6 months")
-    window = 0.5  # in years, we assume the EVENT_AGE column is in years also
-
-    # Sex: all
-    outdata["reoccurence_all"] = _recurrence_sex(df, window)
-    # Sex: female
-    outdata["reoccurence_female"] = _recurrence_sex(df[df.female == 1], window)
-    # Sex: male
-    outdata["reoccurence_male"] = _recurrence_sex(df[df.male == 1], window)
-
-    return outdata
-
-
-def _recurrence_sex(df, window):
-    """Given a whole data frame, compute the recurrence rate for each endpoint.
-
-    This function doesn't use a groupby() to find recurrent events,
-    which is faster.  Instead it relies on the given data frame being
-    already sorted.
-
-    NOTE: We assume that for an endpoint, the events of an individual
-    are already sorted by EVENT_AGE, otherwise results will be wrong.
-    """
-    shifted = df.shift()
-    diff_age = df.EVENT_AGE - shifted.EVENT_AGE
-    recurrence_rows = (
-        (df.FINNGENID == shifted.FINNGENID)
-        & (df.ENDPOINT == shifted.ENDPOINT)
-        & (diff_age <= window)
-    )
-
-    count_recurrence = df[recurrence_rows].groupby("ENDPOINT")["FINNGENID"].nunique()
-    count_all = df.groupby("ENDPOINT")["FINNGENID"].nunique()
-
-    return count_recurrence / count_all
 
 
 def compute_age_distribution(df):

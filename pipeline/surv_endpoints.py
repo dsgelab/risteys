@@ -116,7 +116,7 @@ def main(events_path, endpoints_path, icd_cm_path, icd_finn_path, output_path):
 def load_data(events_path):
     """Load input data"""
     logger.info("Loading data")
-    # Read the longitudinal file
+    # Read the first-events file
     df = pd.read_hdf(events_path, "/first_event")
 
     # Keep only events in [1998, 2020[, the period we have all

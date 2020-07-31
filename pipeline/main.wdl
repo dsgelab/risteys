@@ -2,7 +2,6 @@ workflow RisteysPipelineMain {
 	# FinnGen data
 	File fg_minimum_data
 	File fg_first_events
-	File fg_longit
 	File fg_endpoint_defs
 	File fg_samples
 	File icd10cm
@@ -14,7 +13,6 @@ workflow RisteysPipelineMain {
 	String ontology_output
 
 	# Summary stats
-	String qc_output
 	String dense_output
 	String hdf_output
 	String stats_hdf
@@ -34,20 +32,16 @@ workflow RisteysPipelineMain {
 		input:
 			fg_minimum_data=fg_minimum_data,
 			fg_first_events=fg_first_events,
-			fg_longit=fg_longit,
-			soutput=qc_output
 	}
 
 	call densify_first_events {
 		input:
-			fg_first_events=fg_first_events,
-			longit_transient=QC.out,
-			dense_output=dense_output
+			qc_first_events=QC.out,
+			dense_output=dense_output,
 	}
 
 	call build_input {
 		input:
-			fg_longit=densify_first_events.out_longit_transient,
 			fg_minimum_data=fg_minimum_data,
 			fg_samples=fg_samples,
 			dense_output=densify_first_events.out,
@@ -98,15 +92,13 @@ task ontology {
 task QC {
 	File fg_minimum_data
 	File fg_first_events
-	File fg_longit
-	String soutput
 
 	command {
-		python3 /app/qc.py ${fg_minimum_data} ${fg_first_events} ${fg_longit} ${soutput}
+		python3 /app/qc.py ${fg_minimum_data} ${fg_first_events}
 	}
 
 	output {
-		File out = "${soutput}"
+		File out = fg_first_events
 	}
 
 	runtime {
@@ -122,17 +114,15 @@ task QC {
 
 
 task densify_first_events {
-	File fg_first_events
-	File longit_transient  # only here for ordering QC -> densify -> build_input
+	File qc_first_events
 	String dense_output
 
 	command {
-		env LOG_LEVEL=DEBUG python3 /app/densify_first_events.py ${fg_first_events} ${dense_output}
+		env LOG_LEVEL=DEBUG python3 /app/densify_first_events.py ${qc_first_events} ${dense_output}
 	}
 
 	output {
 		File out = "${dense_output}"
-		File out_longit_transient = "${longit_transient}"
 	}
 
 	runtime {
@@ -148,14 +138,13 @@ task densify_first_events {
 
 
 task build_input {
-	File fg_longit
 	File fg_minimum_data
 	File fg_samples
 	File dense_output
 	String hdf_output
 
 	command {
-		python3 /app/build_input_hdf.py ${dense_output} ${fg_longit} ${fg_minimum_data} ${fg_samples} ${hdf_output}
+		python3 /app/build_input_hdf.py ${dense_output} ${fg_minimum_data} ${fg_samples} ${hdf_output}
 	}
 
 	output {
