@@ -237,9 +237,6 @@ defmodule RisteysWeb.PhenocodeController do
       n_individuals: "-",
       prevalence: "-",
       mean_age: "-",
-      median_reoccurence: "-",
-      reoccurence_rate: "-",
-      case_fatality: "-",
       distrib_year: [],
       distrib_age: []
     }

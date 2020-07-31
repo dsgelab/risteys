@@ -30,9 +30,6 @@ import HelpButton from './HelpButton.vue';
 import HelpNumberIndividuals from './HelpNumberIndividuals.vue';
 import HelpPrevalence from './HelpPrevalence.vue';
 import HelpMeanAge from './HelpMeanAge.vue';
-import HelpCaseFatality from './HelpCaseFatality.vue';
-import HelpMedianEvents from './HelpMedianEvents.vue';
-import HelpRecurrence from './HelpRecurrence.vue';
 
 
 var path = window.location.pathname;
@@ -185,21 +182,6 @@ if (path.startsWith("/phenocode/")) {  // Load only on phenocode pages
         el: '#help-button-mean-age',
         template: `<HelpMeanAge/>`,
         components: { HelpMeanAge },
-    });
-    var help_button_case_fatality = new Vue({
-        el: '#help-button-case-fatality',
-        template: `<HelpCaseFatality/>`,
-        components: { HelpCaseFatality },
-    });
-    var help_button_median_events = new Vue({
-        el: '#help-button-median-events',
-        template: `<HelpMedianEvents/>`,
-        components: { HelpMedianEvents },
-    });
-    var help_button_recurrence = new Vue({
-        el: '#help-button-recurrence',
-        template: `<HelpRecurrence/>`,
-        components: { HelpRecurrence },
     });
 
     /* HISTOGRAMS */

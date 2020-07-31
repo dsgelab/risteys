@@ -36,12 +36,9 @@ defmodule Risteys.ImportAgg do
   def stats(
         phenocode,
         sex,
-        case_fatality,
         mean_age,
-        median_reoccurence,
         n_individuals,
         prevalence,
-        reoccurence_rate,
         distrib_year,
         distrib_age
       ) do
@@ -57,12 +54,9 @@ defmodule Risteys.ImportAgg do
       |> StatsSex.changeset(%{
         phenocode_id: phenocode.id,
         sex: sex,
-        case_fatality: case_fatality,
         mean_age: mean_age,
-        median_reoccurence: median_reoccurence,
         n_individuals: n_individuals,
         prevalence: prevalence,
-        reoccurence_rate: reoccurence_rate,
         distrib_year: distrib_year,
         distrib_age: distrib_age
       })
@@ -105,21 +99,12 @@ stats
         "nindivs_all" => nindivs_all,
         "nindivs_female" => nindivs_female,
         "nindivs_male" => nindivs_male,
-        "case_fatality_all" => case_fatality_all,
-        "case_fatality_female" => case_fatality_female,
-        "case_fatality_male" => case_fatality_male,
         "mean_age_all" => mean_age_all,
         "mean_age_female" => mean_age_female,
         "mean_age_male" => mean_age_male,
-        "median_events_all" => median_events_all,
-        "median_events_female" => median_events_female,
-        "median_events_male" => median_events_male,
         "prevalence_all" => prevalence_all,
         "prevalence_female" => prevalence_female,
         "prevalence_male" => prevalence_male,
-        "reoccurence_all" => reoccurence_all,
-        "reoccurence_female" => reoccurence_female,
-        "reoccurence_male" => reoccurence_male
       } = data
 
       %{
@@ -146,12 +131,9 @@ stats
         Risteys.ImportAgg.stats(
           phenocode,
           0,
-          case_fatality_all,
           mean_age_all,
-          median_events_all,
           nindivs_all,
           prevalence_all,
-          reoccurence_all,
           distrib_year_all,
           distrib_age_all
         )
@@ -164,12 +146,9 @@ stats
         Risteys.ImportAgg.stats(
           phenocode,
           1,
-          case_fatality_male,
           mean_age_male,
-          median_events_male,
           nindivs_male,
           prevalence_male,
-          reoccurence_male,
           distrib_year_male,
           distrib_age_male
         )
@@ -182,12 +161,9 @@ stats
         Risteys.ImportAgg.stats(
           phenocode,
           2,
-          case_fatality_female,
           mean_age_female,
-          median_events_female,
           nindivs_female,
           prevalence_female,
-          reoccurence_female,
           distrib_year_female,
           distrib_age_female
         )

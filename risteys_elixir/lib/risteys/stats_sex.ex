@@ -6,12 +6,9 @@ defmodule Risteys.StatsSex do
     field :sex, :integer
     field :phenocode_id, :id
 
-    field :case_fatality, :float
     field :mean_age, :float
-    field :median_reoccurence, :float
     field :n_individuals, :integer
     field :prevalence, :float
-    field :reoccurence_rate, :float
     # can't specify more than ':map' since composite types
     field :distrib_year, :map
     field :distrib_age, :map
@@ -27,9 +24,6 @@ defmodule Risteys.StatsSex do
       :n_individuals,
       :prevalence,
       :mean_age,
-      :median_reoccurence,
-      :reoccurence_rate,
-      :case_fatality,
       :phenocode_id,
       :distrib_year,
       :distrib_age
@@ -41,11 +35,6 @@ defmodule Risteys.StatsSex do
     |> validate_number(:n_individuals, greater_than: 5)
     |> validate_number(:prevalence, greater_than_or_equal_to: 0.0, less_than_or_equal_to: 1.0)
     |> validate_number(:mean_age, greater_than_or_equal_to: 0.0)
-    |> validate_number(:median_reoccurence, greater_than_or_equal_to: 0)
-    |> validate_number(:reoccurence_rate,
-      greater_than_or_equal_to: 0.0,
-      less_than_or_equal_to: 1.0
-    )
     |> validate_change(:distrib_year, fn :distrib_year, %{hist: hist} ->
       check_distrib(hist)
     end)

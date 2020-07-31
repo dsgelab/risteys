@@ -24,25 +24,16 @@ ALL_COLS = [
     "nindivs_all",
     "prevalence_all",
     "mean_age_all",
-    "median_events_all",
-    "reoccurence_all",
-    "case_fatality_all",
 ]
 FEMALE_COLS = [
     "nindivs_female",
     "prevalence_female",
     "mean_age_female",
-    "median_events_female",
-    "reoccurence_female",
-    "case_fatality_female",
 ]
 MALE_COLS = [
     "nindivs_male",
     "prevalence_male",
     "mean_age_male",
-    "median_events_male",
-    "reoccurence_male",
-    "case_fatality_male",
 ]
 
 
