@@ -118,7 +118,7 @@ task densify_first_events {
 	String dense_output
 
 	command {
-		env LOG_LEVEL=DEBUG python3 /app/densify_first_events.py ${qc_first_events} ${dense_output}
+		densers < ${qc_first_events} > ${dense_output}
 	}
 
 	output {
@@ -126,9 +126,9 @@ task densify_first_events {
 	}
 
 	runtime {
-		docker: "eu.gcr.io/finngen-refinery-dsgelab/wdl-risteys"
+		docker: "eu.gcr.io/finngen-refinery-dsgelab/wdl-risteys-densers"
 		cpu: "1"
-		memory: "52 GB"
+		memory: "2 GB"
 		disks: "local-disk 50 SSD"
 		zones: "europe-west1-b"
 		preemptible: 0
