@@ -1,5 +1,11 @@
+### TODO ###
+# - discard DEATH endpoint, or maybe do it in surv_endpoints.py
+# - handle the special timeline cases now that outcome is not death (ex: prior > outcome)
+
+
 from csv import writer as csv_writer
 from pathlib import Path
+from queue import LifoQueue
 from sys import argv
 
 import numpy as np
@@ -15,79 +21,116 @@ STUDY_ENDS = 2019.99   # inclusive, using same number format as FinnGen data fil
 
 N_SUBCOHORT = 10_000
 
-########### TODO 
 # Minimum number of individuals having both the endpoint and died,
 # this must be > 5 to not be deemed as containing individual-level data.
-MIN_INDIVS = 10
+MIN_INDIVS = 10  # inclusive
 
 class NotEnoughIndividuals(Exception):
     pass
+
+
+DEFAULT_STEP_SIZE = 1.0
+LOWER_STEP_SIZE   = 0.1
+
 
 # Column names for lagged HR
 LAG_COLS = {
     None: {
         "duration": "duration",
-        "death": "death"
+        "outcome": "outcome"
     },
     15: {
         "duration": "duration_15y",
-        "death": "death_15y"
+        "outcome": "outcome_15y"
     },
     5: {
         "duration": "duration_5y",
-        "death": "death_5y"
+        "outcome": "outcome_5y"
     },
     1: {
         "duration": "duration_1y",
-        "death": "death_1y"
+        "outcome": "outcome_1y"
     }
 }
 
 
-def main(path_definitions, path_dense_fevents, path_info, output_path):
-    endpoints, df_events, df_info = load_data(path_definitions, path_dense_fevents, path_info)
+def main(path_pairs, path_definitions, path_dense_fevents, path_info, output_path):
+    # Load all data
+    pairs, endpoints, df_events, df_info = load_data(
+        path_pairs,
+        path_definitions,
+        path_dense_fevents,
+        path_info
+    )
 
+    # Initialize the CSV output
     line_buffering = 1
     res_file = open(output_path, "x", buffering=line_buffering)
     res_writer = init_csv(res_file)
 
-    for _, endpoint in endpoints.iterrows():
+    # Initialize the job queue
+    jobs = LifoQueue()
+    for pair in pairs:
+        for lag in LAG_COLS.keys():
+            jobs.put({"pair": pair, "lag": lag, "step_size": DEFAULT_STEP_SIZE})
+
+    # Run the regression for each job
+    while not jobs.empty():
+        job = jobs.get()
+        pair = job["pair"]
+        lag = job["lag"]
+        step_size = job["step_size"]
+        cols = LAG_COLS[lag]
+
+        logger.info(f"[JOB] pair: {pair} | lag: {lag} | step size: {step_size}")
+        _, outcome = pair
+        is_sex_specific = pd.notna(endpoints.loc[endpoints.NAME == outcome, "SEX"][0])
+
         try:
             (df_controls,
              df_unexp_death,
              df_unexp_exp_p1,
              df_unexp_exp_p2,
              df_tri_p1,
-             df_tri_p2) = prep_coxhr(endpoint, df_events, df_info)
+             df_tri_p2) = prep_coxhr(pair, lag, df_events, df_info)
 
-            for lag, cols in LAG_COLS.items():
-                logger.info(f"Setting HR lag to: {lag}")
-                nindivs, df_lifelines = prep_lifelines(
-                    cols,
-                    df_controls,
-                    df_unexp_death,
-                    df_unexp_exp_p1,
-                    df_unexp_exp_p2,
-                    df_tri_p1,
-                    df_tri_p2
-                )
-                compute_coxhr(
-                    endpoint,
-                    df_lifelines,
-                    lag,
-                    nindivs,
-                    res_writer
-                )
+            nindivs, df_lifelines = prep_lifelines(
+                cols,
+                df_controls,
+                df_unexp_death,
+                df_unexp_exp_p1,
+                df_unexp_exp_p2,
+                df_tri_p1,
+                df_tri_p2
+            )
+            compute_coxhr(
+                pair,
+                df_lifelines,
+                lag,
+                step_size,
+                is_sex_specific,
+                nindivs,
+                res_writer
+            )
         except NotEnoughIndividuals as exc:
             logger.warning(exc)
-        except ConvergenceError as exc:
-            logger.warning(f"Failed to run Cox.fit():\n{exc}")
+        except (ConvergenceError, Warning) as exc:
+            # Retry with a lower step_size
+            if step_size == DEFAULT_STEP_SIZE:
+                step_size = LOWER_STEP_SIZE
+                jobs.put({"pair": pair, "lag": lag, "step_size": step_size})
+            # We already tried with the lower step size, we have to skip this job
+            else:
+                logger.warning(f"Failed to run Cox.fit() for {pair}, lag: {lag}, step size: {step_size}:\n{exc}")
 
     res_file.close()
 
 
-def load_data(path_definitions, path_dense_fevents, path_info):
+def load_data(path_pairs, path_definitions, path_dense_fevents, path_info):
     logger.info("Loading data")
+    # Get pairs
+    pairs = pd.read_csv(path_pairs)
+    
     # Get endpoint list
     endpoints = pd.read_csv(path_definitions, usecols=["NAME", "SEX"])
 
@@ -100,21 +143,18 @@ def load_data(path_definitions, path_dense_fevents, path_info):
     df_info["BIRTH_TYEAR"] = df_info.BL_YEAR - df_info.BL_AGE
     df_info = df_info.drop(columns=["SEX", "BL_YEAR", "BL_AGE"])
 
-    # Set age at start and end of study for each indiv
+    # Set age at start of study for each indiv.
     df_info["START_AGE"] = df_info.apply(
         lambda r: max(STUDY_STARTS - r.BIRTH_TYEAR, 0.0),
         axis="columns"
     )
+    # We cannot set age at end of study yet, since it depends on the outcome age.
+    # However, we need the death age for it when are there.
     deaths = (
         df_events.loc[df_events.ENDPOINT == "DEATH", ["FINNGENID", "AGE"]]
         .rename(columns={"AGE": "DEATH_AGE"})
     )
     df_info = df_info.merge(deaths, on="FINNGENID", how="left")
-    df_info["END_AGE"] = df_info.apply(
-        # We cannot simply use min() or max() here due to NaN, so we resort to an if-else
-        lambda r: r.DEATH_AGE if (r.BIRTH_TYEAR + r.DEATH_AGE) < STUDY_ENDS else (STUDY_ENDS - r.BIRTH_TYEAR),
-        axis="columns"
-    )
 
     # Remove individuals that lived outside of the study time frame
     died_before_study = set(
@@ -130,15 +170,17 @@ def load_data(path_definitions, path_dense_fevents, path_info):
     df_info = df_info.loc[~ df_info.FINNGENID.isin(born_after_study), :]
 
     logger.info("done loading data")
-    return endpoints, df_events, df_info
+    return pairs, endpoints, df_events, df_info
 
 
 def init_csv(res_file):
     res_writer = csv_writer(res_file)
     res_writer.writerow([
-        "endpoint",
+        "prior",
+        "outcome",
         "lag_hr",
-        "nindivs_prior_later",
+        "step_size",
+        "nindivs_prior_outcome",
         "absolute_risk",
         "endpoint_coef",
         "endpoint_se",
@@ -166,13 +208,32 @@ def init_csv(res_file):
     return res_writer
 
 
-def prep_coxhr(endpoint, df_events, df_info):
-    logger.info(f"Preparing data before Cox fitting for {endpoint.NAME}")
+def prep_coxhr(pair, lag, df_events, df_info):
+    logger.info(f"Preparing data before Cox fitting for {pair}")
+    prior, outcome = pair
 
+    # Define END_AGE now that we know what is the outcome
+    df_info = df_info.copy()
+    df_outcome_age = df_events.loc[df_events.ENDPOINT == outcome, ["FINNGENID", "AGE"]]
+    df_info.merge(df_outcome_age, on="FINNGENID")
+    def get_end_age(row):
+        outcome_year = row.BIRTH_TYEAR + row.AGE ???? TODO ???
+        if pd.isna(death):  # not dead
+            return min(outcome_year, STUDY_ENDS)
+        else:  # died
+            return min(outcome_year, death_year, STUDY_ENDS)
+    df_info["END_AGE"] = df_info.apply(
+        get_end_age,
+        # We cannot simply use min() or max() here due to NaN, so we resort to an if-else
+        lambda r:  r.DEATH_AGE if (r.BIRTH_TYEAR + r.DEATH_AGE) < STUDY_ENDS else (STUDY_ENDS - r.BIRTH_TYEAR),
+        axis="columns"
+    )
+    
+    
     # Define groups for the case-cohort design study.
     # Naming follows Johansson-16 paper.
     cohort = set(df_events.FINNGENID)
-    cases = set(df_events.loc[df_events.ENDPOINT == "DEATH", "FINNGENID"])
+    cases = set(df_events.loc[df_events.ENDPOINT == outcome, "FINNGENID"])
     cc_subcohort = set(np.random.choice(list(cohort), N_SUBCOHORT, replace=False))
     cc_m = len(cohort - cases)
     cc_ms = len(cc_subcohort & (cohort - cases))
@@ -191,92 +252,90 @@ def prep_coxhr(endpoint, df_events, df_info):
     df_info = df_info.merge(df_weights, on="FINNGENID")
 
     # Define groups for the unexposed/exposed study
-    with_endp = set(df_events.loc[df_events.ENDPOINT == endpoint.NAME, "FINNGENID"])
-    unexp           = cohort - with_endp - cases
-    unexp_death     = cases - with_endp
-    unexp_exp       = with_endp - cases
-    unexp_exp_death = with_endp & cases
-    assert len(cohort) == (len(unexp) + len(unexp_death) + len(unexp_exp) + len(unexp_exp_death))
+    with_prior = set(df_events.loc[df_events.ENDPOINT == prior, "FINNGENID"])
+    unexp             = cohort - with_prior - cases
+    unexp_outcome     = cases - with_prior
+    unexp_exp         = with_prior - cases
+    unexp_exp_outcome = with_prior & cases
+    assert len(cohort) == (len(unexp) + len(unexp_outcome) + len(unexp_exp) + len(unexp_exp_outcome))
 
     # Check that we have enough individuals to do the study
-    nindivs = len(unexp_exp_death)
+    nindivs = len(unexp_exp_outcome)
     if nindivs < MIN_INDIVS:
-        raise NotEnoughIndividuals(f"Not enough individuals having endpoint({endpoint.NAME}) and death: {nindivs} < {MIN_INDIVS}")
+        raise NotEnoughIndividuals(f"Not enough individuals having {prior} -> {outcome}: {nindivs} < {MIN_INDIVS}")
     elif len(unexp_exp) < MIN_INDIVS:
-        raise NotEnoughIndividuals(f"Not enougth individuals in group: endpoint({endpoint.NAME}) + no death, {len(unexp_exp)} < {MIN_INDIVS}")
+        raise NotEnoughIndividuals(f"Not enougth individuals in group: {prior} + no {outcome}, {len(unexp_exp)} < {MIN_INDIVS}")
 
     # Merge endpoint data with info data
     df_endp = (
-        df_events.loc[df_events.ENDPOINT == endpoint.NAME, ["FINNGENID", "AGE"]]
-        .rename(columns={"AGE": "ENDPOINT_AGE"})
+        df_events.loc[df_events.ENDPOINT == prior, ["FINNGENID", "AGE"]]
+        .rename(columns={"AGE": "PRIOR_AGE"})
     )
     df_sample = df_info.merge(df_endp, on="FINNGENID", how="left")  # left join to keep individuals not having the endpoint
 
     # Move endpoint to study start if it happened before the study
-    exposed_before_study = df_sample.ENDPOINT_AGE < df_sample.START_AGE
-    df_sample.loc[exposed_before_study, "ENDPOINT_AGE"] = df_sample.loc[exposed_before_study, "START_AGE"]
+    exposed_before_study = df_sample.PRIOR_AGE < df_sample.START_AGE
+    df_sample.loc[exposed_before_study, "PRIOR_AGE"] = df_sample.loc[exposed_before_study, "START_AGE"]
 
     # Controls
     controls = np.random.choice(list(unexp), N_SUBCOHORT, replace=False)
     df_controls = df_sample.loc[df_sample.FINNGENID.isin(controls), :].copy()
     df_controls["duration"] = df_controls.END_AGE - df_controls.START_AGE
-    df_controls["endpoint"] = False
-    df_controls["death"] = False
+    df_controls["prior"] = False
+    df_controls["outcome"] = False
 
-    # Unexposed -> Death
-    df_unexp_death = df_sample.loc[df_sample.FINNGENID.isin(unexp_death), :].copy()
-    df_unexp_death["duration"] = df_unexp_death.DEATH_AGE - df_unexp_death.START_AGE
-    df_unexp_death["endpoint"] = False
-    df_unexp_death["death"] = True
+    # Unexposed -> Outcome
+    df_unexp_outcome = df_sample.loc[df_sample.FINNGENID.isin(unexp_outcome), :].copy()
+    df_unexp_outcome["duration"] = df_unexp_outcome.OUTCOME_AGE - df_unexp_outcome.START_AGE
+    df_unexp_outcome["prior"] = False
+    df_unexp_outcome["outcome"] = True
 
     # Unexposed -> Exposed: need time-window splitting
     df_unexp_exp = df_sample.loc[df_sample.FINNGENID.isin(unexp_exp), :].copy()
     # Phase 1: unexposed
     df_unexp_exp_p1 = df_unexp_exp.copy()
-    df_unexp_exp_p1["duration"] = df_unexp_exp_p1.ENDPOINT_AGE - df_unexp_exp_p1.START_AGE
-    df_unexp_exp_p1["endpoint"] = False
-    df_unexp_exp_p1["death"] = False
+    df_unexp_exp_p1["duration"] = df_unexp_exp_p1.PRIOR_AGE - df_unexp_exp_p1.START_AGE
+    df_unexp_exp_p1["prior"] = False
+    df_unexp_exp_p1["outcome"] = False
     # Phase 2: exposed
     df_unexp_exp_p2 = df_unexp_exp.copy()
-    df_unexp_exp_p2["endpoint"] = True
-    for lag, cols in LAG_COLS.items():
-        if lag is None:  # no lag HR
-            duration = df_unexp_exp_p2.END_AGE - df_unexp_exp_p2.ENDPOINT_AGE
-        else:
-            duration = df_unexp_exp_p2.apply(
-                lambda r: min(r.END_AGE - r.ENDPOINT_AGE, lag),
-                axis="columns"
-            )
-        df_unexp_exp_p2[cols["duration"]] = duration
-        df_unexp_exp_p2[cols["death"]] = False
+    df_unexp_exp_p2["prior"] = True
+    if lag is None:  # no lag HR
+        duration = df_unexp_exp_p2.END_AGE - df_unexp_exp_p2.PRIOR_AGE
+    else:
+        duration = df_unexp_exp_p2.apply(
+            lambda r: min(r.END_AGE - r.PRIOR_AGE, lag),
+            axis="columns"
+        )
+    df_unexp_exp_p2["duration"] = duration
+    df_unexp_exp_p2["outcome"] = False
 
-    # Unexposed -> Exposed -> Death: need time-window splitting
-    df_tri = df_sample.loc[df_sample.FINNGENID.isin(unexp_exp_death), :].copy()
+    # Unexposed -> Exposed -> Outcome: need time-window splitting
+    df_tri = df_sample.loc[df_sample.FINNGENID.isin(unexp_exp_outcome), :].copy()
     # Phase 1: unexposed
     df_tri_p1 = df_tri.copy()
-    df_tri_p1["duration"] = df_tri_p1.ENDPOINT_AGE - df_tri_p1.START_AGE
-    df_tri_p1["endpoint"] = False
-    df_tri_p1["death"] = False
+    df_tri_p1["duration"] = df_tri_p1.PRIOR_AGE - df_tri_p1.START_AGE
+    df_tri_p1["prior"] = False
+    df_tri_p1["outcome"] = False
     # Phase 2: exposed
     df_tri_p2 = df_tri.copy()
-    df_tri_p2["endpoint"] = True
-    for lag, cols in LAG_COLS.items():
-        if lag is None:
-            duration = df_tri_p2.DEATH_AGE - df_tri.ENDPOINT_AGE
-            death = True
-        else:
-            duration = df_tri_p2.apply(
-                lambda r: min(r.DEATH_AGE - r.ENDPOINT_AGE, lag),
-                axis="columns"
-            )
-            death = (df_tri_p2.DEATH_AGE - df_tri_p2.ENDPOINT_AGE) < lag
-        df_tri_p2[cols["duration"]] = duration
-        df_tri_p2[cols["death"]] = death
+    df_tri_p2["prior"] = True
+    if lag is None:
+        duration = df_tri_p2.END_AGE - df_tri.PRIOR_AGE
+        outcome = True
+    else:
+        duration = df_tri_p2.apply(
+            lambda r: min(r.END_AGE - r.PRIOR_AGE, lag),
+            axis="columns"
+        )
+        outcome = (df_tri_p2.END_AGE - df_tri_p2.PRIOR_AGE) < lag
+    df_tri_p2["duration"] = duration
+    df_tri_p2["outcome"] = outcome
 
     logger.info("done preparing the data")
     return (
         df_controls,
-        df_unexp_death,
+        df_unexp_outcome,
         df_unexp_exp_p1,
         df_unexp_exp_p2,
         df_tri_p1,
@@ -287,28 +346,15 @@ def prep_coxhr(endpoint, df_events, df_info):
 def prep_lifelines(cols, df_controls, df_unexp_death, df_unexp_exp_p1, df_unexp_exp_p2, df_tri_p1, df_tri_p2):
     logger.info("Preparing lifelines dataframes")
 
-    # Rename lagged HR columns
-    col_duration = cols["duration"]
-    col_death = cols["death"]
-    keep_cols_p2 = [col_duration, "endpoint", "BIRTH_TYEAR", "female", col_death, "weight"]
-    df_unexp_exp_p2 = (
-        df_unexp_exp_p2.loc[:, keep_cols_p2]
-        .rename(columns={col_duration: "duration", col_death: "death"})
-    )
-    df_tri_p2 = (
-        df_tri_p2.loc[:, keep_cols_p2]
-        .rename(columns={col_duration: "duration", col_death: "death"})
-    )
-
     # Re-check that there are enough individuals to do the study,
     # since after setting the lag some individuals might not have the
     # death outcome anymore.
-    nindivs, _ =  df_tri_p2.loc[df_tri_p2.endpoint & df_tri_p2.death, :].shape
+    nindivs, _ =  df_tri_p2.loc[df_tri_p2.prior & df_tri_p2.outcome, :].shape
     if nindivs < MIN_INDIVS:
         raise NotEnoughIndividuals(f"not enough individuals with lag")
 
     # Concatenate the data frames together
-    keep_cols = ["duration", "endpoint", "BIRTH_TYEAR", "female", "death", "weight"]
+    keep_cols = ["duration", "prior", "BIRTH_TYEAR", "female", "outcome", "weight"]
     df_lifelines = pd.concat([
         df_controls.loc[:, keep_cols],
         df_unexp_death.loc[:, keep_cols],
@@ -322,27 +368,27 @@ def prep_lifelines(cols, df_controls, df_unexp_death, df_unexp_exp_p1, df_unexp_
     return nindivs, df_lifelines
 
 
-def compute_coxhr(endpoint, df, lag, nindivs, res_writer):
+def compute_coxhr(pair, df, lag, step_size, is_sex_specific, nindivs, res_writer):
     logger.info(f"Running Cox regression")
+    prior, outcome = pair
     # Handle sex-specific endpoints
-    is_sex_specific = pd.notna(endpoint.SEX)
     if is_sex_specific:
         df = df.drop(columns=["female"])
 
     # Fit Cox model
     cph = CoxPHFitter()
-
     cph.fit(
         df,
         duration_col="duration",
         event_col="death",
+        step_size=step_size,
         # For the case-cohort study we need weights and robust errors:
         weights_col="weight",
         robust=True
     )
 
     # Compute absolute risk
-    censored = df.endpoint & ~ df.death
+    censored = df.prior & ~ df.outcome
     if lag is None:
         predict_at = STUDY_ENDS - STUDY_STARTS
     else:
@@ -354,13 +400,13 @@ def compute_coxhr(endpoint, df, lag, nindivs, res_writer):
     absolute_risk = pred_risk.mean(axis="columns").values[0]
 
     # Get values out of the fitted model
-    endp_coef = cph.params_["endpoint"]
-    endp_se = cph.standard_errors_["endpoint"]
-    endp_hr = np.exp(endp_coef)
-    endp_ci_lower = np.exp(endp_coef - 1.96 * endp_se)
-    endp_ci_upper = np.exp(endp_coef + 1.96 * endp_se)
-    endp_pval = cph.summary.p["endpoint"]
-    endp_zval = cph.summary.z["endpoint"]
+    prior_coef = cph.params_["prior"]
+    prior_se = cph.standard_errors_["prior"]
+    prior_hr = np.exp(prior_coef)
+    prior_ci_lower = np.exp(prior_coef - 1.96 * prior_se)
+    prior_ci_upper = np.exp(prior_coef + 1.96 * prior_se)
+    prior_pval = cph.summary.p["prior"]
+    prior_zval = cph.summary.z["prior"]
 
     year_coef = cph.params_["BIRTH_TYEAR"]
     year_se = cph.standard_errors_["BIRTH_TYEAR"]
@@ -389,17 +435,19 @@ def compute_coxhr(endpoint, df, lag, nindivs, res_writer):
 
     # Save values
     res_writer.writerow([
-        endpoint.NAME,
+        prior,
+        outcome,
         lag,
+        step_size,
         nindivs,
         absolute_risk,
-        endp_coef,
-        endp_se,
-        endp_hr,
-        endp_ci_lower,
-        endp_ci_upper,
-        endp_pval,
-        endp_zval,
+        prior_coef,
+        prior_se,
+        prior_hr,
+        prior_ci_lower,
+        prior_ci_upper,
+        prior_pval,
+        prior_zval,
         year_coef,
         year_se,
         year_hr,
@@ -419,12 +467,14 @@ def compute_coxhr(endpoint, df, lag, nindivs, res_writer):
 
 
 if __name__ == '__main__':
-    INPUT_DEFINITIONS = Path(argv[1])
-    INPUT_DENSE_FEVENTS = Path(argv[2])
-    INPUT_INFO = Path(argv[3])
-    OUTPUT = Path(argv[4])
+    INPUT_PAIRS = Path(argv[1])
+    INPUT_DEFINITIONS = Path(argv[2])
+    INPUT_DENSE_FEVENTS = Path(argv[3])
+    INPUT_INFO = Path(argv[4])
+    OUTPUT = Path(argv[5])
 
     main(
+        INPUT_PAIRS,
         INPUT_DEFINITIONS,
         INPUT_DENSE_FEVENTS,
         INPUT_INFO,
