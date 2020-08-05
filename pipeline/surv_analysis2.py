@@ -34,9 +34,9 @@ LOWER_STEP_SIZE   = 0.1
 
 
 # Lag durations (in years)
-# Order (low-to-high) is important for performance later on, since
-# if an endpoint pair doesn't have enough individual for a duration
-# then lower-duration can be discarded directly.
+# Order (low-to-high) is important for performance later on, since if
+# an endpoint pair doesn't have enough individuals for a duration then
+# lower durations can be discarded directly.
 # Since jobs are kept in a Last-In-First-Out (LIFO) queue, then we
 # need to order them low-to-high in order for the jobs to run the
 # longer durations first.
@@ -63,7 +63,9 @@ def main(path_pairs, path_definitions, path_dense_fevents, path_info, output_pat
         for lag in LAGS:
             jobs.put({"pair": pair, "lag": lag, "step_size": DEFAULT_STEP_SIZE})
 
+    # Keep track of endpoint pairs to skip
     skip = None
+
     # Run the regression for each job
     while not jobs.empty():
         job = jobs.get()
@@ -71,11 +73,11 @@ def main(path_pairs, path_definitions, path_dense_fevents, path_info, output_pat
         lag = job["lag"]
         step_size = job["step_size"]
 
-        logger.debug(f"Jobs remaining: ~ {jobs.qsize()}")
-
+        # Go to next endpoint pair if this one is to be skipped
         if pair == skip:
             continue
-        
+
+        logger.info(f"Jobs remaining: ~ {jobs.qsize()}")
         logger.info(f"[JOB] pair: {pair} | lag: {lag} | step size: {step_size}")
         _, outcome = pair
         is_sex_specific = pd.notna(endpoints.loc[endpoints.NAME == outcome, "SEX"].iloc[0])
@@ -106,7 +108,7 @@ def main(path_pairs, path_definitions, path_dense_fevents, path_info, output_pat
                 res_writer
             )
         except NotEnoughIndividuals as exc:
-            skip = pair
+            skip = pair  # skip remaining jobs (different lags) for this endpoint pair
             logger.warning(exc)
         except (ConvergenceError, Warning) as exc:
             # Retry with a lower step_size
@@ -144,7 +146,7 @@ def load_data(path_pairs, path_definitions, path_dense_fevents, path_info):
         axis="columns"
     )
     # We cannot set age at end of study yet, since it depends on the outcome age.
-    # However, we need the death age for it when are there.
+    # However, we need the death age for it when we are there.
     deaths = (
         df_events.loc[df_events.ENDPOINT == "DEATH", ["FINNGENID", "AGE"]]
         .rename(columns={"AGE": "DEATH_AGE"})
@@ -206,8 +208,19 @@ def prep_coxhr(pair, lag, df_events, df_info):
     logger.info(f"Preparing data before Cox fitting for {pair}")
     prior, outcome = pair
 
+    # Remove prevalent cases: outcome before study starts
+    logger.debug("Removing prevalent cases")
+    prevalent = df_events.copy()
+    prevalent = prevalent.loc[df_events.ENDPOINT == outcome, ["FINNGENID", "AGE"]]
+    prevalent = prevalent.merge(df_info.loc[:, ["FINNGENID", "BIRTH_TYEAR"]], on="FINNGENID")
+    prevalent = set(prevalent.loc[prevalent.BIRTH_TYEAR + prevalent.AGE < STUDY_STARTS, "FINNGENID"])
+
+    df_events = df_events.loc[~ df_events.FINNGENID.isin(prevalent), :]
+    df_info = df_info.loc[~ df_info.FINNGENID.isin(prevalent), :]
+
     # Define groups for the case-cohort design study.
     # Naming follows Johansson-16 paper.
+    logger.debug("Setting-up the case-cohort design study")
     cohort = set(df_events.FINNGENID)
     cases = set(df_events.loc[df_events.ENDPOINT == outcome, "FINNGENID"])
     cc_subcohort = set(np.random.choice(list(cohort), N_SUBCOHORT, replace=False))
@@ -227,8 +240,17 @@ def prep_coxhr(pair, lag, df_events, df_info):
     df_weights.loc[df_weights.FINNGENID.isin(cases), "weight"] = cc_weight_non_cases
     df_info = df_info.merge(df_weights, on="FINNGENID")
 
+    # Individuals with prior: exclude those when prior age > outcome age
+    logger.debug("Taking care of individuals with prior age > outcome age")
+    prior_age = df_events.loc[df_events.ENDPOINT == prior, ["FINNGENID", "AGE"]].rename(columns={"AGE": "prior"})
+    outcome_age = df_events.loc[df_events.ENDPOINT == outcome, ["FINNGENID", "AGE"]].rename(columns={"AGE": "outcome"})
+    ages = prior_age.merge(outcome_age, how="inner")  # keep those that have prior + outcome
+    exclude = set(ages.loc[ages.prior > ages.outcome, "FINNGENID"])
+
     # Define groups for the unexposed/exposed study
+    logger.debug("Setting-up unexposed/exposed")
     with_prior = set(df_events.loc[df_events.ENDPOINT == prior, "FINNGENID"])
+    with_prior = with_prior - exclude
     unexp             = cohort - with_prior - cases
     unexp_outcome     = cases - with_prior
     unexp_exp         = with_prior - cases
@@ -243,6 +265,7 @@ def prep_coxhr(pair, lag, df_events, df_info):
         raise NotEnoughIndividuals(f"Not enougth individuals in group: {prior} + no {outcome}, {len(unexp_exp)} < {MIN_INDIVS}")
 
     # Build main DataFrame with necessary info (1 line = 1 individual)
+    logger.debug("Setting prior, outcome and end ages")
     # PRIOR_AGE
     df_prior = (
         df_events.loc[df_events.ENDPOINT == prior, ["FINNGENID", "AGE"]]
@@ -254,6 +277,7 @@ def prep_coxhr(pair, lag, df_events, df_info):
         df_events.loc[df_events.ENDPOINT == outcome, ["FINNGENID", "AGE"]]
         .rename(columns={"AGE": "OUTCOME_AGE"})
     )
+    # END_AGE
     df_sample = df_sample.merge(df_outcome, on="FINNGENID", how="left")
     df_sample["END_AGE"] = pd.DataFrame({
         "outcome": df_sample.OUTCOME_AGE,
@@ -265,6 +289,7 @@ def prep_coxhr(pair, lag, df_events, df_info):
     exposed_before_study = df_sample.PRIOR_AGE < df_sample.START_AGE
     df_sample.loc[exposed_before_study, "PRIOR_AGE"] = df_sample.loc[exposed_before_study, "START_AGE"]
 
+    logger.info("Building timeline DataFrames with controls, unexposed, exposed")
     # Controls
     controls = np.random.choice(list(unexp), N_SUBCOHORT, replace=False)
     df_controls = df_sample.loc[df_sample.FINNGENID.isin(controls), :].copy()
@@ -449,7 +474,6 @@ def compute_coxhr(pair, df, lag, step_size, is_sex_specific, nindivs, res_writer
         sex_pval,
         sex_zval
     ])
-    logger.info("done running Cox regression")
 
 
 if __name__ == '__main__':
