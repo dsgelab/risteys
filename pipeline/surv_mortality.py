@@ -184,7 +184,8 @@ def prep_coxhr(endpoint, df_events, df_info):
     # Naming follows Johansson-16 paper.
     cohort = set(df_events.FINNGENID)
     cases = set(df_events.loc[df_events.ENDPOINT == "DEATH", "FINNGENID"])
-    cc_subcohort = set(np.random.choice(list(cohort), N_SUBCOHORT, replace=False))
+    size = min(N_SUBCOHORT, len(cohort))
+    cc_subcohort = set(np.random.choice(list(cohort), size, replace=False))
     cc_m = len(cohort - cases)
     cc_ms = len(cc_subcohort & (cohort - cases))
     cc_pm = cc_ms / cc_m
@@ -198,7 +199,7 @@ def prep_coxhr(endpoint, df_events, df_info):
     # Assign case-cohort weight to each individual
     df_weights = pd.DataFrame({"FINNGENID": list(cc_sample)})
     df_weights["weight"] = 1.0
-    df_weights.loc[df_weights.FINNGENID.isin(cases), "weight"] = cc_weight_non_cases
+    df_weights.loc[~ df_weights.FINNGENID.isin(cases), "weight"] = cc_weight_non_cases
     df_info = df_info.merge(df_weights, on="FINNGENID")
 
     # Define groups for the unexposed/exposed study
@@ -227,12 +228,11 @@ def prep_coxhr(endpoint, df_events, df_info):
     exposed_before_study = df_sample.ENDPOINT_AGE < df_sample.START_AGE
     df_sample.loc[exposed_before_study, "ENDPOINT_AGE"] = df_sample.loc[exposed_before_study, "START_AGE"]
 
-    # Controls
-    controls = np.random.choice(list(unexp), N_SUBCOHORT, replace=False)
-    df_controls = df_sample.loc[df_sample.FINNGENID.isin(controls), :].copy()
-    df_controls["duration"] = df_controls.END_AGE - df_controls.START_AGE
-    df_controls["endpoint"] = False
-    df_controls["death"] = False
+    # Unexposed
+    df_unexp = df_sample.loc[df_sample.FINNGENID.isin(unexp), :].copy()
+    df_unexp["duration"] = df_unexp.END_AGE - df_unexp.START_AGE
+    df_unexp["endpoint"] = False
+    df_unexp["death"] = False
 
     # Unexposed -> Death
     df_unexp_death = df_sample.loc[df_sample.FINNGENID.isin(unexp_death), :].copy()
@@ -286,7 +286,7 @@ def prep_coxhr(endpoint, df_events, df_info):
 
     logger.info("done preparing the data")
     return (
-        df_controls,
+        df_unexp,
         df_unexp_death,
         df_unexp_exp_p1,
         df_unexp_exp_p2,
@@ -295,7 +295,7 @@ def prep_coxhr(endpoint, df_events, df_info):
     )
 
 
-def prep_lifelines(cols, df_controls, df_unexp_death, df_unexp_exp_p1, df_unexp_exp_p2, df_tri_p1, df_tri_p2):
+def prep_lifelines(cols, df_unexp, df_unexp_death, df_unexp_exp_p1, df_unexp_exp_p2, df_tri_p1, df_tri_p2):
     logger.info("Preparing lifelines dataframes")
 
     # Rename lagged HR columns
@@ -321,7 +321,7 @@ def prep_lifelines(cols, df_controls, df_unexp_death, df_unexp_exp_p1, df_unexp_
     # Concatenate the data frames together
     keep_cols = ["duration", "endpoint", "BIRTH_TYEAR", "female", "death", "weight"]
     df_lifelines = pd.concat([
-        df_controls.loc[:, keep_cols],
+        df_unexp.loc[:, keep_cols],
         df_unexp_death.loc[:, keep_cols],
         df_unexp_exp_p1.loc[:, keep_cols],
         df_unexp_exp_p2,
