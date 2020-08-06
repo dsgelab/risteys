@@ -1,6 +1,5 @@
 ### TODO ###
 # - discard DEATH endpoint, or maybe do it in surv_endpoints.py
-# - handle the special timeline cases now that outcome is not death (ex: prior > outcome)
 
 
 from csv import writer as csv_writer
@@ -83,7 +82,7 @@ def main(path_pairs, path_definitions, path_dense_fevents, path_info, output_pat
         is_sex_specific = pd.notna(endpoints.loc[endpoints.NAME == outcome, "SEX"].iloc[0])
 
         try:
-            (df_controls,
+            (df_unexp,
              df_unexp_death,
              df_unexp_exp_p1,
              df_unexp_exp_p2,
@@ -91,7 +90,7 @@ def main(path_pairs, path_definitions, path_dense_fevents, path_info, output_pat
              df_tri_p2) = prep_coxhr(pair, lag, df_events, df_info)
 
             nindivs, df_lifelines = prep_lifelines(
-                df_controls,
+                df_unexp,
                 df_unexp_death,
                 df_unexp_exp_p1,
                 df_unexp_exp_p2,
@@ -223,7 +222,8 @@ def prep_coxhr(pair, lag, df_events, df_info):
     logger.debug("Setting-up the case-cohort design study")
     cohort = set(df_events.FINNGENID)
     cases = set(df_events.loc[df_events.ENDPOINT == outcome, "FINNGENID"])
-    cc_subcohort = set(np.random.choice(list(cohort), N_SUBCOHORT, replace=False))
+    size = min(N_SUBCOHORT, len(cohort))
+    cc_subcohort = set(np.random.choice(list(cohort), size, replace=False))
     cc_m = len(cohort - cases)
     cc_ms = len(cc_subcohort & (cohort - cases))
     cc_pm = cc_ms / cc_m
@@ -237,7 +237,7 @@ def prep_coxhr(pair, lag, df_events, df_info):
     # Assign case-cohort weight to each individual
     df_weights = pd.DataFrame({"FINNGENID": list(cc_sample)})
     df_weights["weight"] = 1.0
-    df_weights.loc[df_weights.FINNGENID.isin(cases), "weight"] = cc_weight_non_cases
+    df_weights.loc[~ df_weights.FINNGENID.isin(cases), "weight"] = cc_weight_non_cases
     df_info = df_info.merge(df_weights, on="FINNGENID")
 
     # Individuals with prior: exclude those when prior age > outcome age
@@ -291,11 +291,10 @@ def prep_coxhr(pair, lag, df_events, df_info):
 
     logger.info("Building timeline DataFrames with controls, unexposed, exposed")
     # Controls
-    controls = np.random.choice(list(unexp), N_SUBCOHORT, replace=False)
-    df_controls = df_sample.loc[df_sample.FINNGENID.isin(controls), :].copy()
-    df_controls["duration"] = df_controls.END_AGE - df_controls.START_AGE
-    df_controls["prior"] = False
-    df_controls["outcome"] = False
+    df_unexp = df_sample.loc[df_sample.FINNGENID.isin(unexp), :].copy()
+    df_unexp["duration"] = df_unexp.END_AGE - df_unexp.START_AGE
+    df_unexp["prior"] = False
+    df_unexp["outcome"] = False
 
     # Unexposed -> Outcome
     df_unexp_outcome = df_sample.loc[df_sample.FINNGENID.isin(unexp_outcome), :].copy()
@@ -346,7 +345,7 @@ def prep_coxhr(pair, lag, df_events, df_info):
     df_tri_p2["outcome"] = outcome
 
     return (
-        df_controls,
+        df_unexp,
         df_unexp_outcome,
         df_unexp_exp_p1,
         df_unexp_exp_p2,
@@ -355,7 +354,7 @@ def prep_coxhr(pair, lag, df_events, df_info):
     )
 
 
-def prep_lifelines(df_controls, df_unexp_death, df_unexp_exp_p1, df_unexp_exp_p2, df_tri_p1, df_tri_p2):
+def prep_lifelines(df_unexp, df_unexp_death, df_unexp_exp_p1, df_unexp_exp_p2, df_tri_p1, df_tri_p2):
     logger.info("Preparing lifelines dataframes")
 
     # Re-check that there are enough individuals to do the study,
@@ -368,7 +367,7 @@ def prep_lifelines(df_controls, df_unexp_death, df_unexp_exp_p1, df_unexp_exp_p2
     # Concatenate the data frames together
     keep_cols = ["duration", "prior", "BIRTH_TYEAR", "female", "outcome", "weight"]
     df_lifelines = pd.concat([
-        df_controls.loc[:, keep_cols],
+        df_unexp.loc[:, keep_cols],
         df_unexp_death.loc[:, keep_cols],
         df_unexp_exp_p1.loc[:, keep_cols],
         df_unexp_exp_p2.loc[:, keep_cols],
