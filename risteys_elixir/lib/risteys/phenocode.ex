@@ -97,14 +97,6 @@ defmodule Risteys.Phenocode do
       :h2_liab_se,
     ])
     |> validate_required([:name, :longname])
-    |> validate_exclusion(:level, ["1"])
-    |> validate_change(:omit, fn :omit, omit ->
-      if omit do
-        [omit: "cannot be true"]
-      else
-        []
-      end
-    end)
     |> validate_change(:ontology, fn :ontology, ontology ->
       allowed = allowed_ontology_types()
 

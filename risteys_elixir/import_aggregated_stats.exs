@@ -26,7 +26,6 @@
 # }
 
 alias Risteys.{Repo, Phenocode, StatsSex}
-import Ecto.Query
 require Logger
 
 Logger.configure(level: :info)
@@ -172,21 +171,3 @@ stats
       end
   end
 end)
-
-###
-# Clean-up endpoints without stats
-###
-keep =
-  Repo.all(from s in StatsSex, select: s.phenocode_id)
-  |> MapSet.new()
-
-all =
-  Repo.all(from p in Phenocode, select: p.id)
-  |> MapSet.new()
-
-delete =
-  MapSet.difference(all, keep)
-  |> MapSet.to_list()
-
-Logger.info("Cleaning-up #{length(delete)} phenocodes that don't have any statistics.")
-Repo.delete_all(from p in Phenocode, where: p.id in ^delete)
