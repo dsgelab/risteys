@@ -53,11 +53,9 @@ def main(input_path, output_path):
     # Making the distributions by endpoint
     distrib_age = compute_age_distribution(df_fevent)
     logger.debug("Writing age distribution to HDF5")
-    distrib_age.to_hdf(output_path, "/distrib/age")
 
     distrib_year = compute_year_distribution(df_fevent)
     logger.debug("Writing year distribution to HDF5")
-    distrib_year.to_hdf(output_path, "/distrib/year")
 
     # Checking that we don't miss any column with individual-level data
     expected_columns = set(ALL_COLS + FEMALE_COLS + MALE_COLS)
@@ -236,7 +234,19 @@ def compute_distrib(df, column, brackets):
         )
     )
 
-    return outdata
+    # Reshape dataframe
+    df = pd.DataFrame()
+    for (endpoint, interval), values in outdata.iterrows():
+        df = df.append({
+            "endpoint": endpoint,
+            "interval_left": interval.left,
+            "interval_right": interval.right - 1,  # substract since right-side of interval is open
+            "all": values["all"],
+            "female": values["female"],
+            "male": values["male"]
+        }, ignore_index=True)
+
+    return df
 
 
 def filter_stats(stats):
