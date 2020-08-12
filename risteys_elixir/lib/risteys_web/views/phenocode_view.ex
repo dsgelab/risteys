@@ -69,7 +69,7 @@ defmodule RisteysWeb.PhenocodeView do
         ci_min = drug.score - 1.96 * drug.stderr
         ci_max = drug.score + 1.96 * drug.stderr
 
-        [drug.atc, drug.name, drug.score, ci_min, ci_max, drug.pvalue, drug.n_indivs]
+        [drug.atc, drug.description, drug.score, ci_min, ci_max, drug.pvalue, drug.n_indivs]
       end)
 
     Enum.concat([header], stats)
