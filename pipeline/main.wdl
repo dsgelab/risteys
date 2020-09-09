@@ -104,7 +104,7 @@ task QC {
 	runtime {
 		docker: "eu.gcr.io/finngen-refinery-dsgelab/wdl-risteys"
 		cpu: "1"
-		memory: "52 GB"
+		memory: 16 GB"
 		disks: "local-disk 50 SSD"
 		zones: "europe-west1-b"
 		preemptible: 0
@@ -154,7 +154,7 @@ task build_input {
 	runtime {
 		docker: "eu.gcr.io/finngen-refinery-dsgelab/wdl-risteys"
 		cpu: "1"
-		memory: "52 GB"
+		memory: "8 GB"
 		disks: "local-disk 50 SSD"
 		zones: "europe-west1-b"
 		preemptible: 0
@@ -180,7 +180,7 @@ task aggregate_stats {
 	runtime {
 		docker: "eu.gcr.io/finngen-refinery-dsgelab/wdl-risteys"
 		cpu: "1"
-		memory: "26 GB"
+		memory: "16 GB"
 		disks: "local-disk 50 SSD"
 		zones: "europe-west1-b"
 		preemptible: 0
