@@ -1,3 +1,4 @@
+#!/usr/bin/env python3
 """
 Compute drug scores related to a given endpoint.
 
@@ -17,8 +18,8 @@ Outputs:
 """
 
 import csv
+from os import getenv
 from pathlib import Path
-from sys import argv
 
 import pandas as pd
 import numpy as np
@@ -26,7 +27,25 @@ from numpy.linalg import LinAlgError
 from numpy.linalg import multi_dot as mdot
 from statsmodels.formula.api import logit
 
-from log import logger
+### from log import logger
+# TODO #
+# Copy-pasted the logging configuration here instead of importing it
+# from log.py.
+# This is because dsub will run this script in a Docker image without
+# having access to the log.py file.  There might be a solution to do
+# this, for example by adding the log.py to the Docker image and
+# moving it to the right place afterward.
+import logging
+level = getenv("LOG_LEVEL", logging.INFO)
+logger = logging.getLogger("pipeline")
+handler = logging.StreamHandler()
+formatter = logging.Formatter(
+    "%(asctime)s %(levelname)-8s %(module)-21s %(funcName)-25s: %(message)s")
+
+handler.setFormatter(formatter)
+logger.addHandler(handler)
+logger.setLevel(level)
+# END #
 
 
 ATC_LEVEL = len('A10BA')  # Use broad level of ATC classification instead of full ATC codes
@@ -40,7 +59,7 @@ PRE_EXCLUSION = 1 * MONTH
 POST_DURATION = 5 * WEEK
 
 STUDY_STARTS = 1998  # inclusive, from 1998-01-01 onward
-STUDY_ENDS = 2021    # exclusive, up until 2020-12-31
+STUDY_ENDS = 2020    # exclusive, up until 2019-12-31
 STUDY_DURATION = 20 * YEAR
 
 MIN_CASES = 15
@@ -48,16 +67,15 @@ MIN_CASES = 15
 # Prediction parameters
 PRED_FEMALE = 0.5
 PRED_YOB = 1960
-PRED_FG_ENDPOINT_YEAR = 2018
+PRED_FG_ENDPOINT_YEAR = 2019
 
 
-def main(fg_endpoint, first_events, detailed_longit, endpoint_defs, minimum_info, output_dir):
+def main(fg_endpoint, first_events, detailed_longit, endpoint_defs, minimum_info, output_scores, output_counts):
     """Compute a score for the association of a given drug to a FinnGen endpoint"""
     line_buffering = 1
 
     # File with drug scores
-    scores_path = output_dir / (fg_endpoint + ".csv")
-    scores_file = open(scores_path, "x", buffering=line_buffering)
+    scores_file = open(output_scores, "x", buffering=line_buffering)
     res_writer = csv.writer(scores_file)
     res_writer.writerow([
         "endpoint",
@@ -67,8 +85,7 @@ def main(fg_endpoint, first_events, detailed_longit, endpoint_defs, minimum_info
     ])
 
     # Results of full-ATC drug counts
-    counts_path = output_dir / (fg_endpoint + "_counts.csv")
-    counts_file = open(counts_path, "x", buffering=line_buffering)
+    counts_file = open(output_counts, "x", buffering=line_buffering)
     counts_writer = csv.writer(counts_file)
     counts_writer.writerow([
         "endpoint",
@@ -84,7 +101,7 @@ def main(fg_endpoint, first_events, detailed_longit, endpoint_defs, minimum_info
         detailed_longit,
         endpoint_defs,
         minimum_info)
-    is_sex_specific = endpoint_def.SEX.notna()
+    is_sex_specific = pd.notna(endpoint_def.SEX)
 
     for drug in df_logit.ATC.unique():
         data_comp_logit(df_logit, fg_endpoint, drug, is_sex_specific, res_writer, counts_writer)
@@ -107,8 +124,7 @@ def load_data(fg_endpoint, first_events, detailed_longit, endpoint_defs, minimum
             fg_endpoint,
             fg_endpoint_age,
             fg_endpoint_year
-        ],
-        dialect=csv.excel_tab
+        ]
     )
     # Rename endpoint columns to genereic names for either reference down the line
     df_endpoint = df_endpoint.rename(columns={
@@ -129,8 +145,7 @@ def load_data(fg_endpoint, first_events, detailed_longit, endpoint_defs, minimum
     logger.info("Loading drug data")
     df_drug = pd.read_csv(
         detailed_longit,
-        usecols=["FINNGENID", "SOURCE", "EVENT_AGE", "APPROX_EVENT_DAY", "CODE1"],
-        dialect=csv.excel_tab
+        usecols=["FINNGENID", "SOURCE", "EVENT_AGE", "APPROX_EVENT_DAY", "CODE1"]
     )
 
     df_drug.APPROX_EVENT_DAY = pd.to_datetime(df_drug.APPROX_EVENT_DAY)  # needed for filtering based on year
@@ -142,8 +157,7 @@ def load_data(fg_endpoint, first_events, detailed_longit, endpoint_defs, minimum
     logger.info("Loading info data")
     df_info = pd.read_csv(
         minimum_info,
-        usecols=["FINNGENID", "SEX"],
-        dialect=csv.excel_tab
+        usecols=["FINNGENID", "SEX"]
     )
     df_info["female"] = df_info.SEX.apply(lambda d: 1.0 if d == "female" else 0.0)
     df_info = df_info.drop(columns=["SEX"])
@@ -153,7 +167,7 @@ def load_data(fg_endpoint, first_events, detailed_longit, endpoint_defs, minimum
     df_endpoint_defs = pd.read_csv(
         endpoint_defs,
         usecols=["NAME", "SEX"]
-        dialect=csv.excel_tab)
+    )
     endpoint_def = df_endpoint_defs.loc[df_endpoint_defs.NAME == fg_endpoint, :].iloc[0]
 
     # Merge the data into a single DataFrame
@@ -293,10 +307,11 @@ def comp_score_logit(df, is_sex_specific):
 
 if __name__ == '__main__':
     main(
-        fg_endpoint=argv[1],
-        first_events=Path(argv[2]),
-        detailed_longit=Path(argv[3]),
-        endpoint_defs=Path(argv[4]),
-        minimum_info=Path(argv[5]),
-        output_dir=Path(argv[6])
+        fg_endpoint=getenv("FG_ENDPOINT"),
+        first_events=Path(getenv("FIRST_EVENTS")),
+        detailed_longit=Path(getenv("DETAILED_LONGIT")),
+        endpoint_defs=Path(getenv("ENDPOINT_DEFS")),
+        minimum_info=Path(getenv("MINIMUM_INFO")),
+        output_scores=Path(getenv("OUTPUT_SCORES")),
+        output_counts=Path(getenv("OUTPUT_COUNTS")),
     )
