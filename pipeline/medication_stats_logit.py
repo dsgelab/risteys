@@ -25,6 +25,7 @@ import pandas as pd
 import numpy as np
 from numpy.linalg import LinAlgError
 from numpy.linalg import multi_dot as mdot
+from scipy.stats import norm
 from statsmodels.formula.api import logit
 
 ### from log import logger
@@ -81,7 +82,9 @@ def main(fg_endpoint, first_events, detailed_longit, endpoint_defs, minimum_info
         "endpoint",
         "drug",
         "score",
-        "stderr"
+        "stderr",
+        "n_indivs",
+        "pvalue"
     ])
 
     # Results of full-ATC drug counts
@@ -180,7 +183,8 @@ def load_data(fg_endpoint, first_events, detailed_longit, endpoint_defs, minimum
 
 def data_comp_logit(df, fg_endpoint, drug, is_sex_specific, res_writer, counts_writer):
     logger.info(f"Computing for: {fg_endpoint} / {drug}")
-    df_stats, counts = logit_controls_cases(
+
+    df_stats, n_indivs, counts = logit_controls_cases(
         df,
         drug,
         STUDY_DURATION,
@@ -209,11 +213,14 @@ def data_comp_logit(df, fg_endpoint, drug, is_sex_specific, res_writer, counts_w
     except LinAlgError as exc:
         logger.warning(f"LinAlgError: {exc}")
     else:
+        pvalue = 2 * norm.cdf(-abs(score / stderr))
         res_writer.writerow([
             fg_endpoint,
             drug,
             score,
-            stderr
+            stderr,
+            n_indivs,
+            pvalue
         ])
 
 
@@ -235,6 +242,9 @@ def logit_controls_cases(
         (df.APPROX_EVENT_DAY.dt.year >= study_starts)
         & (df["fg_endpoint_year"] >= study_starts))
     df = df.loc[keep_data, :]
+
+    # Count global number of individuals having the endpoint + drug at some point in time
+    n_indivs = df.loc[df.ATC == drug, "FINNGENID"].unique().shape[0]
 
     # Check events where the drug happens BEFORE the endpoint
     drug_pre_endpoint = (
@@ -276,7 +286,7 @@ def logit_controls_cases(
 
     df_stats = pd.concat([df_cases, df_controls], sort=False)
 
-    return df_stats, counts
+    return df_stats, n_indivs, counts
 
 
 def comp_score_logit(df, is_sex_specific):
