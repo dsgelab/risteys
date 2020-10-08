@@ -291,10 +291,16 @@ def comp_score_logit(df, is_sex_specific):
     res = mod.fit(disp=False)  # fit() without displaying convergence messages
     predict_data = pd.DataFrame({
         "Intercept": [1.0],
-        "female": [PRED_FEMALE],
         "yob": [PRED_YOB],
-        "fg_endpoint_year": [PRED_FG_ENDPOINT_YEAR]
+        "fg_endpoint_year": [PRED_FG_ENDPOINT_YEAR],
+        "female": [PRED_FEMALE]
     })
+
+    # Force "predict_cata" and "cov_params" matrix to use same column
+    # order, otherwise it will to a silent bug as their values are put
+    # together computing the std err with "mdot" below.
+    col_order = res.cov_params().columns.values
+    predict_data = predict_data.loc[:, col_order]
 
     # Compute the standard error of the prediction
     pred = res.predict(predict_data)
