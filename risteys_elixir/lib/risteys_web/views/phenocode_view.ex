@@ -181,12 +181,22 @@ defmodule RisteysWeb.PhenocodeView do
   defp ontology_links(ontology) do
     # Helper function to link to external resources
     linker = fn source, id ->
-      link = case source do
-	"DOID" -> "https://www.ebi.ac.uk/ols/search?q=" <> id <> "&ontology=doid"
-	"EFO" -> "https://www.ebi.ac.uk/gwas/efotraits/EFO_" <> id
-	"MESH" -> "https://meshb.nlm.nih.gov/record/ui?ui=" <> id
-	"SNOMED" ->             "https://browser.ihtsdotools.org/?perspective=full&conceptId1=" <> id <> "&edition=en-edition"
-	     end
+      link =
+        case source do
+          "DOID" ->
+            "https://www.ebi.ac.uk/ols/search?q=" <> id <> "&ontology=doid"
+
+          "EFO" ->
+            "https://www.ebi.ac.uk/gwas/efotraits/EFO_" <> id
+
+          "MESH" ->
+            "https://meshb.nlm.nih.gov/record/ui?ui=" <> id
+
+          "SNOMED" ->
+            "https://browser.ihtsdotools.org/?perspective=full&conceptId1=" <>
+              id <> "&edition=en-edition"
+        end
+
       ahref(source, link)
     end
 
@@ -219,10 +229,11 @@ defmodule RisteysWeb.PhenocodeView do
 
     icd =
       case String.split_at(short, 3) do
-	{prefix, ""} ->
-	  prefix
-	{prefix, suffix} ->
-	  prefix <> "." <> suffix
+        {prefix, ""} ->
+          prefix
+
+        {prefix, suffix} ->
+          prefix <> "." <> suffix
       end
 
     ahref(text, "https://icd.who.int/browse10/2016/en#/#{icd}")
@@ -275,6 +286,43 @@ defmodule RisteysWeb.PhenocodeView do
   defp atc_link_wikipedia(atc) do
     short = String.slice(atc, 0..2)
     "https://en.wikipedia.org/wiki/ATC_code_#{short}##{atc}"
+  end
+
+  defp mortality_table(stats) do
+    lags = [
+      {0, "Full study time"},
+      {15, "15 years"},
+      {5, "5 years"},
+      {1, "1 year"}
+    ]
+
+    no_data = %{
+      absolute_risk: "-",
+      hr: "-",
+      pvalue: "-",
+      n_individuals: "-"
+    }
+
+    for {lag, title} <- lags do
+      data = Enum.find(stats, fn %{lagged_hr_cut_year: lag_hr} -> lag_hr == lag end)
+
+      stat =
+        if not is_nil(data) do
+          hr =
+            "#{data.hr |> round(2)} [#{data.hr_ci_min |> round(2)}, #{data.hr_ci_max |> round(2)}]"
+
+          %{
+            absolute_risk: data.absolute_risk |> round(2),
+            hr: hr,
+            pvalue: data.pvalue |> pvalue_str(),
+            n_individuals: data.n_individuals
+          }
+        else
+          no_data
+        end
+
+      {title, stat}
+    end
   end
 
   defp data_assocs_plot(phenocode, assocs) do

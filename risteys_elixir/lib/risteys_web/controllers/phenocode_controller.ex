@@ -8,6 +8,7 @@ defmodule RisteysWeb.PhenocodeController do
     DrugStats,
     Icd9,
     Icd10,
+    MortalityStats,
     Phenocode,
     PhenocodeIcd10,
     PhenocodeIcd9,
@@ -138,6 +139,9 @@ defmodule RisteysWeb.PhenocodeController do
         distrib_age
       end
 
+    # Mortality stats
+    mortality_stats = get_mortality_stats(phenocode)
+
     conn
     |> assign(:page_title, phenocode.name)
     |> assign(:name, phenocode.name)
@@ -148,6 +152,7 @@ defmodule RisteysWeb.PhenocodeController do
     |> assign(:distrib_year, distrib_year)
     |> assign(:distrib_age, distrib_age)
     |> assign(:description, description)
+    |> assign(:mortality, mortality_stats)
     |> assign(:data_assocs, data_assocs(phenocode))
     |> render("show.html")
   end
@@ -264,6 +269,10 @@ defmodule RisteysWeb.PhenocodeController do
       female: stats_female,
       male: stats_male
     }
+  end
+
+  defp get_mortality_stats(phenocode) do
+    Repo.all(from ms in MortalityStats, where: ms.phenocode_id == ^phenocode.id)
   end
 
   defp data_assocs(phenocode) do
