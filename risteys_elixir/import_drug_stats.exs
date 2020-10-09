@@ -34,18 +34,22 @@ Logger.info("Inserting/Updating drug stats")
 drug_scores_path
 |> File.stream!()
 |> CSV.decode!(headers: true)
-|> Stream.reject(fn %{"score" => score, "stderr" => stderr, "endpoint" => endpoint, "ATC" => atc} ->
-  is_nan = score == "nan" or stderr == "nan"
+|> Stream.reject(fn %{"score" => score,
+		     "stderr" => stderr,
+		     "endpoint" => endpoint,
+		     "drug" => atc,
+		     "pvalue" => pvalue} ->
+  is_nan = score == "nan" or stderr == "nan" or pvalue == "nan"
 
   if is_nan do
     Logger.warn(
-      "Drug score with NaN value for #{endpoint}/#{atc}: score:#{score} ; stderr:#{stderr}"
+      "Drug score with NaN value for #{endpoint}/#{atc}: score:#{score} ; stderr:#{stderr} ; pvalue:#{pvalue}"
     )
   end
 
   is_nan
 end)
-|> Stream.reject(fn %{"endpoint" => endpoint, "ATC" => atc, "n_indivs" => n_indivs} ->
+|> Stream.reject(fn %{"endpoint" => endpoint, "drug" => atc, "n_indivs" => n_indivs} ->
   if n_indivs < 6 do
     Logger.warn("Reject entry for #{endpoint}/#{atc} with indidivual level-data N=#{n_indivs}")
     true
@@ -55,7 +59,7 @@ end)
 end)
 |> Enum.each(fn %{
                   "endpoint" => endpoint,
-                  "ATC" => atc,
+                  "drug" => atc,
                   "score" => score,
                   "stderr" => stderr,
                   "pvalue" => pvalue,
