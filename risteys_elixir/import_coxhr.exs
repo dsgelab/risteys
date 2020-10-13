@@ -61,7 +61,7 @@ phenos = Repo.all(from p in Phenocode, select: p.name) |> MapSet.new()
 coxhr_filepath
 |> File.stream!()
 |> CSV.decode!(headers: true)
-|> Stream.filter(fn %{"prior" => prior, "later" => outcome} ->
+|> Stream.filter(fn %{"prior" => prior, "outcome" => outcome} ->
   prior_in_phenos = MapSet.member?(phenos, prior)
   if not prior_in_phenos do
     Logger.warn("Prior #{prior} not found in phenos")
@@ -77,13 +77,13 @@ end)
 |> Stream.with_index()
 |> Enum.each(fn {%{
                    "prior" => prior,
-                   "later" => outcome,
-                   "lagged_hr_cut_year" => lagged_years,
-                   "pred_hr" => hr,
-                   "pred_ci_lower" => ci_min,
-                   "pred_ci_upper" => ci_max,
-                   "pred_pval" => pvalue,
-                   "nindivs_prior_later" => n_individuals
+                   "outcome" => outcome,
+                   "lag_hr" => lagged_years,
+                   "prior_hr" => hr,
+                   "prior_ci_lower" => ci_min,
+                   "prior_ci_upper" => ci_max,
+                   "prior_pval" => pvalue,
+                   "nindivs_prior_outcome" => n_individuals
                  }, idx} ->
   Logger.debug("Processing pair: #{prior} -> #{outcome}")
 
@@ -92,11 +92,11 @@ end)
   end
 
   lagged_years =
-    if lagged_years == "nan" do
+    if lagged_years == "" do
       # can't use nil since lagged_hr is part of a unique constraint
       0
     else
-      lagged_years |> String.to_float() |> trunc
+      lagged_years |> String.to_integer() |> trunc
     end
 
   case hr do
