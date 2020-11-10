@@ -290,7 +290,7 @@ defmodule RisteysWeb.PhenocodeView do
 
   defp mortality_table(stats) do
     lags = [
-      {0, "Full study time"},
+      {0, "1998–2019"},
       {15, "15 years"},
       {5, "5 years"},
       {1, "1 year"}
