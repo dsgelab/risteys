@@ -418,7 +418,7 @@ div.scrolling {
 	overflow: scroll;
 	position: relative;
 
-	font-size: 0.8rem;
+	font-size: 0.6rem;
 }
 
 .scrolling table {
