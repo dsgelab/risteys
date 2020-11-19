@@ -1,15 +1,12 @@
 import * as d3 from 'd3';
 
 // Dimensions
-let dim = {
-	svgWidth: 60,
-	svgHeight: 16,
-
-	// Gives a nice margin for the [2.5, 97.5] percentile box
-	hrMin: -3,
-	hrMax:  3,
+const dim = {
+	svgWidth: 55,
+	svgHeight: 14,
 };
-
+const dotRadius = dim.svgHeight / 5;
+const boxMargin = dotRadius + 1;
 
 let svgPath = (dobj, stroke, fill) => {
 	return `<path stroke="${stroke}" fill="${fill}" d="${dobj.toString()}" />`;
@@ -30,33 +27,30 @@ let drawLine = (x0, y0, x1, y1, stroke) => {
 	return svgPath(l, stroke, "none");
 };
 
-let toBoxSpace = (x, hr_min, hr_max) => {
-	return (x - hr_min) / (hr_max - hr_min) * dim.svgWidth;
+let toBoxSpace = (x) => {
+	return x * (dim.svgWidth - 2 * boxMargin) + boxMargin;
 };
 
-let drawCompBox = (hr, hr_min, hr_max, lop, q1, median, q3, hip) => {
-	var hr_min = Math.min(hr_min - 1, dim.hrMin);
-	var hr_max = Math.max(hr_max + 1, dim.hrMax);
-
+let drawCompBox = (hr_binned) => {
 	const background = drawRect(0, 0, dim.svgWidth, dim.svgHeight, "none", "#ffffff");
 	const outline = drawRect(0, 0, dim.svgWidth, dim.svgHeight, "black", "none");
 
-	const median_plot = toBoxSpace(median, hr_min, hr_max);
-	const median_line = drawLine(median_plot, 0, median_plot, dim.svgHeight, "#666");
+	const mean_plot = toBoxSpace(0.5);
+	const mean_line = drawLine(mean_plot, 0, mean_plot, dim.svgHeight, "#666");
 
-	const q1_plot = toBoxSpace(q1, hr_min, hr_max);
-	const q3_plot = toBoxSpace(q3, hr_min, hr_max);
+	const q1_plot = toBoxSpace(0.25);
+	const q3_plot = toBoxSpace(0.75);
 	const quart_box = drawRect(q1_plot, 0, q3_plot, dim.svgHeight, "none", "#cacaca");
 
-	const lop_plot = toBoxSpace(lop, hr_min, hr_max);
-	const hip_plot = toBoxSpace(hip, hr_min, hr_max);
+	const lop_plot = toBoxSpace(0.025);
+	const hip_plot = toBoxSpace(0.975);
 	const perc_box = drawRect(lop_plot, 0, hip_plot, dim.svgHeight, "none", "#ececec");
 
-	const hr_plot = toBoxSpace(hr, hr_min, hr_max);
+	const hr_plot = toBoxSpace(hr_binned);
 	const hr_dot = svgCircle(
 		hr_plot,            // x position
 		dim.svgHeight / 2,  // y position
-		dim.svgHeight / 5,  // circle radius
+		dotRadius,
 		"black",
 		"black"
 	);
@@ -65,7 +59,7 @@ let drawCompBox = (hr, hr_min, hr_max, lop, q1, median, q3, hip) => {
 		${background}
 		${perc_box}
 		${quart_box}
-		${median_line}
+		${mean_line}
 		${hr_dot}
 		${outline}
 	</svg>`

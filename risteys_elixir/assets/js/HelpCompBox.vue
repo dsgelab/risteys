@@ -6,9 +6,10 @@
 		</p>
 		<img src="/images/compbox.svg">
 		<p>
-			This plot shows the distribution of normalized HR:
+			This plot shows the distribution of binned HRs:
 		</p>
 		<ul>
+			<li>X axis: percentile distribution of HRs, from 0 to 1.</li>
 			<li>light-grey zone: 95% of all HRs are within this interval</li>
 			<li>grey zone: 50% of all HRs are within this interval</li>
 			<li>dark vertical line: median of HRs</li>

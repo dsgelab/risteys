@@ -99,18 +99,8 @@
 						<td v-else>{{ pheno.all.before.nindivs }}</td>
 
 						<!-- (before) COMPBOX -->
-						<td v-if="pheno.all.before.hr_norm === null">-</td>
-						<td
-							v-else
-							v-html="compBox(
-								pheno.all.before.hr_norm,
-								pheno.all.before.hr_norm_min,
-								pheno.all.before.hr_norm_max,
-								pheno.all.before.hr_norm_lop,
-								pheno.all.before.hr_norm_q1,
-								pheno.all.before.hr_norm_median,
-								pheno.all.before.hr_norm_q3,
-								pheno.all.before.hr_norm_hip)">
+						<td v-if="pheno.all.before.hr_binned === null">-</td>
+ 						<td	v-else v-html="compBox(pheno.all.before.hr_binned)">
 						</td>
 
 						<!-- (after) HR -->
@@ -127,18 +117,8 @@
 						<td v-else>{{ pheno.all.after.nindivs }}</td>
 
 						<!-- (after) COMPBOX -->
-						<td v-if="pheno.all.after.hr_norm === null">-</td>
-						<td
-							v-else
-							v-html="compBox(
-								pheno.all.after.hr_norm,
-								pheno.all.after.hr_norm_min,
-								pheno.all.after.hr_norm_max,
-								pheno.all.after.hr_norm_lop,
-								pheno.all.after.hr_norm_q1,
-								pheno.all.after.hr_norm_median,
-								pheno.all.after.hr_norm_q3,
-								pheno.all.after.hr_norm_hip)">
+						<td v-if="pheno.all.after.hr_binned === null">-</td>
+						<td v-else v-html="compBox(pheno.all.after.hr_binned)">
 						</td>
 					</tr>
 
@@ -306,10 +286,10 @@ let compute_table = (col_filter, sorter, table) => {
 			result = sortByNull(result, (pheno) => pheno.all.before.nindivs, "asc");
 			break;
 		case "compbox_before_desc":
-			result = sortByNull(result, (pheno) => pheno.all.before.hr_norm, "desc");
+			result = sortByNull(result, (pheno) => pheno.all.before.hr_binned, "desc");
 			break;
 		case "compbox_before_asc":
-			result = sortByNull(result, (pheno) => pheno.all.before.hr_norm, "asc");
+			result = sortByNull(result, (pheno) => pheno.all.before.hr_binned, "asc");
 			break;
 		case "hr_after_desc":
 			result = sortByNull(result, (pheno) => pheno.all.after.hr, "desc");
@@ -330,10 +310,10 @@ let compute_table = (col_filter, sorter, table) => {
 			result = sortByNull(result, (pheno) => pheno.all.after.nindivs, "asc");
 			break;
 		case "compbox_after_desc":
-			result = sortByNull(result, (pheno) => pheno.all.after.hr_norm, "desc");
+			result = sortByNull(result, (pheno) => pheno.all.after.hr_binned, "desc");
 			break;
 		case "compbox_after_asc":
-			result = sortByNull(result, (pheno) => pheno.all.after.hr_norm, "asc");
+			result = sortByNull(result, (pheno) => pheno.all.after.hr_binned, "asc");
 			break;
 		default:
 			console.log("Unrecognized sorter:", sorter);
@@ -375,8 +355,8 @@ export default {
 		phenocode: String,
 	},
 	methods: {
-		compBox(hr, hr_min, hr_max, lop, q1, median, q3, hip) {
-			return drawCompBox(hr, hr_min, hr_max, lop,  q1, median, q3, hip);
+		compBox(hr_binned) {
+			return drawCompBox(hr_binned);
 		},
 		refresh_table() {
 			this.assoc_table = compute_table(

@@ -55,8 +55,8 @@ defmodule RisteysWeb.PhenocodeController do
     case format do
       :json ->
         # These are only needed on the JSON API
-        prior_distribs = hr_distribs(phenocode, :prior)
-        outcome_distribs = hr_distribs(phenocode, :outcome)
+        prior_distribs = hr_prior_distribs(phenocode)
+        outcome_distribs = hr_outcome_distribs(phenocode)
 
         conn
         |> assign(:hr_prior_distribs, prior_distribs)
@@ -304,85 +304,80 @@ defmodule RisteysWeb.PhenocodeController do
     Repo.all(query)
   end
 
-  defp hr_distribs(phenocode, direction) do
-    distribs =
-      hr_distribs_query(phenocode, direction)
-      |> Enum.reduce(
-        %{},
-        fn distrib, acc ->
-          {id, stats} = Map.pop(distrib, :assoc_id)
-          Map.put_new(acc, id, stats)
-        end
-      )
+  defp hr_prior_distribs(phenocode) do
+    # at least that amount for a meaningful distribution
+    min_count = 30
 
-    hr_min =
-      distribs
-      |> Enum.map(fn {_key, %{hr: hr}} -> hr end)
-      |> Enum.min(fn -> nil end)
-
-    hr_max =
-      distribs
-      |> Enum.map(fn {_key, %{hr: hr}} -> hr end)
-      |> Enum.max(fn -> nil end)
-
-    %{
-      distribs: distribs,
-      min: hr_min,
-      max: hr_max
-    }
-  end
-
-  defp hr_distribs_query(phenocode, direction) do
-    # Since this function is generic on the "direction", we set what are the fields to select.
-    # "main" means the id of the phenocode of interest.
-    # "distrib" means ids of the associated phenocodes.
-    {field_main_id, field_distrib_id} =
-      case direction do
-        :prior ->
-          {:outcome_id, :prior_id}
-
-        :outcome ->
-          {:prior_id, :outcome_id}
-      end
-
-    distribs =
+    percs =
       from c in CoxHR,
         where: c.lagged_hr_cut_year == 0,
-        group_by: field(c, ^field_distrib_id),
         select: %{
-          distrib_id: field(c, ^field_distrib_id),
-          cnt: count(field(c, ^field_distrib_id)),
-          # Using PostgreSQL specific functions to compute stats on the HR distributions.
-          # https://www.postgresql.org/docs/current/functions-aggregate.html
-          # Note that we are using ln(HR) to compute everything in the ln space.
-          mu: fragment("avg(ln(?))", c.hr),
-          sigma: fragment("stddev_pop(ln(?))", c.hr),
-          lop: fragment("percentile_cont(0.025) WITHIN GROUP (ORDER BY ln(?))", c.hr),
-          q1: fragment("percentile_cont(0.25) WITHIN GROUP (ORDER BY ln(?))", c.hr),
-          median: fragment("percentile_cont(0.5) WITHIN GROUP (ORDER BY ln(?))", c.hr),
-          q3: fragment("percentile_cont(0.75) WITHIN GROUP (ORDER BY ln(?))", c.hr),
-          hip: fragment("percentile_cont(0.975) WITHIN GROUP (ORDER BY ln(?))", c.hr)
+          prior_id: c.prior_id,
+          outcome_id: c.outcome_id,
+          percent_rank:
+            fragment(
+              "percent_rank() OVER (PARTITION BY ? ORDER BY ?)",
+              c.prior_id,
+              c.hr
+            )
+        }
+
+    counts =
+      from c in CoxHR,
+        where: c.lagged_hr_cut_year == 0,
+        group_by: c.prior_id,
+        select: %{
+          prior_id: c.prior_id,
+          count: count()
         }
 
     Repo.all(
-      from c in CoxHR,
-        join: distrib in subquery(distribs),
-        on: field(c, ^field_distrib_id) == distrib.distrib_id,
-        # 30 to be able to approximate a normal distribution
-        where:
-          field(c, ^field_main_id) == ^phenocode.id and
-            c.lagged_hr_cut_year == 0 and
-            distrib.cnt > 30,
+      from p in subquery(percs),
+        join: cnt in subquery(counts),
+        on: p.prior_id == cnt.prior_id,
+        where: p.outcome_id == ^phenocode.id and cnt.count > ^min_count,
         select: %{
-          assoc_id: distrib.distrib_id,
-          # Centered and normalized values
-          # Don't forget to ln(HR) here, other values are already in ln space
-          hr: (fragment("ln(?)", c.hr) - distrib.mu) / distrib.sigma,
-          lop: (distrib.lop - distrib.mu) / distrib.sigma,
-          q1: (distrib.q1 - distrib.mu) / distrib.sigma,
-          median: (distrib.median - distrib.mu) / distrib.sigma,
-          q3: (distrib.q3 - distrib.mu) / distrib.sigma,
-          hip: (distrib.hip - distrib.mu) / distrib.sigma
+          pheno_id: p.prior_id,
+          percent_rank: p.percent_rank
+        }
+    )
+  end
+
+  defp hr_outcome_distribs(phenocode) do
+    # at least that amount for a meaningful distribution
+    min_count = 30
+
+    percs =
+      from c in CoxHR,
+        where: c.lagged_hr_cut_year == 0,
+        select: %{
+          prior_id: c.prior_id,
+          outcome_id: c.outcome_id,
+          percent_rank:
+            fragment(
+              "percent_rank() OVER (PARTITION BY ? ORDER BY ?)",
+              c.outcome_id,
+              c.hr
+            )
+        }
+
+    counts =
+      from c in CoxHR,
+        where: c.lagged_hr_cut_year == 0,
+        group_by: c.outcome_id,
+        select: %{
+          outcome_id: c.outcome_id,
+          count: count()
+        }
+
+    Repo.all(
+      from p in subquery(percs),
+        join: cnt in subquery(counts),
+        on: p.outcome_id == cnt.outcome_id,
+        where: p.prior_id == ^phenocode.id and cnt.count > ^min_count,
+        select: %{
+          pheno_id: p.outcome_id,
+          percent_rank: p.percent_rank
         }
     )
   end

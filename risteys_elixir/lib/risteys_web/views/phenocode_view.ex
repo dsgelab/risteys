@@ -357,6 +357,27 @@ defmodule RisteysWeb.PhenocodeView do
   end
 
   defp data_assocs_table(pheno_id, assocs, hr_prior_distribs, hr_outcome_distribs) do
+    # Merge binned HR distrib in assocs table
+    binned_prior_hrs =
+      for bin <- hr_prior_distribs, into: %{}, do: {bin.pheno_id, bin.percent_rank}
+
+    binned_outcome_hrs =
+      for bin <- hr_outcome_distribs, into: %{}, do: {bin.pheno_id, bin.percent_rank}
+
+    assocs =
+      Enum.map(
+        assocs,
+        fn assoc ->
+          if assoc.outcome_id == pheno_id do
+            hr_binned = Map.get(binned_prior_hrs, assoc.prior_id)
+            Map.put(assoc, :hr_binned, hr_binned)
+          else
+            hr_binned = Map.get(binned_outcome_hrs, assoc.outcome_id)
+            Map.put(assoc, :hr_binned, hr_binned)
+          end
+        end
+      )
+
     # Takes the associations from the database and transform them to
     # values for the assocation table, such that each table row has
     # "before" and "after" associations with the given pheno_id.
@@ -368,37 +389,9 @@ defmodule RisteysWeb.PhenocodeView do
       "pvalue" => nil,
       "nindivs" => nil,
       "lagged_hr_cut_year" => nil,
-      # Values for CompBox plot
-      "hr_norm" => nil,
-      "hr_norm_min" => nil,
-      "hr_norm_max" => nil,
-      "hr_norm_lop" => nil,
-      "hr_norm_q1" => nil,
-      "hr_norm_median" => nil,
-      "hr_norm_q3" => nil,
-      "hr_norm_hip" => nil
+      # value for CompBox plot
+      "hr_binned" => nil
     }
-
-    no_hr_norm_stats = %{
-      hr: nil,
-      lop: nil,
-      q1: nil,
-      median: nil,
-      q3: nil,
-      hip: nil
-    }
-
-    %{
-      distribs: prior_distribs,
-      min: prior_min,
-      max: prior_max
-    } = hr_prior_distribs
-
-    %{
-      distribs: outcome_distribs,
-      min: outcome_min,
-      max: outcome_max
-    } = hr_outcome_distribs
 
     rows =
       Enum.reduce(assocs, %{}, fn assoc, acc ->
@@ -412,21 +405,7 @@ defmodule RisteysWeb.PhenocodeView do
             no_stats
 
           stats ->
-            hr_stats = Map.get(prior_distribs, other_id, no_hr_norm_stats)
-
-            Map.merge(
-              stats,
-              %{
-                "hr_norm" => hr_stats.hr,
-                "hr_norm_min" => prior_min,
-                "hr_norm_max" => prior_max,
-                "hr_norm_lop" => hr_stats.lop,
-                "hr_norm_q1" => hr_stats.q1,
-                "hr_norm_median" => hr_stats.median,
-                "hr_norm_q3" => hr_stats.q3,
-                "hr_norm_hip" => hr_stats.hip
-              }
-            )
+            stats
         end
 
       no_lag_after =
@@ -435,21 +414,7 @@ defmodule RisteysWeb.PhenocodeView do
             no_stats
 
           stats ->
-            hr_stats = Map.get(outcome_distribs, other_id, no_hr_norm_stats)
-
-            Map.merge(
-              stats,
-              %{
-                "hr_norm" => hr_stats.hr,
-                "hr_norm_min" => outcome_min,
-                "hr_norm_max" => outcome_max,
-                "hr_norm_lop" => hr_stats.lop,
-                "hr_norm_q1" => hr_stats.q1,
-                "hr_norm_median" => hr_stats.median,
-                "hr_norm_q3" => hr_stats.q3,
-                "hr_norm_hip" => hr_stats.hip
-              }
-            )
+            stats
         end
 
       lag_1y_before =
@@ -563,7 +528,8 @@ defmodule RisteysWeb.PhenocodeView do
       "ci_max" => round(assoc.ci_max, 2),
       "pvalue" => assoc.pvalue,
       "pvalue_str" => pvalue_str(assoc.pvalue),
-      "nindivs" => assoc.nindivs
+      "nindivs" => assoc.nindivs,
+      "hr_binned" => assoc.hr_binned
     }
 
     # Create pheno mapping if not existing
