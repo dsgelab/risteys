@@ -6,7 +6,9 @@ const dim = {
 	svgHeight: 14,
 };
 const dotRadius = dim.svgHeight / 5;
-const boxMargin = dotRadius + 1;
+const boxMargin = dotRadius + 1;  // + 1 to make sure we don't clip
+const boxWidth = dim.svgWidth - 2 * boxMargin;
+
 
 let svgPath = (dobj, stroke, fill) => {
 	return `<path stroke="${stroke}" fill="${fill}" d="${dobj.toString()}" />`;
@@ -28,12 +30,12 @@ let drawLine = (x0, y0, x1, y1, stroke) => {
 };
 
 let toBoxSpace = (x) => {
-	return x * (dim.svgWidth - 2 * boxMargin) + boxMargin;
+	return x * boxWidth;
 };
 
-let drawCompBox = (hr_binned) => {
-	const background = drawRect(0, 0, dim.svgWidth, dim.svgHeight, "none", "#ffffff");
-	const outline = drawRect(0, 0, dim.svgWidth, dim.svgHeight, "black", "none");
+let drawCompBox = (hrBinned) => {
+	const background = drawRect(0, 0, boxWidth, dim.svgHeight, "none", "#ffffff");
+	const outline = drawRect(0, 0, boxWidth, dim.svgHeight, "black", "none");
 
 	const mean_plot = toBoxSpace(0.5);
 	const mean_line = drawLine(mean_plot, 0, mean_plot, dim.svgHeight, "#666");
@@ -46,7 +48,7 @@ let drawCompBox = (hr_binned) => {
 	const hip_plot = toBoxSpace(0.975);
 	const perc_box = drawRect(lop_plot, 0, hip_plot, dim.svgHeight, "none", "#ececec");
 
-	const hr_plot = toBoxSpace(hr_binned);
+	const hr_plot = toBoxSpace(hrBinned);
 	const hr_dot = svgCircle(
 		hr_plot,            // x position
 		dim.svgHeight / 2,  // y position
@@ -56,12 +58,14 @@ let drawCompBox = (hr_binned) => {
 	);
 
 	return `<svg height="${dim.svgHeight}" width="${dim.svgWidth}">
-		${background}
-		${perc_box}
-		${quart_box}
-		${mean_line}
-		${hr_dot}
-		${outline}
+		<g transform="translate(${boxMargin}, 0)">
+			${background}
+			${perc_box}
+			${quart_box}
+			${mean_line}
+			${outline}
+			${hr_dot}
+		</g>
 	</svg>`
 };
 
