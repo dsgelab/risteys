@@ -100,7 +100,9 @@
 
 						<!-- (before) COMPBOX -->
 						<td v-if="pheno.all.before.hr_binned === null">-</td>
- 						<td	v-else v-html="compBox(pheno.all.before.hr_binned)">
+ 						<td	v-else
+ 							v-html="compBox(pheno.all.before.hr_binned)"
+ 							v-bind:title="Math.trunc(pheno.all.before.hr_binned * 100) + ' percentile'">
 						</td>
 
 						<!-- (after) HR -->
@@ -118,7 +120,10 @@
 
 						<!-- (after) COMPBOX -->
 						<td v-if="pheno.all.after.hr_binned === null">-</td>
-						<td v-else v-html="compBox(pheno.all.after.hr_binned)">
+						<td v-else
+							v-html="compBox(pheno.all.after.hr_binned)"
+							v-bind:title="Math.trunc(pheno.all.after.hr_binned * 100) + ' percentile'"
+							>
 						</td>
 					</tr>
 
