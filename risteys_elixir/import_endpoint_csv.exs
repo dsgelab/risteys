@@ -1,16 +1,17 @@
 # Import endpoint (aka Phenocode) information.
 #
-# NOTE! Before using this script, the endpoint Excel file has to be converted to CSV.
-#
-#
 # Usage
 # -----
-# mix run import_endpoint_csv.exs <path-to-endpoints-file> <path-to-tagged-ordered-endpoints-file> <path-to-categories-file>
+# mix run import_endpoint_csv.exs \
+#     <path-to-endpoints-file> \
+#     <path-to-tagged-ordered-endpoints-file> \
+#     <path-to-categories-file> \
+#     <path-to-icd10fi>
 #
 # <path-to-endpoints-file>
 #   Endpoint file in CSV format.
 #   Provided in the FinnGen data.
-#   This file usually have the name "finngen_RX_endpoint_definitions.txt" and is
+#   This file usually have the name "finngen_RX_endpoint_definitions.txt"
 #
 # <path-to-tagged-ordered-endpoints-file>
 #   CSV file with header: TAG,CLASS,NAME
@@ -22,110 +23,59 @@
 #   Provided by Aki.
 #   It is used to map endpoints to categories.
 #
-#
-# Notes
-# -----
-# This is a 3-step process.
-#
-# First step is to parse the endpoint main tag.
-#
-# Second step is to parse the endpoint categories.
-#
-# Third step is to parse endpoint definition file and import endpoints into the database:
-# 1. Get the list of ICD-9s and ICD-10s from the database.
-#    So these should be imported before running this script, see:
-#    - import_icd10.exs
-#    - import_icd9.exs
-# 2. Parse the Endpoint CSV file
-# 3. Put the phenocode data from a CSV line into Ecto schemas.
-#    At this stage, some ICD-10 and ICD-9 are matched against thir tables in the database.
-#    Phenocode <-> ICD-{10,9} are built.
-# 4. Insert data in database.
+# <path-to-icd10fi>
+#   List of Finnish ICD-10, in CSV format and UTF-8.
+#   Provided by Aki.
+#   It is used to match an ICD-10 definition into a list of ICD-10s.
+#   Must contain columns: CodeId, ParentId
 
+alias Risteys.{Repo, Phenocode, PhenocodeIcd10, Icd10}
 require Logger
-alias Risteys.{Repo, Phenocode, Icd10, Icd9, PhenocodeIcd10, PhenocodeIcd9}
+import Ecto.Query
 
 Logger.configure(level: :info)
-[endpoints_path, tagged_path, categories_path | _] = System.argv()
 
-defmodule RegexICD do
-  import Ecto.Query
+# INPUT
+Logger.info("Loading ICD-10 from files")
+[endpoints_path, tagged_path, categories_path, icd10fi_file_path | _] = System.argv()
 
-  @icd10s Repo.all(from icd in Icd10, select: %{code: icd.code, id: icd.id}) |> MapSet.new()
-  @icd9s Repo.all(from icd in Icd9, select: %{code: icd.code, id: icd.id}) |> MapSet.new()
-
-  defp expand(regex, icd_version) do
-    Logger.debug(fn -> "expanding regex: #{regex}" end)
-
-    case regex do
-      nil ->
-        []
-
-      # not a valid ICD
-      "ANY" ->
-        []
-
-      _ ->
-        # Match only against upper most ICD in the tree.
-        # For example make E[7-9] match E7 but not E700.
-        regex = "^(#{regex})$"
-        reg = Regex.compile!(regex)
-
-        icds =
-          case icd_version do
-            10 -> @icd10s
-            9 -> @icd9s
-          end
-
-        icds
-        |> Enum.filter(fn %{code: code} -> Regex.match?(reg, code) end)
-    end
-  end
-
-  def expand_icd10(regex), do: expand(regex, 10)
-  def expand_icd9(regex), do: expand(regex, 9)
-end
-
+# HELPERS
 defmodule AssocICDs do
-  def insert(registry, icd_version, phenocode_id, icds) do
-    case icd_version do
-      10 ->
-        Enum.each(icds, fn icd ->
-          Logger.debug("ICD-10: #{inspect(icd)}")
+  def insert_or_update(registry, 10, phenocode, icds) do
+    # Delete all previous associations of (Phenocode, Registry) -> ICD-10
+    Repo.delete_all(
+      from link in PhenocodeIcd10,
+        where: link.phenocode_id == ^phenocode.id and link.registry == ^registry
+    )
 
-          PhenocodeIcd10.changeset(
-            %PhenocodeIcd10{},
-            %{
-              registry: registry,
-              phenocode_id: phenocode_id,
-              icd10_id: icd.id
-            }
-          )
-          |> Repo.insert!()
-        end)
+    # Add new associations
+    Enum.each(icds, fn icd ->
+      Logger.debug("Inserting: #{registry}, ICD-10, #{inspect(icd)}")
+      icd_db = Repo.get_by!(Icd10, code: icd)
 
-      9 ->
-        Enum.each(icds, fn icd ->
-          Logger.debug("ICD-9: #{inspect(icd)}")
-
-          PhenocodeIcd9.changeset(
-            %PhenocodeIcd9{},
-            %{
-              registry: registry,
-              phenocode_id: phenocode_id,
-              icd9_id: icd.id
-            }
-          )
-          |> Repo.insert!()
-        end)
-    end
+      case Repo.get_by(
+             PhenocodeIcd10,
+             registry: registry,
+             phenocode_id: phenocode.id,
+             icd10_id: icd_db.id
+           ) do
+        nil -> %PhenocodeIcd10{}
+        existing -> existing
+      end
+      |> PhenocodeIcd10.changeset(%{
+        registry: registry,
+        phenocode_id: phenocode.id,
+        icd10_id: icd_db.id
+      })
+      |> Repo.insert_or_update!()
+    end)
   end
 end
 
-###
-# PARSE MAIN TAG
-###
-main_tags =
+# 1. Get meta information for endpoint processing
+####
+
+tags =
   tagged_path
   |> File.stream!()
   |> CSV.decode!(headers: true)
@@ -133,213 +83,187 @@ main_tags =
     Map.put(acc, name, tag)
   end)
 
-###
-# PARSE CATEGORIES
-###
 categories =
   categories_path
   |> File.stream!()
   |> CSV.decode!(headers: true)
-  |> Enum.reduce(
-    %{},
-    fn %{"code" => code, "CHAPTER" => chapter, "OTHER" => other}, acc ->
-      category =
-        cond do
-          chapter != "" ->
-            chapter
+  |> Enum.reduce(%{}, fn %{"code" => tag, "CHAPTER" => chapter, "OTHER" => other}, acc ->
+    category =
+      if chapter != "" do
+        chapter
+      else
+        other
+      end
 
-          other != "" ->
-            other
-        end
+    Map.put(acc, tag, category)
+  end)
 
-      Map.put(acc, code, category)
-    end
-  )
+{icd10s, map_undotted_dotted, map_child_parent, map_parent_children} =
+  Risteys.ICD10db.init(icd10fi_file_path)
 
-###
-# IMPORT ENDPOINTS
-###
+# 2. Clean-up & Transform endpoints
+####
 endpoints_path
 |> File.stream!()
 |> CSV.decode!(headers: true)
-# Omit first line of data: it is a comment line
-|> Enum.drop(1)
-# Replace NA values with nil
-|> Enum.map(fn headers_values ->
-  for {header, value} <- headers_values, into: %{} do
-    value =
-      case value do
-        "NA" -> nil
-        val -> val
-      end
 
-    {header, value}
+# Omit first line of data: it is a comment line
+|> Stream.drop(1)
+
+# Replace NA values with nil
+|> Stream.map(fn row ->
+  Enum.reduce(row, %{}, fn {header, value}, acc ->
+    value = if value == "NA", do: nil, else: value
+    Map.put_new(acc, header, value)
+  end)
+end)
+
+# Add endpoint category
+|> Stream.map(fn row ->
+  %{"NAME" => name} = row
+
+  case Map.fetch(tags, name) do
+    :error ->
+      Map.put_new(row, :category, "Unknown")
+
+    {:ok, tag} ->
+      %{^tag => cat} = categories
+      Map.put_new(row, :category, cat)
   end
 end)
-|> Enum.each(fn %{
-                  "TAGS" => tags,
-                  "LEVEL" => level,
-                  "OMIT" => omit,
-                  "NAME" => name,
-                  "LONGNAME" => longname,
-                  "SEX" => sex,
-                  "INCLUDE" => include,
-                  "PRE_CONDITIONS" => pre_conditions,
-                  "CONDITIONS" => conditions,
-                  "OUTPAT_ICD" => outpat_icd,
-                  "HD_MAINONLY" => hd_mainonly,
-                  "HD_ICD_10_ATC" => hd_icd_10_atc,
-                  "HD_ICD_10" => hd_icd_10,
-                  "HD_ICD_9" => hd_icd_9,
-                  "HD_ICD_8" => hd_icd_8,
-                  "HD_ICD_10_EXCL" => hd_icd_10_excl,
-                  "HD_ICD_9_EXCL" => hd_icd_9_excl,
-                  "HD_ICD_8_EXCL" => hd_icd_8_excl,
-                  "COD_MAINONLY" => cod_mainonly,
-                  "COD_ICD_10" => cod_icd_10,
-                  "COD_ICD_9" => cod_icd_9,
-                  "COD_ICD_8" => cod_icd_8,
-                  "COD_ICD_10_EXCL" => cod_icd_10_excl,
-                  "COD_ICD_9_EXCL" => cod_icd_9_excl,
-                  "COD_ICD_8_EXCL" => cod_icd_8_excl,
-                  "OPER_NOM" => oper_nom,
-                  "OPER_HL" => oper_hl,
-                  "OPER_HP1" => oper_hp1,
-                  "OPER_HP2" => oper_hp2,
-                  "KELA_REIMB" => kela_reimb,
-                  "KELA_REIMB_ICD" => kela_reimb_icd,
-                  "KELA_ATC_NEEDOTHER" => kela_atc_needother,
-                  "KELA_ATC" => kela_atc,
-                  "CANC_TOPO" => canc_topo,
-                  "CANC_MORPH" => canc_morph,
-                  "CANC_BEHAV" => canc_behav,
-                  "Special" => special,
-                  "version" => version,
-                  "Latin" => latin
-                } ->
-  Logger.info("Processing phenocode: #{name}")
 
-  omit =
-    case omit do
-      nil -> false
-      "1" -> true
-      "2" -> true
+# Parse ICD-10: HD
+|> Stream.map(fn row ->
+  %{"HD_ICD_10" => hd} = row
+  expanded = Risteys.DefParser.parse(hd, icd10s, map_child_parent, map_parent_children)
+  Map.put_new(row, :hd_icd10s_exp, expanded)
+end)
+
+# Parse ICD-10: OUTPAT
+|> Stream.map(fn row ->
+  %{
+    "OUTPAT_ICD" => outpat,
+    "HD_ICD_10" => hd
+  } = row
+
+  expanded =
+    case outpat do
+      ^hd -> row.hd_icd10s_exp
+      _ -> Risteys.DefParser.parse(outpat, icd10s, map_child_parent, map_parent_children)
     end
 
-  sex =
-    case sex do
-      nil -> nil
-      _ -> String.to_integer(sex)
+  Map.put_new(row, :outpat_icd10s_exp, expanded)
+end)
+
+# Parse ICD-10: COD
+|> Stream.map(fn row ->
+  %{
+    "COD_ICD_10" => cod,
+    "HD_ICD_10" => hd
+  } = row
+
+  expanded =
+    case cod do
+      ^hd -> row.hd_icd10s_exp
+      _ -> Risteys.DefParser.parse(cod, icd10s, map_child_parent, map_parent_children)
     end
 
-  # Set category
-  main_tag = Map.get(main_tags, name)
-  category = Map.get(categories, main_tag, "Unknown")
+  Map.put_new(row, :cod_icd10s_exp, expanded)
+end)
 
-  hd_mainonly =
-    case hd_mainonly do
-      nil -> nil
-      "YES" -> true
+# Parse ICD-10: KELA
+|> Stream.map(fn row ->
+  %{
+    "KELA_REIMB_ICD" => kela,
+    "HD_ICD_10" => hd
+  } = row
+
+  expanded =
+    case kela do
+      ^hd -> row.hd_icd10s_exp
+      _ -> Risteys.DefParser.parse(kela, icd10s, map_child_parent, map_parent_children)
     end
 
-  # Parse some ICD-10 columns
-  Logger.debug("Parsing ICD-10s for #{name}")
-  icd_10_regex = hd_icd_10
-  hd_icd_10 = RegexICD.expand_icd10(hd_icd_10)
+  Map.put_new(row, :kela_icd10s_exp, expanded)
+end)
 
-  cod_icd_10 =
-    case cod_icd_10 do
-      ^icd_10_regex -> hd_icd_10
-      _ -> RegexICD.expand_icd10(cod_icd_10)
-    end
+# Convert ICD-10s to dotted notation
+|> Stream.map(fn row ->
+  dotted = %{
+    outpat_icd10s_exp:
+      Enum.map(row.outpat_icd10s_exp, &Risteys.ICD10db.to_dotted(&1, map_undotted_dotted)),
+    hd_icd10s_exp:
+      Enum.map(row.hd_icd10s_exp, &Risteys.ICD10db.to_dotted(&1, map_undotted_dotted)),
+    cod_icd10s_exp:
+      Enum.map(row.cod_icd10s_exp, &Risteys.ICD10db.to_dotted(&1, map_undotted_dotted)),
+    kela_icd10s_exp:
+      Enum.map(row.kela_icd10s_exp, &Risteys.ICD10db.to_dotted(&1, map_undotted_dotted))
+  }
 
-  kela_reimb_icd = RegexICD.expand_icd10(kela_reimb_icd)
+  Map.merge(row, dotted)
+end)
 
-  # Parse some ICD-9 columns
-  Logger.debug("Parsing ICD-9s #{name}")
-  icd_9_regex = hd_icd_9
-  hd_icd_9 = RegexICD.expand_icd9(icd_9_regex)
-
-  cod_icd_9 =
-    case hd_icd_9 do
-      ^icd_9_regex -> hd_icd_9
-      _ -> RegexICD.expand_icd9(cod_icd_9)
-    end
-
-  # Remove $!$ from ICD-8
-  hd_icd_8 = if hd_icd_8 == "$!$", do: "", else: hd_icd_8
-  hd_icd_8_excl = if hd_icd_8_excl == "$!$", do: "", else: hd_icd_8_excl
-  cod_icd_8 = if cod_icd_8 == "$!$", do: "", else: cod_icd_8
-  cod_icd_8_excl = if cod_icd_8_excl == "$!$", do: "", else: cod_icd_8_excl
-
-  # Cause of death
-  cod_mainonly =
-    case cod_mainonly do
-      nil -> nil
-      "YES" -> true
-    end
-
-  # Cancer
-  canc_behav =
-    case canc_behav do
-      nil -> nil
-      _ -> String.to_integer(canc_behav)
-    end
-
-  Logger.debug("Inserting phenocode #{name} in DB")
+# 3. Add endpoints to DB
+####
+|> Enum.each(fn row ->
+  Logger.info("Inserting/updating: #{row["NAME"]}")
 
   phenocode =
-    Phenocode.changeset(%Phenocode{}, %{
-      name: name,
-      longname: longname,
-      tags: tags,
-      category: category,
-      level: level,
-      omit: omit,
-      sex: sex,
-      include: include,
-      pre_conditions: pre_conditions,
-      conditions: conditions,
-      outpat_icd: outpat_icd,
-      hd_mainonly: hd_mainonly,
-      hd_icd_10_atc: hd_icd_10_atc,
-      hd_icd_8: hd_icd_8,
-      hd_icd_10_excl: hd_icd_10_excl,
-      hd_icd_9_excl: hd_icd_9_excl,
-      hd_icd_8_excl: hd_icd_8_excl,
-      cod_mainonly: cod_mainonly,
-      cod_icd_8: cod_icd_8,
-      cod_icd_10_excl: cod_icd_10_excl,
-      cod_icd_9_excl: cod_icd_9_excl,
-      cod_icd_8_excl: cod_icd_8_excl,
-      oper_nom: oper_nom,
-      oper_hl: oper_hl,
-      oper_hp1: oper_hp1,
-      oper_hp2: oper_hp2,
-      kela_reimb: kela_reimb,
-      kela_atc_needother: kela_atc_needother,
-      kela_atc: kela_atc,
-      canc_topo: canc_topo,
-      canc_morph: canc_morph,
-      canc_behav: canc_behav,
-      special: special,
-      version: version,
-      latin: latin
+    case Repo.get_by(Phenocode, name: row["NAME"]) do
+      nil -> %Phenocode{}
+      existing -> existing
+    end
+    |> Phenocode.changeset(%{
+      name: row["NAME"],
+      tags: row["TAGS"],
+      level: row["LEVEL"],
+      omit: row["OMIT"],
+      longname: row["LONGNAME"],
+      sex: row["SEX"],
+      include: row["INCLUDE"],
+      pre_conditions: row["PRE_CONDITIONS"],
+      conditions: row["CONDITIONS"],
+      outpat_icd: row["OUTPAT_ICD"],
+      hd_mainonly: row["HD_MAINONLY"],
+      hd_icd_10_atc: row["HD_ICD_10_ATC"],
+      hd_icd_10: row["HD_ICD_10"],
+      hd_icd_9: row["HD_ICD_9"],
+      hd_icd_8: row["HD_ICD_8"],
+      hd_icd_10_excl: row["HD_ICD_10_EXCL"],
+      hd_icd_9_excl: row["HD_ICD_9_EXCL"],
+      hd_icd_8_excl: row["HD_ICD_8_EXCL"],
+      cod_mainonly: row["COD_MAINONLY"],
+      cod_icd_10: row["COD_ICD_10"],
+      cod_icd_9: row["COD_ICD_9"],
+      cod_icd_8: row["COD_ICD_8"],
+      cod_icd_10_excl: row["COD_ICD_10_EXCL"],
+      cod_icd_9_excl: row["COD_ICD_9_EXCL"],
+      cod_icd_8_excl: row["COD_ICD_8_EXCL"],
+      oper_nom: row["OPER_NOM"],
+      oper_hl: row["OPER_HL"],
+      oper_hp1: row["OPER_HP1"],
+      oper_hp2: row["OPER_HP2"],
+      kela_reimb: row["KELA_REIMB"],
+      kela_reimb_icd: row["KELA_REIMB_ICD"],
+      kela_atc_needother: row["KELA_ATC_NEEDOTHER"],
+      kela_atc: row["KELA_ATC"],
+      kela_vnro_needother: row["KELA_VNRO_NEEDOTHER"],
+      kela_vnro: row["KELA_VNRO"],
+      canc_topo: row["CANC_TOPO"],
+      canc_topo_excl: row["CANC_TOPO_EXCL"],
+      canc_morph: row["CANC_MORPH"],
+      canc_morph_excl: row["CANC_MORPH_EXCL"],
+      canc_behav: row["CANC_BEHAV"],
+      special: row["Special"],
+      version: row["version"],
+      parent: row["PARENT"],
+      latin: row["Latin"],
+      category: row.category
     })
+    |> Repo.insert_or_update!()
 
-  case Repo.insert(phenocode) do
-    {:ok, struct} ->
-      Logger.debug("Successfully inserted #{name}.")
-      # Build Phenocode<->ICD-{10,9} associations
-      Logger.debug("Inserting ICD associations for #{name}")
-      AssocICDs.insert("HD", 10, struct.id, hd_icd_10)
-      AssocICDs.insert("COD", 10, struct.id, cod_icd_10)
-      AssocICDs.insert("KELA_REIMB", 10, struct.id, kela_reimb_icd)
-
-      AssocICDs.insert("HD", 9, struct.id, hd_icd_9)
-      AssocICDs.insert("COD", 9, struct.id, cod_icd_9)
-
-    {:error, changeset} ->
-      Logger.warn("Could not insert #{name}: #{inspect(changeset)}")
-  end
+  AssocICDs.insert_or_update("OUTPAT", 10, phenocode, row.outpat_icd10s_exp)
+  AssocICDs.insert_or_update("HD", 10, phenocode, row.hd_icd10s_exp)
+  AssocICDs.insert_or_update("COD", 10, phenocode, row.cod_icd10s_exp)
+  AssocICDs.insert_or_update("KELA", 10, phenocode, row.kela_icd10s_exp)
 end)

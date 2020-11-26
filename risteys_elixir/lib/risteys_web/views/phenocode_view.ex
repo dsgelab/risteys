@@ -77,105 +77,170 @@ defmodule RisteysWeb.PhenocodeView do
     |> Enum.join()
   end
 
-  defp table_data_sources(data_sources) do
-    # Merge HD registry ICDs
-    hd_icd10s = render_icds("ICD-10: ", data_sources.hd_icd10s, true)
-    hd_icd9s = render_icds("ICD-9: ", data_sources.hd_icd9s, false)
+  defp endpoint_def(data_sources, :filter) do
+    # Fields we will use for the filter explanation
+    map_rule_registries = %{
+      # OUTPAT_ICD
+      outpat_icd: [:prim_out],
+      # HD_
+      hd_mainonly: [:inpat, :outpat],
+      hd_icd_10_atc: [:inpat, :outpat],
+      hd_icd_10s_exp: [:inpat, :outpat],
+      hd_icd_10: [:inpat, :outpat],
+      hd_icd_9: [:inpat, :outpat],
+      hd_icd_8: [:inpat, :outpat],
+      hd_icd_10_excl: [:inpat, :outpat],
+      hd_icd_9_excl: [:inpat, :outpat],
+      hd_icd_8_excl: [:inpat, :outpat],
+      # COD_
+      cod_mainonly: [:death],
+      cod_icd_10: [:death],
+      cod_icd_9: [:death],
+      cod_icd_8: [:death],
+      cod_icd_10_excl: [:death],
+      cod_icd_9_excl: [:death],
+      cod_icd_8_excl: [:death],
+      # OPER_
+      oper_nom: [:oper_in, :oper_out],
+      oper_hl: [:oper_in, :oper_out],
+      oper_hp1: [:oper_in, :oper_out],
+      oper_hp2: [:oper_in, :oper_out],
+      # KELA_
+      kela_reimb: [:purch, :reimb],
+      kela_reimb_icd: [:purch, :reimb],
+      kela_atc_needother: [:purch, :reimb],
+      kela_atc: [:purch, :reimb],
+      kela_vnro_needother: [:purch, :reimb],
+      kela_vnro: [:purch, :reimb],
+      # CANC_
+      canc_topo: [:canc],
+      canc_topo_excl: [:canc],
+      canc_morph: [:canc],
+      canc_morph_excl: [:canc],
+      canc_behav: [:canc]
+    }
 
-    hd_icd8s =
-      if not is_nil(data_sources.hd_icd8s) do
-        "ICD-8: " <> data_sources.hd_icd8s
-      else
-        ""
-      end
+    # Find which data we use
+    rules =
+      map_rule_registries
+      |> Map.keys()
+      |> MapSet.new()
 
-    hd = [hd_icd10s, hd_icd9s, hd_icd8s]
-    hd = Enum.reject(hd, fn val -> val == "" end)
-    hd = Enum.intersperse(hd, ", ")
-
-    # Merge COD registry ICDs
-    cod_icd10s = render_icds("ICD-10: ", data_sources.cod_icd10s, true)
-    cod_icd9s = render_icds("ICD-9: ", data_sources.cod_icd9s, false)
-
-    cod_icd8s =
-      if not is_nil(data_sources.cod_icd8s) do
-        "ICD-8: " <> data_sources.cod_icd8s
-      else
-        ""
-      end
-
-    cod = [cod_icd10s, cod_icd9s, cod_icd8s]
-    cod = Enum.reject(cod, fn val -> val == "" end)
-    cod = Enum.intersperse(cod, ", ")
-
-    kela_icd10s = render_icds("ICD-10: ", data_sources.kela_icd10s, true)
-
-    # Link to included phenocodes
-    include =
-      if not is_nil(data_sources.include) do
-        data_sources.include
-        |> String.split("|")
-        |> Enum.map(fn name -> content_tag(:a, name, href: name) end)
-        |> Enum.intersperse(", ")
-      end
-
-    # Build the whole table
-    kela_abbr = abbr("KELA", "Finnish Social Insurance Institution")
-
-    table = [
-      {"Hospital Discharge registry", hd},
-      {"Hospital Discharge registry: exclude ICD-10", data_sources.hd_icd10s_excl},
-      {"Hospital Discharge registry: exclude ICD-9", data_sources.hd_icd9s_excl},
-      {"Hospital Discharge registry: exclude ICD-8", data_sources.hd_icd8s_excl},
-      {"Hospital Discharge registry: only main entry used", data_sources.hd_mainonly},
-      {"Hospital Discharge: ATC drug used", data_sources.hd_icd_10_atc},
-      {"Cause of Death registry", cod},
-      {"Cause of Death registry: exclude ICD-10", data_sources.cod_icd10s_excl},
-      {"Cause of Death registry: exclude ICD-9", data_sources.cod_icd9s_excl},
-      {"Cause of Death registry: exclude ICD-8", data_sources.cod_icd8s_excl},
-      {"Cause of Death registry: only main entry used", data_sources.cod_mainonly},
-      {"Outpatient visit: ICD and other codes ", data_sources.outpat_icd},
-      {"Operations: NOMESCO codes", data_sources.oper_nom},
-      {"Operations: FINNISH HOSPITAL LEAGUE codes", data_sources.oper_hl},
-      {"Operations: HEART PATIENT codes V1", data_sources.oper_hp1},
-      {"Operations: HEART PATIENT codes V2", data_sources.oper_hp2},
-      {[kela_abbr | " reimboursements codes"], data_sources.kela_reimb},
-      {[kela_abbr | " reimbursements"], kela_icd10s},
-      {"Medicine purchases: ATC; other reg. data required", data_sources.kela_atc_needother},
-      {"Medicine purchases: ATC codes", data_sources.kela_atc},
-      {"Cancer reg: TOPOGRAPHY codes", data_sources.canc_topo},
-      {"Cancer reg: MORPHOLOGY codes", data_sources.canc_morph},
-      {"Sex specific endpoint", data_sources.sex},
-      {"Pre-conditions required", data_sources.pre_conditions},
-      {"Conditions required", data_sources.conditions},
-      {"Include", include},
-      {"Level in the ICD-hierarchy", data_sources.level},
-      {"First defined in version", data_sources.version},
-      {"Latin name", data_sources.latin}
-    ]
-
-    # Discard table rows with no values
-    Enum.reject(table, fn {_name, values} -> values in ["", nil, []] end)
-  end
-
-  defp render_icds(_prefix, nil, _url), do: ""
-  defp render_icds(_prefix, [], _url), do: ""
-
-  defp render_icds(prefix, icds, url?) do
-    icds =
-      icds
-      |> Enum.map(fn icd ->
-        text = abbr(icd.code, icd.description)
-
-        if url? do
-          icd10_url(text, icd.code)
-        else
-          text
+    sources =
+      data_sources
+      |> Enum.reject(fn {_, val} ->
+        case val do
+          nil -> true
+          [] -> true
+          _ -> false
         end
       end)
-      |> Enum.intersperse("/")
+      |> Keyword.keys()
+      |> MapSet.new()
 
-    [prefix | icds]
+    has_sources = MapSet.intersection(rules, sources)
+
+    # Collect corresponding registries
+    used_registries =
+      Enum.reduce(has_sources, MapSet.new(), fn source, acc ->
+        %{^source => regs} = map_rule_registries
+        regs = MapSet.new(regs)
+        MapSet.union(acc, regs)
+      end)
+
+    # Build registry list in HTML
+    reg_html =
+      [
+        prim_out: %{
+          short: "Prim. Out.",
+          long: "Avohilmo: primary healthcare outpatient visits"
+        },
+        inpat: %{
+          short: "Inpat.",
+          long: "Hilmo inpatient"
+        },
+        outpat: %{
+          short: "Oupat.",
+          long: "Hilmo outpatient"
+        },
+        death: %{
+          short: "Death",
+          long: "Cause of death"
+        },
+        oper_in: %{
+          short: "Oper. in",
+          long: "Operations in inpatient Hilmo"
+        },
+        oper_out: %{
+          short: "Oper. out",
+          long: "Operations in outpatient Hilmo"
+        },
+        purch: %{
+          short: "KELA purch.",
+          long: "KELA drug purchase"
+        },
+        reimb: %{
+          short: "KELA reimb.",
+          long: "KELA drug reimbursement"
+        },
+        canc: %{
+          short: "Cancer",
+          long: "Cancer registry"
+        }
+      ]
+      |> Enum.filter(fn {source, _} -> MapSet.member?(used_registries, source) end)
+      |> Enum.map(fn {_, %{short: short, long: long}} -> abbr(short, long) end)
+      |> Enum.intersperse(", ")
+
+    {data_sources, reg_html}
+  end
+
+  defp endpoint_def(data_sources, :include) do
+    if is_nil(data_sources.include) do
+      []
+    else
+      String.split(data_sources.include, "|")
+    end
+  end
+
+  defp endpoint_def(data_sources, :metadata) do
+    [
+      {"Tags", data_sources.tags},
+      {"Level in the ICD hierarchy", data_sources.level},
+      {"Special", data_sources.special},
+      {"First used in FinnGen datafreeze", data_sources.version},
+      {"Parent code in ICD-10", data_sources.parent},
+      {"Name in latin", data_sources.latin}
+    ]
+    |> Enum.reject(fn {_col, val} -> is_nil(val) end)
+  end
+
+  defp cell_icd10(rule, expanded) do
+    max_icds = 10
+
+    if length(expanded) > 0 and length(expanded) <= max_icds do
+      render_icds(expanded, true)
+    else
+      rule
+    end
+  end
+
+  defp render_icds([], _url), do: ""
+
+  defp render_icds(icds, url?) do
+    icds
+    |> Enum.sort()
+    |> Enum.map(fn icd ->
+      content =
+        if url? do
+          icd10_url(icd.code, icd.code)
+        else
+          icd.code
+        end
+
+      abbr(content, icd.description)
+    end)
+    |> Enum.intersperse(", ")
   end
 
   defp ontology_links(ontology) do
@@ -225,18 +290,6 @@ defmodule RisteysWeb.PhenocodeView do
   end
 
   defp icd10_url(text, icd) do
-    # ICD browser uses X12.3 instead of X1234
-    short = String.slice(icd, 0..3)
-
-    icd =
-      case String.split_at(short, 3) do
-        {prefix, ""} ->
-          prefix
-
-        {prefix, suffix} ->
-          prefix <> "." <> suffix
-      end
-
     ahref(text, "https://icd.who.int/browse10/2016/en#/#{icd}")
   end
 
