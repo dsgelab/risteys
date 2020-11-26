@@ -15,6 +15,6 @@ defmodule Risteys.PhenocodeIcd9 do
     phenocode_icd9
     |> cast(attrs, [:registry, :phenocode_id, :icd9_id])
     |> validate_required([:registry, :phenocode_id, :icd9_id])
-    |> unique_constraint(:registry, name: :phenocode_icd9_kind)
+    |> unique_constraint(:registry, name: :phenocode_icd9_registry)
   end
 end

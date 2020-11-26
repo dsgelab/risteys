@@ -6,12 +6,10 @@ defmodule RisteysWeb.PhenocodeController do
     ATCDrug,
     CoxHR,
     DrugStats,
-    Icd9,
     Icd10,
     MortalityStats,
     Phenocode,
     PhenocodeIcd10,
-    PhenocodeIcd9,
     StatsSex
   }
 
@@ -126,17 +124,27 @@ defmodule RisteysWeb.PhenocodeController do
 
     # Unwrap histograms
     %{"hist" => distrib_year} =
-      if is_nil(distrib_year) do
-        %{"hist" => nil}
-      else
-        distrib_year
+      case distrib_year do
+        nil ->
+          %{"hist" => nil}
+
+        [] ->
+          %{"hist" => nil}
+
+        _ ->
+          distrib_year
       end
 
     %{"hist" => distrib_age} =
-      if is_nil(distrib_age) do
-        %{"hist" => nil}
-      else
-        distrib_age
+      case distrib_age do
+        nil ->
+          %{"hist" => nil}
+
+        [] ->
+          %{"hist" => nil}
+
+        _ ->
+          distrib_age
       end
 
     # Mortality stats
@@ -169,58 +177,59 @@ defmodule RisteysWeb.PhenocodeController do
           select: %{registry: assoc.registry, icd: icd}
       )
 
+    outpat_icd10s = filter_icds_registry(icd10s, "OUTPAT")
     hd_icd10s = filter_icds_registry(icd10s, "HD")
     cod_icd10s = filter_icds_registry(icd10s, "COD")
-    kela_icd10s = filter_icds_registry(icd10s, "KELA_REIMB")
-
-    icd9s =
-      Repo.all(
-        from assoc in PhenocodeIcd9,
-          join: p in Phenocode,
-          on: assoc.phenocode_id == p.id,
-          join: icd in Icd9,
-          on: assoc.icd9_id == icd.id,
-          where: p.id == ^phenocode.id,
-          select: %{registry: assoc.registry, icd: icd}
-      )
-
-    hd_icd9s = filter_icds_registry(icd9s, "HD")
-    cod_icd9s = filter_icds_registry(icd9s, "COD")
+    kela_icd10s = filter_icds_registry(icd10s, "KELA")
 
     %{
+      name: phenocode.name,
+      tags: phenocode.tags,
       level: phenocode.level,
       omit: phenocode.omit,
+      longname: phenocode.longname,
       sex: phenocode.sex,
       include: phenocode.include,
       pre_conditions: phenocode.pre_conditions,
       conditions: phenocode.conditions,
+      outpat_icd_10s_exp: outpat_icd10s,
       outpat_icd: phenocode.outpat_icd,
       hd_mainonly: phenocode.hd_mainonly,
       hd_icd_10_atc: phenocode.hd_icd_10_atc,
-      hd_icd10s: hd_icd10s,
-      hd_icd9s: hd_icd9s,
-      hd_icd8s: phenocode.hd_icd_8,
-      hd_icd10s_excl: phenocode.hd_icd_10_excl,
-      hd_icd9s_excl: phenocode.hd_icd_9_excl,
-      hd_icd8s_excl: phenocode.hd_icd_8_excl,
+      hd_icd_10s_exp: hd_icd10s,
+      hd_icd_10: phenocode.hd_icd_10,
+      hd_icd_9: phenocode.hd_icd_9,
+      hd_icd_8: phenocode.hd_icd_8,
+      hd_icd_10_excl: phenocode.hd_icd_10_excl,
+      hd_icd_9_excl: phenocode.hd_icd_9_excl,
+      hd_icd_8_excl: phenocode.hd_icd_8_excl,
       cod_mainonly: phenocode.cod_mainonly,
-      cod_icd10s: cod_icd10s,
-      cod_icd9s: cod_icd9s,
-      cod_icd8s: phenocode.cod_icd_8,
-      cod_icd10s_excl: phenocode.cod_icd_10_excl,
-      cod_icd9s_excl: phenocode.cod_icd_9_excl,
-      cod_icd8s_excl: phenocode.cod_icd_8_excl,
+      cod_icd_10s_exp: cod_icd10s,
+      cod_icd_10: phenocode.cod_icd_10,
+      cod_icd_9: phenocode.cod_icd_9,
+      cod_icd_8: phenocode.cod_icd_8,
+      cod_icd_10_excl: phenocode.cod_icd_10_excl,
+      cod_icd_9_excl: phenocode.cod_icd_9_excl,
+      cod_icd_8_excl: phenocode.cod_icd_8_excl,
       oper_nom: phenocode.oper_nom,
       oper_hl: phenocode.oper_hl,
       oper_hp1: phenocode.oper_hp1,
       oper_hp2: phenocode.oper_hp2,
       kela_reimb: phenocode.kela_reimb,
-      kela_icd10s: kela_icd10s,
+      kela_icd_10s_exp: kela_icd10s,
+      kela_reimb_icd: phenocode.kela_reimb_icd,
       kela_atc_needother: phenocode.kela_atc_needother,
       kela_atc: phenocode.kela_atc,
+      kela_vnro_needother: phenocode.kela_vnro_needother,
+      kela_vnro: phenocode.kela_vnro,
       canc_topo: phenocode.canc_topo,
+      canc_topo_excl: phenocode.canc_topo_excl,
       canc_morph: phenocode.canc_morph,
+      canc_morph_excl: phenocode.canc_morph_excl,
+      canc_behav: phenocode.canc_behav,
+      special: phenocode.special,
       version: phenocode.version,
+      parent: phenocode.parent,
       latin: phenocode.latin
     }
   end

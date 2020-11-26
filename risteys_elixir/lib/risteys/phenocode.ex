@@ -4,23 +4,31 @@ defmodule Risteys.Phenocode do
 
   schema "phenocodes" do
     field :name, :string
-    field :longname, :string
+
     field :tags, :string
-    field :category, :string
     field :level, :string
-    field :omit, :boolean
-    field :sex, :integer
+    field :omit, :string
+    field :longname, :string
+    field :sex, :string
     field :include, :string
     field :pre_conditions, :string
     field :conditions, :string
     field :outpat_icd, :string
-    field :hd_mainonly, :boolean
+    field :hd_mainonly, :string
     field :hd_icd_10_atc, :string
+    # raw, unprocessed HD_ICD_10
+    field :hd_icd_10, :string
+    # raw, unprocessed HD_ICD_9
+    field :hd_icd_9, :string
     field :hd_icd_8, :string
     field :hd_icd_10_excl, :string
     field :hd_icd_9_excl, :string
     field :hd_icd_8_excl, :string
-    field :cod_mainonly, :boolean
+    field :cod_mainonly, :string
+    # raw, unprocessed COD_ICD_10
+    field :cod_icd_10, :string
+    # raw, unprocessed COD_ICD_9
+    field :cod_icd_9, :string
     field :cod_icd_8, :string
     field :cod_icd_10_excl, :string
     field :cod_icd_9_excl, :string
@@ -30,20 +38,35 @@ defmodule Risteys.Phenocode do
     field :oper_hp1, :string
     field :oper_hp2, :string
     field :kela_reimb, :string
+    field :kela_reimb_icd, :string
     field :kela_atc_needother, :string
     field :kela_atc, :string
+    field :kela_vnro_needother, :string
+    field :kela_vnro, :string
     field :canc_topo, :string
+    field :canc_topo_excl, :string
     field :canc_morph, :string
-    field :canc_behav, :integer
+    field :canc_morph_excl, :string
+    field :canc_behav, :string
     field :special, :string
     field :version, :string
+    field :parent, :string
     field :latin, :string
+
+    field :category, :string
     field :ontology, {:map, {:array, :string}}
-    # used for the search feature
+    # Description is populated from the ontology
     field :description, :string
 
-    many_to_many :icd10s, Risteys.Icd10, join_through: Risteys.PhenocodeIcd10
-    many_to_many :icd9s, Risteys.Icd9, join_through: Risteys.PhenocodeIcd9
+    many_to_many :icd10s, Risteys.Icd10,
+      join_through: Risteys.PhenocodeIcd10,
+      # Delete ICD-10s not included in the update
+      on_replace: :delete
+
+    many_to_many :icd9s, Risteys.Icd9,
+      join_through: Risteys.PhenocodeIcd9,
+      # Delete ICD-9s not included in the update
+      on_replace: :delete
 
     timestamps()
   end
@@ -53,11 +76,10 @@ defmodule Risteys.Phenocode do
     phenocode
     |> cast(attrs, [
       :name,
-      :longname,
       :tags,
-      :category,
       :level,
       :omit,
+      :longname,
       :sex,
       :include,
       :pre_conditions,
@@ -65,11 +87,15 @@ defmodule Risteys.Phenocode do
       :outpat_icd,
       :hd_mainonly,
       :hd_icd_10_atc,
+      :hd_icd_10,
+      :hd_icd_9,
       :hd_icd_8,
       :hd_icd_10_excl,
       :hd_icd_9_excl,
       :hd_icd_8_excl,
       :cod_mainonly,
+      :cod_icd_10,
+      :cod_icd_9,
       :cod_icd_8,
       :cod_icd_10_excl,
       :cod_icd_9_excl,
@@ -79,18 +105,25 @@ defmodule Risteys.Phenocode do
       :oper_hp1,
       :oper_hp2,
       :kela_reimb,
+      :kela_reimb_icd,
       :kela_atc_needother,
       :kela_atc,
+      :kela_vnro_needother,
+      :kela_vnro,
       :canc_topo,
+      :canc_topo_excl,
       :canc_morph,
+      :canc_morph_excl,
       :canc_behav,
       :special,
       :version,
+      :parent,
       :latin,
+      :category,
       :ontology,
-      :description,
+      :description
     ])
-    |> validate_required([:name, :longname])
+    |> validate_required([:name])
     |> validate_change(:ontology, fn :ontology, ontology ->
       allowed = allowed_ontology_types()
 
@@ -114,7 +147,7 @@ defmodule Risteys.Phenocode do
     |> unique_constraint(:name)
   end
 
-  def allowed_ontology_types() do
+  defp allowed_ontology_types() do
     MapSet.new([
       "DOID",
       "EFO",

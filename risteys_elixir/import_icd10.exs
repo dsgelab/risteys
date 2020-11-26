@@ -1,54 +1,41 @@
 # Import ICD10s in the database.
 #
 # Usage:
-# mix run import_icd10.exs <path-to-data-dir>
+# mix run import_icd10.exs <path-to-medcode-ref>
 #
-# <path-to-data-dir> must contain 2 files:
-# - the ICD-10-CM file named "icd10cm_codes_2019.tsv"
-#   This file was taken from
-#   ftp://ftp.cdc.gov/pub/Health_Statistics/NCHS/Publications/ICD10CM/2019/
-# - the ICD-10 Finnish version, named "ICD10_finn_codedesc.tsv"
-#   This file was derived from a file provided by Aki
-#   ("ICD10_koodistopalvelu_2015-08_26.txt"), it has the following shape:
-#        code	longname
-#        A00-B99	Certain infectious and parasitic diseases
-#        A00-A09	Intestinal infectious diseases
-#        A00	Cholera
+# <path-to-medcode-ref>
+# - the translation file, provided in FinnGen data by Mary Pat, in CSV format
+#   Usually named "finngen_R6_medcode_ref.csv"
+#   Must contain the columns:
+#   . code
+#   . name_en
 
 require Logger
 alias Risteys.{Repo, Icd10}
 
 Logger.configure(level: :info)
-[data_dir | _] = System.argv()
-icd10cm = Path.join(data_dir, "icd10cm_codes_2019.tsv")
-icd10finn = Path.join(data_dir, "ICD10_finn_codedesc.tsv")
-
-# US ICD-10s
-Logger.info("Loading ICD-10-CM")
-
-icd10s =
-  icd10cm
-  |> File.stream!()
-  |> CSV.decode!(separator: ?\t)
-  |> Enum.reduce(%{}, fn [code, description], acc ->
-    Map.put(acc, code, description)
-  end)
+[code_translations | _] = System.argv()
 
 # Finnish ICD-10s
-Logger.info("Loading Finnish ICD-10s")
+Logger.info("Loading ICD-10s")
 
 icd10s =
-  icd10finn
+  code_translations
   |> File.stream!()
-  |> CSV.decode!(separator: ?\t, headers: true)
-  |> Enum.reduce(icd10s, fn %{"code" => code, "longname" => description}, acc ->
-    code = code |> String.replace(".", "")
-    Map.put_new(acc, code, description)
+  |> CSV.decode!(headers: true)
+  |> Stream.filter(fn %{"code_set" => code_set} -> code_set == "ICD10" end)
+  |> Enum.reduce(%{}, fn %{"code" => code, "name_en" => description}, acc ->
+    Map.put(acc, code, description)
   end)
 
 Logger.info("Inserting ICD-10s in the database.")
 
 icd10s
 |> Enum.map(fn {code, description} ->
-  Repo.insert!(%Icd10{code: code, description: description})
+  case Repo.get_by(Icd10, code: code) do
+    nil -> %Icd10{}
+    existing -> existing
+  end
+  |> Icd10.changeset(%{code: code, description: description})
+  |> Repo.insert_or_update!()
 end)
