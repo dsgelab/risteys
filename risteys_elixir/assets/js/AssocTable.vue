@@ -102,7 +102,7 @@
 						<td v-if="pheno.all.before.hr_binned === null">-</td>
  						<td	v-else
  							v-html="compBox(pheno.all.before.hr_binned)"
- 							v-bind:title="Math.trunc(pheno.all.before.hr_binned * 100) + ' percentile'">
+ 							v-bind:title="textPercentile(Math.trunc(pheno.all.before.hr_binned * 100)) + ' percentile'">
 						</td>
 
 						<!-- (after) HR -->
@@ -122,7 +122,7 @@
 						<td v-if="pheno.all.after.hr_binned === null">-</td>
 						<td v-else
 							v-html="compBox(pheno.all.after.hr_binned)"
-							v-bind:title="Math.trunc(pheno.all.after.hr_binned * 100) + ' percentile'"
+							v-bind:title="textPercentile(Math.trunc(pheno.all.after.hr_binned * 100)) + ' percentile'"
 							>
 						</td>
 					</tr>
@@ -386,6 +386,29 @@ export default {
 			} else {
 				return "bg-white"
 			}
+		},
+		textPercentile(n) {
+			var ending;
+
+			if (n >= 10 && n <= 20) {
+				ending = "th";
+			} else {
+				const rem = n % 10;
+				switch (rem) {
+					case 1:
+						ending = "st";
+						break;
+					case 2:
+						ending = "nd";
+						break;
+					case 3:
+						ending = "rd";
+						break;
+					default:
+						ending = "th";
+				}
+			}
+			return n + ending
 		}
 	},
 	created () {
