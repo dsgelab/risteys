@@ -319,6 +319,15 @@ def init_csv(res_file):
 
 
 def prep_coxhr(pair, lag, df_events, df_info):
+    """Prepare the data to be used in the Cox model.
+
+    Example timeline for an individual:
+
+    study starts   prior  outcome     study ends
+    |              |      |           |
+    |--------------=======XXXXXXXXXXXX|
+    [  unexposed  ][     exposed      ]
+    """
     logger.info(f"Preparing data before Cox fitting for {pair}")
     prior, outcome = pair
 
