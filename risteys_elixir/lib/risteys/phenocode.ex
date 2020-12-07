@@ -38,12 +38,9 @@ defmodule Risteys.Phenocode do
     field :special, :string
     field :version, :string
     field :latin, :string
-    field :validation_article, :string
     field :ontology, {:map, {:array, :string}}
     # used for the search feature
     field :description, :string
-    field :h2_liab, :float
-    field :h2_liab_se, :float
 
     many_to_many :icd10s, Risteys.Icd10, join_through: Risteys.PhenocodeIcd10
     many_to_many :icd9s, Risteys.Icd9, join_through: Risteys.PhenocodeIcd9
@@ -90,11 +87,8 @@ defmodule Risteys.Phenocode do
       :special,
       :version,
       :latin,
-      :validation_article,
       :ontology,
       :description,
-      :h2_liab,
-      :h2_liab_se,
     ])
     |> validate_required([:name, :longname])
     |> validate_change(:ontology, fn :ontology, ontology ->
@@ -117,8 +111,6 @@ defmodule Risteys.Phenocode do
         []
       end
     end)
-    |> validate_number(:h2_liab, greater_than_or_equal_to: 0.0)
-    |> validate_number(:h2_liab_se, greater_than: 0.0)
     |> unique_constraint(:name)
   end
 

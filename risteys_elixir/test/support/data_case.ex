@@ -96,7 +96,6 @@ defmodule Risteys.DataCase do
         version: "",
         distrib_year: %{},
         distrib_age: %{},
-        validation_article: nil,
         ontology: nil
       })
 
