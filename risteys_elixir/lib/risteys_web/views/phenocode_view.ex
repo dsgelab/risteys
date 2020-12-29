@@ -220,7 +220,8 @@ defmodule RisteysWeb.PhenocodeView do
   end
 
   defp abbr(text, title) do
-    content_tag(:abbr, text, title: title)
+    # "data_title" will be converted to "data-title" in HTML
+    content_tag(:abbr, text, data_title: title)
   end
 
   defp icd10_url(text, icd) do
