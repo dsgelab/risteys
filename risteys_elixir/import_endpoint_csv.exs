@@ -98,8 +98,12 @@ categories =
     Map.put(acc, tag, category)
   end)
 
-{icd10s, map_undotted_dotted, map_child_parent, map_parent_children} =
-  Risteys.ICD10db.init(icd10fi_file_path)
+{
+  icd10s,
+  map_undotted_dotted,
+  map_child_parent,
+  map_parent_children
+} = Risteys.Icd10.init_parser(icd10fi_file_path)
 
 # 2. Clean-up & Transform endpoints
 ####
@@ -135,7 +139,7 @@ end)
 # Parse ICD-10: HD
 |> Stream.map(fn row ->
   %{"HD_ICD_10" => hd} = row
-  expanded = Risteys.DefParser.parse(hd, icd10s, map_child_parent, map_parent_children)
+  expanded = Risteys.Icd10.parse_rule(hd, icd10s, map_child_parent, map_parent_children)
   Map.put_new(row, :hd_icd10s_exp, expanded)
 end)
 
@@ -149,7 +153,7 @@ end)
   expanded =
     case outpat do
       ^hd -> row.hd_icd10s_exp
-      _ -> Risteys.DefParser.parse(outpat, icd10s, map_child_parent, map_parent_children)
+      _ -> Risteys.Icd10.parse_rule(outpat, icd10s, map_child_parent, map_parent_children)
     end
 
   Map.put_new(row, :outpat_icd10s_exp, expanded)
@@ -165,7 +169,7 @@ end)
   expanded =
     case cod do
       ^hd -> row.hd_icd10s_exp
-      _ -> Risteys.DefParser.parse(cod, icd10s, map_child_parent, map_parent_children)
+      _ -> Risteys.Icd10.parse_rule(cod, icd10s, map_child_parent, map_parent_children)
     end
 
   Map.put_new(row, :cod_icd10s_exp, expanded)
@@ -181,7 +185,7 @@ end)
   expanded =
     case kela do
       ^hd -> row.hd_icd10s_exp
-      _ -> Risteys.DefParser.parse(kela, icd10s, map_child_parent, map_parent_children)
+      _ -> Risteys.Icd10.parse_rule(kela, icd10s, map_child_parent, map_parent_children)
     end
 
   Map.put_new(row, :kela_icd10s_exp, expanded)
@@ -191,13 +195,12 @@ end)
 |> Stream.map(fn row ->
   dotted = %{
     outpat_icd10s_exp:
-      Enum.map(row.outpat_icd10s_exp, &Risteys.ICD10db.to_dotted(&1, map_undotted_dotted)),
-    hd_icd10s_exp:
-      Enum.map(row.hd_icd10s_exp, &Risteys.ICD10db.to_dotted(&1, map_undotted_dotted)),
+      Enum.map(row.outpat_icd10s_exp, &Risteys.Icd10.to_dotted(&1, map_undotted_dotted)),
+    hd_icd10s_exp: Enum.map(row.hd_icd10s_exp, &Risteys.Icd10.to_dotted(&1, map_undotted_dotted)),
     cod_icd10s_exp:
-      Enum.map(row.cod_icd10s_exp, &Risteys.ICD10db.to_dotted(&1, map_undotted_dotted)),
+      Enum.map(row.cod_icd10s_exp, &Risteys.Icd10.to_dotted(&1, map_undotted_dotted)),
     kela_icd10s_exp:
-      Enum.map(row.kela_icd10s_exp, &Risteys.ICD10db.to_dotted(&1, map_undotted_dotted))
+      Enum.map(row.kela_icd10s_exp, &Risteys.Icd10.to_dotted(&1, map_undotted_dotted))
   }
 
   Map.merge(row, dotted)
