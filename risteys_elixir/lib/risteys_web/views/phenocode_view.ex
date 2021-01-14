@@ -120,6 +120,16 @@ defmodule RisteysWeb.PhenocodeView do
       canc_behav: [:canc]
     }
 
+    # Regex "$!$" means "no possible matching code", so we mark it as nil
+    data_sources =
+      Enum.reduce(data_sources, %{}, fn {key, val}, acc ->
+        if val == "$!$" do
+          Map.put(acc, key, nil)
+        else
+          Map.put(acc, key, val)
+        end
+      end)
+
     # Find which data we use
     rules =
       map_rule_registries
@@ -137,6 +147,7 @@ defmodule RisteysWeb.PhenocodeView do
       end)
       |> Keyword.keys()
       |> MapSet.new()
+      |> IO.inspect()
 
     has_sources = MapSet.intersection(rules, sources)
 
