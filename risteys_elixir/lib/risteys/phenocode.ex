@@ -57,6 +57,9 @@ defmodule Risteys.Phenocode do
     field :ontology, {:map, {:array, :string}}
     # Description is populated from the ontology
     field :description, :string
+    # Flag stating if this endpoint has a event count bump in 1998 due
+    # to the introduction of the outpatient registry.
+    field :outpat_bump, :boolean
 
     many_to_many :icd10s, Risteys.Icd10,
       join_through: Risteys.PhenocodeIcd10,
@@ -121,7 +124,8 @@ defmodule Risteys.Phenocode do
       :latin,
       :category,
       :ontology,
-      :description
+      :description,
+      :outpat_bump
     ])
     |> validate_required([:name])
     |> validate_change(:ontology, fn :ontology, ontology ->

@@ -6,7 +6,8 @@
 #     <path-to-endpoints-file> \
 #     <path-to-tagged-ordered-endpoints-file> \
 #     <path-to-categories-file> \
-#     <path-to-icd10fi>
+#     <path-to-icd10fi> \
+#     <path-to-outpat-bump>
 #
 # <path-to-endpoints-file>
 #   Endpoint file in CSV format.
@@ -28,6 +29,11 @@
 #   Provided by Aki.
 #   It is used to match an ICD-10 definition into a list of ICD-10s.
 #   Must contain columns: CodeId, ParentId
+#
+# <path-to-outpat-bump>
+#   List of FinnGen endpoints that were automatically spotted has
+#   having a bump in the number of events recorded in 1998 due to the
+#   inclusion of the outpatient registry.
 
 alias Risteys.{Repo, Phenocode, PhenocodeIcd10, Icd10}
 require Logger
@@ -37,7 +43,14 @@ Logger.configure(level: :info)
 
 # INPUT
 Logger.info("Loading ICD-10 from files")
-[endpoints_path, tagged_path, categories_path, icd10fi_file_path | _] = System.argv()
+
+[
+  endpoints_path,
+  tagged_path,
+  categories_path,
+  icd10fi_file_path,
+  outpat_bump_path
+] = System.argv()
 
 # HELPERS
 defmodule AssocICDs do
@@ -105,6 +118,12 @@ categories =
   map_parent_children
 } = Risteys.Icd10.init_parser(icd10fi_file_path)
 
+bumps =
+  outpat_bump_path
+  |> File.read!()
+  |> Jason.decode!()
+  |> MapSet.new()
+
 # 2. Clean-up & Transform endpoints
 ####
 endpoints_path
@@ -134,6 +153,13 @@ end)
       %{^tag => cat} = categories
       Map.put_new(row, :category, cat)
   end
+end)
+
+# Add endpoint outpat bump
+|> Stream.map(fn row ->
+  %{"NAME" => name} = row
+  has_bump = MapSet.member?(bumps, name)
+  Map.put_new(row, :outpat_bump, has_bump)
 end)
 
 # Parse ICD-10: HD
@@ -261,7 +287,8 @@ end)
       version: row["version"],
       parent: row["PARENT"],
       latin: row["Latin"],
-      category: row.category
+      category: row.category,
+      outpat_bump: row.outpat_bump
     })
     |> Repo.insert_or_update!()
 
