@@ -180,7 +180,9 @@ defmodule RisteysWeb.PhenocodeController do
 
     outpat_icd10s = filter_icds_registry(icd10s, "OUTPAT")
     hd_icd10s = filter_icds_registry(icd10s, "HD")
+    hd_icd10s_excl = filter_icds_registry(icd10s, "HD_EXCL")
     cod_icd10s = filter_icds_registry(icd10s, "COD")
+    cod_icd10s_excl = filter_icds_registry(icd10s, "COD_EXCL")
     kela_icd10s = filter_icds_registry(icd10s, "KELA")
 
     %{
@@ -201,6 +203,7 @@ defmodule RisteysWeb.PhenocodeController do
       hd_icd_10: phenocode.hd_icd_10,
       hd_icd_9: phenocode.hd_icd_9,
       hd_icd_8: phenocode.hd_icd_8,
+      hd_icd_10s_excl_exp: hd_icd10s_excl,
       hd_icd_10_excl: phenocode.hd_icd_10_excl,
       hd_icd_9_excl: phenocode.hd_icd_9_excl,
       hd_icd_8_excl: phenocode.hd_icd_8_excl,
@@ -209,6 +212,7 @@ defmodule RisteysWeb.PhenocodeController do
       cod_icd_10: phenocode.cod_icd_10,
       cod_icd_9: phenocode.cod_icd_9,
       cod_icd_8: phenocode.cod_icd_8,
+      cod_icd_10s_excl_exp: cod_icd10s_excl,
       cod_icd_10_excl: phenocode.cod_icd_10_excl,
       cod_icd_9_excl: phenocode.cod_icd_9_excl,
       cod_icd_8_excl: phenocode.cod_icd_8_excl,

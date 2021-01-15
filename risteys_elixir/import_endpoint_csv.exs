@@ -169,6 +169,13 @@ end)
   Map.put_new(row, :hd_icd10s_exp, expanded)
 end)
 
+# Parse excl ICD-10: HD
+|> Stream.map(fn row ->
+  %{"HD_ICD_10_EXCL" => hd_excl} = row
+  expanded = Risteys.Icd10.parse_rule(hd_excl, icd10s, map_child_parent, map_parent_children)
+  Map.put_new(row, :hd_icd10s_excl_exp, expanded)
+end)
+
 # Parse ICD-10: OUTPAT
 |> Stream.map(fn row ->
   %{
@@ -201,6 +208,13 @@ end)
   Map.put_new(row, :cod_icd10s_exp, expanded)
 end)
 
+# Parse excl ICD-10: COD
+|> Stream.map(fn row ->
+  %{"COD_ICD_10_EXCL" => cod_excl} = row
+  expanded = Risteys.Icd10.parse_rule(cod_excl, icd10s, map_child_parent, map_parent_children)
+  Map.put_new(row, :cod_icd10s_excl_exp, expanded)
+end)
+
 # Parse ICD-10: KELA
 |> Stream.map(fn row ->
   %{
@@ -223,8 +237,12 @@ end)
     outpat_icd10s_exp:
       Enum.map(row.outpat_icd10s_exp, &Risteys.Icd10.to_dotted(&1, map_undotted_dotted)),
     hd_icd10s_exp: Enum.map(row.hd_icd10s_exp, &Risteys.Icd10.to_dotted(&1, map_undotted_dotted)),
+    hd_icd10s_excl_exp:
+      Enum.map(row.hd_icd10s_excl_exp, &Risteys.Icd10.to_dotted(&1, map_undotted_dotted)),
     cod_icd10s_exp:
       Enum.map(row.cod_icd10s_exp, &Risteys.Icd10.to_dotted(&1, map_undotted_dotted)),
+    cod_icd10s_excl_exp:
+      Enum.map(row.cod_icd10s_excl_exp, &Risteys.Icd10.to_dotted(&1, map_undotted_dotted)),
     kela_icd10s_exp:
       Enum.map(row.kela_icd10s_exp, &Risteys.Icd10.to_dotted(&1, map_undotted_dotted))
   }
@@ -294,6 +312,8 @@ end)
 
   AssocICDs.insert_or_update("OUTPAT", 10, phenocode, row.outpat_icd10s_exp)
   AssocICDs.insert_or_update("HD", 10, phenocode, row.hd_icd10s_exp)
+  AssocICDs.insert_or_update("HD_EXCL", 10, phenocode, row.hd_icd10s_excl_exp)
   AssocICDs.insert_or_update("COD", 10, phenocode, row.cod_icd10s_exp)
+  AssocICDs.insert_or_update("COD_EXCL", 10, phenocode, row.cod_icd10s_excl_exp)
   AssocICDs.insert_or_update("KELA", 10, phenocode, row.kela_icd10s_exp)
 end)

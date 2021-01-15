@@ -13,6 +13,7 @@ defmodule Risteys.Phenocode do
     field :include, :string
     field :pre_conditions, :string
     field :conditions, :string
+    # raw, unprocessed Outpat ICD_10
     field :outpat_icd, :string
     field :hd_mainonly, :string
     field :hd_icd_10_atc, :string
@@ -21,6 +22,7 @@ defmodule Risteys.Phenocode do
     # raw, unprocessed HD_ICD_9
     field :hd_icd_9, :string
     field :hd_icd_8, :string
+    # raw, unprocessed excl:HD_ICD_10
     field :hd_icd_10_excl, :string
     field :hd_icd_9_excl, :string
     field :hd_icd_8_excl, :string
@@ -30,6 +32,7 @@ defmodule Risteys.Phenocode do
     # raw, unprocessed COD_ICD_9
     field :cod_icd_9, :string
     field :cod_icd_8, :string
+    # raw, unprocessed excl:COD_ICD_10
     field :cod_icd_10_excl, :string
     field :cod_icd_9_excl, :string
     field :cod_icd_8_excl, :string
@@ -38,6 +41,7 @@ defmodule Risteys.Phenocode do
     field :oper_hp1, :string
     field :oper_hp2, :string
     field :kela_reimb, :string
+    # raw, unprocessed Kela ICD_10
     field :kela_reimb_icd, :string
     field :kela_atc_needother, :string
     field :kela_atc, :string
