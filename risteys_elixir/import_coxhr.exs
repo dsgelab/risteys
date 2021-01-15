@@ -118,11 +118,14 @@ end)
   sex_coef = if sex_coef == "nan", do: nil, else: String.to_float(sex_coef)
   sex_norm_mean = if sex_norm_mean == "nan", do: nil, else: String.to_float(sex_norm_mean)
 
-  case hr do
-    "nan" ->
+  cond do
+    hr == "nan" ->
       Logger.warn("NaN HR, not doing import: #{prior} -> #{outcome}")
 
-    _ ->
+    ci_max == "inf" ->
+      Logger.warn("∞ HR, can't import: #{prior} -> #{outcome}")
+
+    true ->
       # Get the phenocode IDs for prior and outcome
       prior = Repo.get_by!(Phenocode, name: prior)
       outcome = Repo.get_by!(Phenocode, name: outcome)
