@@ -220,5 +220,33 @@ defmodule Risteys.Icd10Test do
       expected = ["G59.0*E10.4", "G59.0*E11.4"]
       assert_parsed(cell, expected, context)
     end
+
+    test "Symptom pairs & ➝ * :  M07&L405|M07[1-3]", context do
+      # From M13_PSORIARTH_ICD10
+      cell = "M07[0-3]&L405|M07[1-3]"
+      expected = [
+	"M07.0*L40.5",
+	"M07.1*L40.5",
+	"M07.2*L40.5",
+	"M07.3*L40.5",
+	"M07.1*",
+	"M07.2*",
+	"M07.3*"
+      ]
+      assert_parsed(cell, expected, context)
+    end
+
+    test "Symptom pairs non-matching: F009&G309", context do
+      # From AD_U
+      #
+      # This is a tricky case. The pair F00.9, G30.9 is not found in
+      # the official Finnish ICD-10 document, but the pair appears
+      # however in the FinnGen data.
+      # Best course of action is to not match anything on this pair so
+      # it is displayed as is in Risteys.
+      cell = "F009&G309"
+      expected = []
+      assert_parsed(cell, expected, context)
+    end
   end
 end
