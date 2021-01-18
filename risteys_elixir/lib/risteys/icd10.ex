@@ -65,16 +65,21 @@ defmodule Risteys.Icd10 do
   def parse_rule(nil, _, _, _), do: MapSet.new()
   def parse_rule("", _, _, _), do: MapSet.new()
 
-  def parse_rule(text, icd10s, map_child_parent, map_parent_children) do
-    if Map.has_key?(map_child_parent, text) do
+  def parse_rule(pattern, icd10s, map_child_parent, map_parent_children) do
+    if Map.has_key?(map_child_parent, pattern) do
       # Return early if it's an exact match
-      MapSet.new([text])
+      MapSet.new([pattern])
     else
       # Find the minimum set of ICD-10 (with using ICD-10 categories) that meet the definition
 
+      # In endpoint definition, symptoms pair are coded with "&" to
+      # denote either "+" or "*" to are used in the real symptoms pairs.
+      symbols_symptom_pair = "[\\*\\+]"
+      pattern = String.replace(pattern, "&", symbols_symptom_pair)
+
       # Match only ICDs that starts with the pattern.
       # For example this prevents "N77.0*A60.0" matching on "A6[0-4]"
-      regex = Regex.compile!("^(#{text})")
+      regex = Regex.compile!("^(#{pattern})")
 
       # 1. Get all matches of the regex on the ICD-10s
       icd10s

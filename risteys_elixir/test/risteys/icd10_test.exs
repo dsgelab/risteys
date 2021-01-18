@@ -205,5 +205,20 @@ defmodule Risteys.Icd10Test do
       expected = ["M00-M99"]
       assert_parsed(cell, expected, context)
     end
+
+    test "Symptom pairs & ➝ +: T58&F0289", context do
+      # From ST19_DEMEN_RELATED_TOXIC_EFFECT_CARBON_MONOX
+      # Interpret "&" as a symptom pair, so either "+" or "*".
+      cell = "T58&F0289"
+      expected = ["T58+F02.89"]
+      assert_parsed(cell, expected, context)
+    end
+
+    test "Symptom pairs & ➝ *: G590&E104|G590&E114", context do
+      # From DM_MONONEURO
+      cell = "G590&E104|G590&E114"
+      expected = ["G59.0*E10.4", "G59.0*E11.4"]
+      assert_parsed(cell, expected, context)
+    end
   end
 end
