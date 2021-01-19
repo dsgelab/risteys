@@ -1,6 +1,7 @@
 defmodule RisteysWeb.PhenocodeView do
   use RisteysWeb, :view
   require Integer
+  alias Risteys.Phenocode
 
   def render("assocs.json", %{
         phenocode: phenocode,
@@ -212,6 +213,11 @@ defmodule RisteysWeb.PhenocodeView do
     else
       String.split(data_sources.include, "|")
     end
+  end
+
+  defp endpoint_def(%{conditions: nil}, :conditions), do: nil
+  defp endpoint_def(%{conditions: rule}, :conditions) do
+    Phenocode.parse_conditions(rule)
   end
 
   defp endpoint_def(data_sources, :metadata) do
