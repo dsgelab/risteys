@@ -248,5 +248,26 @@ defmodule Risteys.Icd10Test do
       expected = []
       assert_parsed(cell, expected, context)
     end
+
+    test "Mode: %J300", context do
+      # From RHINITIS_VASOMOTOR
+      cell = "%J300"
+      expected = ["J30.0"]
+      assert_parsed(cell, expected, context)
+    end
+
+    test "Mode: %G40[0-1]", context do
+      # From GE_MODE
+      cell = "%G40[0-1]"
+      expected = ["G40.0", "G40.1"]
+      assert_parsed(cell, expected, context)
+    end
+
+    test "Mode: %J45|J46", context do
+      # From ASTHMA_MODE
+      cell = "%J45|J46"
+      expected = ["J45", "J46"]
+      assert_parsed(cell, expected, context)
+    end
   end
 end

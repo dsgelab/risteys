@@ -259,6 +259,21 @@ defmodule RisteysWeb.PhenocodeView do
     |> Enum.intersperse(", ")
   end
 
+  defp mode_info(rule, expanded) do
+    is_plural = length(expanded) > 1
+
+    message =
+      if is_plural do
+        "A case is made only if these codes are the most common among their sibling ICD codes."
+      else
+        "A case is made only if this code is the most common among its sibling ICD codes."
+      end
+
+    if String.starts_with?(rule, "%") do
+      ["(", abbr("mode", message), ")"]
+    end
+  end
+
   defp ontology_links(ontology) do
     # Helper function to link to external resources
     linker = fn source, id ->

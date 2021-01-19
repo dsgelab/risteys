@@ -66,6 +66,13 @@ defmodule Risteys.Icd10 do
   def parse_rule("", _, _, _), do: MapSet.new()
 
   def parse_rule(pattern, icd10s, map_child_parent, map_parent_children) do
+    # ICD rules starting with % are mode encoding.
+    pattern =
+      case String.at(pattern, 0) do
+	"%" -> String.trim_leading(pattern, "%")
+	_ -> pattern
+      end
+
     if Map.has_key?(map_child_parent, pattern) do
       # Return early if it's an exact match
       MapSet.new([pattern])
