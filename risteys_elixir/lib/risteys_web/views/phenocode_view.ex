@@ -275,7 +275,7 @@ defmodule RisteysWeb.PhenocodeView do
         "A case is made only if this code is the most common among its sibling ICD codes."
       end
 
-    if String.starts_with?(rule, "%") do
+    if not is_nil(rule) and String.starts_with?(rule, "%") do
       ["(", abbr("mode", message), ")"]
     end
   end
