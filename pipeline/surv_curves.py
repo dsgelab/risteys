@@ -2,8 +2,10 @@
 Compute cumulative incidence plots.
 """
 import argparse
+import multiprocessing
 from pathlib import Path
 
+import numpy as np
 import pandas as pd
 from lifelines import CoxPHFitter
 
@@ -17,6 +19,51 @@ MEAN_APPROX_BIRTH_DATE = 1959.39
 
 PLOT_AGE_MIN = 0     # Inclusive
 PLOT_AGE_MAX = 100   # Inclusive. Keep as much as possible, we can truncate later when plotting
+
+
+class NotEnoughCases(Exception):
+    pass
+
+
+def cli_parser():
+    """Setup the command line argument parsing"""
+    parser = argparse.ArgumentParser()
+
+    parser.add_argument(
+        "-e", "--endpoint-definitions",
+        help="path to the endpoint definitions file (CSV)",
+        required=True,
+        type=Path
+    )
+    parser.add_argument(
+        "-d", "--dense-events",
+        help="path to the dense events file (CSV)",
+        required=True,
+        type=Path
+    )
+    # Minimum file is used to compute approximate birth dates
+    parser.add_argument(
+        "-m", "--minimum",
+        help="path to the FinnGen minimum phenotype file (CSV)",
+        required=True,
+        type=Path
+    )
+    # File containing FINNGENID and FU_END_AGE to get the follow-up end age
+    parser.add_argument(
+        "-f", "--follow-up",
+        help="path to the file with follow-up end age information (CSV)",
+        required=True,
+        type=Path
+    )
+    parser.add_argument(
+        "-o", "--output",
+        help="path to output directory with plot values for each endpoint (CSV)",
+        required=True,
+        type=Path
+    )
+
+    args = parser.parse_args()
+    return args
 
 
 def load_endpoints(file_path):
@@ -72,15 +119,15 @@ def load_data(dense_events, minimum, follow_up):
 
 def compute_cumulative_incidence(
         endpoint,
-        is_sex_specific,
+        sex,
         df_events,
         df_follow_up,
         df_minimum
 ):
     """Compute the cumulative incidence for a given endpoint"""
-    logger.info(f"Computing cumulative incidence for: {endpoint}")
+    logger.info(f"{endpoint} - Computing cumulative incidence")
 
-    logger.debug("Assigning cases and controls")
+    logger.debug(f"{endpoint} - Assigning cases and controls")
 
     # Cases
     df_cases = df_events.loc[df_events.ENDPOINT == endpoint].copy()
@@ -88,6 +135,9 @@ def compute_cumulative_incidence(
     df_cases = df_cases.loc[df_cases.ENDPOINT_YEAR >= STUDY_STARTS, :]
     df_cases["duration"] = df_cases.ENDPOINT_AGE
     df_cases["outcome"] = True
+
+    if df_cases.shape[0] < MIN_CASES:
+        raise NotEnoughCases(f"Not enough cases (< {MIN_CASES}).")
 
     # Controls
     df_controls = df_follow_up.loc[
@@ -106,23 +156,33 @@ def compute_cumulative_incidence(
     )
     dfcox = dfcox.loc[:, ["duration", "outcome", "female", "approx_birth_date"]]
 
-    logger.debug("Fitting Cox model")
+    logger.debug(f"{endpoint} - Fitting Cox model")
+
+    # Prepare model for sex-specific endpoints
+    if sex == "female":
+        formula = "approx_birth_date"
+        mean_indiv = {
+            "female": [1],
+            "approx_birth_date": [MEAN_APPROX_BIRTH_DATE]
+        }
+    elif sex == "male":
+        formula = "approx_birth_date"
+        mean_indiv = {
+            "female": [0],
+            "approx_birth_date": [MEAN_APPROX_BIRTH_DATE]
+        }
+    else:
+        formula = "female + approx_birth_date"
+        mean_indiv = {
+            "female": [0, 1],
+            "approx_birth_date": [MEAN_APPROX_BIRTH_DATE, MEAN_APPROX_BIRTH_DATE]
+        }
 
     # Fit Cox model
-    mean_indiv = {
-        "female": [0, 1],
-        "approx_birth_date": [MEAN_APPROX_BIRTH_DATE, MEAN_APPROX_BIRTH_DATE]
-    }
-    if not is_sex_specific:
-        formula = "female + approx_birth_date"
-    else:
-        formula = "approx_birth_date"
-        mean_indiv.pop("female")
-
     cph = CoxPHFitter()
     cph.fit(dfcox, duration_col="duration", event_col="outcome", formula=formula)
 
-    logger.debug("Using fitted model to derive cumulative incidence")
+    logger.debug(f"{endpoint} - Using fitted model to derive cumulative incidence")
 
     # Derive cumulative incidence from model
     at_times = range(PLOT_AGE_MIN, PLOT_AGE_MAX + 1)  # include age max
@@ -131,53 +191,57 @@ def compute_cumulative_incidence(
         times=at_times
     )
     cumulative_incidence = 1 - surv_prob
-    cumulative_incidence = cumulative_incidence.rename(
-        columns={0: "male", 1: "female"}
-    )
+
+    if sex == "female":
+        cumulative_incidence = cumulative_incidence.rename(
+            columns={0: "female"}
+        )
+        cumulative_incidence["male"] = np.nan
+    elif sex == "male":
+        cumulative_incidence = cumulative_incidence.rename(
+            columns={0: "male"}
+        )
+        cumulative_incidence["female"] = np.nan
+    else:
+        cumulative_incidence = cumulative_incidence.rename(
+            columns={0: "male", 1: "female"}
+        )
     cumulative_incidence["age"] = cumulative_incidence.index
 
     return cumulative_incidence
 
 
-def cli_parser():
-    """Setup the command line argument parsing"""
-    parser = argparse.ArgumentParser()
+def worker_job(endpoint, sex, df_events, df_follow_up, df_minimum, output):
+    try:
+        cumulative_incidence = compute_cumulative_incidence(
+            endpoint,
+            sex,
+            df_events,
+            df_follow_up,
+            df_minimum
+        )
+    except Exception as exc:
+        logger.warning(f"{endpoint} - unexpected error of type {type(exc)}")
 
-    parser.add_argument(
-        "-e", "--endpoint-definitions",
-        help="path to the endpoint definitions file (CSV)",
-        required=True,
-        type=Path
-    )
-    parser.add_argument(
-        "-d", "--dense-events",
-        help="path to the dense events file (CSV)",
-        required=True,
-        type=Path
-    )
-    # Minimum file is used to compute approximate birth dates
-    parser.add_argument(
-        "-m", "--minimum",
-        help="path to the FinnGen minimum phenotype file (CSV)",
-        required=True,
-        type=Path
-    )
-    # File containing FINNGENID and FU_END_AGE to get the follow-up end age
-    parser.add_argument(
-        "-f", "--follow-up",
-        help="path to the file with follow-up end age information (CSV)",
-        required=True,
-        type=Path
-    )
-    parser.add_argument(
-        "-o", "--output",
-        help="path to output directory with plot values for each endpoint (CSV)",
-        required=True,
-        type=Path
-    )
+        # Write detailed error to a file
+        filename = "cumulative-incidence_error_" + endpoint + ".log"
+        output_path = output / filename
+        with open(output_path, "w") as f:
+            print(exc, file=f)
+    else:
+        # Add column with endpoint name to resulting DataFrame
+        cumulative_incidence["endpoint"] = endpoint
 
-    args = parser.parse_args()
-    return args
+        # Output to a file
+        filename = "cumulative-incidence_" + endpoint + ".csv"
+        output_path = output / filename
+        cumulative_incidence.to_csv(
+            output_path,
+            index=False,
+            na_rep='nan'
+        )
+
+        logger.debug(f"{endpoint} - done")
 
 
 def main():
@@ -192,22 +256,30 @@ def main():
     )
 
     # Compute cumulative incidences
+    logger.info("Preparing tasks")
+    tasks = []
     for _, row in endpoints.iterrows():
         endp = row.NAME
-        is_sex_specific = row.SEX in ("1", "2")
-        cumulative_incidence = compute_cumulative_incidence(
+
+        if row.SEX == 1:
+            sex = "male"
+        elif row.SEX == 2:
+            sex = "female"
+        else:
+            sex = np.nan
+
+        worker_args = (
             endp,
-            is_sex_specific,
+            sex,
             df_events,
             df_follow_up,
-            df_minimum
+            df_minimum,
+            args.output
         )
-        cumulative_incidence["endpoint"] = endp
+        tasks.append(worker_args)
 
-        # Output to a file
-        filename = "cumulative-incidence_" + endp + ".csv"
-        output_path = args.output / filename
-        cumulative_incidence.to_csv(output_path, index=False)
+    with multiprocessing.Pool(multiprocessing.cpu_count()) as worker_pool:
+        worker_pool.starmap(worker_job, tasks)
 
 
 if __name__ == '__main__':
