@@ -11,9 +11,7 @@ Note that this script doesn't do any input validation. It's also why it's quite 
 
 Usage
 -----
-  python densify_first_events.py <path-first-events> > <output-path>
-
-Note the stdout redirection with '>'.
+  python densify_first_events.py --help
 
 
 Input file
@@ -35,24 +33,62 @@ Ouputs to stdout by default, use redirection to put the result in a file.
 
 """
 
+import argparse
 from pathlib import Path
-from sys import argv
 
 
-OUT_HEADER = "FINNGENID,ENDPOINT,AGE,YEAR,NEVT"
+# How the controls, cases, and excluded controls are coded in the input file
+CONTROL      = "0"
+CASE         = "1"
+EXCL_CONTROL = "NA"
+
+# Headers of the output file
+OUT_HEADER = ",".join([
+    "FINNGENID",
+    "ENDPOINT",
+    # Input notation:  control=0, case=1, excluded control=NA
+    # Output notation: control=1, case=1, excluded control=2
+    "CONTROL_CASE_EXCL",
+    "AGE",
+    "YEAR",
+    "NEVT"
+])
+
+
+def cli_parser():
+    parser = argparse.ArgumentParser()
+    parser.add_argument(
+        "-i", "--input-first-events",
+        help="path to the FinnGen first-event phenotype file (CSV)",
+        required=True,
+        type=Path
+    )
+    parser.add_argument(
+        "-o", "--output",
+        help="path to output 'densified' file (CSV)",
+        required=True,
+        type=Path
+    )
+    parser.add_argument(
+        "-k", "--keep-all",
+        help="keep all of controls, excluded controls, and cases, instead of keeping only the cases",
+        required=False,
+        action="store_true"
+    )
+    args = parser.parse_args()
+    return args
 
 
 def main():
-    print(OUT_HEADER)
+    args = cli_parser()
 
-    # Input file
-    fp = Path(argv[1])
-    f = open(fp)
+    out_file = open(args.output, "x")
+    in_file = open(args.input_first_events)
 
     # Read the header to build a lookup table for column -> column index
     in_header = {}
     for idx, col in enumerate(
-            f.readline()
+            in_file.readline()
             .rstrip("\n")
             .split(",")):
         in_header[col] = idx
@@ -62,25 +98,43 @@ def main():
         lambda c: c + "_AGE" in in_header and c + "_YEAR" in in_header and c + "_NEVT" in in_header,
         in_header))
 
-    # For each individual, check which endpoints they have, format it and output it
-    for row in f:
+
+    # Add headers to output file
+    print(OUT_HEADER, file=out_file)
+
+    # Get the endpoint data for each individual
+    for row in in_file:
         records = row.rstrip("\n").split(",")
 
         for endp in endpoints:
             col = in_header[endp]
-            if records[col] == "1":
-                # Get the event info
+            val_endp = records[col]
+            val_fgid = records[0]
+
+            # Check if case, control or excluded control
+            if val_endp not in (CONTROL, CASE, EXCL_CONTROL):
+                raise ValueError(f"Unexpected value `{val_endp}` for `{val_fgid}` with endpoint `{endp}` .")
+            elif val_endp == EXCL_CONTROL:
+                kind = "2"
+            else:
+                kind = val_endp
+
+            # Get the event info
+            if args.keep_all or kind == CASE:
                 col_age = in_header[endp + "_AGE"]
                 col_year = in_header[endp + "_YEAR"]
                 col_nevt = in_header[endp + "_NEVT"]
-                val_fgid = records[0]
                 val_age = records[col_age]
                 val_year = records[col_year]
                 val_nevt = records[col_nevt]
 
-                print(f"{val_fgid},{endp},{val_age},{val_year},{val_nevt}")
+                print(
+                    f"{val_fgid},{endp},{kind},{val_age},{val_year},{val_nevt}",
+                    file=out_file
+                )
 
-    f.close()
+    in_file.close()
+    out_file.close()
 
 
 if __name__ == "__main__":
