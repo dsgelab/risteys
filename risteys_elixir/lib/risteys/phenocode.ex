@@ -65,6 +65,9 @@ defmodule Risteys.Phenocode do
     # to the introduction of the outpatient registry.
     field :outpat_bump, :boolean
 
+    # Genome-wide significant hits
+    field :gws_hits, :integer
+
     many_to_many :icd10s, Risteys.Icd10,
       join_through: Risteys.PhenocodeIcd10,
       # Delete ICD-10s not included in the update
@@ -129,7 +132,8 @@ defmodule Risteys.Phenocode do
       :category,
       :ontology,
       :description,
-      :outpat_bump
+      :outpat_bump,
+      :gws_hits
     ])
     |> validate_required([:name])
     |> validate_change(:ontology, fn :ontology, ontology ->
@@ -152,6 +156,7 @@ defmodule Risteys.Phenocode do
         []
       end
     end)
+    |> validate_number(:gws_hits, greater_than_or_equal_to: 0)
     |> unique_constraint(:name)
   end
 

@@ -6,6 +6,7 @@ defmodule RisteysWeb.PhenocodeController do
     ATCDrug,
     CoxHR,
     DrugStats,
+    FGEndpoint,
     Icd10,
     MortalityStats,
     Phenocode,
@@ -156,12 +157,15 @@ defmodule RisteysWeb.PhenocodeController do
     |> assign(:title, phenocode.longname)
     |> assign(:data_sources, data_sources(phenocode))
     |> assign(:ontology, ontology)
+    |> assign(:broader_endpoints, FGEndpoint.broader_endpoints(phenocode))
+    |> assign(:narrower_endpoints, FGEndpoint.narrower_endpoints(phenocode))
     |> assign(:stats, stats)
     |> assign(:distrib_year, distrib_year)
     |> assign(:distrib_age, distrib_age)
     |> assign(:description, description)
     |> assign(:outpat_bump, phenocode.outpat_bump)
     |> assign(:mortality, mortality_stats)
+    |> assign(:correlations, FGEndpoint.list_correlations(phenocode))
     |> assign(:data_assocs, data_assocs(phenocode))
     |> render("show.html")
   end

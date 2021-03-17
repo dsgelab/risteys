@@ -148,7 +148,6 @@ defmodule RisteysWeb.PhenocodeView do
       end)
       |> Keyword.keys()
       |> MapSet.new()
-      |> IO.inspect()
 
     has_sources = MapSet.intersection(rules, sources)
 
@@ -216,6 +215,7 @@ defmodule RisteysWeb.PhenocodeView do
   end
 
   defp endpoint_def(%{conditions: nil}, :conditions), do: nil
+
   defp endpoint_def(%{conditions: rule}, :conditions) do
     Phenocode.parse_conditions(rule)
   end
@@ -319,6 +319,52 @@ defmodule RisteysWeb.PhenocodeView do
         [bin, val]
       end
     end
+  end
+
+  defp display_correlations(correlations) do
+    correlations
+    |> Enum.with_index()
+    |> Enum.map(fn {corr, idx} ->
+      case_ratio =
+        case corr.case_ratio do
+          nil -> "-"
+          val -> round(val * 100, 2)
+        end
+
+      gws_hits = if is_nil(corr.gws_hits), do: "-", else: corr.gws_hits
+
+      coloc_gws_hits_same_dir =
+        case corr.coloc_gws_hits_same_dir do
+          nil -> "-"
+          val -> val
+        end
+
+      coloc_gws_hits_opp_dir =
+        case corr.coloc_gws_hits_opp_dir do
+          nil -> "-"
+          val -> val
+        end
+
+      rel_beta = if is_nil(corr.rel_beta), do: "-", else: corr.rel_beta
+
+      corr = %{
+        corr
+        | case_ratio: case_ratio,
+          gws_hits: gws_hits,
+          coloc_gws_hits_same_dir: coloc_gws_hits_same_dir,
+          coloc_gws_hits_opp_dir: coloc_gws_hits_opp_dir,
+          rel_beta: rel_beta
+      }
+
+      bg_color =
+        if Integer.mod(idx, 2) == 0 do
+          "bg-white"
+        else
+          "bg-grey-lightest"
+        end
+
+      Map.put(corr, :bg_color, bg_color)
+    end)
   end
 
   defp abbr(text, title) do
