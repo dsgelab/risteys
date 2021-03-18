@@ -168,7 +168,7 @@ let getScales = (data, y_axis) => {
 	}
 };
 
-let showTooltip = (tooltip, point, other_pheno) => {
+let showTooltip = (tooltip, event, point, other_pheno) => {
 	let text = `
 	<p>
 		<b>${point.longname}</b> (${point.name})<br>
@@ -184,8 +184,8 @@ let showTooltip = (tooltip, point, other_pheno) => {
 
 	tooltip.style("display", "block")
 		.html(text)
-		.style("left", `${d3.event.pageX + tooltipMargin.x}px`)
-		.style("top", `${d3.event.pageY}px`);
+		.style("left", `${event.pageX + tooltipMargin.x}px`)
+		.style("top", `${event.pageY}px`);
 };
 
 let hideTooltip = (tooltip) => {
@@ -273,7 +273,7 @@ let makePlot = (data, y_axis, ticks, categoryNames, other_pheno) => {
 		.attr("fill", (d) => d.color)
 		.attr("r", dot.size)
 		.attr("opacity", dot.opacity)
-		.on("mouseover", (d) => showTooltip(tooltip, d, other_pheno));
+		.on("mouseover", (event, d) => showTooltip(tooltip, event, d, other_pheno));
 
 	let afters = filter(data, (d) => d.direction.toLowerCase() === "after");
 	let squares = g.selectAll("points")
@@ -286,7 +286,7 @@ let makePlot = (data, y_axis, ticks, categoryNames, other_pheno) => {
 		.attr("height", square.size)
 		.attr("width", square.size)
 		.attr("opacity", dot.opacity)
-		.on("mouseover", (d) => showTooltip(tooltip, d, other_pheno));
+		.on("mouseover", (event, d) => showTooltip(tooltip, event, d, other_pheno));
 
 	// Hide tooltip when mouse leaves the svg
 	svg.on("mouseleave", () => hideTooltip(tooltip));

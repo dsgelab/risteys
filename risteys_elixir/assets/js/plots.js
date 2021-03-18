@@ -236,12 +236,12 @@ let putData = (angleXAxis, div_name, data) => {
         selection.attr("height", d => {
                         return y(0) - y(d.value)
                     })
-            .on("mouseover", d => {
+            .on("mouseover", (event, d) => {
                 d3.select(id_tooltip)
                     .style("display", "block")
                     .html(d.value)
-                    .style("left", d3.event.pageX + "px")
-                    .style("top", d3.event.pageY + "px");
+                    .style("left", event.pageX + "px")
+                    .style("top", event.pageY + "px");
             })
             .on("mouseout", d => {
                 d3.select(id_tooltip)
