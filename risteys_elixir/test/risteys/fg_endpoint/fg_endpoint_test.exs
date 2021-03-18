@@ -65,4 +65,40 @@ defmodule Risteys.FGEndpointTest do
       assert %Ecto.Changeset{} = FGEndpoint.change_correlation(correlation)
     end
   end
+
+  describe "Stats: Cumulative incidence" do
+    alias Risteys.FGEndpoint.StatsCumulativeIncidence
+
+    @valid_attrs %{age: 10.0, female_value: 0.4, male_value: 0.5}
+    @invalid_attrs %{age: -9.0, female_value: 0.12345, male_value: -1.0}
+
+    def stat_fixture() do
+      {:ok, pheno} =
+        Risteys.Phenocode.changeset(%Risteys.Phenocode{}, %{name: "TEST_ENDPOINT"})
+        |> Repo.insert()
+
+      %{phenocode_id: pheno.id}
+    end
+
+    test "create_cumulative_incidence/1 with valid data" do
+      attrs =
+        stat_fixture()
+        |> Enum.into(@valid_attrs)
+
+      assert {:ok, %StatsCumulativeIncidence{} = stat} =
+               FGEndpoint.create_cumulative_incidence(attrs)
+
+      assert stat.age == 10.0
+      assert stat.female_value == 0.4
+      assert stat.male_value == 0.5
+    end
+
+    test "create_cumulative_incidence/1 with invalid data returns error changeset" do
+      attrs =
+        stat_fixture()
+        |> Enum.into(@invalid_attrs)
+
+      assert {:error, %Ecto.Changeset{}} = FGEndpoint.create_cumulative_incidence(attrs)
+    end
+  end
 end
