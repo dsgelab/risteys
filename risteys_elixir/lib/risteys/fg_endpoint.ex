@@ -10,6 +10,7 @@ defmodule Risteys.FGEndpoint do
 
   alias Risteys.FGEndpoint.Correlation
   alias Risteys.FGEndpoint.ExplainerStep
+  alias Risteys.FGEndpoint.StatsCumulativeIncidence
 
   # -- Phenocode/Endpoint --
   def list_endpoints_ids() do
@@ -352,5 +353,52 @@ defmodule Risteys.FGEndpoint do
         limit: ^limit,
         select: pp
     )
+  end
+
+  # -- StatsCumulativeIncidence --
+  def create_cumulative_incidence(attrs) do
+    %StatsCumulativeIncidence{}
+    |> StatsCumulativeIncidence.changeset(attrs)
+    |> Repo.insert()
+  end
+
+  def delete_cumulative_incidence(endpoint_ids) do
+    Repo.delete_all(
+      from cumul_inc in StatsCumulativeIncidence,
+        where: cumul_inc.phenocode_id in ^endpoint_ids
+    )
+  end
+
+  def get_cumulative_incidence_plot_data(endpoint_name) do
+    %{id: endpoint_id} = Repo.get_by(Phenocode, name: endpoint_name)
+
+    # Values will be converted from [0, 1] to [0, 100]
+    females = get_cumulinc_sex(endpoint_id, "female")
+    males = get_cumulinc_sex(endpoint_id, "male")
+
+    %{
+      females: females,
+      males: males
+    }
+  end
+
+  defp get_cumulinc_sex(endpoint_id, sex) do
+    Repo.all(
+      from stats in StatsCumulativeIncidence,
+      where:
+        stats.phenocode_id == ^endpoint_id and
+        stats.sex == ^sex,
+      # The following will be reversed when we build the list by prepending values
+      order_by: [desc: stats.age]
+    )
+    |> Enum.reduce([], fn changeset, acc ->
+      %{
+        age: age,
+        value: value
+      } = changeset
+
+      data_point = %{age: age, value: value * 100}  # convert value to percentage
+      [data_point | acc]
+    end)
   end
 end
