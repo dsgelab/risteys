@@ -19,6 +19,7 @@ import "phoenix_html";
 //// import slider_component from "./MySlider.vue"
 import {makeHistogram, toggleCumulative} from "./plots.js";
 import {search_channel, stats_data_channel} from "./socket";
+import {drawPlot as drawPlotCumulInc} from "./cumulincPlot";
 import { forEach } from "lodash-es";
 import CorrTable from './CorrTable.vue';
 import AssocPlot from './AssocPlot.vue';
@@ -204,6 +205,37 @@ if (path.startsWith("/phenocode/")) {  // Load only on phenocode pages
             components: { CorrTable },
         });
     });
+
+    /* SURVIVAL CURVES */
+    stats_data_channel.push("get_cumulative_incidence", {endpoint: phenocode});  // request plot data
+    stats_data_channel.on("data_cumulative_incidence", payload => {
+        const color_female = "#9f0065";
+        const color_male = "#2779bd";
+        const pattern_female = "1 0";
+        const pattern_male = "9 1";
+        const data = [
+            {
+                name: "female",
+                color: color_female,
+                dasharray: pattern_female,
+                cumulinc: payload.females
+            },
+            {
+                name: "male",
+                color: color_male,
+                dasharray: pattern_male,
+                cumulinc: payload.males
+            }
+        ];
+
+        if (data[0].cumulinc.length === 0 && data[1].cumulinc.length === 0) {
+            const node = document.getElementById("cumulinc-plot");
+            node.innerText = "No data";
+        } else {
+            drawPlotCumulInc("#cumulinc-plot", data);
+        }
+    });
+
 
     /* ASSOC DATA */
     fetch('/api/phenocode/' + phenocode + '/assocs.json', {
