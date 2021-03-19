@@ -208,6 +208,8 @@ def compute_cumulative_incidence(
         )
     cumulative_incidence["age"] = cumulative_incidence.index
 
+    # Reorder column so that all output files are consistent
+    cumulative_incidence = cumulative_incidence.loc[:, ["age", "female", "male"]]
     return cumulative_incidence
 
 
