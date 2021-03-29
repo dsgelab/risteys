@@ -42,8 +42,8 @@ pheno_geno_corr_filepath
   # pheno1, pheno2).
   {endpoint_a, endpoint_b} =
     case {endpoint_a_pheno, endpoint_b_pheno, endpoint_a_geno, endpoint_b_geno} do
-      {a, b, nil, nil} -> {a, b}
-      {nil, nil, a, b} -> {a, b}
+      {a, b, "", ""} -> {a, b}
+      {"", "", a, b} -> {a, b}
       {a, b, _a, _b} -> {a, b}
     end
 
