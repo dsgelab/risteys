@@ -27,7 +27,7 @@ defmodule Risteys.FGEndpoint do
       from corr in Correlation,
         join: pp in Phenocode,
         on: corr.phenocode_b_id == pp.id,
-        order_by: [desc: corr.case_ratio],
+        order_by: [desc_nulls_last: pp.gws_hits],
         where:
           corr.phenocode_a_id == ^phenocode.id and
             corr.phenocode_a_id != corr.phenocode_b_id,
