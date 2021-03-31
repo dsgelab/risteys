@@ -92,7 +92,7 @@ def main(events_path, endpoints_path, icd_cm_path, icd_finn_path, output_path):
     icds = load_icds(icd_cm_path, icd_finn_path)
 
     # Filter endpoints
-    df = filter_endpoints(df, df_endpoints)
+    df = filter_endpoint_definitions(df, df_endpoints)
 
     # Build list of pairs of endpoints
     matrix = build_matrix(df)
@@ -166,8 +166,8 @@ def load_icds(icd_cm, icd_finn):
     return icds
 
 
-def filter_endpoints(df, df_endpoints):
-    """Return endpoint definitions keeping only main endpoints"""
+def filter_endpoint_definitions(df, df_endpoints):
+    """Discard some endpoints based on their definition only"""
     logger.info("Filtering out endpoints to keep only main endpoints")
     to_keep = df_endpoints.loc[df_endpoints.apply(keep, axis="columns"), "NAME"]
     df = df.loc[df.ENDPOINT.isin(to_keep), :]
