@@ -152,9 +152,8 @@ defmodule RisteysWeb.PhenocodeController do
     mortality_stats = get_mortality_stats(phenocode)
 
     conn
+    |> assign(:endpoint, phenocode)
     |> assign(:page_title, phenocode.name)
-    |> assign(:name, phenocode.name)
-    |> assign(:title, phenocode.longname)
     |> assign(:data_sources, data_sources(phenocode))
     |> assign(:ontology, ontology)
     |> assign(:broader_endpoints, FGEndpoint.broader_endpoints(phenocode))
