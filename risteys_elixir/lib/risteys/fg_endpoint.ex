@@ -22,7 +22,8 @@ defmodule Risteys.FGEndpoint do
     |> Repo.insert_or_update()
   end
 
-  def list_correlations(phenocode) do
+  def list_correlations(phenocode_name) do
+    phenocode = Repo.get_by!(Phenocode, name: phenocode_name)
     Repo.all(
       from corr in Correlation,
         join: pp in Phenocode,

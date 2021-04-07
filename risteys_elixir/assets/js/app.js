@@ -18,8 +18,9 @@ import "phoenix_html";
 // Local files can be imported directly using relative paths, for example:
 //// import slider_component from "./MySlider.vue"
 import {makeHistogram, toggleCumulative} from "./plots.js";
-import {search_channel} from "./socket";
+import {search_channel, stats_data_channel} from "./socket";
 import { forEach } from "lodash-es";
+import CorrTable from './CorrTable.vue';
 import AssocPlot from './AssocPlot.vue';
 import AssocTable from './AssocTable.vue';
 import DrugTable from './DrugTable.vue';
@@ -235,6 +236,18 @@ if (path.startsWith("/phenocode/")) {  // Load only on phenocode pages
     let cumulativeOff = document.getElementById("cumulative-off");
     cumulativeOff.addEventListener('click', event => {
         toggleCumulative("plot_events_by_year", false, true);
+    });
+
+    /* CORRELATION TABLE */
+    stats_data_channel.push("get_correlations", {endpoint: phenocode});
+    stats_data_channel.on("data_correlations", payload => {
+        var vv = new Vue({
+            el: "#vue-correlations",
+            data: {
+                rows: payload.rows
+            },
+            components: { CorrTable },
+        });
     });
 
     /* ASSOC DATA */

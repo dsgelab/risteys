@@ -164,7 +164,6 @@ defmodule RisteysWeb.PhenocodeController do
     |> assign(:description, description)
     |> assign(:outpat_bump, phenocode.outpat_bump)
     |> assign(:mortality, mortality_stats)
-    |> assign(:correlations, FGEndpoint.list_correlations(phenocode))
     |> assign(:data_assocs, data_assocs(phenocode))
     |> render("show.html")
   end
