@@ -101,8 +101,9 @@ function computeTable(rows, endpoint_filter, sorter) {
 		computed_rows = filter(
 			rows,
 			(row) => {
+				const longname = row.longname === null ? "" : row.longname;  // some endpoint don't have a "longname"
 				return row.name.toLowerCase().includes(endpoint_filter.toLowerCase())
-					|| row.longname.toLowerCase().includes(endpoint_filter.toLowerCase())
+					|| longname.toLowerCase().includes(endpoint_filter.toLowerCase())
 			}
 		)
 	}
