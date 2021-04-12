@@ -1,66 +1,64 @@
 <template>
 	<div class="scrolling">
-		<template v-if="drug_table.length > 0">
-			<table class="w-full">
-				<thead>
-					<tr>
-						<th>
-							<div class="h-full border-b border-t pl-2 pt-4">  <!-- div hack to have the borders stay in place on scroll -->
-								Name <br>
-								<input
-									type="text"
-									placeholder="filter by drug name or ATC"
-									v-model="drug_filter"
-									v-on:keyup.stop="refresh_table()"
-									>
-							</div>
-						</th>
-						<th>
-							<div class="h-full border-t border-b">
-								<div><HelpDrugScore v-bind:phenocode="this.phenocode" /> Score</div>
-						<input type="radio" id="score_asc" value="score_asc" v-model="sorter" v-on:change="refresh_table()" checked><label for="score_asc" class="radio-left">▲</label><input type="radio" id="score_desc" value="score_desc" v-model="sorter" v-on:change="refresh_table()"><label for="score_desc" class="radio-right">▼</label>
-							</div>
-						</th>
-						<th>
-							<div class="h-full border-t border-b">
-								[95% CI]
-							</div>
-						</th>
-						<th>
-							<div class="h-full border-t border-b">
-								p <br>
-					<input type="radio" id="pvalue_asc" value="pvalue_asc" v-model="sorter" v-on:change="refresh_table()"><label for="pvalue_asc" class="radio-left">▲</label><input type="radio" id="pvalue_desc" value="pvalue_desc" v-model="sorter" v-on:change="refresh_table()"><label for="pvalue_desc" class="radio-right">▼</label>
-							</div>
-						</th>
-						<th>
-							<div class="h-full border-t border-b">
-								N <br>
-					<input type="radio" id="nindivs_asc" value="nindivs_asc" v-model="sorter" v-on:change="refresh_table()"><label for="nindivs_asc" class="radio-left">▲</label><input type="radio" id="nindivs_desc" value="nindivs_desc" v-model="sorter" v-on:change="refresh_table()"><label for="nindivs_desc" class="radio-right">▼</label>
-							</div>
-						</th>
-						<th>
-							<div class="h-full border-t border-b">
-								ATC code <br>
-					<input type="radio" id="atc_asc" value="atc_asc" v-model="sorter" v-on:change="refresh_table()"><label for="atc_asc" class="radio-left">▲</label><input type="radio" id="atc_desc" value="atc_desc" v-model="sorter" v-on:change="refresh_table()"><label for="atc_desc" class="radio-right">▼</label>
-							</div>
-						</th>
+		<table class="w-full">
+			<thead>
+				<tr>
+					<th>
+						<div class="h-full border-b border-t pl-2 pt-4">  <!-- div hack to have the borders stay in place on scroll -->
+							Name <br>
+							<input
+								type="text"
+								placeholder="filter by drug name or ATC"
+								v-model="drug_filter"
+								v-on:keyup.stop="refresh_table()"
+								>
+						</div>
+					</th>
+					<th>
+						<div class="h-full border-t border-b">
+							<div><HelpDrugScore v-bind:phenocode="this.phenocode" /> Score</div>
+					<input type="radio" id="score_asc" value="score_asc" v-model="sorter" v-on:change="refresh_table()" checked><label for="score_asc" class="radio-left">▲</label><input type="radio" id="score_desc" value="score_desc" v-model="sorter" v-on:change="refresh_table()"><label for="score_desc" class="radio-right">▼</label>
+						</div>
+					</th>
+					<th>
+						<div class="h-full border-t border-b">
+							[95% CI]
+						</div>
+					</th>
+					<th>
+						<div class="h-full border-t border-b">
+							p <br>
+				<input type="radio" id="pvalue_asc" value="pvalue_asc" v-model="sorter" v-on:change="refresh_table()"><label for="pvalue_asc" class="radio-left">▲</label><input type="radio" id="pvalue_desc" value="pvalue_desc" v-model="sorter" v-on:change="refresh_table()"><label for="pvalue_desc" class="radio-right">▼</label>
+						</div>
+					</th>
+					<th>
+						<div class="h-full border-t border-b">
+							N <br>
+				<input type="radio" id="nindivs_asc" value="nindivs_asc" v-model="sorter" v-on:change="refresh_table()"><label for="nindivs_asc" class="radio-left">▲</label><input type="radio" id="nindivs_desc" value="nindivs_desc" v-model="sorter" v-on:change="refresh_table()"><label for="nindivs_desc" class="radio-right">▼</label>
+						</div>
+					</th>
+					<th>
+						<div class="h-full border-t border-b">
+							ATC code <br>
+				<input type="radio" id="atc_asc" value="atc_asc" v-model="sorter" v-on:change="refresh_table()"><label for="atc_asc" class="radio-left">▲</label><input type="radio" id="atc_desc" value="atc_desc" v-model="sorter" v-on:change="refresh_table()"><label for="atc_desc" class="radio-right">▼</label>
+						</div>
+					</th>
+				</tr>
+			</thead>
+			<tbody>
+				<template v-for="(drug, idx) in drug_table">
+					<tr v-bind:class="bg_class(idx)">
+						<th v-bind:class="bg_class(idx)">{{ drug.name }}</th>
+						<td>{{ drug.score_str }}</td>
+						<td>[{{ drug.ci_min_str }}, {{ drug.ci_max_str }}]</td>
+						<td>{{ drug.pvalue_str }}</td>
+						<td>{{ drug.n_indivs }}</td>
+						<td><a v-bind:href="drug.atc_link" target="_blank" rel="noopener noreferrer external">{{ drug.atc }}</a></td>
 					</tr>
-				</thead>
-				<tbody>
-					<template v-for="(drug, idx) in drug_table">
-						<tr v-bind:class="bg_class(idx)">
-							<th v-bind:class="bg_class(idx)">{{ drug.name }}</th>
-							<td>{{ drug.score_str }}</td>
-							<td>[{{ drug.ci_min_str }}, {{ drug.ci_max_str }}]</td>
-							<td>{{ drug.pvalue_str }}</td>
-							<td>{{ drug.n_indivs }}</td>
-							<td><a v-bind:href="drug.atc_link" target="_blank" rel="noopener noreferrer external">{{ drug.atc }}</a></td>
-						</tr>
-					</template>
-				</tbody>
-			</table>
-		</template>
-		<template v-else>
+				</template>
+			</tbody>
+		</table>
+		<template v-if="drug_table.length == 0">
 			<p>No data.</p>
 		</template>
 	</div>
