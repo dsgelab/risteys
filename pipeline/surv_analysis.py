@@ -118,7 +118,12 @@ LOWER_STEP_SIZE   = 0.1
 # Since jobs are kept in a Last-In-First-Out (LIFO) queue, then we
 # need to order them low-to-high in order for the jobs to run the
 # longer durations first.
-LAGS = [1, 5, 15, None]
+LAGS = [
+    [0, 1],
+    [1, 5],
+    [5, 15],
+    None
+]
 
 
 # Used for computing the absolute risk
@@ -439,8 +444,14 @@ def prep_coxhr(pair, lag, df_events, df_info):
     if lag is None:  # no lag HR
         duration = df_unexp_exp_p2.END_AGE - df_unexp_exp_p2.PRIOR_AGE
     else:
+        # Duration of exposure is time from exposure to "end" (death, study stop).
+        # This current cohort (unexposed->exposed) has no one with an
+        # outcome endpoint, so we don't need to do look ahead for an
+        # outcome in a given lag time-window.
+        # The lag is still used to cut the exposure time.
+        _min_lag, max_lag = lag
         duration = df_unexp_exp_p2.apply(
-            lambda r: min(r.END_AGE - r.PRIOR_AGE, lag),
+            lambda r: min(r.END_AGE - r.PRIOR_AGE, max_lag),
             axis="columns"
         )
     df_unexp_exp_p2["duration"] = duration
@@ -460,11 +471,15 @@ def prep_coxhr(pair, lag, df_events, df_info):
         duration = df_tri_p2.END_AGE - df_tri.PRIOR_AGE
         outcome = True
     else:
+        min_lag, max_lag = lag
+        # Duration is time from exposure endpoint to end event, no
+        # matter of the lag time-window.
         duration = df_tri_p2.apply(
-            lambda r: min(r.END_AGE - r.PRIOR_AGE, lag),
+            lambda r: min(r.END_AGE - r.PRIOR_AGE, max_lag),
             axis="columns"
         )
-        outcome = (df_tri_p2.END_AGE - df_tri_p2.PRIOR_AGE) < lag
+        outcome_time = df_tri_p2.OUTCOME_AGE - df_tri_p2.PRIOR_AGE
+        outcome = (outcome_time >= min_lag) & (outcome_time <= max_lag)
     df_tri_p2["duration"] = duration
     df_tri_p2["outcome"] = outcome
 
@@ -532,8 +547,11 @@ def compute_coxhr(pair, df, lag, step_size, is_sex_specific, nindivs, res_writer
 
     if lag is None:
         predict_at = STUDY_ENDS - STUDY_STARTS
+        lag_value = None
     else:
-        predict_at = lag
+        _min_lag, max_lag = lag
+        predict_at = max_lag
+        lag_value = max_lag
 
     surv_probability = cph.predict_survival_function(
         mean_indiv,
@@ -593,7 +611,7 @@ def compute_coxhr(pair, df, lag, step_size, is_sex_specific, nindivs, res_writer
     res_writer.writerow([
         prior,
         outcome,
-        lag,
+        lag_value,
         step_size,
         nindivs,
         absolute_risk,
