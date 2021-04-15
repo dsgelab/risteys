@@ -42,15 +42,15 @@ LAG_COLS = {
         "duration": "duration",
         "death": "death"
     },
-    15: {
+    (5, 15): {
         "duration": "duration_15y",
         "death": "death_15y"
     },
-    5: {
+    (1, 5): {
         "duration": "duration_5y",
         "death": "death_5y"
     },
-    1: {
+    (0, 1): {
         "duration": "duration_1y",
         "death": "death_1y"
     }
@@ -287,8 +287,9 @@ def prep_coxhr(endpoint, df_events, df_info):
         if lag is None:  # no lag HR
             duration = df_unexp_exp_p2.END_AGE - df_unexp_exp_p2.ENDPOINT_AGE
         else:
+            _min_lag, max_lag = lag
             duration = df_unexp_exp_p2.apply(
-                lambda r: min(r.END_AGE - r.ENDPOINT_AGE, lag),
+                lambda r: min(r.END_AGE - r.ENDPOINT_AGE, max_lag),
                 axis="columns"
             )
         df_unexp_exp_p2[cols["duration"]] = duration
@@ -309,11 +310,13 @@ def prep_coxhr(endpoint, df_events, df_info):
             duration = df_tri_p2.DEATH_AGE - df_tri.ENDPOINT_AGE
             death = True
         else:
+            min_lag, max_lag = lag
             duration = df_tri_p2.apply(
-                lambda r: min(r.DEATH_AGE - r.ENDPOINT_AGE, lag),
+                lambda r: min(r.DEATH_AGE - r.ENDPOINT_AGE, max_lag),
                 axis="columns"
             )
-            death = (df_tri_p2.DEATH_AGE - df_tri_p2.ENDPOINT_AGE) < lag
+            death_time = df_tri_p2.DEATH_AGE - df_tri_p2.ENDPOINT_AGE
+            death = (death_time >= min_lag) & (death_time <= max_lag)
         df_tri_p2[cols["duration"]] = duration
         df_tri_p2[cols["death"]] = death
 
@@ -398,8 +401,11 @@ def compute_coxhr(endpoint, df, lag, nindivs, res_writer):
 
     if lag is None:
         predict_at = STUDY_ENDS - STUDY_STARTS
+        lag_value = None
     else:
-        predict_at = lag
+        _min_lag, max_lag = lag
+        predict_at = max_lag
+        lag_value = max_lag
 
     surv_probability = cph.predict_survival_function(
         pd.DataFrame(mean_indiv),
@@ -458,7 +464,7 @@ def compute_coxhr(endpoint, df, lag, nindivs, res_writer):
     # Save values
     res_writer.writerow([
         endpoint.NAME,
-        lag,
+        lag_value,
         nindivs,
         absolute_risk,
         endp_coef,
