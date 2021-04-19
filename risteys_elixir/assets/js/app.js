@@ -192,51 +192,6 @@ if (path.startsWith("/phenocode/")) {  // Load only on phenocode pages
     });
 
     /* HISTOGRAMS */
-    let plotInfo = getPlotInfo(window.innerWidth);
-    let makeHistYear = (w, isMobile) => {
-        makeHistogram(
-            "year",
-            "number of individuals",
-            true,
-            "plot_events_by_year",
-            events_by_year,
-            w,
-            isMobile
-        );
-    };
-    let makeHistAge = (w, isMobile) => {
-        const angledLabels = isMobile;
-        makeHistogram(
-            "age bracket",
-            "number of individuals",
-            angledLabels,
-            "plot_bin_by_age",
-            bin_by_age,
-            w,
-            isMobile
-        );
-    };
-
-    // Actually plot the histograms on page load
-    makeHistYear(plotInfo.width, plotInfo.isMobile);
-    makeHistAge(plotInfo.width, plotInfo.isMobile);
-
-    // Replot the histograms on window resize
-    window.addEventListener('resize', () => {
-        let newPlotInfo = getPlotInfo(window.innerWidth)
-        makeHistYear(newPlotInfo.width, newPlotInfo.isMobile);
-        makeHistAge(newPlotInfo.width, newPlotInfo.isMobile);
-    });
-
-    let cumulativeOn = document.getElementById("cumulative-on");
-    cumulativeOn.addEventListener('click', event => {
-        toggleCumulative("plot_events_by_year", true, true);
-    });
-
-    let cumulativeOff = document.getElementById("cumulative-off");
-    cumulativeOff.addEventListener('click', event => {
-        toggleCumulative("plot_events_by_year", false, true);
-    });
 
     /* CORRELATION TABLE */
     stats_data_channel.push("get_correlations", {endpoint: phenocode});
