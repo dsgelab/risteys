@@ -7,7 +7,7 @@
 
 		<article>
 			<h3>Absolute risk</h3>
-			<p>Estimates the probability of dying from the current endpoint. Check the <a href="/methods/#mortality-absolute-risk">Methods page for Mortality: absolute risk</a> to get more details.</p>
+			<p>Estimates the probability of dying from the current endpoint. Check the <a href="/methods/#mortality-absolute-risk">Documentation page for Mortality: absolute risk</a> to get more details.</p>
 		</article>
 
 		<article>
