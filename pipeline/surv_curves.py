@@ -14,11 +14,12 @@ from log import logger
 
 # -- CONFIGURATION
 MIN_CASES = 100
+
 STUDY_STARTS = 1998.0
 MEAN_APPROX_BIRTH_DATE = 1959.39
 
-PLOT_AGE_MIN = 0     # Inclusive
-PLOT_AGE_MAX = 100   # Inclusive. Keep as much as possible, we can truncate later when plotting
+N_MIN_INDIV = 6  # at least that many individuals to have for each data point in the output
+MAX_TIME_POINTS = 100  # at most that many time points in the output
 
 
 class NotEnoughCases(Exception):
@@ -106,7 +107,6 @@ def load_data(dense_events, minimum, follow_up):
     )
 
     # Compute approximate birth date
-    # TODO check if should cast to int
     df_minimum["approx_birth_date"] = df_minimum.BL_YEAR - df_minimum.BL_AGE
 
     # We assume we have the info for everyone and that it's either
@@ -117,16 +117,15 @@ def load_data(dense_events, minimum, follow_up):
     return df_events, df_follow_up, df_minimum
 
 
-def compute_cumulative_incidence(
+def comp_cph(
         endpoint,
         sex,
         df_events,
         df_follow_up,
         df_minimum
 ):
-    """Compute the cumulative incidence for a given endpoint"""
+    """Prepare data and fit a Cox PH model for the given endpoint"""
     logger.info(f"{endpoint} - Computing cumulative incidence")
-
     logger.debug(f"{endpoint} - Assigning cases and controls")
 
     # Cases
@@ -142,8 +141,8 @@ def compute_cumulative_incidence(
     # Controls
     df_controls = df_follow_up.loc[
         # Get only the non-cases
-        ~ df_follow_up.FINNGENID.isin(df_cases.FINNGENID)
-        , ["FINNGENID", "FU_END_AGE"]
+        ~ df_follow_up.FINNGENID.isin(df_cases.FINNGENID),
+        ["FINNGENID", "FU_END_AGE"]
     ].copy()
     df_controls["duration"] = df_controls.FU_END_AGE
     df_controls["outcome"] = False
@@ -159,24 +158,10 @@ def compute_cumulative_incidence(
     logger.debug(f"{endpoint} - Fitting Cox model")
 
     # Prepare model for sex-specific endpoints
-    if sex == "female":
+    if sex in ("female", "male"):
         formula = "approx_birth_date"
-        mean_indiv = {
-            "female": [1],
-            "approx_birth_date": [MEAN_APPROX_BIRTH_DATE]
-        }
-    elif sex == "male":
-        formula = "approx_birth_date"
-        mean_indiv = {
-            "female": [0],
-            "approx_birth_date": [MEAN_APPROX_BIRTH_DATE]
-        }
     else:
         formula = "female + approx_birth_date"
-        mean_indiv = {
-            "female": [0, 1],
-            "approx_birth_date": [MEAN_APPROX_BIRTH_DATE, MEAN_APPROX_BIRTH_DATE]
-        }
 
     # Fit Cox model
     cph = CoxPHFitter()
@@ -184,44 +169,115 @@ def compute_cumulative_incidence(
 
     logger.debug(f"{endpoint} - Using fitted model to derive cumulative incidence")
 
-    # Derive cumulative incidence from model
-    at_times = range(PLOT_AGE_MIN, PLOT_AGE_MAX + 1)  # include age max
+    return dfcox, cph
+
+
+def get_cumulative_incidence(dfcox, cph, sex):
+    """Derive cumulative incidence from fitted CPH model"""
+    mean_female_indiv = {
+        "female": [1],
+        "approx_birth_date": [MEAN_APPROX_BIRTH_DATE]
+    }
+    mean_male_indiv = {
+        "female": [0],
+        "approx_birth_date": [MEAN_APPROX_BIRTH_DATE]
+    }
+
+    if sex == "female":
+        at_times = find_time_points(dfcox, N_MIN_INDIV, MAX_TIME_POINTS)
+        res = cumulinc_at_times(cph, mean_female_indiv, at_times)
+        res["sex"] = "female"
+
+    elif sex == "male":
+        at_times = find_time_points(dfcox, N_MIN_INDIV, MAX_TIME_POINTS)
+        res = cumulinc_at_times(cph, mean_male_indiv, at_times)
+        res["sex"] = "male"
+
+    else:
+        # Since the cumulative incidence will be outputted for females
+        # and males separately, we need to take time points
+        # independently for each. That way we make sure we have groups
+        # of N > 5 for both the female curve and the male curve.
+        females = dfcox.loc[dfcox.female, :]
+        female_at_times = find_time_points(females, N_MIN_INDIV, MAX_TIME_POINTS)
+        res_female = cumulinc_at_times(cph, mean_female_indiv, female_at_times)
+        res_female["sex"] = "female"
+
+        males = dfcox.loc[~dfcox.female, :]
+        male_at_times = find_time_points(males, N_MIN_INDIV, MAX_TIME_POINTS)
+        res_male = cumulinc_at_times(cph, mean_male_indiv, male_at_times)
+        res_male["sex"] = "male"
+
+        res = pd.concat([res_female, res_male])
+
+    # Keep only a limited precision on float
+    res.cumulinc = res.cumulinc.apply(lambda n: "{:06.4f}".format(n))
+
+    return res
+
+
+def cumulinc_at_times(cph, indiv, at_times):
+    """Generic way to compute the cumulative incidence at given time points"""
     surv_prob = cph.predict_survival_function(
-        pd.DataFrame(mean_indiv),
+        pd.DataFrame(indiv),
         times=at_times
     )
     cumulative_incidence = 1 - surv_prob
 
-    if sex == "female":
-        cumulative_incidence = cumulative_incidence.rename(
-            columns={0: "female"}
-        )
-        cumulative_incidence["male"] = np.nan
-    elif sex == "male":
-        cumulative_incidence = cumulative_incidence.rename(
-            columns={0: "male"}
-        )
-        cumulative_incidence["female"] = np.nan
-    else:
-        cumulative_incidence = cumulative_incidence.rename(
-            columns={0: "male", 1: "female"}
-        )
+    # Give a more meaningful name to cumulative incidence values
+    cumulative_incidence = cumulative_incidence.rename(
+        columns={0: "cumulinc"}
+    )
+
     cumulative_incidence["age"] = cumulative_incidence.index
 
-    # Reorder column so that all output files are consistent
-    cumulative_incidence = cumulative_incidence.loc[:, ["age", "female", "male"]]
+    # Order column so that all output files are consistent
+    cumulative_incidence = cumulative_incidence.loc[:, ["age", "cumulinc"]]
     return cumulative_incidence
+
+
+def find_time_points(dfcox, n_min, max_time_points):
+    """Find time points that make groups of `n_min` individuals minimum.
+
+    This is useful for getting non-individual-level data, since we can
+    make sure each data point covers at least 6 individuals.
+    """
+    time_points = []
+
+    cases = dfcox.loc[dfcox.outcome, :].duration.sort_values()
+    controls = dfcox.loc[~ dfcox.outcome, :].duration.sort_values()
+
+    while cases.shape[0] >= n_min and controls.shape[0] >= n_min:
+        idx_min = n_min - 1
+        age_cases = cases.iloc[idx_min]
+        age_controls = controls.iloc[idx_min]
+        age = max(age_cases, age_controls)
+
+        time_points.append(age)
+
+        cases = cases.loc[cases > age]
+        controls = controls.loc[controls > age]
+
+    # Keep a given maximum number of time points if there are too many
+    if len(time_points) > max_time_points:
+        arr_time_points = np.array(time_points)
+        last_idx = len(time_points) - 1
+        keep_idx = np.linspace(0, last_idx, max_time_points).astype(np.int)
+        time_points = arr_time_points[keep_idx]
+
+    return time_points
 
 
 def worker_job(endpoint, sex, df_events, df_follow_up, df_minimum, output):
     try:
-        cumulative_incidence = compute_cumulative_incidence(
+        dfcox, cph = comp_cph(
             endpoint,
             sex,
             df_events,
             df_follow_up,
             df_minimum
         )
+        cumulative_incidence = get_cumulative_incidence(dfcox, cph, sex)
     except Exception as exc:
         logger.warning(f"{endpoint} - unexpected error of type {type(exc)}")
 
