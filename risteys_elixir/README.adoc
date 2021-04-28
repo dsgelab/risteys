@@ -20,7 +20,7 @@ Requirements
 
 Configuration
 ~~~~~~~~~~~~~
-Create a file `dev.secret.exs` in the `config/` directory, with the following content and replacing the <VAR>:
+Create a file *`dev.secret.exs`* in the `config/` directory, with the following content and replacing the <VAR>:
 
 dev.secret.exs
 [source,elixir]
@@ -36,26 +36,56 @@ config :risteys, Risteys.Repo,
   pool_size: 10
 ----
 
-First time dependency initialization
+Tips to find needed information:
+
+* Open a psql console in a terminal by running `psql postgres` (`\q` to quit). 
+* List existing users by `\du`. If you don't have postrgesql user (other than superuser), create a user with the ability to create a database. 
+** create user: `CREATE USER <username> WITH PASSWORD <password>;`
+** grant permission to create a database: `ALTER USER <username> CREATEDB;` 
+* get database name: `\conninfo`
+* get hostname: +
+  `SELECT boot_val,reset_val` +
+  `FROM pg_settings` +
+  `WHERE name='listen_addresses';;`
+
+
+Create a file *`config.secret.exs`* in the `config/` directory, with the below content and replacing the <INSERT KEY HERE> with key with a random key given by Vincent. (For a working project, a random key can be made by using a command `mix phx.gen.secret 64`).
+
+config.secret.exs
+[source,elixir]
+----
+use Mix.Config
+
+# Configures the endpoint
+config :risteys, RisteysWeb.Endpoint,
+  url: [host: "localhost"],
+  secret_key_base: "<INSERT KEY HERE>",
+  render_errors: [view: RisteysWeb.ErrorView, accepts: ~w(html json)],
+  pubsub: [name: Risteys.PubSub, adapter: Phoenix.PubSub.PG2]
+----
+
+First-time dependency initialization
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 From a terminal in the project root directory (i.e. `risteys_elixir`), run:
 
-- `mix deps.get` to get the Elixir dependencies
-- `mix ecto.setup` to create the DB and apply the migrations
-- change directory to `assets/` and then `npm install` to install the Javascript dependencies
+* `mix deps.get` to get the Elixir dependencies
+* `mix ecto.setup` to create the DB and apply the migrations
+* change directory to `assets/` and then `npm install` to install the Javascript dependencies listed in the `assets\package.json`
+** if the command directs to some other file than `assets\package.json` and is not installing dependencies listed in that file, but gives an error instead, remove `node_modules` and `package-lock.json` and run again.
 
 
 Running
 ~~~~~~~
+change directory back to `risteys_elixir` and connect to the server: `mix phx.server` 
 
-First, generate a secret key that will be used for storing cookies:
-`mix phx.gen.secret`
-
-This should start a development server that will watch for any changes in the code that you are working on and compile / bundle it.
 You can now access Risteys from http://localhost:4000
 
 Importing data
 --------------
+
+Import files are in `risteys_elixir` and they should be run in that directory: 
+`mix run import_icd9.exs <path-to-input-file>`. + 
+Input files are listed at the beginning of `import_` files.
 
 Import scripts should be run in this order:
 
@@ -63,5 +93,5 @@ Import scripts should be run in this order:
 2. import_icd9.exs
 3. import_endpoint_csv.exs
 4. import_ontology.exs
-5. import_aggregated_data.exs
+5. import_aggregated_stats.exs
 6. import_coxhr.exs

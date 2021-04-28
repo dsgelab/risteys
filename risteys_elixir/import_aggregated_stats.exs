@@ -2,7 +2,7 @@
 # Clean-up endpoints without statistics afterwards.
 #
 # Usage:
-#     mix run import_aggregated_data.exs <json-file-aggregegated-stats>
+#     mix run import_aggregated_stats.exs <json-file-aggregegated-stats>
 #
 # where <json-file-aggregegated-stats> is a JSON file with all the
 # aggregated stats, with the following format:
