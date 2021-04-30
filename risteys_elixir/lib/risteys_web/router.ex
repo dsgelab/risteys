@@ -17,7 +17,7 @@ defmodule RisteysWeb.Router do
     pipe_through :browser
 
     get "/", HomeController, :index
-    get "/methods", MethodsController, :index
+    get "/documentation", MethodsController, :index
     get "/changelog", ChangelogController, :index
     get "/phenocode/:name", PhenocodeController, :show
   end
