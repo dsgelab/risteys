@@ -60,7 +60,7 @@ PRE_EXCLUSION = 1 * MONTH
 POST_DURATION = 5 * WEEK
 
 STUDY_STARTS = 1998  # inclusive, from 1998-01-01 onward
-STUDY_ENDS = 2020    # exclusive, up until 2019-12-31
+STUDY_ENDS = 2021    # exclusive, up until 2020-12-31
 STUDY_DURATION = 20 * YEAR
 
 MIN_CASES = 15
@@ -68,7 +68,7 @@ MIN_CASES = 15
 # Prediction parameters
 PRED_FEMALE = 0.5
 PRED_YOB = 1960
-PRED_FG_ENDPOINT_YEAR = 2019
+PRED_FG_ENDPOINT_YEAR = 2020
 
 
 def main(fg_endpoint, first_events, detailed_longit, endpoint_defs, minimum_info, output_scores, output_counts):
