@@ -321,6 +321,17 @@ defmodule RisteysWeb.PhenocodeView do
     end
   end
 
+  defp sort_variants(variants) do
+    # Sort variant by CHR, POS.
+    variants
+    |> Enum.sort_by(fn variant ->
+      [chr, pos, _ref, _alt] = String.split(variant, "-")
+      chr = String.to_integer(chr)
+      pos = String.to_integer(pos)
+      [chr, pos]
+    end)
+  end
+
   defp abbr(text, title) do
     # "data_title" will be converted to "data-title" in HTML
     content_tag(:abbr, text, data_title: title)

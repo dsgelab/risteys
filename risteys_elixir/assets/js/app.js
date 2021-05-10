@@ -18,6 +18,7 @@ import "phoenix_html";
 // Local files can be imported directly using relative paths, for example:
 //// import slider_component from "./MySlider.vue"
 import {makeHistogram, toggleCumulative} from "./plots.js";
+import {openDialog, closeDialog} from "./dialog.js";
 import {search_channel, stats_data_channel} from "./socket";
 import { forEach } from "lodash-es";
 import CorrTable from './CorrTable.vue';
@@ -35,6 +36,15 @@ import HelpMortality from './HelpMortality.vue';
 
 
 var path = window.location.pathname;
+
+/*
+ * GLOBALS
+ *
+ * Functions needed when calling from HTML.
+ * By default webpack would get rid of them, we must attach them to "window" to make them available.
+ */
+window.openDialog = openDialog;
+window.closeDialog = closeDialog;
 
 
 /*
