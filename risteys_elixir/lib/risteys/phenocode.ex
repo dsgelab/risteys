@@ -168,15 +168,4 @@ defmodule Risteys.Phenocode do
       "SNOMED"
     ])
   end
-
-  def parse_conditions(rule) do
-    rule
-    |> String.replace("!", "not ")
-    |> String.replace("_NEVT", " number of events ")
-    # Here we are using \n as a placeholder for splitting, it will not
-    # appear in the end result.
-    |> String.replace("&", "\nand ")
-    |> String.replace("|", "\nor ")
-    |> String.split("\n")
-  end    
 end

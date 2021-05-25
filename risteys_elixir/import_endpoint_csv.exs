@@ -249,6 +249,18 @@ end)
 
   Map.merge(row, dotted)
 end)
+|> Stream.each(fn row ->
+  %{
+    "NAME" => name,
+    "CONDITIONS" => conditions
+  } = row
+
+  if String.contains?(conditions, ["(", ")"]) do
+    Logger.warn(
+      "Endpoint #{name} has 'conditions' with '(' or ')': it will be incorrectly displayed."
+    )
+  end
+end)
 
 # 3. Add endpoints to DB
 ####
