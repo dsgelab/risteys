@@ -7,10 +7,8 @@ defmodule RisteysWeb.PhenocodeController do
     CoxHR,
     DrugStats,
     FGEndpoint,
-    Icd10,
     MortalityStats,
     Phenocode,
-    PhenocodeIcd10,
     StatsSex
   }
 
@@ -151,7 +149,6 @@ defmodule RisteysWeb.PhenocodeController do
     # Mortality stats
     mortality_stats = get_mortality_stats(phenocode)
 
-
     # TMP quickfix
     distrib_year = %{}
     distrib_age = %{}
@@ -159,7 +156,7 @@ defmodule RisteysWeb.PhenocodeController do
     conn
     |> assign(:endpoint, phenocode)
     |> assign(:page_title, phenocode.name)
-    |> assign(:data_sources, data_sources(phenocode))
+    |> assign(:explainer_steps, FGEndpoint.get_explainer_steps(phenocode))
     |> assign(:ontology, ontology)
     |> assign(:broader_endpoints, FGEndpoint.broader_endpoints(phenocode))
     |> assign(:narrower_endpoints, FGEndpoint.narrower_endpoints(phenocode))
@@ -171,89 +168,6 @@ defmodule RisteysWeb.PhenocodeController do
     |> assign(:mortality, mortality_stats)
     |> assign(:data_assocs, data_assocs(phenocode))
     |> render("show.html")
-  end
-
-  defp data_sources(phenocode) do
-    icd10s =
-      Repo.all(
-        from assoc in PhenocodeIcd10,
-          join: p in Phenocode,
-          on: assoc.phenocode_id == p.id,
-          join: icd in Icd10,
-          on: assoc.icd10_id == icd.id,
-          where: p.id == ^phenocode.id,
-          select: %{registry: assoc.registry, icd: icd}
-      )
-
-    outpat_icd10s = filter_icds_registry(icd10s, "OUTPAT")
-    hd_icd10s = filter_icds_registry(icd10s, "HD")
-    hd_icd10s_excl = filter_icds_registry(icd10s, "HD_EXCL")
-    cod_icd10s = filter_icds_registry(icd10s, "COD")
-    cod_icd10s_excl = filter_icds_registry(icd10s, "COD_EXCL")
-    kela_icd10s = filter_icds_registry(icd10s, "KELA")
-
-    %{
-      name: phenocode.name,
-      tags: phenocode.tags,
-      level: phenocode.level,
-      omit: phenocode.omit,
-      longname: phenocode.longname,
-      sex: phenocode.sex,
-      include: phenocode.include,
-      pre_conditions: phenocode.pre_conditions,
-      conditions: phenocode.conditions,
-      outpat_icd_10s_exp: outpat_icd10s,
-      outpat_icd: phenocode.outpat_icd,
-      hd_mainonly: phenocode.hd_mainonly,
-      hd_icd_10_atc: phenocode.hd_icd_10_atc,
-      hd_icd_10s_exp: hd_icd10s,
-      hd_icd_10: phenocode.hd_icd_10,
-      hd_icd_9: phenocode.hd_icd_9,
-      hd_icd_8: phenocode.hd_icd_8,
-      hd_icd_10s_excl_exp: hd_icd10s_excl,
-      hd_icd_10_excl: phenocode.hd_icd_10_excl,
-      hd_icd_9_excl: phenocode.hd_icd_9_excl,
-      hd_icd_8_excl: phenocode.hd_icd_8_excl,
-      cod_mainonly: phenocode.cod_mainonly,
-      cod_icd_10s_exp: cod_icd10s,
-      cod_icd_10: phenocode.cod_icd_10,
-      cod_icd_9: phenocode.cod_icd_9,
-      cod_icd_8: phenocode.cod_icd_8,
-      cod_icd_10s_excl_exp: cod_icd10s_excl,
-      cod_icd_10_excl: phenocode.cod_icd_10_excl,
-      cod_icd_9_excl: phenocode.cod_icd_9_excl,
-      cod_icd_8_excl: phenocode.cod_icd_8_excl,
-      oper_nom: phenocode.oper_nom,
-      oper_hl: phenocode.oper_hl,
-      oper_hp1: phenocode.oper_hp1,
-      oper_hp2: phenocode.oper_hp2,
-      kela_reimb: phenocode.kela_reimb,
-      kela_icd_10s_exp: kela_icd10s,
-      kela_reimb_icd: phenocode.kela_reimb_icd,
-      kela_atc_needother: phenocode.kela_atc_needother,
-      kela_atc: phenocode.kela_atc,
-      kela_vnro_needother: phenocode.kela_vnro_needother,
-      kela_vnro: phenocode.kela_vnro,
-      canc_topo: phenocode.canc_topo,
-      canc_topo_excl: phenocode.canc_topo_excl,
-      canc_morph: phenocode.canc_morph,
-      canc_morph_excl: phenocode.canc_morph_excl,
-      canc_behav: phenocode.canc_behav,
-      special: phenocode.special,
-      version: phenocode.version,
-      parent: phenocode.parent,
-      latin: phenocode.latin
-    }
-  end
-
-  defp filter_icds_registry(icds, wanted_registry) do
-    Enum.reduce(icds, [], fn %{registry: registry, icd: icd}, acc ->
-      if registry == wanted_registry do
-        acc ++ [icd]
-      else
-        acc
-      end
-    end)
   end
 
   defp get_stats(phenocode) do

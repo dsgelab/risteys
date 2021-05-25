@@ -1,7 +1,6 @@
 defmodule RisteysWeb.PhenocodeView do
   use RisteysWeb, :view
   require Integer
-  alias Risteys.Phenocode
 
   def render("assocs.json", %{
         phenocode: phenocode,
@@ -78,155 +77,35 @@ defmodule RisteysWeb.PhenocodeView do
     |> Enum.join()
   end
 
-  defp endpoint_def(data_sources, :filter) do
-    # Fields we will use for the filter explanation
-    map_rule_registries = %{
-      # OUTPAT_ICD
-      outpat_icd: [:prim_out],
-      # HD_
-      hd_mainonly: [:inpat, :outpat],
-      hd_icd_10_atc: [:inpat, :outpat],
-      hd_icd_10s_exp: [:inpat, :outpat],
-      hd_icd_10: [:inpat, :outpat],
-      hd_icd_9: [:inpat, :outpat],
-      hd_icd_8: [:inpat, :outpat],
-      hd_icd_10_excl: [:inpat, :outpat],
-      hd_icd_9_excl: [:inpat, :outpat],
-      hd_icd_8_excl: [:inpat, :outpat],
-      # COD_
-      cod_mainonly: [:death],
-      cod_icd_10: [:death],
-      cod_icd_9: [:death],
-      cod_icd_8: [:death],
-      cod_icd_10_excl: [:death],
-      cod_icd_9_excl: [:death],
-      cod_icd_8_excl: [:death],
-      # OPER_
-      oper_nom: [:oper_in, :oper_out],
-      oper_hl: [:oper_in, :oper_out],
-      oper_hp1: [:oper_in, :oper_out],
-      oper_hp2: [:oper_in, :oper_out],
-      # KELA_
-      kela_reimb: [:purch, :reimb],
-      kela_reimb_icd: [:purch, :reimb],
-      kela_atc_needother: [:purch, :reimb],
-      kela_atc: [:purch, :reimb],
-      kela_vnro_needother: [:purch, :reimb],
-      kela_vnro: [:purch, :reimb],
-      # CANC_
-      canc_topo: [:canc],
-      canc_topo_excl: [:canc],
-      canc_morph: [:canc],
-      canc_morph_excl: [:canc],
-      canc_behav: [:canc]
-    }
-
-    # Regex "$!$" means "no possible matching code", so we mark it as nil
-    data_sources =
-      Enum.reduce(data_sources, %{}, fn {key, val}, acc ->
-        if val == "$!$" do
-          Map.put(acc, key, nil)
-        else
-          Map.put(acc, key, val)
-        end
-      end)
-
-    # Find which data we use
-    rules =
-      map_rule_registries
-      |> Map.keys()
-      |> MapSet.new()
-
-    sources =
-      data_sources
-      |> Enum.reject(fn {_, val} ->
-        case val do
-          nil -> true
-          [] -> true
-          _ -> false
-        end
-      end)
-      |> Keyword.keys()
-      |> MapSet.new()
-
-    has_sources = MapSet.intersection(rules, sources)
-
-    # Collect corresponding registries
-    used_registries =
-      Enum.reduce(has_sources, MapSet.new(), fn source, acc ->
-        %{^source => regs} = map_rule_registries
-        regs = MapSet.new(regs)
-        MapSet.union(acc, regs)
-      end)
-
-    # Build registry list in HTML
-    reg_html =
-      [
-        prim_out: %{
-          short: "Prim. Out.",
-          long: "Avohilmo registry: primary healthcare outpatient visits"
-        },
-        inpat: %{
-          short: "Inpat.",
-          long: "Hilmo inpatient registry"
-        },
-        outpat: %{
-          short: "Oupat.",
-          long: "Hilmo outpatient registry"
-        },
-        death: %{
-          short: "Death",
-          long: "Cause of death registry"
-        },
-        oper_in: %{
-          short: "Oper. in",
-          long: "Operations in inpatient Hilmo registry"
-        },
-        oper_out: %{
-          short: "Oper. out",
-          long: "Operations in outpatient Hilmo registry"
-        },
-        purch: %{
-          short: "KELA purch.",
-          long: "KELA drug purchase registry"
-        },
-        reimb: %{
-          short: "KELA reimb.",
-          long: "KELA drug reimbursement registry"
-        },
-        canc: %{
-          short: "Cancer",
-          long: "Cancer registry"
-        }
-      ]
-      |> Enum.filter(fn {source, _} -> MapSet.member?(used_registries, source) end)
-      |> Enum.map(fn {_, %{short: short, long: long}} -> abbr(short, long) end)
-      |> Enum.intersperse(", ")
-
-    {data_sources, reg_html}
+  # -- Endpoint Explainer --
+  defp get_explainer_step(steps, name) do
+    # Get a step by name
+    Enum.find(steps, fn %{name: step_name} -> step_name == name end)
   end
 
-  defp endpoint_def(data_sources, :include) do
-    if is_nil(data_sources.include) do
-      []
-    else
-      String.split(data_sources.include, "|")
-    end
+  defp readable_conditions(conditions) do
+    Enum.map(conditions, fn condition ->
+      condition
+      |> String.replace("!", "not ")
+      |> String.replace("_NEVT", "number of events ")
+      |> String.replace("&", "and ")
+      |> String.replace("|", "or ")
+    end)
   end
 
-  defp endpoint_def(%{conditions: nil}, :conditions), do: nil
-
-  defp endpoint_def(%{conditions: rule}, :conditions) do
-    Phenocode.parse_conditions(rule)
+  defp readable_icdver(icd_numbers) do
+    icd_numbers
+    |> Enum.map(&Integer.to_string/1)
+    |> Enum.intersperse(", ")
   end
 
-  defp endpoint_def(data_sources, :metadata) do
+  defp readable_metadata(endpoint) do
     [
-      {"Level in the ICD hierarchy", data_sources.level},
-      {"Special", data_sources.special},
-      {"First used in FinnGen datafreeze", data_sources.version},
-      {"Parent code in ICD-10", data_sources.parent},
-      {"Name in latin", data_sources.latin}
+      {"Level in the ICD hierarchy", endpoint.level},
+      {"Special", endpoint.special},
+      {"First used in FinnGen datafreeze", endpoint.version},
+      {"Parent code in ICD-10", endpoint.parent},
+      {"Name in latin", endpoint.latin}
     ]
     |> Enum.reject(fn {_col, val} -> is_nil(val) end)
   end
@@ -259,21 +138,26 @@ defmodule RisteysWeb.PhenocodeView do
     |> Enum.intersperse(", ")
   end
 
-  defp mode_info(rule, expanded) do
-    is_plural = length(expanded) > 1
+  defp relative_count(steps, count) do
+    # Compute the percentage of the given count across meaningful steps
+    check_steps = MapSet.new([
+      :filter_registries,
+      :precond_main_mode_icdver,
+      :min_number_events,
+      :includes
+    ])
 
-    message =
-      if is_plural do
-        "A case is made only if these codes are the most common among their sibling ICD codes."
-      else
-        "A case is made only if this code is the most common among its sibling ICD codes."
-      end
+    max =
+      steps
+      |> Enum.filter(fn %{name: name} -> name in check_steps end)
+      |> Enum.map(fn %{nindivs_post_step: ncases} -> ncases end)
+      |> Enum.reject(&is_nil/1)
+      |> Enum.max()
 
-    if not is_nil(rule) and String.starts_with?(rule, "%") do
-      ["(", abbr("mode", message), ")"]
-    end
+    count / max * 100
   end
 
+  # -- Ontology --
   defp ontology_links(ontology) do
     # Helper function to link to external resources
     linker = fn source, id ->
@@ -304,6 +188,7 @@ defmodule RisteysWeb.PhenocodeView do
     end
   end
 
+  # -- Stats --
   defp distrib_values(distrib) do
     if is_nil(distrib) do
       []
@@ -313,64 +198,6 @@ defmodule RisteysWeb.PhenocodeView do
         [bin, val]
       end
     end
-  end
-
-  defp abbr(text, title) do
-    # "data_title" will be converted to "data-title" in HTML
-    content_tag(:abbr, text, data_title: title)
-  end
-
-  defp icd10_url(text, icd) do
-    ahref(text, "https://icd.who.int/browse10/2016/en#/#{icd}")
-  end
-
-  defp ahref(text, link) do
-    content_tag(:a, text,
-      href: link,
-      rel: "external nofollow noopener noreferrer",
-      target: "_blank"
-    )
-  end
-
-  defp round(number, precision) do
-    case number do
-      "-" -> "-"
-      _ -> :io_lib.format("~.#{precision}. f", [number]) |> to_string()
-    end
-  end
-
-  defp percentage(number) do
-    case number do
-      "-" ->
-        "-"
-
-      nil ->
-        "-"
-
-      _ ->
-        number * 100
-    end
-  end
-
-  defp pvalue_str(pvalue) do
-    # Print the given pvalue using scientific notation, display
-    # "<1e-100" if very low.
-    cond do
-      is_nil(pvalue) ->
-        "-"
-
-      pvalue < 1.0e-100 ->
-        "<1e-100"
-
-      true ->
-        # See http://erlang.org/doc/man/io.html#format-2
-        :io_lib.format("~.2. e", [pvalue]) |> to_string()
-    end
-  end
-
-  defp atc_link_wikipedia(atc) do
-    short = String.slice(atc, 0..2)
-    "https://en.wikipedia.org/wiki/ATC_code_#{short}##{atc}"
   end
 
   defp mortality_table(stats) do
@@ -637,5 +464,64 @@ defmodule RisteysWeb.PhenocodeView do
     |> put_in([other_pheno.id, lag, dir], new_stats)
     |> put_in([other_pheno.id, "name"], other_pheno.name)
     |> put_in([other_pheno.id, "longname"], other_pheno.longname)
+  end
+
+  # -- Helpers --
+  defp abbr(text, title) do
+    # "data_title" will be converted to "data-title" in HTML
+    content_tag(:abbr, text, data_title: title)
+  end
+
+  defp icd10_url(text, icd) do
+    ahref(text, "https://icd.who.int/browse10/2016/en#/#{icd}")
+  end
+
+  defp ahref(text, link) do
+    content_tag(:a, text,
+      href: link,
+      rel: "external nofollow noopener noreferrer",
+      target: "_blank"
+    )
+  end
+
+  defp round(number, precision) do
+    case number do
+      "-" -> "-"
+      _ -> :io_lib.format("~.#{precision}. f", [number]) |> to_string()
+    end
+  end
+
+  defp percentage(number) do
+    case number do
+      "-" ->
+        "-"
+
+      nil ->
+        "-"
+
+      _ ->
+        number * 100
+    end
+  end
+
+  defp pvalue_str(pvalue) do
+    # Print the given pvalue using scientific notation, display
+    # "<1e-100" if very low.
+    cond do
+      is_nil(pvalue) ->
+        "-"
+
+      pvalue < 1.0e-100 ->
+        "<1e-100"
+
+      true ->
+        # See http://erlang.org/doc/man/io.html#format-2
+        :io_lib.format("~.2. e", [pvalue]) |> to_string()
+    end
+  end
+
+  defp atc_link_wikipedia(atc) do
+    short = String.slice(atc, 0..2)
+    "https://en.wikipedia.org/wiki/ATC_code_#{short}##{atc}"
   end
 end
