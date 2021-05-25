@@ -221,13 +221,7 @@ defmodule RisteysWeb.PhenocodeView do
   end
 
   defp endpoint_def(data_sources, :metadata) do
-    tags =
-      data_sources.tags
-      |> String.split(",")
-      |> Enum.join(", ")
-
     [
-      {"Tags", tags},
       {"Level in the ICD hierarchy", data_sources.level},
       {"Special", data_sources.special},
       {"First used in FinnGen datafreeze", data_sources.version},
