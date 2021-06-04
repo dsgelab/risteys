@@ -130,8 +130,8 @@ endpoints_path
 |> File.stream!()
 |> CSV.decode!(headers: true)
 
-# Omit first line of data: it is a comment line
-|> Stream.drop(1)
+# Omit comment line
+|> Stream.reject(fn %{"NAME" => name} -> String.starts_with?(name, "#") end)
 
 # Replace NA values with nil
 |> Stream.map(fn row ->
