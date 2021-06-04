@@ -16,8 +16,8 @@ import pandas as pd
 from log import logger
 
 
-# Treshold below which data is considered individual-level data
-INDIV_TRESHOLD = 6
+# Values which are considered individual-level data
+INDIV_LEVELS = {1, 2, 3, 4}
 
 # Columns where we will remove data if it contains individual-level data
 ALL_COLS = [
@@ -259,19 +259,19 @@ def filter_stats(stats):
 
     # sex: all
     stats.loc[
-        (stats.loc[:, "nindivs_all"] < INDIV_TRESHOLD) & (stats.loc[:, "nindivs_all"] != 0),
+        stats.loc[:, "nindivs_all"].isin(INDIV_LEVELS),
         ALL_COLS + FEMALE_COLS + MALE_COLS
     ] = None
 
     # sex: female
     stats.loc[
-        (stats.loc[:, "nindivs_female"] < INDIV_TRESHOLD) & (stats.loc[:, "nindivs_female"] != 0),
+        stats.loc[:, "nindivs_female"].isin(INDIV_LEVELS),
         FEMALE_COLS
     ] = None
 
     # sex: male
     stats.loc[
-        (stats.loc[:, "nindivs_male"] < INDIV_TRESHOLD) & (stats.loc[:, "nindivs_male"] != 0),
+        stats.loc[:, "nindivs_male"].isin(INDIV_LEVELS),
         MALE_COLS
     ] = None
 
@@ -282,19 +282,19 @@ def filter_distrib(distrib):
 
     # sex: all
     distrib.loc[
-        (distrib.loc[:, "all"] < INDIV_TRESHOLD) & (distrib.loc[:, "all"] != 0),
+        distrib.loc[:, "all"].isin(INDIV_LEVELS),
         "all"
     ] = None
 
     # sex: female
     distrib.loc[
-        (distrib.loc[:, "female"] < INDIV_TRESHOLD) & (distrib.loc[:, "female"] != 0),
+        distrib.loc[:, "female"].isin(INDIV_LEVELS),
         "female"
     ] = None
 
     # sex: male
     distrib.loc[
-        (distrib.loc[:, "male"] < INDIV_TRESHOLD) & (distrib.loc[:, "male"] != 0),
+        distrib.loc[:, "male"].isin(INDIV_LEVELS),
         "male"
     ] = None
 
