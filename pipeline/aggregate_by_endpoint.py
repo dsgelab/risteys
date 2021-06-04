@@ -68,10 +68,10 @@ def main(input_path, output_path):
     filter_stats(stats)
     stats.to_hdf(output_path, "/stats")
 
-    filter_distrib(distrib_age)
+    check_distrib_green(distrib_age)
     distrib_age.to_hdf(output_path, "/distrib/age")
 
-    filter_distrib(distrib_year)
+    check_distrib_green(distrib_year)
     distrib_year.to_hdf(output_path, "/distrib/year")
 
     logger.info("Done.")
@@ -195,62 +195,112 @@ def compute_distrib(df, column, brackets):
       values at which the split the data for binning
 
     Output:
-    - pd.Series with endpoints as index and distributions as values
+    - pd.DataFrame
     """
-    outdata = pd.DataFrame()
-    # sex: all
-    outdata["all"] = (
+    sex_all = (
         df
         .groupby(["ENDPOINT", "FINNGENID"])
         [column]
         .first()
         .groupby("ENDPOINT")
         # Perform binning for each row, then count how many occurences for each bin
-        .apply(lambda g:
-               pd.cut(g, brackets, right=False)
-               .value_counts()
-        )
+        .apply(lambda grp: green_hist(grp, brackets))
     )
 
-    # sex: female
-    outdata["female"] = (
+    sex_female = (
         df[df["female"] == 1]
         .groupby(["ENDPOINT", "FINNGENID"])
         [column]
         .first()
         .groupby("ENDPOINT")
-        .apply(lambda g:
-               pd.cut(g, brackets, right=False)
-               .value_counts()
-        )
+        .apply(lambda grp: green_hist(grp, brackets))
     )
 
-    # sex: male
-    outdata["male"] = (
+    sex_male = (
         df[df["male"] == 1]
         .groupby(["ENDPOINT", "FINNGENID"])
         [column]
         .first()
         .groupby("ENDPOINT")
-        .apply(lambda g:
-               pd.cut(g, brackets, right=False)
-               .value_counts()
-        )
+        .apply(lambda grp: green_hist(grp, brackets))
     )
 
     # Reshape dataframe
-    df = pd.DataFrame()
-    for (endpoint, interval), values in outdata.iterrows():
-        df = df.append({
-            "endpoint": endpoint,
-            "interval_left": interval.left,
-            "interval_right": interval.right - 1,  # substract since right-side of interval is open
-            "all": values["all"],
-            "female": values["female"],
-            "male": values["male"]
-        }, ignore_index=True)
+    data_df = []
+    sex_data = [
+        ("all", sex_all),
+        ("female", sex_female),
+        ("male", sex_male)
+    ]
+    for sex, df_sex in sex_data:
+        for endpoint, bins in df_sex.items():
+            for bin in bins:
+                data_df.append([
+                    endpoint,
+                    sex,
+                    bin["left"],
+                    bin["right"],
+                    bin["count"]
+                ])
 
-    return df
+    return pd.DataFrame(
+        data=data_df,
+        columns=[
+            "endpoint",
+            "sex",
+            "interval_left",
+            "interval_right",
+            "count"
+        ]
+    )
+
+def green_hist(grp, brackets):
+    """Merge histogram bins so that all bins are green data"""
+    # Use pandas to pre-compute an histogram around fixed brackets
+    hist = (
+        pd.cut(grp, brackets, right=False)
+        .value_counts()
+        .sort_index()
+    )
+
+    res = []
+
+    # Early return if count is too low to produce non individual-level data
+    if hist.sum() not in INDIV_LEVELS:
+        # Keep track of our rolling bin lower bound and count
+        interval_left = None
+        acc_count = 0
+
+        for interval, count in hist.items():
+            acc_count += count
+            if interval_left is None:
+                interval_left = interval.left
+
+            if acc_count not in INDIV_LEVELS:
+                res.append({
+                    "left": interval_left,
+                    "right": interval.right,
+                    "count": acc_count
+                })
+                acc_count = 0
+                interval_left = None
+
+        # Last element was discarded in the loop if its count was in {1, 2, 3, 4}.
+        # We need it to add to the result output.
+        if acc_count in INDIV_LEVELS:
+            res[-1]["count"] += acc_count
+            res[-1]["right"] = interval.right
+
+            # If the last count was added to bin with count of 0, then
+            # we need to accumulate the value until it reaches a large
+            # enough count.
+            while res[-1]["count"] in INDIV_LEVELS:
+                last = res.pop()
+                res[-1]["count"] += last["count"]
+                res[-1]["right"] = last["right"]
+
+    assert all(map(lambda elem: elem["count"] not in INDIV_LEVELS, res))
+    return res
 
 
 def filter_stats(stats):
@@ -276,27 +326,11 @@ def filter_stats(stats):
     ] = None
 
 
-def filter_distrib(distrib):
-    """Remove individual-level data in the bins of the given distribution"""
-    logger.info("Filtering out individual-level data in a distribution")
-
-    # sex: all
-    distrib.loc[
-        distrib.loc[:, "all"].isin(INDIV_LEVELS),
-        "all"
-    ] = None
-
-    # sex: female
-    distrib.loc[
-        distrib.loc[:, "female"].isin(INDIV_LEVELS),
-        "female"
-    ] = None
-
-    # sex: male
-    distrib.loc[
-        distrib.loc[:, "male"].isin(INDIV_LEVELS),
-        "male"
-    ] = None
+def check_distrib_green(distrib):
+    """Check there is no individual-level data in the given distribution bins"""
+    logger.info("Checking for individual-level data in a distribution")
+    error_msg = "Found some individual-level data, aborting"
+    assert (~ distrib.loc[:, "count"].isin(INDIV_LEVELS)).all(), error_msg
 
 
 if __name__ == '__main__':

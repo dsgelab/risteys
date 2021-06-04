@@ -7,7 +7,6 @@ Usage:
 """
 import json
 from collections import defaultdict
-from math import isinf
 from pathlib import Path
 from sys import argv
 
@@ -52,38 +51,43 @@ def dict_distrib(distrib):
     Arguments:
     - distrib: pd.DataFrame
       Contains the data that will be turned into a dict.
-      Must have columns: 'all', 'female', 'male'. Must have
-      multi-index with first level: ENDPOINT, second level:
-      distribution labels (intervals)
-    - new_labels: list
-      New labels for the distribution
+      Must have columns:
+      . 'sex' with values in 'all', 'male', 'female'
+      . 'interval_left'
+      . 'interval_right'
+      . 'count'
 
     Return:
     - dict
       {"endpoint1": {
-        "all": [["label", value], ...]},
+        "all": [
+          [
+            # Note that 10.0 is in this interval, but values > 10.0
+            # (e.g. 10.1) will be in the [10, 20] interval
+            [0, 10],  # [left, right] interval.
+            12
+          ], [[10, 20], 101] ...]},
         "female": ...},
        "endpoint 2": ...}
     """
     res = defaultdict(dict)
 
-    # Some JSON implementations don't support NaN, so this will use null
-    distrib = distrib.replace({np.nan: None})
+    # Some JSON implementations don't support NaN, so this will use null.
+    # Use null to mark unbounded intervals.
+    distrib = distrib.replace({np.nan: None, np.NINF: None, np.PINF: None})
 
     for (endpoint, df) in distrib.groupby("endpoint"):
         endpoint_dist = {"all": [], "female": [], "male": []}
-        df = df.sort_values("interval_left")
-        for _, row in df.iterrows():
-            if isinf(row.interval_left):
-                interval_str = f"≤{int(row.interval_right)}"
-            elif isinf(row.interval_right):
-                interval_str = f"{int(row.interval_left)}≥"
-            else:
-                interval_str = f"{int(row.interval_left)}—{int(row.interval_right)}"
 
-            endpoint_dist["all"].append([interval_str, row["all"]])
-            endpoint_dist["female"].append([interval_str, row["female"]])
-            endpoint_dist["male"].append([interval_str, row["male"]])
+        # Sort bin by interval, putting left unbounded interval as the first bin
+        df = df.sort_values("interval_left", na_position="first")
+
+        for _, row in df.iterrows():
+            bin = [
+                [row.interval_left, row.interval_right],
+                row["count"]  # can't use row.count because it references the count method
+            ]
+            endpoint_dist[row.sex].append(bin)
 
         res[endpoint] = endpoint_dist
 
