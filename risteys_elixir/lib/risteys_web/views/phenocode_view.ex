@@ -193,9 +193,22 @@ defmodule RisteysWeb.PhenocodeView do
     if is_nil(distrib) do
       []
     else
-      for [bin, val] <- distrib do
+      for [[interval_left, interval_right], val] <- distrib do
         val = if is_nil(val), do: "NaN", else: val
-        [bin, val]
+
+        interval =
+          case {interval_left, interval_right} do
+            {nil, _} ->
+              "up to " <> to_string(interval_right)
+
+            {_, nil} ->
+              to_string(interval_left) <> " and up"
+
+            {_, _} ->
+              to_string(interval_left) <> "–" <> to_string(interval_right)
+          end
+
+        [interval, val]
       end
     end
   end

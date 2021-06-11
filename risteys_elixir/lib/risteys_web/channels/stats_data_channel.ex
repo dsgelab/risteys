@@ -18,4 +18,35 @@ defmodule RisteysWeb.StatsDataChannel do
     :ok = push(socket, "data_cumulative_incidence", payload)
     {:noreply, socket}
   end
+
+  def handle_in("get_age_histogram", %{"endpoint" => endpoint_name}, socket) do
+    payload =
+      endpoint_name
+      |> FGEndpoint.get_age_histogram()
+      |> to_d3_shape()
+
+    :ok = push(socket, "data_age_histogram", %{data: payload})
+    {:noreply, socket}
+  end
+
+  def handle_in("get_year_histogram", %{"endpoint" => endpoint_name}, socket) do
+    payload =
+      endpoint_name
+      |> FGEndpoint.get_year_histogram()
+      |> to_d3_shape()
+
+    :ok = push(socket, "data_year_histogram", %{data: payload})
+    {:noreply, socket}
+  end
+
+  defp to_d3_shape(histogram) do
+    Enum.map(histogram, fn [[left, right], count] ->
+      %{"interval" => %{
+	   "left" => left,
+	   "right" => right
+	 },
+	"count" => count
+       }
+    end)
+  end
 end
