@@ -16,11 +16,10 @@ import "phoenix_html";
 // Import local files
 //
 // Local files can be imported directly using relative paths, for example:
-//// import slider_component from "./MySlider.vue"
-import {makeHistogram, toggleCumulative} from "./plots.js";
 import {search_channel, stats_data_channel} from "./socket";
+import {plot as varBinPlot} from "./varBinPlot";
 import {drawPlot as drawPlotCumulInc} from "./cumulincPlot";
-import { forEach } from "lodash-es";
+import {forEach} from "lodash-es";
 import CorrTable from './CorrTable.vue';
 import AssocPlot from './AssocPlot.vue';
 import AssocTable from './AssocTable.vue';
@@ -70,33 +69,6 @@ let hideHelpContent = (closeButton) => {
 /* Attach listener to close help windows */
 let closeButtons = document.querySelectorAll(".help-close");
 forEach(closeButtons, (elem) => elem.addEventListener("click", () => hideHelpContent(elem)));
-
-
-let getPlotInfo = (windowWidth) => {
-    const
-        maxWidth = 500,
-        minWidth = 300,
-        margin = 90,
-        narrowScreen = 650,  // This is also defined in the CSS
-        isMobile = windowWidth < narrowScreen;
-
-    var res;
-
-    if (isMobile) {
-        res = Math.max(windowWidth, minWidth);  // TODO maybe sub a margin
-        res = res - margin;
-    } else {  // Computer view
-        res = Math.min(
-            windowWidth / 2,  // There are 2 plots on 1 line when in computer view
-            maxWidth
-        );
-    }
-
-    return {
-        isMobile: isMobile,
-        width: res
-    }
-};
 
 
 /* ≡ MOBILE MENU */
@@ -192,7 +164,25 @@ if (path.startsWith("/phenocode/")) {  // Load only on phenocode pages
         components: { HelpMortality },
     });
 
-    /* HISTOGRAMS */
+    /* AGE HISTOGRAM */
+    stats_data_channel.push("get_age_histogram", {endpoint: phenocode});
+    stats_data_channel.on("data_age_histogram", payload => {
+        const elementSelector = "#bin-plot-age";
+        const xAxisLabel = "age";
+        const yAxisLabel = "individuals";
+        const data = payload.data;
+        varBinPlot(elementSelector, data, xAxisLabel, yAxisLabel);
+    });
+
+    /* YEAR HISTOGRAM */
+    stats_data_channel.push("get_year_histogram", {endpoint: phenocode});
+    stats_data_channel.on("data_year_histogram", payload => {
+        const elementSelector = "#bin-plot-year";
+        const xAxisLabel = "year";
+        const yAxisLabel = "individuals";
+        const data = payload.data;
+        varBinPlot(elementSelector, data, xAxisLabel, yAxisLabel);
+    });
 
     /* CORRELATION TABLE */
     stats_data_channel.push("get_correlations", {endpoint: phenocode});

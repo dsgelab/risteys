@@ -7,6 +7,7 @@ defmodule Risteys.FGEndpoint do
   alias Risteys.Repo
   alias Risteys.Phenocode
   alias Risteys.Icd10
+  alias Risteys.StatsSex
 
   alias Risteys.FGEndpoint.Correlation
   alias Risteys.FGEndpoint.ExplainerStep
@@ -288,6 +289,36 @@ defmodule Risteys.FGEndpoint do
       Map.put_new(acc, step_name, count)
     end)
   end
+
+  # -- Histograms --
+  defp get_histograms(endpoint_name) do
+    endpoint = Repo.get_by!(Phenocode, name: endpoint_name)
+    sex_all = 0
+
+    %{
+      distrib_age: %{"hist" => hist_age},
+      distrib_year: %{"hist" => hist_year}
+    } =
+      Repo.one(
+	from ss in StatsSex,
+	where:
+          ss.phenocode_id == ^endpoint.id
+          and ss.sex == ^sex_all
+      )
+
+    %{age: hist_age, year: hist_year}
+  end
+
+  def get_age_histogram(endpoint_name) do
+    %{age: hist} = get_histograms(endpoint_name)
+    hist
+  end
+
+  def get_year_histogram(endpoint_name) do
+    %{year: hist} = get_histograms(endpoint_name)
+    hist
+  end
+
 
   # -- Correlation --
   def upsert_correlation(attrs) do
