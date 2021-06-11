@@ -71,6 +71,33 @@ STUDY_STARTS_AFTER = 1997  # Look at the data after this year
 STUDY_ENDS_BEFORE =  2021  # Look at the data before this year
 
 
+
+JK_ENDPOINTS = {
+    'ILD',
+    'ILD_IMMUNOSUPPRESSIVE',
+    'ILD_NINTENDANIB',
+    'ILD_PIRFENIDONE',
+    'K11_KELACROHN',
+    'K11_KELAIBD',
+    'K11_KELAUC',
+    'K11_KELAUC1',
+    'RX_A07EA',
+    'RX_A07EC01',
+    'RX_A07EC02',
+    'RX_H02AB06',
+    'RX_L01BA01',
+    'RX_L01BB02',
+    'RX_L01XE',
+    'RX_L04AA',
+    'RX_L04AB',
+    'RX_L04AC',
+    'RX_L04AD',
+    'RX_L04AX',
+    'RX_RHEUMA_BIOLOGICAL',
+}
+
+
+
 def prechecks(events_path):
     """Perform checks before running to fail earlier rather than later"""
     logger.info("Performing pre-checks")
@@ -92,6 +119,7 @@ def main(events_path, endpoints_path, icd_cm_path, icd_finn_path, output_path):
     icds = load_icds(icd_cm_path, icd_finn_path)
 
     # Filter endpoints
+    import ipdb; ipdb.set_trace() 
     df = filter_endpoint_definitions(df, df_endpoints)
 
     # Build list of pairs of endpoints
@@ -99,14 +127,18 @@ def main(events_path, endpoints_path, icd_cm_path, icd_finn_path, output_path):
     pairs = build_pairs(matrix)
 
     # Filter pairs
-    logger.info(f"len(pairs): {len(pairs)}")
-    pairs = filter_overlapping_icds(pairs, df_endpoints, icds)
-    logger.info(f"len(pairs): {len(pairs)}")
-    pairs = filter_descendants(pairs, df_endpoints)
+    # logger.info(f"len(pairs): {len(pairs)}")
+    # pairs = filter_overlapping_icds(pairs, df_endpoints, icds)
+
+    # logger.info(f"len(pairs): {len(pairs)}")
+    # pairs = filter_descendants(pairs, df_endpoints)
+
     logger.info(f"len(pairs): {len(pairs)}")
     pairs = filter_prior_later(pairs, matrix)
+
     logger.info(f"len(pairs): {len(pairs)}")
     pairs = filter_crosstab(pairs, matrix)
+
     logger.info(f"len(pairs): {len(pairs)}")
 
     # Write filtered pairs
@@ -175,7 +207,7 @@ def filter_endpoint_definitions(df, df_endpoints):
 
 
 def keep(endp):
-    return (
+    return endp.NAME in JK_ENDPOINTS or (
         not broad(endp)
         and not omit(endp)
         and not comorb(endp)
@@ -275,7 +307,7 @@ def build_pairs(matrix):
     pairs = []
     for prior in prior_endpoints:
         for later in later_endpoints:
-            if prior != later:
+            if prior in JK_ENDPOINTS and prior != later:
                 pairs.append((prior, later))
 
     # Making sure there is no duplicates
