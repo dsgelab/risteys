@@ -6,7 +6,6 @@ Usage
 python surv_endpoints.py \
     <first-events-hdf5> \
     <endpoint-definitions> \
-    <endpoint-clusters> \
     <icd-cm> \
     <icd-finland> \
     <output-path>
@@ -19,10 +18,6 @@ Input files
 - endpoint-definitions
   Each row is an endpoint definition.
   Source: FinnGen data
-- endpoint-clusters
-  Eeach line is an endpoint name.
-  These are extracted from a correlation analysis and clustering.
-  Source: Andrea Ganna
 - icd-cm
   Official ICD-10-CM file.
   Source: ftp://ftp.cdc.gov/pub/Health_Statistics/NCHS/Publications/ICD10CM/2019/
@@ -87,13 +82,13 @@ def prechecks(events_path):
     assert expected_cols.issubset(cols), f"wrong columns in input file: {expected_cols} not in {cols}"
 
 
-def main(events_path, endpoints_path, endpoint_clusters, icd_cm_path, icd_finn_path, output_path):
+def main(events_path, endpoints_path, icd_cm_path, icd_finn_path, output_path):
     """Get a selection of pairs of endpoints to do survival analysis on"""
     prechecks(events_path)
 
     # Load data
     df = load_data(events_path)
-    df_endpoints = load_endpoints(endpoints_path, endpoint_clusters)
+    df_endpoints = load_endpoints(endpoints_path)
     icds = load_icds(icd_cm_path, icd_finn_path)
 
     # Filter endpoints
@@ -131,17 +126,12 @@ def load_data(events_path):
     return df
 
 
-def load_endpoints(endpoints_path, endpoint_clusters):
+def load_endpoints(endpoints_path):
     """Load the endpoint definitions"""
     df = pd.read_csv(
         endpoints_path,
         skiprows=[1]  # comment line in the endpoints file
     )
-
-    # Filter the endpoints based on the endpoint clusters
-    df_clusters = pd.read_csv(endpoint_clusters)
-    df = df.merge(df_clusters, left_on="NAME", right_on="selected_endpoint", how="right")
-
     return df
 
 
@@ -457,8 +447,7 @@ if __name__ == '__main__':
     main(
         events_path=argv[1],
         endpoints_path=argv[2],
-        endpoint_clusters=argv[3],
-        icd_cm_path=argv[4],
-        icd_finn_path=argv[5],
-        output_path=argv[6],
+        icd_cm_path=argv[3],
+        icd_finn_path=argv[4],
+        output_path=argv[5],
     )
