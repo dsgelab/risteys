@@ -68,7 +68,7 @@ CROSS_THRESHOLD = 10 # how many individuals to have, at least, in each
 LATER_THRESHOLD = 25 # how many individuals to have, at least, for the
                      # "later" endpoints
 STUDY_STARTS_AFTER = 1997  # Look at the data after this year
-STUDY_ENDS_BEFORE =  2020  # Look at the data before this year
+STUDY_ENDS_BEFORE =  2021  # Look at the data before this year
 
 
 def prechecks(events_path):
