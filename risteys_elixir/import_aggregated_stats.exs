@@ -88,11 +88,11 @@ stats
 
   phenocode = Repo.get_by(Phenocode, name: name)
 
-  cond do
-    is_nil(phenocode) ->
+  case phenocode do
+    nil ->
       Logger.warn("Skipping stats for #{name}: not in DB")
 
-    true ->
+    _ ->
       # Import stats for this phenocode
       %{
         "nindivs_all" => nindivs_all,
@@ -106,17 +106,19 @@ stats
         "prevalence_male" => prevalence_male,
       } = data
 
+      # Distribution are missing for endpoints with total N in 1..4
+      empty_distrib = %{"all" => [], "female" => [], "male" => []}
       %{
         "all" => distrib_year_all,
         "female" => distrib_year_female,
         "male" => distrib_year_male
-      } = Map.fetch!(distrib_year, name)
+      } = Map.get(distrib_year, name, empty_distrib)
 
       %{
         "all" => distrib_age_all,
         "female" => distrib_age_female,
         "male" => distrib_age_male
-      } = Map.fetch!(distrib_age, name)
+      } = Map.get(distrib_age, name, empty_distrib)
 
       # Cast to correct number types
       nindivs_all = if is_nil(nindivs_all), do: nil, else: floor(nindivs_all)
