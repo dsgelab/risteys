@@ -32,7 +32,8 @@ defmodule Risteys.StatsSex do
     # 0: all, 1: male, 2: female
     |> validate_inclusion(:sex, [0, 1, 2])
     # keep only non-individual level data
-    |> validate_number(:n_individuals, greater_than: 5)
+    |> validate_number(:n_individuals, greater_than_or_equal_to: 0)
+    |> validate_exclusion(:n_individuals, 1..4)
     |> validate_number(:prevalence, greater_than_or_equal_to: 0.0, less_than_or_equal_to: 1.0)
     |> validate_number(:mean_age, greater_than_or_equal_to: 0.0)
     |> validate_change(:distrib_year, fn :distrib_year, %{hist: hist} ->
@@ -43,12 +44,10 @@ defmodule Risteys.StatsSex do
   end
 
   defp check_distrib(hist) do
-    indiv_treshold = 6
-
     errors =
       for [bin, value] <- hist do
-        if value < indiv_treshold and floor(value) != 0 do
-          {:distrib, "bin #{bin} value #{value} < #{indiv_treshold} but not = 0"}
+        if value in 1..4 do
+          {:distrib, "bin #{bin} value #{value} in 1..4"}
         end
       end
 
