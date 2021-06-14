@@ -14,10 +14,6 @@ from log import logger
 
 # -- CONFIGURATION
 MIN_CASES = 100
-
-STUDY_STARTS = 1998.0
-MEAN_APPROX_BIRTH_DATE = 1959.39
-
 N_MIN_INDIV = 6  # at least that many individuals to have for each data point in the output
 MAX_TIME_POINTS = 100  # at most that many time points in the output
 
@@ -42,17 +38,10 @@ def cli_parser():
         required=True,
         type=Path
     )
-    # Minimum file is used to compute approximate birth dates
+    # File containing FINNGENID, FU_END_AGE and SEX (subset from endpoint first-event file)
     parser.add_argument(
-        "-m", "--minimum",
-        help="path to the FinnGen minimum phenotype file (CSV)",
-        required=True,
-        type=Path
-    )
-    # File containing FINNGENID and FU_END_AGE to get the follow-up end age
-    parser.add_argument(
-        "-f", "--follow-up",
-        help="path to the file with follow-up end age information (CSV)",
+        "-f", "--info",
+        help="path to the file with follow-up end age and sex information (CSV)",
         required=True,
         type=Path
     )
@@ -77,138 +66,80 @@ def load_endpoints(file_path):
     return df
 
 
-def load_data(dense_events, minimum, follow_up):
+def load_data(dense_events, info):
     logger.info("Loading data")
     df_events = pd.read_csv(
         dense_events,
         usecols=[
             "FINNGENID",
             "ENDPOINT",
-            "AGE",
-            "YEAR"
+            "AGE"
         ]
     ).rename(columns={
-        "AGE": "ENDPOINT_AGE",
-        "YEAR": "ENDPOINT_YEAR"
+        "AGE": "ENDPOINT_AGE"
     })
 
-    df_follow_up = pd.read_csv(follow_up)
+    df_info = pd.read_csv(info)
 
-    df_minimum = pd.read_csv(
-        minimum,
-        usecols=[
-            "FINNGENID",
-            # To change the model if the endpoint is sex specific:
-            "SEX",
-            # To compute approximate birth dates:
-            "BL_YEAR",
-            "BL_AGE"
-        ]
-    )
-
-    # Compute approximate birth date
-    df_minimum["approx_birth_date"] = df_minimum.BL_YEAR - df_minimum.BL_AGE
-
-    # We assume we have the info for everyone and that it's either
-    # "female" or "male".
-    df_minimum["female"] = df_minimum.SEX == "female"
-    df_minimum = df_minimum.loc[:, ["FINNGENID", "approx_birth_date", "female"]]
-
-    return df_events, df_follow_up, df_minimum
+    return df_events, df_info
 
 
 def comp_cph(
         endpoint,
         sex,
         df_events,
-        df_follow_up,
-        df_minimum
+        df_info
 ):
     """Prepare data and fit a Cox PH model for the given endpoint"""
     logger.info(f"{endpoint} - Computing cumulative incidence")
     logger.debug(f"{endpoint} - Assigning cases and controls")
 
     # Cases
-    df_cases = df_events.loc[df_events.ENDPOINT == endpoint].copy()
-    # Exclude prevalent cases
-    df_cases = df_cases.loc[df_cases.ENDPOINT_YEAR >= STUDY_STARTS, :]
-    df_cases["duration"] = df_cases.ENDPOINT_AGE
-    df_cases["outcome"] = True
-
+    df_cases = df_events.loc[df_events.ENDPOINT == endpoint, ["FINNGENID", "ENDPOINT_AGE"]]
     if df_cases.shape[0] < MIN_CASES:
         raise NotEnoughCases(f"Not enough cases (< {MIN_CASES}).")
 
-    # Controls
-    df_controls = df_follow_up.loc[
-        # Get only the non-cases
-        ~ df_follow_up.FINNGENID.isin(df_cases.FINNGENID),
-        ["FINNGENID", "FU_END_AGE"]
-    ].copy()
-    df_controls["duration"] = df_controls.FU_END_AGE
-    df_controls["outcome"] = False
+    # Take all individual, also dealing with sex-specific endpoints
+    df_all = df_info.loc[df_info.SEX.isin(sex), ["FINNGENID", "FU_END_AGE"]]
 
-    # Shape the dataframe for use in Cox model
-    dfcox = pd.concat([df_cases, df_controls])
-    dfcox = dfcox.merge(
-        df_minimum,
-        on="FINNGENID"
-    )
-    dfcox = dfcox.loc[:, ["duration", "outcome", "female", "approx_birth_date"]]
+    df_all = df_all.merge(df_cases, how="left", on="FINNGENID")
+    df_all["outcome"] = ~ df_all.ENDPOINT_AGE.isna()  # ENDPOINT_AGE is NaN for controls
+    df_all["duration"] = df_all.FU_END_AGE
+    df_all.loc[df_all.outcome, "duration"] = df_all.loc[df_all.outcome, "ENDPOINT_AGE"]
+
+    # Trim down the columns so the later call to cph.fit() doesn't try to use extra columns
+    dfcox = df_all.loc[:, ["outcome", "duration"]]
 
     logger.debug(f"{endpoint} - Fitting Cox model")
-
-    # Prepare model for sex-specific endpoints
-    if sex in ("female", "male"):
-        formula = "approx_birth_date"
-    else:
-        formula = "female + approx_birth_date"
-
-    # Fit Cox model
     cph = CoxPHFitter()
-    cph.fit(dfcox, duration_col="duration", event_col="outcome", formula=formula)
-
-    logger.debug(f"{endpoint} - Using fitted model to derive cumulative incidence")
+    cph.fit(dfcox, duration_col="duration", event_col="outcome")
 
     return dfcox, cph
 
 
-def get_cumulative_incidence(dfcox, cph, sex):
+def get_cumulative_incidence(dfcox, df_info, cph, sex):
     """Derive cumulative incidence from fitted CPH model"""
-    mean_female_indiv = {
-        "female": [1],
-        "approx_birth_date": [MEAN_APPROX_BIRTH_DATE]
-    }
-    mean_male_indiv = {
-        "female": [0],
-        "approx_birth_date": [MEAN_APPROX_BIRTH_DATE]
-    }
+    logger.debug(f"Using fitted model to derive cumulative incidence")
 
-    if sex == "female":
-        at_times = find_time_points(dfcox, N_MIN_INDIV, MAX_TIME_POINTS)
-        res = cumulinc_at_times(cph, mean_female_indiv, at_times)
-        res["sex"] = "female"
+    res = pd.DataFrame({"age": [], "cumulinc": [], "sex": []})
 
-    elif sex == "male":
-        at_times = find_time_points(dfcox, N_MIN_INDIV, MAX_TIME_POINTS)
-        res = cumulinc_at_times(cph, mean_male_indiv, at_times)
-        res["sex"] = "male"
-
-    else:
-        # Since the cumulative incidence will be outputted for females
-        # and males separately, we need to take time points
-        # independently for each. That way we make sure we have groups
-        # of N > 5 for both the female curve and the male curve.
-        females = dfcox.loc[dfcox.female, :]
+    # Since the cumulative incidence will be outputted for females and
+    # males separately, we need to take time points independently for
+    # each. That way we make sure we have groups of N ≥ 5 for both the
+    # female curve and the male curve.
+    if "female" in sex:
+        females = dfcox.loc[df_info.SEX == "female", :]
         female_at_times = find_time_points(females, N_MIN_INDIV, MAX_TIME_POINTS)
-        res_female = cumulinc_at_times(cph, mean_female_indiv, female_at_times)
+        res_female = cumulinc_at_times(cph, dfcox, female_at_times)
         res_female["sex"] = "female"
+        res = pd.concat([res, res_female])
 
-        males = dfcox.loc[~dfcox.female, :]
+    if "male" in sex:
+        males = dfcox.loc[df_info.SEX == "male", :]
         male_at_times = find_time_points(males, N_MIN_INDIV, MAX_TIME_POINTS)
-        res_male = cumulinc_at_times(cph, mean_male_indiv, male_at_times)
+        res_male = cumulinc_at_times(cph, dfcox, male_at_times)
         res_male["sex"] = "male"
-
-        res = pd.concat([res_female, res_male])
+        res = pd.concat([res, res_male])
 
     # Keep only a limited precision on float
     res.cumulinc = res.cumulinc.apply(lambda n: "{:06.4f}".format(n))
@@ -216,24 +147,20 @@ def get_cumulative_incidence(dfcox, cph, sex):
     return res
 
 
-def cumulinc_at_times(cph, indiv, at_times):
+def cumulinc_at_times(cph, dfcox, at_times):
     """Generic way to compute the cumulative incidence at given time points"""
     surv_prob = cph.predict_survival_function(
-        pd.DataFrame(indiv),
+        dfcox,
         times=at_times
     )
     cumulative_incidence = 1 - surv_prob
 
-    # Give a more meaningful name to cumulative incidence values
-    cumulative_incidence = cumulative_incidence.rename(
-        columns={0: "cumulinc"}
-    )
+    # Compute the mean cumulative incidence for each age
+    cumulative_incidence = cumulative_incidence.mean(axis="columns")
 
-    cumulative_incidence["age"] = cumulative_incidence.index
-
-    # Order column so that all output files are consistent
-    cumulative_incidence = cumulative_incidence.loc[:, ["age", "cumulinc"]]
-    return cumulative_incidence
+    df_out = cumulative_incidence.reset_index(name="cumulinc")
+    df_out = df_out.rename(columns={"index": "age"})
+    return df_out
 
 
 def find_time_points(dfcox, n_min, max_time_points):
@@ -268,16 +195,15 @@ def find_time_points(dfcox, n_min, max_time_points):
     return time_points
 
 
-def worker_job(endpoint, sex, df_events, df_follow_up, df_minimum, output):
+def worker_job(endpoint, sex, df_events, df_info, output):
     try:
         dfcox, cph = comp_cph(
             endpoint,
             sex,
             df_events,
-            df_follow_up,
-            df_minimum
+            df_info
         )
-        cumulative_incidence = get_cumulative_incidence(dfcox, cph, sex)
+        cumulative_incidence = get_cumulative_incidence(dfcox, df_info, cph, sex)
     except Exception as exc:
         logger.warning(f"{endpoint} - unexpected error of type {type(exc)}")
 
@@ -307,10 +233,9 @@ def main():
 
     # Load endpoints
     endpoints = load_endpoints(args.endpoint_definitions)
-    df_events, df_follow_up, df_minimum = load_data(
+    df_events, df_info = load_data(
         args.dense_events,
-        args.minimum,
-        args.follow_up
+        args.info
     )
 
     # Compute cumulative incidences
@@ -320,23 +245,24 @@ def main():
         endp = row.NAME
 
         if row.SEX == 1:
-            sex = "male"
+            sex = ["male"]
         elif row.SEX == 2:
-            sex = "female"
+            sex = ["female"]
         else:
-            sex = np.nan
+            sex = ["female", "male"]
 
         worker_args = (
             endp,
             sex,
             df_events,
-            df_follow_up,
-            df_minimum,
+            df_info,
             args.output
         )
         tasks.append(worker_args)
 
-    with multiprocessing.Pool(multiprocessing.cpu_count()) as worker_pool:
+
+    njobs = multiprocessing.cpu_count()
+    with multiprocessing.Pool(njobs) as worker_pool:
         worker_pool.starmap(worker_job, tasks)
 
 
