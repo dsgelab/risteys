@@ -14,7 +14,7 @@ from log import logger
 
 # -- CONFIGURATION
 MIN_CASES = 100
-N_MIN_INDIV = 6  # at least that many individuals to have for each data point in the output
+N_MIN_INDIV = 5  # at least that many individuals to have for each data point in the output
 MAX_TIME_POINTS = 100  # at most that many time points in the output
 
 
