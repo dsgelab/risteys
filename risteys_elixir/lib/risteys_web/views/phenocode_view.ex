@@ -196,8 +196,6 @@ defmodule RisteysWeb.PhenocodeView do
       for [[interval_left, interval_right], val] <- distrib do
         val = if is_nil(val), do: "NaN", else: val
 
-        IO.inspect(left: interval_left, right: interval_right)
-
         interval =
           case {interval_left, interval_right} do
             {nil, _} ->
