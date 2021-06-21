@@ -91,8 +91,8 @@ def comp_cph(
         df_info
 ):
     """Prepare data and fit a Cox PH model for the given endpoint"""
-    logger.info(f"{endpoint} - Computing cumulative incidence")
-    logger.debug(f"{endpoint} - Assigning cases and controls")
+    logger.info(f"{endpoint} - {sex} - Computing cumulative incidence")
+    logger.debug(f"{endpoint} - {sex} - Assigning cases and controls")
 
     # Cases
     df_cases = df_events.loc[df_events.ENDPOINT == endpoint, ["FINNGENID", "ENDPOINT_AGE"]]
@@ -100,7 +100,7 @@ def comp_cph(
         raise NotEnoughCases(f"Not enough cases (< {MIN_CASES}).")
 
     # Take all individual, also dealing with sex-specific endpoints
-    df_all = df_info.loc[df_info.SEX.isin(sex), ["FINNGENID", "FU_END_AGE"]]
+    df_all = df_info.loc[df_info.SEX == sex, ["FINNGENID", "FU_END_AGE"]]
 
     df_all = df_all.merge(df_cases, how="left", on="FINNGENID")
     df_all["outcome"] = ~ df_all.ENDPOINT_AGE.isna()  # ENDPOINT_AGE is NaN for controls
@@ -121,25 +121,14 @@ def get_cumulative_incidence(dfcox, df_info, cph, sex):
     """Derive cumulative incidence from fitted CPH model"""
     logger.debug(f"Using fitted model to derive cumulative incidence")
 
-    res = pd.DataFrame({"age": [], "cumulinc": [], "sex": []})
-
     # Since the cumulative incidence will be outputted for females and
     # males separately, we need to take time points independently for
     # each. That way we make sure we have groups of N ≥ 5 for both the
     # female curve and the male curve.
-    if "female" in sex:
-        females = dfcox.loc[df_info.SEX == "female", :]
-        female_at_times = find_time_points(females, N_MIN_INDIV, MAX_TIME_POINTS)
-        res_female = cumulinc_at_times(cph, dfcox, female_at_times)
-        res_female["sex"] = "female"
-        res = pd.concat([res, res_female])
-
-    if "male" in sex:
-        males = dfcox.loc[df_info.SEX == "male", :]
-        male_at_times = find_time_points(males, N_MIN_INDIV, MAX_TIME_POINTS)
-        res_male = cumulinc_at_times(cph, dfcox, male_at_times)
-        res_male["sex"] = "male"
-        res = pd.concat([res, res_male])
+    indivs = dfcox.loc[df_info.SEX == sex, :]
+    at_times = find_time_points(indivs, N_MIN_INDIV, MAX_TIME_POINTS)
+    res = cumulinc_at_times(cph, dfcox, at_times)
+    res["sex"] = sex
 
     # Keep only a limited precision on float
     res.cumulinc = res.cumulinc.apply(lambda n: "{:06.4f}".format(n))
@@ -208,16 +197,16 @@ def worker_job(endpoint, sex, df_events, df_info, output):
         logger.warning(f"{endpoint} - unexpected error of type {type(exc)}")
 
         # Write detailed error to a file
-        filename = "cumulative-incidence_error_" + endpoint + ".log"
+        filename = f"cumulative-incidence_error_{endpoint}_{sex}.log"
         output_path = output / filename
-        with open(output_path, "w") as f:
-            print(exc, file=f)
+        with open(output_path, "w") as fd:
+            print(exc, file=fd)
     else:
         # Add column with endpoint name to resulting DataFrame
         cumulative_incidence["endpoint"] = endpoint
 
         # Output to a file
-        filename = "cumulative-incidence_" + endpoint + ".csv"
+        filename = f"cumulative-incidence_{endpoint}_{sex}.csv"
         output_path = output / filename
         cumulative_incidence.to_csv(
             output_path,
@@ -244,22 +233,28 @@ def main():
     for _, row in endpoints.iterrows():
         endp = row.NAME
 
-        if row.SEX == 1:
-            sex = ["male"]
-        elif row.SEX == 2:
-            sex = ["female"]
-        else:
-            sex = ["female", "male"]
-
-        worker_args = (
+        male_args = (
             endp,
-            sex,
+            "male",
             df_events,
             df_info,
             args.output
         )
-        tasks.append(worker_args)
+        female_args = (
+            endp,
+            "female",
+            df_events,
+            df_info,
+            args.output
+        )
 
+        if row.SEX == 1:
+            tasks.append(male_args)
+        elif row.SEX == 2:
+            tasks.append(female_args)
+        else:
+            tasks.append(male_args)
+            tasks.append(female_args)
 
     njobs = multiprocessing.cpu_count()
     with multiprocessing.Pool(njobs) as worker_pool:
