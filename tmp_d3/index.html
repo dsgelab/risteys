@@ -11,6 +11,11 @@
 <script>
 // TODO
 // - figure out the left/right interval numbering. Either adapt the labels (0–19 instead of 0–20) or change the data (but useful the way it is now for correct plotting of hbin width).
+// - organize this file:
+//   . helper functions
+//   . functions that convert input data to plotting data (position, dimension)
+//   . functions/calls that draw
+// - add Y axis label
 
 // -- CONFIG --
 let config = {};
@@ -21,28 +26,35 @@ config.canvas = {
 	width:  1000   // px
 };
 
-config.yLabels = {
-	marginLeft: 50  // px
-};
+// Margins around the plotting area
+// Following https://observablehq.com/@d3/margin-convention
+config.margin = {
+	left: 40, // px
+	right: 0, // px 
+	top:  10, // px. Give a little headroom to not truncate text
+	bot:  35, // px
+}
 
 config.xLabels = {
-	height: 30,   // px
 	marginBot: 5, // px. Set a small margin so the letter descenders are not cut.
 };
 config.xLabels.yBaseline = config.canvas.height - config.xLabels.marginBot; // px
 
 config.hbin = {
 	height: 10,  // px
-	gap: 6,     // px
+	gap: 6,      // px
 	defaultDuration: 10,  // years. used for unbounded intervals, e.g. 90+ will visually appear as spanning 10 years
 };
-config.hbin.yTop = config.canvas.height - config.hbin.height - config.xLabels.height;  // px
 
 // The inner plotting area
 config.vbinSurface = {
-	height: config.canvas.height - config.hbin.height - config.xLabels.height,  // px
-	width: config.canvas.width  // px
+	x1: config.margin.left,
+	x2: config.canvas.width - config.margin.right,
+	y1: config.margin.top,
+	y2: config.canvas.height - config.margin.bot,
 };
+config.vbinSurface.width = config.vbinSurface.x2 - config.vbinSurface.x1;
+config.vbinSurface.height = config.vbinSurface.y2 - config.vbinSurface.y1;
 
 config.vbin = {
 	width: 50,  // px
@@ -132,7 +144,7 @@ function hbinPosDim(datum) {
 	return {
 		x: x,
 		width: width,
-		y: config.hbin.yTop,
+		y: config.vbinSurface.y2,
 		height: config.hbin.height
 	}
 };
@@ -180,10 +192,10 @@ function xLabelsPosText(datum) {
 	}
 }
 
-// Y Labels and ticks
+// -- Y Labels and ticks --
 let yAxis = g => {
 	return g
-		.attr("transform", `translate(${config.yLabels.marginLeft}, 0)`)
+		.attr("transform", `translate(${config.margin.left}, 0)`)
 		.call(d3.axisLeft(scaleY))
 }
 
@@ -216,13 +228,14 @@ function prepData(data, config) {
 // Data with closed intervals, so they can be positioned
 const cdata = _.map(data, closeInterval);
 
+// The X and Y scales are in the plotting area space
 const scaleX = d3.scaleLinear()
 	.domain(d3.extent(_.flatMap(cdata, d => [d.interval.left, d.interval.right])))
-	.range([config.yLabels.marginLeft, config.vbinSurface.width]);
+	.range([config.vbinSurface.x1, config.vbinSurface.x2]);
 
 const scaleY = d3.scaleLinear()
 	.domain([0, d3.max(cdata, d => d.count)])
-	.range([config.vbinSurface.height, 0]);
+	.range([config.vbinSurface.y2, config.vbinSurface.y1]);
 
 
 const pdata = prepData(data, config);
@@ -234,10 +247,10 @@ const svg = d3.select("#myplot")
 
 // Draw X axis line
 svg.append("line")
-	.attr("x1", scaleX(0))
-	.attr("y1", config.vbinSurface.height + config.hbin.height)
-	.attr("y2", config.vbinSurface.height + config.hbin.height)
-	.attr("x2", config.vbinSurface.width)
+	.attr("x1", config.vbinSurface.x1)
+	.attr("y1", config.vbinSurface.y2 + config.hbin.height)
+	.attr("y2", config.vbinSurface.y2 + config.hbin.height)
+	.attr("x2", config.vbinSurface.x2)
 	.attr("stroke", "black");
 
 // Bin groups
@@ -278,8 +291,10 @@ svg.append("g")
 
 
 // -- DEBUG --
-if (false) {
+if (true) {
 	let dbgData = [];
+
+	// Vertical lines
 	for (var xx = 0; xx < config.canvas.width; xx += 10) {
 		let stroke = "rgba(178, 232, 217, 0.5)";
 		if (xx % 100 === 0) {
@@ -287,6 +302,16 @@ if (false) {
 		}
 		dbgData.push({"x1": xx, "y1": 0, "x2": xx, "y2": config.canvas.height, "stroke": stroke});
 	}
+
+	// Horizontal lines
+	for (var yy = 0; yy < config.canvas.height; yy += 10) {
+		let stroke = "rgba(0, 0, 0, 0.1)";
+		if (yy % 100 === 0) {
+			stroke = "rgba(0, 0, 0, 0.20)";
+		}
+		dbgData.push({"x1": 0, "y1": yy, "x2": config.canvas.width, "y2": yy, "stroke": stroke});
+	}
+
 	svg.append("g")
 		.selectAll("line")
 		.data(dbgData)
