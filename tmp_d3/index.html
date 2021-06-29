@@ -9,6 +9,9 @@
 <script src="https://d3js.org/d3.v6.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/lodash@4.17.21/lodash.min.js" integrity="sha256-qXBd/EfAdjOA2FGrGAG+b3YBn2tn5A6bhz+LSgYD96k=" crossorigin="anonymous"></script>
 <script>
+// TODO
+// - figure out the left/right interval numbering. Either adapt the labels (0–19 instead of 0–20) or change the data (but useful the way it is now for correct plotting of hbin width).
+
 // -- CONFIG --
 let config = {};
 
@@ -18,22 +21,26 @@ config.canvas = {
 	width:  1000   // px
 };
 
-config.labels = {
+config.yLabels = {
+	marginLeft: 50  // px
+};
+
+config.xLabels = {
 	height: 30,   // px
 	marginBot: 5, // px. Set a small margin so the letter descenders are not cut.
 };
-config.labels.yBaseline = config.canvas.height - config.labels.marginBot; // px
+config.xLabels.yBaseline = config.canvas.height - config.xLabels.marginBot; // px
 
 config.hbin = {
 	height: 10,  // px
-	gap: 10,     // px
+	gap: 6,     // px
 	defaultDuration: 10,  // years. used for unbounded intervals, e.g. 90+ will visually appear as spanning 10 years
 };
-config.hbin.yTop = config.canvas.height - config.hbin.height - config.labels.height;  // px
+config.hbin.yTop = config.canvas.height - config.hbin.height - config.xLabels.height;  // px
 
 // The inner plotting area
 config.vbinSurface = {
-	height: config.canvas.height - config.hbin.height - config.labels.height,  // px
+	height: config.canvas.height - config.hbin.height - config.xLabels.height,  // px
 	width: config.canvas.width  // px
 };
 
@@ -44,19 +51,19 @@ config.vbin = {
 
 const data = [
 	{
-		interval: {left: 0, right: 19},
+		interval: {left: 0, right: 20},
 		count: 5
 	},
 	{
-		interval: {left: 20, right: 29},
+		interval: {left: 20, right: 30},
 		count: 20,
 	},
 	{
-		interval: {left: 30, right: 79},
+		interval: {left: 30, right: 80},
 		count: 1,
 	},
 	{
-		interval: {left: 80, right: 89},
+		interval: {left: 80, right: 90},
 		count: 0,
 	},
 	{
@@ -102,12 +109,14 @@ function binMiddle(datum) {
 // -- VBin --
 function vbinPosDim(datum) {
 	const left = binMiddle(datum) - config.vbin.width / 2;
-	const binHeight = scaleY(datum.count);
+
+	const top = scaleY(datum.count);
+	const height = scaleY(0) - top;  // rect height is drawn towards bottom
 	return {
 		x: left,
 		width: config.vbin.width,
-		y: config.vbinSurface.height - binHeight,
-		height: binHeight,
+		y: top,
+		height: height,
 		fill: config.vbin.color
 	}
 };
@@ -163,7 +172,7 @@ function xLabelsPosText(datum) {
 	const text = stringLabel(datum);
 	const cdatum = closeInterval(datum);
 	const x = binMiddle(cdatum);
-	const y = config.labels.yBaseline;
+	const y = config.xLabels.yBaseline;
 	return {
 		text: text,
 		x: x,
@@ -174,7 +183,7 @@ function xLabelsPosText(datum) {
 // Y Labels and ticks
 let yAxis = g => {
 	return g
-		.attr("transform", `translate(30, 0)`)
+		.attr("transform", `translate(${config.yLabels.marginLeft}, 0)`)
 		.call(d3.axisLeft(scaleY))
 }
 
@@ -185,7 +194,6 @@ function prepData(data, config) {
 	// Compute hbin
 	let hbins = _.map(cdata, hbinPosDim);
 	hbins = hbinAddGaps(hbins);
-
 
 	// Compute vbin
 	let vbins = _.map(cdata, vbinPosDim);
@@ -210,11 +218,11 @@ const cdata = _.map(data, closeInterval);
 
 const scaleX = d3.scaleLinear()
 	.domain(d3.extent(_.flatMap(cdata, d => [d.interval.left, d.interval.right])))
-	.range([0, config.vbinSurface.width]);
+	.range([config.yLabels.marginLeft, config.vbinSurface.width]);
 
 const scaleY = d3.scaleLinear()
 	.domain([0, d3.max(cdata, d => d.count)])
-	.range([0, config.vbinSurface.height]);
+	.range([config.vbinSurface.height, 0]);
 
 
 const pdata = prepData(data, config);
@@ -226,7 +234,7 @@ const svg = d3.select("#myplot")
 
 // Draw X axis line
 svg.append("line")
-	.attr("x1", 0)
+	.attr("x1", scaleX(0))
 	.attr("y1", config.vbinSurface.height + config.hbin.height)
 	.attr("y2", config.vbinSurface.height + config.hbin.height)
 	.attr("x2", config.vbinSurface.width)
@@ -270,7 +278,7 @@ svg.append("g")
 
 
 // -- DEBUG --
-if (true) {
+if (false) {
 	let dbgData = [];
 	for (var xx = 0; xx < config.canvas.width; xx += 10) {
 		let stroke = "rgba(178, 232, 217, 0.5)";
