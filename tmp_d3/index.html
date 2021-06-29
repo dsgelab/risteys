@@ -1,0 +1,296 @@
+<!DOCTYPE html>
+<html>
+<head>
+	<meta charset="utf-8">
+	<title>test d3</title>
+</head>
+<body>
+	<div id="myplot" style="max-width:1000px;"></div>
+<script src="https://d3js.org/d3.v6.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/lodash@4.17.21/lodash.min.js" integrity="sha256-qXBd/EfAdjOA2FGrGAG+b3YBn2tn5A6bhz+LSgYD96k=" crossorigin="anonymous"></script>
+<script>
+// -- CONFIG --
+let config = {};
+
+// The whole SVG area
+config.canvas = {
+	height: 500,  // px
+	width:  1000   // px
+};
+
+config.labels = {
+	height: 30,   // px
+	marginBot: 5, // px. Set a small margin so the letter descenders are not cut.
+};
+config.labels.yBaseline = config.canvas.height - config.labels.marginBot; // px
+
+config.hbin = {
+	height: 10,  // px
+	gap: 10,     // px
+	defaultDuration: 10,  // years. used for unbounded intervals, e.g. 90+ will visually appear as spanning 10 years
+};
+config.hbin.yTop = config.canvas.height - config.hbin.height - config.labels.height;  // px
+
+// The inner plotting area
+config.vbinSurface = {
+	height: config.canvas.height - config.hbin.height - config.labels.height,  // px
+	width: config.canvas.width  // px
+};
+
+config.vbin = {
+	width: 50,  // px
+	color: "#1c3d5a",
+};
+
+const data = [
+	{
+		interval: {left: 0, right: 19},
+		count: 5
+	},
+	{
+		interval: {left: 20, right: 29},
+		count: 20,
+	},
+	{
+		interval: {left: 30, right: 79},
+		count: 1,
+	},
+	{
+		interval: {left: 80, right: 89},
+		count: 0,
+	},
+	{
+		interval: {left: 90, right: null},
+		count: 50,
+	},
+]
+
+
+/* Close open-ended intervals.
+ *
+ * Given a datum with an open-ended interval, we close it with a pre-defined default duration.
+ * The purpose is to set a duration so the interval can be positioned.
+ */
+function closeInterval(datum) {
+	var closedInterval;
+	if (datum.interval.left === null) {
+		closedInterval = {
+			...datum.interval,
+			left: datum.interval.right - config.hbin.defaultDuration
+		}
+	} else if (datum.interval.right === null) {
+		closedInterval = {
+			...datum.interval,
+			right: datum.interval.left + config.hbin.defaultDuration
+		}
+	} else {
+		closedInterval = datum.interval;
+	}
+
+	return {
+		...datum,
+		interval: closedInterval
+	}
+}
+
+
+function binMiddle(datum) {
+	return scaleX(datum.interval.left + (datum.interval.right - datum.interval.left) / 2)
+}
+
+
+// -- VBin --
+function vbinPosDim(datum) {
+	const left = binMiddle(datum) - config.vbin.width / 2;
+	const binHeight = scaleY(datum.count);
+	return {
+		x: left,
+		width: config.vbin.width,
+		y: config.vbinSurface.height - binHeight,
+		height: binHeight,
+		fill: config.vbin.color
+	}
+};
+
+
+// -- HBin --
+function hbinPosDim(datum) {
+	const x = scaleX(datum.interval.left);
+
+	const right = scaleX(datum.interval.right);
+	const width = right - x;
+
+	return {
+		x: x,
+		width: width,
+		y: config.hbin.yTop,
+		height: config.hbin.height
+	}
+};
+
+
+function hbinAddGaps(data) {
+	const first = 0;
+	const last = data.length - 1;
+	const halfGap = config.hbin.gap / 2;  // used for first and last hbins
+
+	const withGaps = _.map(data, (datum, idx) => {
+		if (idx === first) {
+			return {...datum, width: datum.width - halfGap}
+		} else if (idx === last) {
+			return {...datum, x: datum.x +  halfGap}
+		} else {
+			return {...datum, x: datum.x + halfGap, width: datum.width - config.hbin.gap}
+		}
+	});
+
+	return withGaps
+};
+
+
+// -- X labels --
+function stringLabel(datum) {
+	if (datum.interval.left === null) {
+		return `up to ${datum.interval.right}`;
+	} else if (datum.interval.right === null){
+		return `${datum.interval.left} and up`;
+	} else {
+		return `${datum.interval.left}–${datum.interval.right}`;
+	}
+};
+
+function xLabelsPosText(datum) {
+	const text = stringLabel(datum);
+	const cdatum = closeInterval(datum);
+	const x = binMiddle(cdatum);
+	const y = config.labels.yBaseline;
+	return {
+		text: text,
+		x: x,
+		y: y,
+	}
+}
+
+// Y Labels and ticks
+let yAxis = g => {
+	return g
+		.attr("transform", `translate(30, 0)`)
+		.call(d3.axisLeft(scaleY))
+}
+
+// -- Plotting --
+function prepData(data, config) {
+	const cdata = _.map(data, closeInterval);
+
+	// Compute hbin
+	let hbins = _.map(cdata, hbinPosDim);
+	hbins = hbinAddGaps(hbins);
+
+
+	// Compute vbin
+	let vbins = _.map(cdata, vbinPosDim);
+
+	// Labels
+	const labels = _.map(data, xLabelsPosText);
+
+	const res = _.zipWith(hbins, vbins, labels, (hbin, vbin, label) => {
+		return {
+			hbin: hbin,
+			vbin: vbin,
+			label: label
+		}
+	})
+
+	return res
+};
+
+
+// Data with closed intervals, so they can be positioned
+const cdata = _.map(data, closeInterval);
+
+const scaleX = d3.scaleLinear()
+	.domain(d3.extent(_.flatMap(cdata, d => [d.interval.left, d.interval.right])))
+	.range([0, config.vbinSurface.width]);
+
+const scaleY = d3.scaleLinear()
+	.domain([0, d3.max(cdata, d => d.count)])
+	.range([0, config.vbinSurface.height]);
+
+
+const pdata = prepData(data, config);
+
+const svg = d3.select("#myplot")
+	.append("svg")
+	// Setting the viewBox and not setting the SVG width and height allows for dynamic resizing
+	.attr("viewBox", [0, 0, config.canvas.width, config.canvas.height]);
+
+// Draw X axis line
+svg.append("line")
+	.attr("x1", 0)
+	.attr("y1", config.vbinSurface.height + config.hbin.height)
+	.attr("y2", config.vbinSurface.height + config.hbin.height)
+	.attr("x2", config.vbinSurface.width)
+	.attr("stroke", "black");
+
+// Bin groups
+const groups = svg.selectAll("g")
+	.data(pdata)
+	.enter()
+		.append("g");
+
+// Draw HBins
+groups.append("rect")
+	.attr("x", d => d.hbin.x)
+	.attr("y", d => d.hbin.y)
+	.attr("width", d => d.hbin.width)
+	.attr("height", d => d.hbin.height);
+
+// Draw VBins
+groups.append("rect")
+	.attr("x", d => d.vbin.x)
+	.attr("y", d => d.vbin.y)
+	.attr("width", d => d.vbin.width)
+	.attr("height", d => d.vbin.height)
+	.attr("fill", d => d.vbin.fill);
+
+// Draw X labels
+svg.append("g")
+	.selectAll("text")
+	.data(pdata)
+	.enter()
+		.append("text")
+		.attr("x", d => d.label.x)
+		.attr("y", d => d.label.y)
+		.attr("text-anchor", "middle")
+		.text(d => d.label.text);
+
+// Draw Y labels and ticks
+svg.append("g")
+	.call(yAxis);
+
+
+// -- DEBUG --
+if (true) {
+	let dbgData = [];
+	for (var xx = 0; xx < config.canvas.width; xx += 10) {
+		let stroke = "rgba(178, 232, 217, 0.5)";
+		if (xx % 100 === 0) {
+			stroke = "rgba(255, 182, 88, 0.5)";
+		}
+		dbgData.push({"x1": xx, "y1": 0, "x2": xx, "y2": config.canvas.height, "stroke": stroke});
+	}
+	svg.append("g")
+		.selectAll("line")
+		.data(dbgData)
+		.enter()
+			.append("line")
+			.attr("x1", d => d.x1)
+			.attr("y1", d => d.y1)
+			.attr("x2", d => d.x2)
+			.attr("y2", d => d.y2)
+			.attr("stroke", d => d.stroke)
+	;
+}
+</script>
+</body>
+</html>
