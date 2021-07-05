@@ -10,7 +10,6 @@
 <script src="https://cdn.jsdelivr.net/npm/lodash@4.17.21/lodash.min.js" integrity="sha256-qXBd/EfAdjOA2FGrGAG+b3YBn2tn5A6bhz+LSgYD96k=" crossorigin="anonymous"></script>
 <script>
 // TODO
-// - figure out the left/right interval numbering. Either adapt the labels (0–19 instead of 0–20) or change the data (but useful the way it is now for correct plotting of hbin width).
 // - show count on hover
 
 
@@ -92,15 +91,15 @@ const yearData = [
 		count: 10
 	},
 	{
-		interval: {left: 1990, right: 2005},
+		interval: {left: 1990, right: 2000},
 		count: 7
 	},
 	{
-		interval: {left: 2005, right: 2010},
+		interval: {left: 2000, right: 2020},
 		count: 0
 	},
 	{
-		interval: {left: 2010, right: null},
+		interval: {left: 2020, right: null},
 		count: 30
 	},
 ];
@@ -141,7 +140,7 @@ const yearDataMany = [
 
 ];
 
-const data = yearDataMany;
+const data = yearData;
 
 const xAxisLabel = "Year";
 
@@ -241,17 +240,21 @@ function closeInterval(datum) {
 	}
 }
 
-/* Find the X position (on canvas) at the middle of a bin */
-/* TODO:
- * This is a bit wrong because of the hbin gaps. The first and last bin are not
- * properly on the middle of the hbin.
+/* Decrement interval right value.
+ *
+ * For example change 0–10 and 10–20 to 0–9 and 10–19, to show intervals are contiguous.
  */
-function binMiddle(datum) {
-	return scaleX(datum.interval.left + (datum.interval.right - datum.interval.left) / 2)
-}
+function decrIntervalRight(datum) {
+	return {
+		...datum,
+		interval: {
+			...datum.interval,
+			right: datum.interval.right - 1
+		}
+	}
+};
 
-/* TODO
- * Return x1 and x2 bin positions (on canvas range) given the full set of bins and a specific bin,
+/* Return x1 and x2 bin positions (on canvas range) given the full set of bins and a specific bin,
  * taking into account the gap between bins.
  */
 function binXpos(data, datum) {
@@ -337,70 +340,57 @@ const scaleY = d3.scaleLinear()
 	.range([config.vbinSurface.y2, config.vbinSurface.y1]);
 
 // VBin
-function vbinPosDim(datum) {
-	const left = binMiddle(datum) - config.vbin.width / 2;
+function vbinPosDim(data) {
+	return _.map(data, (datum) => {
+		const pos = binXpos(data, datum);
+		const middle = (pos.x1 + pos.x2) / 2;
+		const left = middle - config.vbin.width / 2;
 
-	const top = scaleY(datum.count);
-	const height = scaleY(0) - top;  // rect height is drawn towards bottom
-	return {
-		x: left,
-		width: config.vbin.width,
-		y: top,
-		height: height,
-		fill: config.vbin.color
-	}
+		const top = scaleY(datum.count);
+		const height = scaleY(0) - top;  // rect height is drawn towards bottom
+		return {
+			x: left,
+			width: config.vbin.width,
+			y: top,
+			height: height,
+			fill: config.vbin.color
+		}
+	})
 };
 
 // HBin
-function hbinPosDim(datum) {
-	const x = scaleX(datum.interval.left);
+function hbinPosDim(data) {
+	const hbins = _.map(data, (datum) => {
+		const pos = binXpos(data, datum);
+		const x1 = pos.x1;
+		const x2 = pos.x2;
+		const width = x2 - x1
 
-	const right = scaleX(datum.interval.right);
-	const width = right - x;
-
-	return {
-		x: x,
-		width: width,
-		y: config.vbinSurface.y2,
-		height: config.hbin.height
-	}
-};
-
-/* Interleave gaps between horizontal bins.
- *
- * By adding gaps around horizontal bins, they appear visually distinct.
- * Otherwise the hbins would touch each other and we won't be able to see
- * them individually.
- */
-function hbinAddGaps(data) {
-	const first = 0;
-	const last = data.length - 1;
-	const halfGap = config.hbin.gap / 2;  // used for first and last hbins
-
-	const withGaps = _.map(data, (datum, idx) => {
-		if (idx === first) {
-			return {...datum, width: datum.width - halfGap}
-		} else if (idx === last) {
-			return {...datum, x: datum.x +  halfGap, width: datum.width - halfGap}
-		} else {
-			return {...datum, x: datum.x + halfGap, width: datum.width - config.hbin.gap}
+		return {
+			x: x1,
+			width: width,
+			y: config.vbinSurface.y2,
+			height: config.hbin.height
 		}
-	});
+	})
 
-	return withGaps
+	return hbins
 };
+
 
 // X ticks
-function xTickLabelsPosText(datum) {
-	const text = stringLabel(datum);
-	const cdatum = closeInterval(datum);
-	const x = binMiddle(cdatum);
-	const y = config.xTickLabels.yBaseline;
-	return {
-		text: text,
-		x: x,
-		y: y,
-	}
+function xTickLabelsPosText(data) {
+	return _.map(data, (datum) => {
+		const text = stringLabel(datum);
+		const pos = binXpos(data, datum);
+		const x = (pos.x1 + pos.x2) / 2;
+		const y = config.xTickLabels.yBaseline;
+		return {
+			text: text,
+			x: x,
+			y: y,
+		}
+	})
 }
 
 // Y ticks
@@ -412,17 +402,17 @@ let yAxis = g => {
 
 // Apply all data transformations
 function dataToPlot(data, config) {
-	const cdata = _.map(data, closeInterval);
+	let cdata = _.map(data, closeInterval);
+	cdata = _.map(cdata, decrIntervalRight);
 
 	// Compute hbin
-	let hbins = _.map(cdata, hbinPosDim);
-	hbins = hbinAddGaps(hbins);
+	const hbins = hbinPosDim(cdata);
 
 	// Compute vbin
-	let vbins = _.map(cdata, vbinPosDim);
+	const vbins = vbinPosDim(cdata);
 
 	// Labels
-	const labels = _.map(data, xTickLabelsPosText);
+	const labels = xTickLabelsPosText(cdata);
 
 	const res = _.zipWith(hbins, vbins, labels, (hbin, vbin, label) => {
 		return {
