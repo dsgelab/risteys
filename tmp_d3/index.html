@@ -5,71 +5,19 @@
 	<title>test d3</title>
 </head>
 <body>
-	<div id="myplot" style="max-width:1000px;"></div>
+	<div id="myplot" style="max-width:580px;"></div>
 <script src="https://d3js.org/d3.v6.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/lodash@4.17.21/lodash.min.js" integrity="sha256-qXBd/EfAdjOA2FGrGAG+b3YBn2tn5A6bhz+LSgYD96k=" crossorigin="anonymous"></script>
 <script>
 // TODO
 // - figure out the left/right interval numbering. Either adapt the labels (0–19 instead of 0–20) or change the data (but useful the way it is now for correct plotting of hbin width).
-// - organize this file:
-//   . helper functions
-//   . functions that convert input data to plotting data (position, dimension)
-//   . functions/calls that draw
-// - harmonize typography (currently X and Y axis tick labels are not same size)
-
-// -- CONFIG --
-let config = {};
-
-// The whole SVG area
-config.canvas = {
-	height: 500,  // px
-	width:  1000   // px
-};
-
-// Margins around the plotting area
-// Following https://observablehq.com/@d3/margin-convention
-config.margin = {
-	left: 40, // px
-	right: 0, // px 
-	top:  10, // px. Give a little headroom to not truncate text
-	bot:  35, // px
-}
-
-config.xLabels = {
-	marginBot: 5, // px. Set a small margin so the letter descenders are not cut.
-};
-config.xLabels.yBaseline = config.canvas.height - config.xLabels.marginBot; // px
-
-config.hbin = {
-	height: 10,  // px
-	gap: 6,      // px
-	defaultDuration: 10,  // years. used for unbounded intervals, e.g. 90+ will visually appear as spanning 10 years
-};
-
-// The inner plotting area
-config.vbinSurface = {
-	x1: config.margin.left,
-	x2: config.canvas.width - config.margin.right,
-	y1: config.margin.top,
-	y2: config.canvas.height - config.margin.bot,
-};
-config.vbinSurface.width = config.vbinSurface.x2 - config.vbinSurface.x1;
-config.vbinSurface.height = config.vbinSurface.y2 - config.vbinSurface.y1;
-
-config.vbin = {
-	width: 50,  // px
-	color: "#1c3d5a",
-};
-
-// Y axis label
-config.yAxisLabel = {
-	x: 15,  // px. push text to the right so it's not truncated
-	y: (config.vbinSurface.y2 - config.vbinSurface.y1) / 2,
-	text: "Number of individuals",
-};
+// - show count on hover
 
 
-const data = [
+
+// TODO remove data
+
+/*const data = [
 	{
 		interval: {left: 0, right: 20},
 		count: 5
@@ -90,8 +38,102 @@ const data = [
 		interval: {left: 90, right: null},
 		count: 50,
 	},
-]
+];*/
 
+
+const data = [
+	{
+		interval: {left: null, right: 1970},
+		count: 5
+	},
+	{
+		interval: {left: 1970, right: 1990},
+		count: 10
+	},
+	{
+		interval: {left: 1990, right: 2005},
+		count: 7
+	},
+	{
+		interval: {left: 2005, right: 2010},
+		count: 0
+	},
+	{
+		interval: {left: 2010, right: null},
+		count: 30
+	},
+];
+
+const xAxisLabel = "Age bracket";
+
+
+// -- CONFIG --
+let config = {};
+
+// Debug grid
+config.debug = false;
+
+// Whole SVG area
+config.canvas = {};
+config.canvas.height = 320;  // px
+config.canvas.width = 580;  // px
+config.canvas.fontFamily = "sans-serif";
+
+// Margins
+// Following https://observablehq.com/@d3/margin-convention
+config.margin = {};
+config.margin.left = 50; // px
+config.margin.right = 5; // px 
+config.margin.top =  10; // px. Give a little headroom to not truncate text
+config.margin.bot =  50; // px
+
+// X tick labels
+config.xTickLabels = {};
+config.xTickLabels.marginBot = 25; // px. Push the labels above the X axis label
+config.xTickLabels.fontSize = 12;
+config.xTickLabels.textAnchor = "middle";
+config.xTickLabels.yBaseline = config.canvas.height - config.xTickLabels.marginBot; // px
+
+// Y tick labels
+config.yTickLabels = {};
+config.yTickLabels.fontSize = config.xTickLabels.fontSize;
+
+// Horizontal bins
+config.hbin = {};
+config.hbin.height = 3;  // px
+config.hbin.gap = 7;     // px
+config.hbin.defaultDuration = 10;  // years. used for unbounded intervals, e.g. 90+ will visually appear as spanning 10 years
+
+// Inner plotting area where the vertical bins lie
+// The inner plotting area
+config.vbinSurface = {};
+config.vbinSurface.x1 = config.margin.left;                                // px
+config.vbinSurface.x2 = config.canvas.width - config.margin.right;         // px
+config.vbinSurface.y1 = config.margin.top;                                 // px
+config.vbinSurface.y2 = config.canvas.height - config.margin.bot;          // px
+config.vbinSurface.width = config.vbinSurface.x2 - config.vbinSurface.x1;  // px
+config.vbinSurface.height = config.vbinSurface.y2 - config.vbinSurface.y1; // px
+
+// Vertical bins
+config.vbin = {};
+config.vbin.width = 30;  // px
+config.vbin.color = "#1c3d5a";
+
+// X axis label
+config.xAxisLabel = {};
+config.xAxisLabel.x = config.margin.left + config.vbinSurface.width / 2;  // px
+config.xAxisLabel.y = config.canvas.height - 5;  // px
+
+// Y axis label
+config.yAxisLabel = {};
+config.yAxisLabel.x = 15;  // px. push text to the right so it's not truncated
+config.yAxisLabel.y = (config.vbinSurface.y2 - config.vbinSurface.y1) / 2;
+config.yAxisLabel.text = "Number of individuals";
+config.yAxisLabel.textAnchor = "middle";
+
+
+
+// -- HELPER FUNCTIONS --
 
 /* Close open-ended intervals.
  *
@@ -120,64 +162,16 @@ function closeInterval(datum) {
 	}
 }
 
-
+/* Find the X position (on canvas) at the middle of a bin */
+/* TODO:
+ * This is a bit wrong because of the hbin gaps. The first and last bin are not
+ * properly on the middle of the hbin.
+ */
 function binMiddle(datum) {
 	return scaleX(datum.interval.left + (datum.interval.right - datum.interval.left) / 2)
 }
 
-
-// -- VBin --
-function vbinPosDim(datum) {
-	const left = binMiddle(datum) - config.vbin.width / 2;
-
-	const top = scaleY(datum.count);
-	const height = scaleY(0) - top;  // rect height is drawn towards bottom
-	return {
-		x: left,
-		width: config.vbin.width,
-		y: top,
-		height: height,
-		fill: config.vbin.color
-	}
-};
-
-
-// -- HBin --
-function hbinPosDim(datum) {
-	const x = scaleX(datum.interval.left);
-
-	const right = scaleX(datum.interval.right);
-	const width = right - x;
-
-	return {
-		x: x,
-		width: width,
-		y: config.vbinSurface.y2,
-		height: config.hbin.height
-	}
-};
-
-
-function hbinAddGaps(data) {
-	const first = 0;
-	const last = data.length - 1;
-	const halfGap = config.hbin.gap / 2;  // used for first and last hbins
-
-	const withGaps = _.map(data, (datum, idx) => {
-		if (idx === first) {
-			return {...datum, width: datum.width - halfGap}
-		} else if (idx === last) {
-			return {...datum, x: datum.x +  halfGap}
-		} else {
-			return {...datum, x: datum.x + halfGap, width: datum.width - config.hbin.gap}
-		}
-	});
-
-	return withGaps
-};
-
-
-// -- X ticks --
+/* Return the textual representation of a bin label */
 function stringLabel(datum) {
 	if (datum.interval.left === null) {
 		return `up to ${datum.interval.right}`;
@@ -188,128 +182,8 @@ function stringLabel(datum) {
 	}
 };
 
-function xLabelsPosText(datum) {
-	const text = stringLabel(datum);
-	const cdatum = closeInterval(datum);
-	const x = binMiddle(cdatum);
-	const y = config.xLabels.yBaseline;
-	return {
-		text: text,
-		x: x,
-		y: y,
-	}
-}
-
-// -- Y ticks --
-let yAxis = g => {
-	return g
-		.attr("transform", `translate(${config.margin.left}, 0)`)
-		.call(d3.axisLeft(scaleY))
-}
-
-
-// -- Plotting --
-function prepData(data, config) {
-	const cdata = _.map(data, closeInterval);
-
-	// Compute hbin
-	let hbins = _.map(cdata, hbinPosDim);
-	hbins = hbinAddGaps(hbins);
-
-	// Compute vbin
-	let vbins = _.map(cdata, vbinPosDim);
-
-	// Labels
-	const labels = _.map(data, xLabelsPosText);
-
-	const res = _.zipWith(hbins, vbins, labels, (hbin, vbin, label) => {
-		return {
-			hbin: hbin,
-			vbin: vbin,
-			label: label
-		}
-	})
-
-	return res
-};
-
-
-// Data with closed intervals, so they can be positioned
-const cdata = _.map(data, closeInterval);
-
-// The X and Y scales are in the plotting area space
-const scaleX = d3.scaleLinear()
-	.domain(d3.extent(_.flatMap(cdata, d => [d.interval.left, d.interval.right])))
-	.range([config.vbinSurface.x1, config.vbinSurface.x2]);
-
-const scaleY = d3.scaleLinear()
-	.domain([0, d3.max(cdata, d => d.count)])
-	.range([config.vbinSurface.y2, config.vbinSurface.y1]);
-
-
-const pdata = prepData(data, config);
-
-const svg = d3.select("#myplot")
-	.append("svg")
-	// Setting the viewBox and not setting the SVG width and height allows for dynamic resizing
-	.attr("viewBox", [0, 0, config.canvas.width, config.canvas.height]);
-
-// Draw X axis line
-svg.append("line")
-	.attr("x1", config.vbinSurface.x1)
-	.attr("y1", config.vbinSurface.y2 + config.hbin.height)
-	.attr("y2", config.vbinSurface.y2 + config.hbin.height)
-	.attr("x2", config.vbinSurface.x2)
-	.attr("stroke", "black");
-
-// Bin groups
-const groups = svg.selectAll("g")
-	.data(pdata)
-	.enter()
-		.append("g");
-
-// Draw HBins
-groups.append("rect")
-	.attr("x", d => d.hbin.x)
-	.attr("y", d => d.hbin.y)
-	.attr("width", d => d.hbin.width)
-	.attr("height", d => d.hbin.height);
-
-// Draw VBins
-groups.append("rect")
-	.attr("x", d => d.vbin.x)
-	.attr("y", d => d.vbin.y)
-	.attr("width", d => d.vbin.width)
-	.attr("height", d => d.vbin.height)
-	.attr("fill", d => d.vbin.fill);
-
-// Draw X ticks
-svg.append("g")
-	.selectAll("text")
-	.data(pdata)
-	.enter()
-		.append("text")
-		.attr("x", d => d.label.x)
-		.attr("y", d => d.label.y)
-		.attr("text-anchor", "middle")
-		.text(d => d.label.text);
-
-// Draw Y ticks
-svg.append("g")
-	.call(yAxis);
-
-// Draw Y label
-const midYaxis = (config.vbinSurface.y2 - config.vbinSurface.y1) / 2;
-svg.append("text")
-	.attr("text-anchor", "middle")
-	// We must position with "translate" instead of "x" and "y", 
-	// since x and y are messed up by "text-anchor middle" and "rotate(-90)".
-	.attr("transform", `translate(${config.yAxisLabel.x}, ${config.yAxisLabel.y}) rotate(-90)`)//
-	.text(config.yAxisLabel.text);
-
-
-// -- DEBUG --
-if (true) {
+/* Display a grid to help identify drawing issues */
+function debug() {
 	let dbgData = [];
 
 	// Vertical lines
@@ -341,6 +215,193 @@ if (true) {
 			.attr("y2", d => d.y2)
 			.attr("stroke", d => d.stroke)
 	;
+}
+
+// -- DATA TRANSFORMATION --
+// Functions that helps mapping input data (domain) to output (range on canvas)
+
+// Data with closed intervals, so they can be positioned
+const closedIntervalData = _.map(data, closeInterval);
+
+// The X and Y scales are in the plotting area
+const scaleX = d3.scaleLinear()
+	.domain(d3.extent(_.flatMap(closedIntervalData, d => [d.interval.left, d.interval.right])))
+	.range([config.vbinSurface.x1, config.vbinSurface.x2]);
+
+const scaleY = d3.scaleLinear()
+	.domain([0, d3.max(closedIntervalData, d => d.count)])
+	.range([config.vbinSurface.y2, config.vbinSurface.y1]);
+
+// VBin
+function vbinPosDim(datum) {
+	const left = binMiddle(datum) - config.vbin.width / 2;
+
+	const top = scaleY(datum.count);
+	const height = scaleY(0) - top;  // rect height is drawn towards bottom
+	return {
+		x: left,
+		width: config.vbin.width,
+		y: top,
+		height: height,
+		fill: config.vbin.color
+	}
+};
+
+// HBin
+function hbinPosDim(datum) {
+	const x = scaleX(datum.interval.left);
+
+	const right = scaleX(datum.interval.right);
+	const width = right - x;
+
+	return {
+		x: x,
+		width: width,
+		y: config.vbinSurface.y2,
+		height: config.hbin.height
+	}
+};
+
+/* Interleave gaps between horizontal bins.
+ *
+ * By adding gaps around horizontal bins, they appear visually distinct.
+ * Otherwise the hbins would touch each other and we won't be able to see
+ * them individually.
+ */
+function hbinAddGaps(data) {
+	const first = 0;
+	const last = data.length - 1;
+	const halfGap = config.hbin.gap / 2;  // used for first and last hbins
+
+	const withGaps = _.map(data, (datum, idx) => {
+		if (idx === first) {
+			return {...datum, width: datum.width - halfGap}
+		} else if (idx === last) {
+			return {...datum, x: datum.x +  halfGap, width: datum.width - halfGap}
+		} else {
+			return {...datum, x: datum.x + halfGap, width: datum.width - config.hbin.gap}
+		}
+	});
+
+	return withGaps
+};
+
+// X ticks
+function xTickLabelsPosText(datum) {
+	const text = stringLabel(datum);
+	const cdatum = closeInterval(datum);
+	const x = binMiddle(cdatum);
+	const y = config.xTickLabels.yBaseline;
+	return {
+		text: text,
+		x: x,
+		y: y,
+	}
+}
+
+// Y ticks
+let yAxis = g => {
+	return g
+		.attr("transform", `translate(${config.margin.left}, 0)`)
+		.call(d3.axisLeft(scaleY))
+}
+
+// Apply all data transformations
+function dataToPlot(data, config) {
+	const cdata = _.map(data, closeInterval);
+
+	// Compute hbin
+	let hbins = _.map(cdata, hbinPosDim);
+	hbins = hbinAddGaps(hbins);
+
+	// Compute vbin
+	let vbins = _.map(cdata, vbinPosDim);
+
+	// Labels
+	const labels = _.map(data, xTickLabelsPosText);
+
+	const res = _.zipWith(hbins, vbins, labels, (hbin, vbin, label) => {
+		return {
+			hbin: hbin,
+			vbin: vbin,
+			label: label
+		}
+	})
+
+	return res
+};
+
+
+
+// -- PLOT FUNCTIONS --
+const pdata = dataToPlot(data, config);
+
+const svg = d3.select("#myplot")
+	.append("svg")
+	// Setting the viewBox and not setting the SVG width and height allows for dynamic resizing
+	.attr("viewBox", [0, 0, config.canvas.width, config.canvas.height])
+	.attr("font-family", config.canvas.fontFamily);
+
+
+// Bin groups
+const groups = svg.selectAll("g")
+	.data(pdata)
+	.enter()
+		.append("g");
+
+// .. Draw HBins
+groups.append("rect")
+	.attr("x", d => d.hbin.x)
+	.attr("y", d => d.hbin.y)
+	.attr("width", d => d.hbin.width)
+	.attr("height", d => d.hbin.height);
+
+// .. Draw VBins
+groups.append("rect")
+	.attr("x", d => d.vbin.x)
+	.attr("y", d => d.vbin.y)
+	.attr("width", d => d.vbin.width)
+	.attr("height", d => d.vbin.height)
+	.attr("fill", d => d.vbin.fill);
+
+
+// Draw X ticks
+svg.append("g")
+	.attr("font-size", config.xTickLabels.fontSize)
+	.selectAll("text")
+	.data(pdata)
+	.enter()
+		.append("text")
+		.attr("x", d => d.label.x)
+		.attr("y", d => d.label.y)
+		.attr("text-anchor", config.xTickLabels.textAnchor)
+		.text(d => d.label.text);
+
+
+// Draw Y ticks
+svg.append("g")
+	.call(yAxis)
+	.attr("font-size", config.yTickLabels.fontSize);
+
+
+// Draw X label
+svg.append("text")
+	.attr("text-anchor", "middle")
+	.attr("x", config.xAxisLabel.x)
+	.attr("y", config.xAxisLabel.y)
+	.text(xAxisLabel);
+
+
+// Draw Y label
+svg.append("text")
+	.attr("text-anchor", config.yAxisLabel.textAnchor)
+	.attr("transform", `translate(${config.yAxisLabel.x}, ${config.yAxisLabel.y}) rotate(-90)`)
+	.text(config.yAxisLabel.text);
+
+
+// -- DEBUG --
+if (config.debug) {
+	debug();
 }
 </script>
 </body>
