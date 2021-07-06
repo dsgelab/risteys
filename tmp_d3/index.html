@@ -9,10 +9,7 @@
 <script src="https://d3js.org/d3.v6.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/lodash@4.17.21/lodash.min.js" integrity="sha256-qXBd/EfAdjOA2FGrGAG+b3YBn2tn5A6bhz+LSgYD96k=" crossorigin="anonymous"></script>
 <script>
-// TODO
-// - show count on hover
-
-
+// TODO integrate into Risteys
 
 // TODO remove data
 const ageData = [
@@ -141,7 +138,6 @@ const yearDataMany = [
 ];
 
 const data = ageData;
-
 const xAxisLabel = "Age";
 
 
@@ -162,7 +158,7 @@ config.canvas.fontFamily = "sans-serif";
 config.margin = {};
 config.margin.left = 50; // px
 config.margin.right = 5; // px 
-config.margin.top =  10; // px. Give a little headroom to not truncate text
+config.margin.top =  15; // px. Give a little headroom to not truncate text
 config.margin.bot =  45; // px
 
 // X tick labels
@@ -196,6 +192,20 @@ config.vbinSurface.height = config.vbinSurface.y2 - config.vbinSurface.y1; // px
 config.vbin = {};
 config.vbin.width = 30;  // px
 config.vbin.color = "#1c3d5a";
+
+// Capture bins: transparent area drawn over bins to capture mouse or touch events
+config.capbin = {};
+config.capbin.fillOpacity = 0;
+
+// Background bins
+config.bgbin = {};
+config.bgbin.fill = "#eee";
+
+// Tooltips with numbers
+config.tooltip = {};
+config.tooltip.fontSize = 12;
+config.tooltip.marginTop = 12;  // px. Push the tooltip baseline a bit down so it displays inside the canvas
+config.tooltip.textAnchor = "middle";
 
 // X axis label
 config.xAxisLabel = {};
@@ -242,20 +252,20 @@ function closeInterval(datum) {
 
 
 /* Return x1 and x2 bin positions (on canvas range) given the full set of bins and a specific bin,
- * taking into account the gap between bins.
+ * taking into account the gap between bins by default.
  */
-function binXpos(data, datum) {
+function binXpos(data, datum, withGaps = true) {
 	const first = 0;
 	const last = data.length - 1;
 	const datumIdx = _.indexOf(data, datum);
 	const halfGap = config.hbin.gap / 2;
 
 	let x1 = scaleX(datum.interval.left);
-	if (datumIdx !== first) {
+	if (withGaps && datumIdx !== first) {
 		x1 += halfGap;
 	}
 	let x2 = scaleX(datum.interval.right)
-	if (datumIdx !== last) {
+	if (withGaps && datumIdx !== last) {
 		x2 -= halfGap;
 	}
 
@@ -369,6 +379,27 @@ function hbinPosDim(data) {
 };
 
 
+// capbin: Capture Bin
+function capbinPosDim(data) {
+	return _.map(data, (datum) => {
+		const pos = binXpos(data, datum, withGaps = false);
+		const width = pos.x2 - pos.x1;
+		const height = (
+			(config.vbinSurface.y2 - config.vbinSurface.y1)  // vbinSurface height
+			+ config.hbin.height                             // reach bottom of hbins
+		);
+
+		return {
+			x: pos.x1,
+			y: config.vbinSurface.y1,
+			width: width,
+			height: height,
+			fillOpacity: config.capbin.fillOpacity,
+		}
+	})
+}
+
+
 // X ticks
 function xTickLabelsPosText(data) {
 	const cdata = _.map(data, closeInterval);
@@ -376,7 +407,6 @@ function xTickLabelsPosText(data) {
 		const cdatum = closeInterval(datum);
 		const text = stringLabel(datum);
 		const pos = binXpos(cdata, cdatum);
-		console.log(pos)
 		const x = (pos.x1 + pos.x2) / 2;
 		const y = config.xTickLabels.yBaseline;
 		return {
@@ -394,9 +424,26 @@ let yAxis = g => {
 		.call(d3.axisLeft(scaleY))
 }
 
+// Tooltips
+function tooltipPosDim(data) {
+	return _.map(data, (datum) => {
+		const pos = binXpos(data, datum);
+		const x = (pos.x1 + pos.x2) / 2;
+		return {
+			x: x,
+			y: config.tooltip.marginTop,
+			text: datum.count
+		}
+	})
+}
+
 // Apply all data transformations
 function dataToPlot(data, config) {
+	const ids = _.map(data, (_datum, idx) => `datum${idx}`);
 	const cdata = _.map(data, closeInterval);
+
+	// Compute capbin
+	const capbins = capbinPosDim(cdata);
 
 	// Compute hbin
 	const hbins = hbinPosDim(cdata);
@@ -407,12 +454,21 @@ function dataToPlot(data, config) {
 	// Labels
 	const labels = xTickLabelsPosText(data);
 
-	const res = _.zipWith(hbins, vbins, labels, (hbin, vbin, label) => {
-		return {
-			hbin: hbin,
-			vbin: vbin,
-			label: label
-		}
+	// Tooltips
+	const tooltips = tooltipPosDim(cdata);
+
+	const res = _.zipWith(
+		ids, capbins, hbins, vbins, labels, tooltips,
+		(id, capbin, hbin, vbin, label, tooltip) => {
+			return {
+				id: id,
+				selector: "#" + id,
+				capbin: capbin,
+				hbin: hbin,
+				vbin: vbin,
+				label: label,
+				tooltip: tooltip
+			}
 	})
 
 	return res
@@ -436,6 +492,27 @@ const groups = svg.selectAll("g")
 	.enter()
 		.append("g");
 
+// .. Hover elements (bin background & tooltip)
+const hover = groups.append("g")
+	.attr("id", d => d.id)
+	.style("display", "none");  // hide by default, will be shown on hover
+
+// .. .. Draw the mouse/touch capture area
+hover.append("rect")
+	.attr("x", d => d.capbin.x)
+	.attr("y", d => d.capbin.y)
+	.attr("width", d => d.capbin.width)
+	.attr("height", d => d.capbin.height)
+	.attr("fill", config.bgbin.fill);
+
+// .. .. Draw the tooltip
+hover.append("text")
+	.attr("x", d => d.tooltip.x)
+	.attr("y", d => d.tooltip.y)
+	.attr("font-size", config.tooltip.fontSize)
+	.attr("text-anchor", config.tooltip.textAnchor)
+	.text(d => d.tooltip.text);
+
 // .. Draw HBins
 groups.append("rect")
 	.attr("x", d => d.hbin.x)
@@ -450,6 +527,22 @@ groups.append("rect")
 	.attr("width", d => d.vbin.width)
 	.attr("height", d => d.vbin.height)
 	.attr("fill", d => d.vbin.fill);
+
+// .. Draw (invisible) capture bins
+groups.append("rect")
+	.attr("x", d => d.capbin.x)
+	.attr("y", d => d.capbin.y)
+	.attr("width", d => d.capbin.width)
+	.attr("height", d => d.capbin.height)
+	.attr("fill-opacity", d => d.capbin.fillOpacity)
+	.on("touchstart mouseenter", (_event, d) => {
+		d3.select(d.selector)
+			.style("display", "block");
+	})
+	.on("touchend mouseleave", (_event, d) => {
+		d3.select(d.selector)
+			.style("display", "none")
+	});
 
 
 // Draw X ticks
