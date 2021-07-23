@@ -1,0 +1,109 @@
+<main class="fluid-container">
+  <h1 class="title p-2">Methods</h1>
+
+
+  <article>
+    <h2>Data</h2>
+    <p>Updated information regarding what data is used can be found in the <a href="/changelog">changelog</a> page.</p>
+  </article>
+
+
+  <article>
+    <h2>Data pre-processing</h2>
+
+    <article>
+      <h3 id="time-window">30 day time-window</h3>
+      <p>Events for a given individual and a given phenocode will be merged if they are less than or equal to 30 days apart. For example if an individual as <span class="font-mono">K11_APPENDACUT</span> events at the following dates: 2000-01-01, 2000-01-20, 2000-02-10, 2000-02-28, then all these events will become one at date 2000-01-01.</p>
+      <p>This is done as an attempt to remove events that are follow-ups rather than initial diagnoses.</p>
+    </article>
+  </article>
+
+  <article>
+    <h2>Statistics</h2>
+
+    <article>
+      <h3>Unadjusted prevalence</h3>
+      <p>Number of individuals having at least one event for a given phenocode, divided by the total number of individuals in the FinnGen study. No adjustment is done to account for the difference between the age distribution of the FinnGen cohort and the one of the Finnish population.</p>
+    </article>
+
+    <article>
+      <h3>Mortality</h3>
+      <p>The implementation of the mortality statistics makes use of:</p>
+      <ul>
+        <li><a href="https://www.stata.com/meeting/nordic-and-baltic16/slides/norway16_johansson.pdf" target="_blank" rel="noopener noreferrer external">Case-cohort design</a></li>
+        <li><a href="https://plana-ripoll.github.io/NB-COMO/" target="_blank" rel="noopener noreferrer external">Cox model with lagged hazard-ratio</a></li>
+      </ul>
+      <h4>Hazard Ratios (HR), p &amp; N</h4>
+      <p>
+        The model used is: <span class="font-mono">y ~ prior endpoint + birth year + sex</span>
+      </p>
+      <p>If the endpoint is sex-specific, then the <span class="font-mono">sex</span> covariate is removed from the model.</p>
+      <p>Lagged hazard ratios are computed by considering only up to 1, 5, and 15 years of exposed time.</p>
+      <p>The regression are done using the <a href="https://lifelines.readthedocs.io/" target="_blank" rel="noopener noreferrer external">lifelines</a> library.</p>
+      <h4 id="mortality-absolute-risk">Absolute Risk (AR)</h4>
+      <p>The absolute risk represents the probability of dying. It is defined as <span class="font-mono">AR = 1 - survival_probability</span>.
+        The survival probability is derived from the fitted Cox model with the following parameters:
+      <ul>
+        <li>year of birth: 1959</li>
+        <li>sex ratio: 50%</li>
+      </ul>
+    </article>
+  </article>
+
+  <article>
+    <h2>Survival analyses between phenocodes</h2>
+    <p>Most of the study follows the <a href="https://plana-ripoll.github.io/NB-COMO/" target="_blank" rel="noopener noreferrer external">NB-COMO study</a>.</p>
+    <article>
+      <h3>Data pre-processing</h3>
+      <ul>
+        <li>Start of study: 1998-01-01</li>
+        <li>End of study: 2018-12-31</li>
+        <li>Prevalent cases removed from the study.</li>
+        <li>Ignore time before start of study for individuals having the prior-phenocode before the study starts.</li>
+        <li>Split time in unexposed and exposed periods.</li>
+        <li>Only consider endpoint pairs:
+          <ul>
+            <li>with at least 10 individuals for each cell of the contingency table of this endpoint pair.</li>
+            <li>with at least 25 individuals having the outcome endpoint.</li>
+            <li>where ICDs of both endpoints as well as there parents don't overlap.</li>
+            <li>where endpoints are not descendants of one another in the endpoint tree hierarchy.</li>
+          </ul>
+        </li>
+      </ul>
+    </article>
+    <article>
+      <h3>Cox regression</h3>
+      <p>The model used is: <span class="font-mono">y ~ prior + birth_year + sex</span></p>
+      <p>If the endpoint is sex-specific, then the <span class="font-mono">sex</span> covariate is removed from the model.</p>
+      <p>Lagged hazard ratios are computed by considering only up to 1, 5, and 15 years of exposed time.</p>
+      <p>The regression are done using the <a href="https://lifelines.readthedocs.io/" target="_blank" rel="noopener noreferrer external">lifelines</a> library.</p>
+    </article>
+    <article>
+      <h3>Notes</h3>
+      <p>Due to the sensitive nature of the data, the age when entering and leaving the study has an accuracy of 1 year.</p>
+    </article>
+  </article>
+
+  <article id="drug-stats">
+    <h2>Drug Statistics</h2>
+    <p>The drug score is computed in a 2-step process:</p>
+    <ol>
+      <li>Fit the data to the logistic model:<br>
+        <span class="font-mono">y ~ sex + year-of-birth + year-of-birth^2 + year-at-endpoint + year-at-endpoint^2</span><br>
+      </li>
+      <li>Use the fitted model to predict the probability for the following data:
+        <ul>
+          <li><span class="font-mono">sex = 0.5</span>, assume an even number of females and males.</li>
+          <li><span class="font-mono">year-of-birth = 1960</span>, the mean year of birth of the FinnGen cohort.</li>
+          <li><span class="font-mono">year-at-endpoint = 2018</span>, predict the probability at the end of the study.</li>
+        </ul>
+      </li>
+    </ol>
+    <p>The resulting probability value is the drug score. The highest the drug score is, the more likely the drug is to be taken after the given endpoint.</p>
+  </article>
+
+  <article>
+    <h2>Source code</h2>
+    <p>Availabe on <a href="https://github.com/dsgelab/risteys/" target="_blank" rel="noopener noreferrer external">GitHub</a> for both the data processing pipeline and the website.</p>
+  </article>
+</main>
