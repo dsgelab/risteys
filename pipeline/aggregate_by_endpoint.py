@@ -43,6 +43,9 @@ def main(input_path, output_path):
     df_fevent = pd.read_hdf(input_path, "/first_event")
     stats = pd.DataFrame()
 
+    # Get the latest year of events in the data
+    max_year = df_fevent.YEAR.max()
+
     # Building up the aggregated statisitcs by endpoint
     stats = compute_prevalence(df_fevent, stats)
     stats.to_hdf(output_path, "/stats")
@@ -54,7 +57,7 @@ def main(input_path, output_path):
     distrib_age = compute_age_distribution(df_fevent)
     logger.debug("Writing age distribution to HDF5")
 
-    distrib_year = compute_year_distribution(df_fevent)
+    distrib_year = compute_year_distribution(df_fevent, max_year)
     logger.debug("Writing year distribution to HDF5")
 
     # Checking that we don't miss any column with individual-level data
@@ -169,10 +172,11 @@ def compute_age_distribution(df):
     return compute_distrib(df, "AGE", brackets)
 
 
-def compute_year_distribution(df):
+def compute_year_distribution(df, max_year):
     """Compute the events year distribution for each endpoint"""
     logger.info("Computing year distributions")
-    brackets = [np.NINF, 1970, 1975, 1980, 1985, 1990, 1995, 2000, 2005, 2010, 2015, np.inf]
+    year_limit = max_year + 1  # the limit will be excluded, so we increment max_year to include it
+    brackets = [np.NINF, 1970, 1975, 1980, 1985, 1990, 1995, 2000, 2005, 2010, 2015, year_limit]
     df = compute_distrib(df, "YEAR", brackets)
     return df
 
