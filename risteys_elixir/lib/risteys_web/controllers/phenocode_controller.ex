@@ -4,7 +4,6 @@ defmodule RisteysWeb.PhenocodeController do
   alias Risteys.{
     Repo,
     ATCDrug,
-    CoxHR,
     DrugStats,
     FGEndpoint,
     MortalityStats,
@@ -26,42 +25,6 @@ defmodule RisteysWeb.PhenocodeController do
 
       phenocode ->
         show_phenocode(conn, phenocode)
-    end
-  end
-
-  def get_assocs_json(conn, params) do
-    get_assocs(conn, params, :json)
-  end
-
-  def get_assocs_csv(conn, params) do
-    get_assocs(conn, params, :csv)
-  end
-
-  defp get_assocs(conn, %{"name" => name}, format) do
-    # Set filename to have the endpoint name, for clarity to the users once the file is downloaded
-    conn = set_filename(conn, name <> "_survival-analyses.csv")
-
-    phenocode = Repo.get_by(Phenocode, name: name)
-    assocs = data_assocs(phenocode)
-
-    conn =
-      conn
-      |> assign(:phenocode, phenocode)
-      |> assign(:assocs, assocs)
-
-    case format do
-      :json ->
-        # These are only needed on the JSON API
-        prior_distribs = hr_prior_distribs(phenocode)
-        outcome_distribs = hr_outcome_distribs(phenocode)
-
-        conn
-        |> assign(:hr_prior_distribs, prior_distribs)
-        |> assign(:hr_outcome_distribs, outcome_distribs)
-        |> render("assocs.json")
-
-      :csv ->
-        render(conn, "assocs.csv")
     end
   end
 
@@ -166,7 +129,6 @@ defmodule RisteysWeb.PhenocodeController do
     |> assign(:description, description)
     |> assign(:outpat_bump, phenocode.outpat_bump)
     |> assign(:mortality, mortality_stats)
-    |> assign(:data_assocs, data_assocs(phenocode))
     |> render("show.html")
   end
 
@@ -208,113 +170,6 @@ defmodule RisteysWeb.PhenocodeController do
 
   defp get_mortality_stats(phenocode) do
     Repo.all(from ms in MortalityStats, where: ms.phenocode_id == ^phenocode.id)
-  end
-
-  defp data_assocs(phenocode) do
-    query =
-      from assoc in CoxHR,
-        join: prior in Phenocode,
-        on: assoc.prior_id == prior.id,
-        join: outcome in Phenocode,
-        on: assoc.outcome_id == outcome.id,
-        where: assoc.prior_id == ^phenocode.id or assoc.outcome_id == ^phenocode.id,
-        order_by: [desc: assoc.hr],
-        select: %{
-          prior_id: prior.id,
-          prior_name: prior.name,
-          prior_longname: prior.longname,
-          prior_category: prior.category,
-          outcome_id: outcome.id,
-          outcome_name: outcome.name,
-          outcome_longname: outcome.longname,
-          outcome_category: outcome.category,
-          lagged_hr_cut_year: assoc.lagged_hr_cut_year,
-          hr: assoc.hr,
-          ci_min: assoc.ci_min,
-          ci_max: assoc.ci_max,
-          pvalue: assoc.pvalue,
-          nindivs: assoc.n_individuals
-        }
-
-    Repo.all(query)
-  end
-
-  defp hr_prior_distribs(phenocode) do
-    # at least that amount for a meaningful distribution
-    min_count = 30
-
-    percs =
-      from c in CoxHR,
-        where: c.lagged_hr_cut_year == 0,
-        select: %{
-          prior_id: c.prior_id,
-          outcome_id: c.outcome_id,
-          percent_rank:
-            fragment(
-              "percent_rank() OVER (PARTITION BY ? ORDER BY ?)",
-              c.prior_id,
-              c.hr
-            )
-        }
-
-    counts =
-      from c in CoxHR,
-        where: c.lagged_hr_cut_year == 0,
-        group_by: c.prior_id,
-        select: %{
-          prior_id: c.prior_id,
-          count: count()
-        }
-
-    Repo.all(
-      from p in subquery(percs),
-        join: cnt in subquery(counts),
-        on: p.prior_id == cnt.prior_id,
-        where: p.outcome_id == ^phenocode.id and cnt.count > ^min_count,
-        select: %{
-          pheno_id: p.prior_id,
-          percent_rank: p.percent_rank
-        }
-    )
-  end
-
-  defp hr_outcome_distribs(phenocode) do
-    # at least that amount for a meaningful distribution
-    min_count = 30
-
-    percs =
-      from c in CoxHR,
-        where: c.lagged_hr_cut_year == 0,
-        select: %{
-          prior_id: c.prior_id,
-          outcome_id: c.outcome_id,
-          percent_rank:
-            fragment(
-              "percent_rank() OVER (PARTITION BY ? ORDER BY ?)",
-              c.outcome_id,
-              c.hr
-            )
-        }
-
-    counts =
-      from c in CoxHR,
-        where: c.lagged_hr_cut_year == 0,
-        group_by: c.outcome_id,
-        select: %{
-          outcome_id: c.outcome_id,
-          count: count()
-        }
-
-    Repo.all(
-      from p in subquery(percs),
-        join: cnt in subquery(counts),
-        on: p.outcome_id == cnt.outcome_id,
-        where: p.prior_id == ^phenocode.id and cnt.count > ^min_count,
-        select: %{
-          pheno_id: p.outcome_id,
-          percent_rank: p.percent_rank
-        }
-    )
   end
 
   defp set_filename(conn, filename) do
