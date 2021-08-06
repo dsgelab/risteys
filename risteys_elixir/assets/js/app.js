@@ -21,8 +21,6 @@ import {plot as varBinPlot} from "./varBinPlot";
 import {drawPlot as drawPlotCumulInc} from "./cumulincPlot";
 import {forEach} from "lodash-es";
 import CorrTable from './CorrTable.vue';
-import AssocPlot from './AssocPlot.vue';
-import AssocTable from './AssocTable.vue';
 import DrugTable from './DrugTable.vue';
 import SearchBox from './SearchBox.vue';
 
@@ -196,7 +194,6 @@ if (path.startsWith("/phenocode/")) {  // Load only on phenocode pages
         });
     });
 
-    /* SURVIVAL CURVES */
     stats_data_channel.push("get_cumulative_incidence", {endpoint: phenocode});  // request plot data
     stats_data_channel.on("data_cumulative_incidence", payload => {
         const color_female = "#9f0065";
@@ -225,34 +222,6 @@ if (path.startsWith("/phenocode/")) {  // Load only on phenocode pages
             drawPlotCumulInc("#cumulinc-plot", data);
         }
     });
-
-
-    /* ASSOC DATA */
-    fetch('/api/phenocode/' + phenocode + '/assocs.json', {
-        cache: 'default',
-        mode: 'same-origin'
-    }).then((response) => {
-        return response.json();
-    }).then((assoc_data) => {
-        /* ASSOC PLOT */
-        new Vue({
-            el: '#assoc-plot',
-            data: {
-                assoc_data: assoc_data["plot"]
-            },
-            components: { AssocPlot },
-        });
-
-        /* ASSOC TABLE */
-        new Vue({
-            el: '#assoc-table',
-            data: {
-                assoc_data: assoc_data["table"]
-            },
-            components: { AssocTable },
-        });
-    });
-
 
     /* DRUG TABLE */
     fetch('/api/phenocode/' + phenocode + '/drugs.json', {
