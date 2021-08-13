@@ -13,7 +13,7 @@ defmodule RisteysWeb.Endpoint do
     at: "/",
     from: :risteys,
     gzip: Application.get_env(:risteys, RisteysWeb.Endpoint, []) |> Keyword.get(:gzip, false),
-    only: ~w(css fonts images js favicon.ico robots.txt)
+    only: ~w(css fonts images js upset_plot table_case_counts favicon.ico robots.txt)
 
   # Code reloading can be explicitly enabled under the
   # :code_reloader configuration of your endpoint.
