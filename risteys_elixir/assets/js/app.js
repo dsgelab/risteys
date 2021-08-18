@@ -16,6 +16,7 @@ import "phoenix_html";
 // Import local files
 //
 // Local files can be imported directly using relative paths, for example:
+import {openDialog, closeDialog} from "./dialog.js";
 import {search_channel, stats_data_channel} from "./socket";
 import {plot as varBinPlot} from "./varBinPlot";
 import {drawPlot as drawPlotCumulInc} from "./cumulincPlot";
@@ -35,6 +36,15 @@ import HelpMortality from './HelpMortality.vue';
 
 
 var path = window.location.pathname;
+
+/*
+ * GLOBALS
+ *
+ * Functions needed when calling from HTML.
+ * By default webpack would get rid of them, we must attach them to "window" to make them available.
+ */
+window.openDialog = openDialog;
+window.closeDialog = closeDialog;
 
 
 /*
