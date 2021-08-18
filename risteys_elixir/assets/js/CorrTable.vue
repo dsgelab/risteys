@@ -64,7 +64,14 @@
 				</div>
 				<div role="cell">{{ corr.case_ratio }}</div>
 				<div role="cell">{{ corr.gws_hits }}</div>
-				<div role="cell">{{ corr.coloc_gws_hits_same_dir }}</div>
+				<div role="cell">
+					<template v-if="corr.coloc_gws_hits_same_dir > 0">
+						<a :href="'#dialog-corr-' + corr.name" :onclick="'openDialog(\'corr-' + corr.name + '\')'">{{ corr.coloc_gws_hits_same_dir }}</a>
+					</template>
+					<template v-else>
+						{{ corr.coloc_gws_hits_same_dir }}
+					</template>
+				</div>
 				<div role="cell">{{ corr.rel_beta }}</div>
 				<div role="cell">{{ corr.coloc_gws_hits_opp_dir }}</div>
 			</div>
