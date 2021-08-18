@@ -6,12 +6,39 @@ import Ecto.Query
 require Logger
 
 Logger.configure(level: :info)
-[pheno_geno_corr_filepath | _] = System.argv()
+[pheno_geno_corr_filepath, geno_variants_filepath | _] = System.argv()
 
 endpoints =
   Repo.all(from pp in Phenocode, select: %{id: pp.id, name: pp.name})
   |> Enum.reduce(%{}, fn %{id: id, name: name}, acc ->
     Map.put_new(acc, name, id)
+  end)
+
+Logger.info("Parsing geno variants")
+
+corr_variants =
+  geno_variants_filepath
+  |> File.stream!()
+  |> CSV.decode!(headers: true)
+  |> Enum.reduce(%{}, fn row, acc ->
+    %{
+      "pheno1" => endpoint_a,
+      "pheno2" => endpoint_b,
+      "variant" => variant
+    } = row
+
+    # Reformat variant to format used in PheWeb URL: CHR-POS-REF-ALT
+    variant =
+      variant
+      |> String.trim_leading("chr")
+      |> String.replace("_", "-")
+
+    Map.update(
+      acc,
+      {endpoint_a, endpoint_b},
+      [variant],
+      fn variants -> [variant | variants] end
+    )
   end)
 
 Logger.info("Import phenotypic+genotypic correlations")
@@ -61,7 +88,7 @@ pheno_geno_corr_filepath
       Logger.warn("Skipping row, B not found: #{endpoint_b}")
 
     _ ->
-      # Update endpoint GWS hits
+      # Update this endpoint GWS hits
       upsert =
         Repo.get(Phenocode, endpoint_a_id)
         |> Phenocode.changeset(%{gws_hits: gws_hits_a})
@@ -76,6 +103,8 @@ pheno_geno_corr_filepath
       end
 
       # Update (a, b) correlations
+      variants = Map.get(corr_variants, {endpoint_a, endpoint_b})
+
       upsert =
         FGEndpoint.upsert_correlation(%{
           phenocode_a_id: endpoint_a_id,
@@ -86,7 +115,8 @@ pheno_geno_corr_filepath
           coloc_gws_hits_same_dir: coloc_gws_hits_same_dir,
           coloc_gws_hits_opp_dir: coloc_gws_hits_opp_dir,
           rel_beta: rel_beta,
-          rel_beta_opp_dir: rel_beta_opp_dir
+          rel_beta_opp_dir: rel_beta_opp_dir,
+          variants: variants
         })
 
       case upsert do

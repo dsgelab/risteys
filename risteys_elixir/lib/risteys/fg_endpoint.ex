@@ -432,4 +432,16 @@ defmodule Risteys.FGEndpoint do
       [data_point | acc]
     end)
   end
+
+  def list_variants_by_correlation(phenocode) do
+    Repo.all(
+      from corr in Correlation,
+      join: pp in Phenocode,
+      on: corr.phenocode_b_id == pp.id,
+      where:
+      corr.phenocode_a_id == ^phenocode.id
+      and not is_nil(corr.variants),
+      select: %{corr_endpoint: pp.name, variants: corr.variants}
+    )
+  end
 end
