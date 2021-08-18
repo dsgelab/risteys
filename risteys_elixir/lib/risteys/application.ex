@@ -29,4 +29,6 @@ defmodule Risteys.Application do
     RisteysWeb.Endpoint.config_change(changed, removed)
     :ok
   end
+
+  {Phoenix.PubSub, [name: Risteys.PubSub, adapter: Phoenix.PubSub.PG2]} # added this line because "The :pubsub key in your RisteysWeb.Endpoint is deprecated."
 end
