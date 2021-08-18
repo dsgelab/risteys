@@ -13,6 +13,7 @@ defmodule Risteys.FGEndpoint.Correlation do
     field :coloc_gws_hits_opp_dir, :integer
     field :rel_beta, :float
     field :rel_beta_opp_dir, :float
+    field :variants, {:array, :string}
 
     timestamps()
   end
@@ -29,7 +30,8 @@ defmodule Risteys.FGEndpoint.Correlation do
       :coloc_gws_hits_same_dir,
       :coloc_gws_hits_opp_dir,
       :rel_beta,
-      :rel_beta_opp_dir
+      :rel_beta_opp_dir,
+      :variants
     ])
     |> validate_required([])
     |> validate_number(:case_ratio, greater_than_or_equal_to: 0.0, less_than_or_equal_to: 1.0)

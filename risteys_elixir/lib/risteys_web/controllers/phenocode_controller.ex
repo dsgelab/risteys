@@ -149,6 +149,9 @@ defmodule RisteysWeb.PhenocodeController do
     # Mortality stats
     mortality_stats = get_mortality_stats(phenocode)
 
+    # Variants in correlations
+    variants_by_corr = FGEndpoint.list_variants_by_correlation(phenocode)
+
     # TMP quickfix
     distrib_year = %{}
     distrib_age = %{}
@@ -167,6 +170,7 @@ defmodule RisteysWeb.PhenocodeController do
     |> assign(:outpat_bump, phenocode.outpat_bump)
     |> assign(:mortality, mortality_stats)
     |> assign(:data_assocs, data_assocs(phenocode))
+    |> assign(:variants_by_corr, variants_by_corr)
     |> render("show.html")
   end
 
