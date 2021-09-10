@@ -1,5 +1,7 @@
 defmodule RisteysWeb.AuthController do
   use RisteysWeb, :controller
+  alias RisteysWeb.Router.Helpers, as: Routes
+
   plug Ueberauth
 
   def callback(%{assigns: %{ueberauth_failure: _fails}} = conn, _params) do
@@ -11,12 +13,14 @@ defmodule RisteysWeb.AuthController do
 
   def callback(%{assigns: %{ueberauth_auth: %{info: info}}} = conn, _params) do
     if authz?(info) do
-      IO.puts(">> OK!")
+      # Redirect the user to the endpoint they were on before logging in
+      %{fg_endpoint: fg_endpoint} = get_session(conn, :redir_state)
+      pheno = Routes.phenocode_path(conn, :show, fg_endpoint)
+      Phoenix.Controller.redirect(conn, to: pheno)
     else
       IO.puts("--- NOPE")
+      conn
     end
-
-    conn
   end
 
   defp authz?(info) do
