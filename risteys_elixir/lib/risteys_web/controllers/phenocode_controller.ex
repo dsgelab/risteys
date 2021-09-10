@@ -25,8 +25,9 @@ defmodule RisteysWeb.PhenocodeController do
         |> render("404.html")
 
       phenocode ->
-	conn = save_redir_state(conn, params)
-        show_phenocode(conn, phenocode)
+	conn
+	|> save_redir_state(params)
+	|> show_phenocode(phenocode)
     end
   end
 
