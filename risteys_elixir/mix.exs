@@ -44,6 +44,7 @@ defmodule Risteys.MixProject do
       {:jason, "~> 1.0"},
       {:plug_cowboy, "~> 2.0"},
       {:csv, "~> 2.3"},
+      {:ueberauth_google, "~> 0.10"},
     ]
   end
 
