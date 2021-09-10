@@ -25,6 +25,7 @@ defmodule RisteysWeb.Router do
   scope "/auth", RisteysWeb do
     pipe_through :browser
 
+    get "/:provider/set_redir/:fg_endpoint", AuthController, :set_redir
     get "/:provider", AuthController, :request
     get "/:provider/callback", AuthController, :callback
   end

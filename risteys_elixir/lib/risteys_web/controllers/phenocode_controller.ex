@@ -25,18 +25,8 @@ defmodule RisteysWeb.PhenocodeController do
         |> render("404.html")
 
       phenocode ->
-	conn
-	|> save_redir_state(params)
-	|> show_phenocode(phenocode)
+	show_phenocode(conn, phenocode)
     end
-  end
-
-  defp save_redir_state(conn, params) do
-    # Keep track of where the user is so we can redirect them to the
-    # right place, for example after they have logged in.
-    %{"name" => name} = params
-    state = %{fg_endpoint: name}
-    put_session(conn, :redir_state, state)
   end
 
   def get_assocs_json(conn, params) do

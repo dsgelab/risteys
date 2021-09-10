@@ -4,6 +4,14 @@ defmodule RisteysWeb.AuthController do
 
   plug Ueberauth
 
+  def set_redir(conn, %{"provider" => provider, "fg_endpoint" => fg_endpoint} = params) do
+    state = %{fg_endpoint: fg_endpoint}
+    conn = put_session(conn, :redir_state, state)
+
+    auth = Routes.auth_path(conn, :request, provider)
+    Phoenix.Controller.redirect(conn, to: auth)
+  end
+
   def callback(%{assigns: %{ueberauth_failure: _fails}} = conn, _params) do
     # TODO what to do when fails
     IO.inspect(">>>> AUTHN FAILED")
