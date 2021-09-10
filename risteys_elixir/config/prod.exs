@@ -70,6 +70,24 @@ config :logger, level: :info
 # Note you can't rely on `System.get_env/1` when using releases.
 # See the releases documentation accordingly.
 
+# Google OAuth authentication
+config :ueberauth, Ueberauth,
+  providers: [
+    google: {
+      Ueberauth.Strategy.Google,
+      [
+	hd: "finngen.fi",  # preselects the @finngen.fi account on Google screen
+	default_scope: "email",  # ask for the minimum needed info
+      ]
+    }
+  ]
+
+# Google OAuth client credentials must NOT be written here.
+# We use environment variables instead.
+config :ueberauth, Ueberauth.Strategy.Google.OAuth,
+  client_id: System.get_env("GOOGLE_CLIENT_ID"),
+  client_secret: System.get_env("GOOGLE_CLIENT_SECRET")
+
 # Finally import the config/prod.secret.exs which should be versioned
 # separately.
 import_config "prod.secret.exs"

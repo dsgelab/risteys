@@ -149,6 +149,21 @@ defmodule RisteysWeb.PhenocodeController do
     # Mortality stats
     mortality_stats = get_mortality_stats(phenocode)
 
+    # Variants in correlations
+    authz_list_variants? =
+      case get_session(conn, :user_is_authz) do
+        # authz is nil when login was never done
+        nil -> false
+        authz -> authz
+      end
+
+    variants_by_corr =
+      if authz_list_variants? do
+        FGEndpoint.list_variants_by_correlation(phenocode)
+      else
+        []
+      end
+
     conn
     |> assign(:endpoint, phenocode)
     |> assign(:page_title, phenocode.name)
@@ -162,6 +177,7 @@ defmodule RisteysWeb.PhenocodeController do
     |> assign(:description, description)
     |> assign(:mortality, mortality_stats)
     |> assign(:data_assocs, data_assocs(phenocode))
+    |> assign(:authz_list_variants?, authz_list_variants?)
     |> assign(:variants_by_corr, variants_by_corr)
     |> render("show.html")
   end
