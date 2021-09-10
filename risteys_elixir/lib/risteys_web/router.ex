@@ -22,6 +22,13 @@ defmodule RisteysWeb.Router do
     get "/phenocode/:name", PhenocodeController, :show
   end
 
+  scope "/auth", RisteysWeb do
+    pipe_through :browser
+
+    get "/:provider", AuthController, :request
+    get "/:provider/callback", AuthController, :callback
+  end
+
   scope "/api", RisteysWeb do
     pipe_through :api
 
