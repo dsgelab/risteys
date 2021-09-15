@@ -66,7 +66,7 @@
 				<div role="cell">{{ corr.gws_hits }}</div>
 				<div role="cell">
 					<template v-if="corr.coloc_gws_hits_same_dir > 0">
-						<a :href="'#dialog-corr-' + corr.name" :onclick="'openDialog(\'corr-' + corr.name + '\')'">{{ corr.coloc_gws_hits_same_dir }}</a>
+						<a :href="'#dialog-corr-' + corr.name" v-on:click="openDialogAuthz(corr.name)">{{ corr.coloc_gws_hits_same_dir }}</a>
 					</template>
 					<template v-else>
 						{{ corr.coloc_gws_hits_same_dir }}
@@ -171,7 +171,8 @@ export default {
 		};
 	},
 	props: {
-		rows: Array
+		rows: Array,
+		authz: Boolean,
 	},
 	methods: {
 		refreshTable() {
@@ -182,6 +183,16 @@ export default {
 				return "bg-grey-lightest"
 			} else {
 				return "bg-white"
+			}
+		},
+		openDialogAuthz(corrName) {
+			const dialogIdCorr = 'corr-' + corrName;
+			const dialogIdAuthn = 'user-authn';
+
+			if (this.authz) {
+				openDialog(dialogIdCorr);
+			} else {
+				openDialog(dialogIdAuthn);
 			}
 		}
 	},
