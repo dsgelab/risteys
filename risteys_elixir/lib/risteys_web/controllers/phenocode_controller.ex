@@ -25,7 +25,7 @@ defmodule RisteysWeb.PhenocodeController do
         |> render("404.html")
 
       phenocode ->
-	show_phenocode(conn, phenocode)
+        show_phenocode(conn, phenocode)
     end
   end
 
@@ -150,7 +150,19 @@ defmodule RisteysWeb.PhenocodeController do
     mortality_stats = get_mortality_stats(phenocode)
 
     # Variants in correlations
-    variants_by_corr = FGEndpoint.list_variants_by_correlation(phenocode)
+    authz_list_variants? =
+      case get_session(conn, :user_is_authz) do
+        # authz is nil when login was never done
+        nil -> false
+        authz -> authz
+      end
+
+    variants_by_corr =
+      if authz_list_variants? do
+        FGEndpoint.list_variants_by_correlation(phenocode)
+      else
+        []
+      end
 
     # TMP quickfix
     distrib_year = %{}
@@ -170,6 +182,7 @@ defmodule RisteysWeb.PhenocodeController do
     |> assign(:outpat_bump, phenocode.outpat_bump)
     |> assign(:mortality, mortality_stats)
     |> assign(:data_assocs, data_assocs(phenocode))
+    |> assign(:authz_list_variants?, authz_list_variants?)
     |> assign(:variants_by_corr, variants_by_corr)
     |> render("show.html")
   end
