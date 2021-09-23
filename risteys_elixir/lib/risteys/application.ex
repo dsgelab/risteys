@@ -8,6 +8,9 @@ defmodule Risteys.Application do
   def start(_type, _args) do
     # List all child processes to be supervised
     children = [
+      # Start the PubSub system
+      {Phoenix.PubSub, name: Risteys.PubSub},
+
       # Start the Ecto repository
       Risteys.Repo,
 
