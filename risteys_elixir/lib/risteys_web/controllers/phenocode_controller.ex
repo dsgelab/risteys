@@ -149,10 +149,6 @@ defmodule RisteysWeb.PhenocodeController do
     # Mortality stats
     mortality_stats = get_mortality_stats(phenocode)
 
-    # TMP quickfix
-    distrib_year = %{}
-    distrib_age = %{}
-
     conn
     |> assign(:endpoint, phenocode)
     |> assign(:page_title, phenocode.name)
