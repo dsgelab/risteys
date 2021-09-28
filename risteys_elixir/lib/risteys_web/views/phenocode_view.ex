@@ -189,30 +189,6 @@ defmodule RisteysWeb.PhenocodeView do
   end
 
   # -- Stats --
-  defp distrib_values(distrib) do
-    if is_nil(distrib) do
-      []
-    else
-      for [[interval_left, interval_right], val] <- distrib do
-        val = if is_nil(val), do: "NaN", else: val
-
-        interval =
-          case {interval_left, interval_right} do
-            {nil, _} ->
-              "up to " <> to_string(interval_right)
-
-            {_, nil} ->
-              to_string(interval_left) <> " and up"
-
-            {_, _} ->
-              to_string(interval_left) <> "–" <> to_string(interval_right)
-          end
-
-        [interval, val]
-      end
-    end
-  end
-
   defp mortality_table(stats) do
     lags = [
       {0, "1998–2019"},
