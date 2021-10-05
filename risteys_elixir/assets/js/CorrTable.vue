@@ -165,7 +165,7 @@ function displayTable(rows, endpoint_filter, sorter) {
 export default {
 	data() {
 		return {
-			sorter: "gws_hits_desc",
+			sorter: "case_ratio_desc",
 			endpoint_filter: "",
 			live_rows: []
 		};
