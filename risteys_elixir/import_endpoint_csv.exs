@@ -84,6 +84,7 @@ end
 Logger.info("Pre-processing endpoint metadata files")
 
 # reads in tagged ordered endpoints file and makes a map, where key is "name" and value is "tag"
+Logger.info("Pre-processing endpoint metadata files")
 tags =
   tagged_path
   |> File.stream!()
