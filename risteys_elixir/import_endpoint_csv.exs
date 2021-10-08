@@ -81,7 +81,7 @@ end
 
 # 1. Get meta information for endpoint processing
 ####
-
+Logger.info("Pre-processing endpoint metadata files")
 tags =
   tagged_path
   |> File.stream!()
@@ -115,6 +115,7 @@ categories =
 
 # 2. Clean-up & Transform endpoints
 ####
+Logger.info("Cleaning-up endpoint from the definition files")
 endpoints_path
 |> File.stream!()
 |> CSV.decode!(headers: true)
@@ -237,7 +238,7 @@ end)
     "CONDITIONS" => conditions
   } = row
 
-  if String.contains?(conditions, ["(", ")"]) do
+  if not is_nil(conditions) and String.contains?(conditions, ["(", ")"]) do
     Logger.warn(
       "Endpoint #{name} has 'conditions' with '(' or ')': it will be incorrectly displayed."
     )
