@@ -7,8 +7,9 @@
 # - the translation file, provided in FinnGen data by Mary Pat, in CSV format
 #   Usually named "finngen_R6_medcode_ref.csv"
 #   Must contain the columns:
-#   . code
-#   . name_en
+#   code_set
+#   code
+#   name_en
 
 require Logger
 alias Risteys.{Repo, Icd10}

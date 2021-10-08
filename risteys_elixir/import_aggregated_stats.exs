@@ -9,20 +9,20 @@
 #
 # {
 #   "stats":
-#   "ENDPOINT XYZ": {
+#   {"ENDPOINT XYZ": {
 #     ...
 #   },
-#   ...
+#   ...},
 #   "distrib_age":
-#   "ENDPOINT XYZ": {
+#   {"ENDPOINT XYZ": {
 #     ...
 #   },
-#   ...
+#   ...},
 #   "distrib_year":
-#   "ENDPOINT XYZ": {
+#   {"ENDPOINT XYZ": {
 #     ...
 #   },
-#   ...
+#   ...}
 # }
 
 alias Risteys.{Repo, Phenocode, StatsSex}
