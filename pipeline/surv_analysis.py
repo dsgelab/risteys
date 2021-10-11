@@ -94,7 +94,7 @@ logger.setLevel(level)
 
 
 STUDY_STARTS = 1998.0  # inclusive
-STUDY_ENDS = 2020.99   # inclusive, using same number format as FinnGen data files
+STUDY_ENDS = 2021.99   # inclusive, using same number format as FinnGen data files
 
 N_SUBCOHORT = 10_000
 
