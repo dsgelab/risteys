@@ -21,7 +21,7 @@ import pandas as pd
 from log import logger
 
 
-EVENT_YEAR_LESS_THAN = 2021
+SAMPLE_YEAR_LESS_THAN = 2022
 
 
 def main(info_path, first_event_path):
@@ -55,11 +55,14 @@ def qc_first_event_file(input_path):
 
 
 def check_year(df):
-    """Check "year" in the data is meaningful.
+    """Check "year" in the minimum info file is valid.
+
+    In the minimum info file, BL_YEAR should be equal or less than the
+    current year.
 
     NOTE: the year will increase as new FinnGen data is released.
     """
-    assert (df.BL_YEAR < EVENT_YEAR_LESS_THAN).all()
+    assert (df.BL_YEAR < SAMPLE_YEAR_LESS_THAN).all()
 
 
 def check_age(df):
