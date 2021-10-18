@@ -160,7 +160,6 @@ defmodule RisteysWeb.PhenocodeController do
     |> assign(:distrib_year, distrib_year)
     |> assign(:distrib_age, distrib_age)
     |> assign(:description, description)
-    |> assign(:outpat_bump, phenocode.outpat_bump)
     |> assign(:mortality, mortality_stats)
     |> assign(:data_assocs, data_assocs(phenocode))
     |> render("show.html")

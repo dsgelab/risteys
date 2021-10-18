@@ -61,9 +61,6 @@ defmodule Risteys.Phenocode do
     field :ontology, {:map, {:array, :string}}
     # Description is populated from the ontology
     field :description, :string
-    # Flag stating if this endpoint has a event count bump in 1998 due
-    # to the introduction of the outpatient registry.
-    field :outpat_bump, :boolean
 
     # Genome-wide significant hits
     field :gws_hits, :integer
@@ -132,7 +129,6 @@ defmodule Risteys.Phenocode do
       :category,
       :ontology,
       :description,
-      :outpat_bump,
       :gws_hits
     ])
     |> validate_required([:name])
