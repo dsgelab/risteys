@@ -78,22 +78,25 @@ end
   "distrib_age" => distrib_age
 } =
   stats_filepath
+  # Returns a binary with the contents of the given filename, or raises a File.Error exception if an error occurs.
+  # "{\"stats\": {\"AB1TUBERCU_MILIARY\":{\"nindivs_all\":33.0,\"nindivs_female\":8.0,\"nindivs_male\":25.0,\"prevalence_all\":0.000102942,\"prevalence_female\":0.0000443698,\"prevalence_male\":0.0001782328,\"mean_age_all\":63.1203030303,\"mean_age_female\":51.95625,\"mean_age_male\":66.6928},\"AB1_ACTINOMYCOSIS\":{\"nindivs_all\":77.0, ...
   |> File.read!()
-  |> Jason.decode!()
+  |> Jason.decode!() # Parses a JSON value from input iodata.
 
 # Add stats to DB
-stats
-|> Enum.each(fn {name, data} ->
+stats # stats from the map???
+|> Enum.each(fn {name, data} -> # goes through each endpoint and its stats
   Logger.info("Processing stats for #{name}")
 
-  phenocode = Repo.get_by(Phenocode, name: name)
+  phenocode = Repo.get_by(Phenocode, name: name) # gets the endpoint name from the phenocodes table in the db
 
   case phenocode do
-    nil ->
+    nil -> # phenocode not found from the db
       Logger.warn("Skipping stats for #{name}: not in DB")
 
-    _ ->
+    _ -> # when phenocode is not nil
       # Import stats for this phenocode
+      # the data for each enpoint in stats has below data -> pattern matching? is used to create a map
       %{
         "nindivs_all" => nindivs_all,
         "nindivs_female" => nindivs_female,
@@ -108,6 +111,11 @@ stats
 
       # Distribution are missing for endpoints with total N in 1..4
       empty_distrib = %{"all" => [], "female" => [], "male" => []}
+
+      # for each endpoint, create a map of year distributions for females, males, and all
+      # by using pattern matching? to match the data from distrib_year map
+      # get(map, key, default \\ nil). -> if endpoint ("name" key) is present in the map (distrib_year),
+      # get the data from the map, otherwise return empty_distrib, i.e. []
       %{
         "all" => distrib_year_all,
         "female" => distrib_year_female,
@@ -125,6 +133,7 @@ stats
       nindivs_female = if is_nil(nindivs_female), do: nil, else: floor(nindivs_female)
       nindivs_male = if is_nil(nindivs_male), do: nil, else: floor(nindivs_male)
 
+      # Import aggregated stats to the db using the stats function
       # sex: all
       # Don't import anything if Nindivs = 0 (really no events with this phenotype) or
       # Nindivs = nil (individual-level data).

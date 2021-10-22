@@ -68,4 +68,4 @@ config :phoenix, :stacktrace_depth, 20
 config :phoenix, :plug_init_mode, :runtime
 
 
-import_config "dev.secret.exs"
+import_config "newristeys_dev.secret.exs"
