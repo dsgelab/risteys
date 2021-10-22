@@ -11,13 +11,14 @@ stats_filepath
 |> File.stream!()
 |> CSV.decode!(headers: true)
 |> Stream.filter(fn %{"endpoint" => pheno} ->
+  # returns true, if phenos mapset contains pheno value, i.e. the endpoint that was read in. if not found, returns false.
   in_pheno = MapSet.member?(phenos, pheno)
 
-  if not in_pheno do
+  if not in_pheno do # when not found, i.e, when in_pheno is false. not false returns true
     Logger.warn("Phenocode #{pheno} not found in DB, skipping.")
   end
 
-  in_pheno
+  in_pheno # when in_pheno is true
 end)
 |> Enum.each(fn %{
                   "endpoint" => pheno,
