@@ -56,7 +56,7 @@ defmodule AssocICDs do
     )
 
     # Add new associations
-    Enum.each(icds, fn icd ->
+    Enum.each(icds, fn icd -> # goes through each icd in icds, where icds is a row in a icd code map?
       Logger.debug("Inserting: #{registry}, ICD-10, #{inspect(icd)}")
       icd_db = Repo.get_by!(Icd10, code: icd)
 
@@ -69,8 +69,8 @@ defmodule AssocICDs do
         nil -> %PhenocodeIcd10{}
         existing -> existing
       end
-      |> PhenocodeIcd10.changeset(%{
-        registry: registry,
+      |> PhenocodeIcd10.changeset(%{ # calls changeset function in PhenocodeIcd10 module
+        registry: registry, # passes values to the function. these are used as atoms within the changeset
         phenocode_id: phenocode.id,
         icd10_id: icd_db.id
       })
@@ -82,14 +82,18 @@ end
 # 1. Get meta information for endpoint processing
 ####
 Logger.info("Pre-processing endpoint metadata files")
+
+# reads in tagged ordered endpoints file and makes a map, where key is "name" and value is "tag"
 tags =
   tagged_path
   |> File.stream!()
   |> CSV.decode!(headers: true)
-  |> Enum.reduce(%{}, fn %{"TAG" => tag, "NAME" => name}, acc ->
-    Map.put(acc, name, tag)
+  |> Enum.reduce(%{}, fn %{"TAG" => tag, "NAME" => name}, acc -> # takes the data from the previous step and creates a map
+    Map.put(acc, name, tag) # Puts the given value (tag) under key (name) in map (acc)
   end)
 
+# reads in categories/ taglist file and makes a map, where key is "tag" and
+# value is the value in "CHAPTER" column, if avalilable, otherwise value in "OTHER" column
 categories =
   categories_path
   |> File.stream!()
@@ -105,6 +109,8 @@ categories =
     Map.put(acc, tag, category)
   end)
 
+# makes a tuple containing icd10s, map_undotted_dotted, map_child_parent, and map_parent_children,
+# which are returned from the init_parser function
 {
   icd10s,
   map_undotted_dotted,

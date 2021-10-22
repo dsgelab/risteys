@@ -22,8 +22,8 @@ defmodule Risteys.Icd10 do
   # Get info on ICD-10 from the source file and transform it into
   # appropriate data structures.
   # Dotted ICD-10s as input, undotted ICD-10s as output.
-  def init_parser(file_path) do
-    map_undotted_dotted =
+  def init_parser(file_path) do # called from import_endpoint_csv.exs with icd10fi_file_path as an argument
+    map_undotted_dotted = # a map, where keys are undotted ICD-10s and values are dotted ICD-10s
       file_path
       |> File.stream!()
       |> CSV.decode!(headers: true)
@@ -32,8 +32,10 @@ defmodule Risteys.Icd10 do
         Map.put(acc, undotted, dotted)
       end)
 
+    # saves to icd10s variable all keys from map_undotted_dotted, i.e. undotted ICD-10s
     icd10s = Map.keys(map_undotted_dotted)
 
+    # map, key "child" is value of "CodeId" column and value "parent" is value of "ParentId" column, from which dots are removed
     map_child_parent =
       file_path
       |> File.stream!()
@@ -44,10 +46,11 @@ defmodule Risteys.Icd10 do
         Map.put(acc, child, parent)
       end)
 
+    # ????? a map, key "parent" is the value of "ParentId" column and value is a MapSet data structure of values in "CodeId" column????
     map_parent_children =
       Enum.reduce(map_child_parent, %{}, fn {child, parent}, acc ->
         Map.update(acc, parent, MapSet.new([child]), fn set ->
-          MapSet.put(set, child)
+          MapSet.put(set, child) # adds child to set if not already there
         end)
       end)
 
