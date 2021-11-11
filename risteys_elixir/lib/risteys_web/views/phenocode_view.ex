@@ -110,13 +110,22 @@ defmodule RisteysWeb.PhenocodeView do
     |> Enum.reject(fn {_col, val} -> is_nil(val) end)
   end
 
-  defp cell_icd10(rule, expanded) do
-    max_icds = 10
+  defp cell_icd10(filter, key_orig_rule, key_expanded) do
+    if Map.has_key?(filter, key_expanded) do
+      %{
+        ^key_orig_rule => orig_rule,
+        ^key_expanded => expanded_rule
+      } = filter
 
-    if length(expanded) > 0 and length(expanded) <= max_icds do
-      render_icds(expanded, true)
+      max_icds = 10
+
+      if length(expanded_rule) > 0 and length(expanded_rule) <= max_icds do
+        render_icds(expanded_rule, true)
+      else
+        orig_rule
+      end
     else
-      rule
+      filter[key_orig_rule]
     end
   end
 
@@ -140,12 +149,13 @@ defmodule RisteysWeb.PhenocodeView do
 
   defp relative_count(steps, count) do
     # Compute the percentage of the given count across meaningful steps
-    check_steps = MapSet.new([
-      :filter_registries,
-      :precond_main_mode_icdver,
-      :min_number_events,
-      :includes
-    ])
+    check_steps =
+      MapSet.new([
+        :filter_registries,
+        :precond_main_mode_icdver,
+        :min_number_events,
+        :includes
+      ])
 
     max =
       steps
