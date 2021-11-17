@@ -80,8 +80,8 @@ end
   stats_filepath
   # Returns a binary with the contents of the given filename, or raises a File.Error exception if an error occurs.
   # "{\"stats\": {\"AB1TUBERCU_MILIARY\":{\"nindivs_all\":33.0,\"nindivs_female\":8.0,\"nindivs_male\":25.0,\"prevalence_all\":0.000102942,\"prevalence_female\":0.0000443698,\"prevalence_male\":0.0001782328,\"mean_age_all\":63.1203030303,\"mean_age_female\":51.95625,\"mean_age_male\":66.6928},\"AB1_ACTINOMYCOSIS\":{\"nindivs_all\":77.0, ...
-  |> File.read!()
-  |> Jason.decode!() # Parses a JSON value from input iodata.
+  |> File.read!() # asking OS to open the file to access the file reading content
+  |> Jason.decode!() # Parses a JSON value from input iodata. read the file as JSON and convert values to values that can be used in Elixir
 
 # Add stats to DB
 stats # stats from the map???
