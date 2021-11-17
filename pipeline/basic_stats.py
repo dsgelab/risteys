@@ -427,9 +427,8 @@ def main():
     # logger.info(f"Writing out data to JSON in file {output_path}")
     output = f'{{"stats": {agg_stats}, "distrib_age": {distrib_age}, "distrib_year": {distrib_year}}}'
     # format date
-    today = datetime.datetime.today()
-    date = '{}-{}-{}'.format(today.year, today.month, today.day)
-    with open('finregistry_stats__'+date+'.json', "x") as f:
+    today = datetime.datetime.today().strftime("%Y-%m-%d")
+    with open('finregistry_stats__'+today+'.json', "x") as f:
         f.write(output)
 
     end = datetime.datetime.now()
