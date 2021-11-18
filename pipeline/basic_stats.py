@@ -17,7 +17,7 @@ from collections import defaultdict
 
 # data path
 first_event_path = '/data/processed_data/endpointer/main/finngen_endpoints_04-09-2021_v3.densified_OMITs.txt'
-info_path = '/data/notebooks/minimal_phenotype_file.csv'
+info_path = '/data/notebooks/mpf/minimal_phenotype_file.csv'
 
 # Values which are considered individual-level data
 INDIV_LEVELS = {1, 2, 3, 4}
