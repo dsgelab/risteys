@@ -41,8 +41,8 @@ defmodule Risteys.FGEndpoint do
         data: parse_registry_filters(endpoint)
       },
       %{
-        name: :precond_main_mode_icdver,
-        data: parse_quad(endpoint)
+        name: :multi,
+        data: parse_multi(endpoint)
       },
       %{
         name: :min_number_events,
@@ -176,37 +176,37 @@ defmodule Risteys.FGEndpoint do
     Map.merge(defaults, expanded)
   end
 
-  defp parse_quad(endpoint) do
-    quad = %{}
+  defp parse_multi(endpoint) do
+    multi = %{}
     mode = parse_mode(endpoint)
     only_icdver = parse_icdver(endpoint)
 
-    quad =
+    multi =
       case endpoint.pre_conditions do
         nil ->
-          quad
+          multi
 
         _ ->
-          Map.put(quad, :precond, endpoint.pre_conditions)
+          Map.put(multi, :precond, endpoint.pre_conditions)
       end
 
-    quad =
+    multi =
       case parse_main_only(endpoint) do
-        false -> quad
-        main_only -> Map.put(quad, :main_only, main_only)
+        false -> multi
+        main_only -> Map.put(multi, :main_only, main_only)
       end
 
-    quad =
+    multi =
       if Enum.empty?(mode) do
-        quad
+        multi
       else
-        Map.put(quad, :mode, mode)
+        Map.put(multi, :mode, mode)
       end
 
     if Enum.empty?(only_icdver) do
-      quad
+      multi
     else
-      Map.put(quad, :only_icdver, only_icdver)
+      Map.put(multi, :only_icdver, only_icdver)
     end
   end
 
