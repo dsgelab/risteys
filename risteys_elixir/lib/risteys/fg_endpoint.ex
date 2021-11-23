@@ -290,6 +290,15 @@ defmodule Risteys.FGEndpoint do
     end)
   end
 
+  # -- Handle excluded endpoints --
+  def test_exclusion(endpoint_name) do
+    endpoint = Repo.get_by!(Phenocode, name: endpoint_name)
+    excl = endpoint.fr_excl
+
+    %{excl: excl}
+  end
+
+
   # -- Histograms --
   defp get_histograms(endpoint_name) do
     endpoint = Repo.get_by!(Phenocode, name: endpoint_name)

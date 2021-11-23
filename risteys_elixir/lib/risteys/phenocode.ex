@@ -65,6 +65,9 @@ defmodule Risteys.Phenocode do
     # Genome-wide significant hits
     field :gws_hits, :integer
 
+    # exclusion reason for FinRegistry enpoints. nil = not exluded
+    field :fr_excl, :string
+
     many_to_many :icd10s, Risteys.Icd10,
       join_through: Risteys.PhenocodeIcd10,
       # Delete ICD-10s not included in the update
@@ -129,7 +132,8 @@ defmodule Risteys.Phenocode do
       :category,
       :ontology,
       :description,
-      :gws_hits
+      :gws_hits,
+      :fr_excl
     ])
     |> validate_required([:name])
     |> validate_change(:ontology, fn :ontology, ontology ->
