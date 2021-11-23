@@ -17,7 +17,10 @@ ep_path = '/data/processed_data/endpointer/main/FINNGEN_ENDPOINTS_DF8_Final_2021
 STUDY_STARTS = 1998.0 #datetime.datetime(1998,1,1)  # inclusive
 STUDY_ENDS = 2020.99 #datetime.datetime(2020,12,31)   # inclusive, using same number format as FinnGen data files
 
-N_SUBCOHORT = 1_300_000
+# number of individuals ramdomly selected from the cases and the full cohort
+N_CASES = 250_000
+N_COHORT = 500_000
+
 # Minimum number of individuals having both the endpoint and died,
 # this must be > 5 to not be deemed as containing individual-level data.
 MIN_INDIVS = 100
@@ -85,7 +88,8 @@ def load_data(first_event_path, info_path, ep_path):
 	###############3df_info = df_info.drop(columns=["sex", "date_of_birth"])
 
 	# set age at start and end of study for each indiv
-	df_info["START_AGE"] = STUDY_STARTS - df_info.BIRTH_TYEAR
+	# if one is born after the study start date, set the start age as 0.0
+	df_info["START_AGE"] = df_info.apply(lambda r: max(STUDY_STARTS - r.BIRTH_TYEAR, 0.0), axis=1)
 
 	# add death age to df_info
 	deaths = (
@@ -112,21 +116,225 @@ def load_data(first_event_path, info_path, ep_path):
 	# add a column for outcome
 	df_info['death_bool'] = ~df_info.DEATH_AGE.isna()
 
-	# filter out all the individuals who are born after STUDY_START
-	df_info = df_info[df_info.START_AGE >= 0] 
+	# # filter out all the individuals who are born after STUDY_START
+	# df_info = df_info[df_info.START_AGE >= 0] 
 
 	# clean the dataframe
 	df_info = df_info.drop(columns=['FINNGENID'])
 	df_info = df_info.rename({'FINREGISTRYID':'FINNGENID'}, axis='columns')
 	df_info = df_info[['FINNGENID','female','BIRTH_TYEAR','START_AGE','END_AGE','death_bool']]
 
+	# remove duplicates
+	df_info = df_info.drop_duplicates()
+
 	# get endpoints and if they are sex specified
 	endpoints = pd.read_excel(ep_path, sheet_name='Sheet 1', usecols=['NAME','SEX'])  # 4632
 	omited_eps = df_events.ENDPOINT.unique()
+	# remove all the omited endpoints
 	endpoints = endpoints[endpoints.NAME.isin(omited_eps)]  # 3169
 
 	return df_events, df_info, endpoints
 
+def init_csv(res_file):
+    res_writer = csv_writer(res_file)
+    res_writer.writerow([
+        "endpoint",
+        "lag_hr",
+        "nindivs_prior_later",
+        "absolute_risk",
+        "endpoint_coef",
+        "endpoint_se",
+        "endpoint_hr",
+        "endpoint_ci_lower",
+        "endpoint_ci_upper",
+        "endpoint_pval",
+        "endpoint_zval",
+        "endpoint_norm_mean",
+        "year_coef",
+        "year_se",
+        "year_hr",
+        "year_ci_lower",
+        "year_ci_upper",
+        "year_pval",
+        "year_zval",
+        "year_norm_mean",
+        "sex_coef",
+        "sex_se",
+        "sex_hr",
+        "sex_ci_lower",
+        "sex_ci_upper",
+        "sex_pval",
+        "sex_zval",
+        "sex_norm_mean",
+        # bch: baseline cumulative hazard
+        "bch",
+        "bch_0",
+        "bch_2.5",
+        "bch_5",
+        "bch_7.5",
+        "bch_10",
+        "bch_12.5",
+        "bch_15",
+        "bch_17.5",
+        "bch_20",
+        "bch_21.99"
+    ])
 
+    return res_writer
+
+
+def prep_coxhr(endpoint, df_fevents, df_samples):
+#     logger.info(f"Preparing data before Cox fitting for {endpoint.NAME}")
+
+    df_fevents_ep = df_fevents[df_fevents.ENDPOINT == endpoint.NAME.tolist()[0]][['FINNGENID','AGE','DATE']]
+    df_fevents_ep = df_fevents_t2d[df_fevents_t2d.DATE > 1998.0]
+    df_fevents_ep = df_fevents_ep.rename(columns={"AGE": "ENDPOINT_AGE"}
+
+    # Merge endpoint data with info data
+    df_samples = df_info.merge(df_fevents_ep, on="FINNGENID", how="left")  # left join to keep individuals not having the endpoint
+
+    # Define groups for the unexposed/exposed study
+    exposed = set(df_fevents_ep.FINNGENID)
+    unexp           = samples - exposed - cases
+    unexp_death     = cases - exposed
+    unexp_exp       = exposed - cases
+    unexp_exp_death = exposed & cases
+    assert len(samples) == (len(unexp) + len(unexp_death) + len(unexp_exp) + len(unexp_exp_death))
+
+    # Check that we have enough individuals to do the study
+    nindivs = len(unexp_exp_death)
+    if nindivs < MIN_INDIVS:
+        raise NotEnoughIndividuals(f"Not enough individuals having endpoint({endpoint.NAME}) and death: {nindivs} < {MIN_INDIVS}")
+    elif len(unexp_exp) < MIN_INDIVS:
+        raise NotEnoughIndividuals(f"Not enougth individuals in group: endpoint({endpoint.NAME}) + no death, {len(unexp_exp)} < {MIN_INDIVS}")
+
+    # # Move endpoint to study start if it happened before the study
+    # exposed_before_study = df_sample.ENDPOINT_AGE < df_sample.START_AGE
+    # df_sample.loc[exposed_before_study, "ENDPOINT_AGE"] = df_sample.loc[exposed_before_study, "START_AGE"]
+
+    # Unexposed
+    df_unexp = df_samples.loc[df_samples.FINNGENID.isin(unexp), :].copy()
+    df_unexp["duration"] = df_unexp.END_AGE - df_unexp.START_AGE
+    df_unexp["endpoint"] = False
+    df_unexp["death"] = False
+
+    # Unexposed -> Death
+    df_unexp_death = df_samples.loc[df_samples.FINNGENID.isin(unexp_death), :].copy()
+    df_unexp_death["duration"] = df_unexp_death.END_AGE - df_unexp_death.START_AGE
+    df_unexp_death["endpoint"] = False
+    df_unexp_death["death"] = True
+
+    # Unexposed -> Exposed: need time-window splitting
+    df_unexp_exp = df_samples.loc[df_samples.FINNGENID.isin(unexp_exp), :].copy()
+    # Phase 1: unexposed
+    df_unexp_exp_p1 = df_unexp_exp.copy()
+    df_unexp_exp_p1["duration"] = df_unexp_exp_p1.ENDPOINT_AGE - df_unexp_exp_p1.START_AGE
+    df_unexp_exp_p1["endpoint"] = False
+    df_unexp_exp_p1["death"] = False
+    # Phase 2: exposed
+    df_unexp_exp_p2 = df_unexp_exp.copy()
+    df_unexp_exp_p2["endpoint"] = True
+    for lag, cols in LAG_COLS.items():
+        if lag is None:  # no lag HR
+            duration = df_unexp_exp_p2.END_AGE - df_unexp_exp_p2.ENDPOINT_AGE
+        else:
+            _min_lag, max_lag = lag
+            duration = df_unexp_exp_p2.apply(
+                lambda r: min(r.END_AGE - r.ENDPOINT_AGE, max_lag),
+                axis="columns"
+            )
+        df_unexp_exp_p2[cols["duration"]] = duration
+        df_unexp_exp_p2[cols["death"]] = False
+
+    # Unexposed -> Exposed -> Death: need time-window splitting
+    df_unexp_exp_death = df_samples.loc[df_samples.FINNGENID.isin(unexp_exp_death), :].copy()
+    # Phase 1: unexposed
+    df_unexp_exp_death_p1 = df_unexp_exp_death.copy()
+    df_unexp_exp_death_p1["duration"] = df_unexp_exp_death_p1.ENDPOINT_AGE - df_unexp_exp_death_p1.START_AGE
+    df_unexp_exp_death_p1["endpoint"] = False
+    df_unexp_exp_death_p1["death"] = False
+    # Phase 2: exposed
+    df_unexp_exp_death_p2 = df_unexp_exp_death.copy()
+    df_unexp_exp_death_p2["endpoint"] = True
+    for lag, cols in LAG_COLS.items():
+        if lag is None:
+            duration = df_unexp_exp_death_p2.END_AGE - df_unexp_exp_death_p2.ENDPOINT_AGE
+            death = True
+        else:
+            min_lag, max_lag = lag
+            duration = df_unexp_exp_death_p2.apply(
+                lambda r: min(r.END_AGE - r.ENDPOINT_AGE, max_lag),
+                axis="columns"
+            )
+            death_time = df_unexp_exp_death_p2.END_AGE - df_unexp_exp_death_p2.ENDPOINT_AGE
+            death = (death_time >= min_lag) & (death_time <= max_lag)
+        df_unexp_exp_death_p2[cols["duration"]] = duration
+        df_unexp_exp_death_p2[cols["death"]] = death
+
+#     logger.info("done preparing the data")
+    return (
+        df_unexp,
+        df_unexp_death,
+        df_unexp_exp_p1,
+        df_unexp_exp_p2,
+        df_unexp_exp_death_p1,
+        df_unexp_exp_death_p2
+    )
+
+
+def main():
+    start = datetime.datetime.now()
+
+    # Load input data
+    df_events, df_info, endpoints = load_data(first_event_path, info_path, ep_path)
+
+    # define the samples
+    # all the calculation will be done on basis of this df_sample
+    subcohort = set(df_info.sample(n=N_COHORT).FINNGENID.tolist())
+	cases = set(df_info[df_info.death_bool == True].sample(n=N_CASES).FINNGENID.tolist())
+	samples = cases | subcohort
+
+	df_samples = df_info[df_info.FINNGENID.isin(samples)]
+	df_fevents = df_events[df_events.FINNGENID.isin(samples)]
+    
+	# Define samples for case-cohort design study.
+	# Naming follows Johansson-16 paper.
+	# full_cohort = set(df_events.FINNGENID)
+	full_cohort = set(df_info.FINNGENID)
+	full_cases = set(df_events.loc[df_events.ENDPOINT == "DEATH", "FINNGENID"])
+
+    size = len(df_samples)
+	non_cases = full_cohort - full_cases
+	# cases_in_samples = cases
+	non_cases_in_samples = samples - cases
+
+	sampling_fraction_of_non_cases = len(non_cases_in_samples) / len(non_cases)
+	weight_controls = 1 / sampling_fraction_of_non_cases
+
+	sampling_fraction_of_cases = len(cases) / len(full_cases)
+	weight_cases = 1 / sampling_fraction_of_cases
+
+	# Assign case-cohort weight to each individual
+	df_weights = pd.DataFrame({"FINNGENID": list(samples)})
+	df_weights["weight"] = 1.0
+	df_weights.loc[df_weights.FINNGENID.isin(cases), "weight"] = weight_cases
+	df_weights.loc[df_weights.FINNGENID.isin(non_cases_in_samples), "weight"] = weight_controls
+	df_samples = df_samples.merge(df_weights, on="FINNGENID")
+
+
+
+    # Manually craft the JSON output given the 3 JSON strings we already have
+    # logger.info(f"Writing out data to JSON in file {output_path}")
+    output = f'{{"stats": {agg_stats}, "distrib_age": {distrib_age}, "distrib_year": {distrib_year}}}'
+    # format date
+    today = datetime.datetime.today().strftime("%Y-%m-%d")
+    with open('finregistry_stats__'+today+'.json', "x") as f:
+        f.write(output)
+
+    end = datetime.datetime.now()
+    print("Done. The time it took is "+str(end-start))
+
+if __name__ == '__main__':
+    main()
 
 
