@@ -164,109 +164,117 @@ if (path.startsWith("/phenocode/")) {  // Load only on phenocode pages
         components: { HelpMortality },
     });
 
-    /* AGE HISTOGRAM */
-    stats_data_channel.push("get_age_histogram", {endpoint: phenocode});
-    stats_data_channel.on("data_age_histogram", payload => {
-        const elementSelector = "#bin-plot-age";
-        const xAxisLabel = "age";
-        const yAxisLabel = "individuals";
-        const data = payload.data;
-        varBinPlot(elementSelector, data, xAxisLabel, yAxisLabel);
-    });
+    stats_data_channel.push("test_exclusion", {endpoint: phenocode});
+    stats_data_channel.on("result_exclusion", payload => {
+        const excluded = payload.excl;
 
-    /* YEAR HISTOGRAM */
-    stats_data_channel.push("get_year_histogram", {endpoint: phenocode});
-    stats_data_channel.on("data_year_histogram", payload => {
-        const elementSelector = "#bin-plot-year";
-        const xAxisLabel = "year";
-        const yAxisLabel = "individuals";
-        const data = payload.data;
-        varBinPlot(elementSelector, data, xAxisLabel, yAxisLabel);
-    });
+        /* Get results if endpoint is not excluded */
+        if (excluded === null) {
+            /* AGE HISTOGRAM */
+            stats_data_channel.push("get_age_histogram", {endpoint: phenocode});
+            stats_data_channel.on("data_age_histogram", payload => {
+                const elementSelector = "#bin-plot-age";
+                const xAxisLabel = "age";
+                const yAxisLabel = "individuals";
+                const data = payload.data;
+                varBinPlot(elementSelector, data, xAxisLabel, yAxisLabel);
+            });
 
-    /* CORRELATION TABLE */
-    stats_data_channel.push("get_correlations", {endpoint: phenocode});
-    stats_data_channel.on("data_correlations", payload => {
-        var vv = new Vue({
-            el: "#vue-correlations",
-            data: {
-                rows: payload.rows
-            },
-            components: { CorrTable },
-        });
-    });
+            /* YEAR HISTOGRAM */
+            stats_data_channel.push("get_year_histogram", {endpoint: phenocode});
+            stats_data_channel.on("data_year_histogram", payload => {
+                const elementSelector = "#bin-plot-year";
+                const xAxisLabel = "year";
+                const yAxisLabel = "individuals";
+                const data = payload.data;
+                varBinPlot(elementSelector, data, xAxisLabel, yAxisLabel);
+            }); 
+            
+            /* CORRELATION TABLE */
+            stats_data_channel.push("get_correlations", {endpoint: phenocode});
+            stats_data_channel.on("data_correlations", payload => {
+                var vv = new Vue({
+                    el: "#vue-correlations",
+                    data: {
+                        rows: payload.rows
+                    },
+                    components: { CorrTable },
+                });
+            });
 
-    /* SURVIVAL CURVES */
-    stats_data_channel.push("get_cumulative_incidence", {endpoint: phenocode});  // request plot data
-    stats_data_channel.on("data_cumulative_incidence", payload => {
-        const color_female = "#9f0065";
-        const color_male = "#2779bd";
-        const pattern_female = "1 0";
-        const pattern_male = "9 1";
-        const data = [
-            {
-                name: "female",
-                color: color_female,
-                dasharray: pattern_female,
-                cumulinc: payload.females
-            },
-            {
-                name: "male",
-                color: color_male,
-                dasharray: pattern_male,
-                cumulinc: payload.males
-            }
-        ];
+            /* SURVIVAL CURVES */
+            stats_data_channel.push("get_cumulative_incidence", {endpoint: phenocode});  // request plot data
+            stats_data_channel.on("data_cumulative_incidence", payload => {
+                const color_female = "#9f0065";
+                const color_male = "#2779bd";
+                const pattern_female = "1 0";
+                const pattern_male = "9 1";
+                const data = [
+                    {
+                        name: "female",
+                        color: color_female,
+                        dasharray: pattern_female,
+                        cumulinc: payload.females
+                    },
+                    {
+                        name: "male",
+                        color: color_male,
+                        dasharray: pattern_male,
+                        cumulinc: payload.males
+                    }
+                ];
 
-        if (data[0].cumulinc.length === 0 && data[1].cumulinc.length === 0) {
-            const node = document.getElementById("cumulinc-plot");
-            node.innerText = "No data";
-        } else {
-            drawPlotCumulInc("#cumulinc-plot", data);
+                if (data[0].cumulinc.length === 0 && data[1].cumulinc.length === 0) {
+                    const node = document.getElementById("cumulinc-plot");
+                    node.innerText = "No data";
+                } else {
+                    drawPlotCumulInc("#cumulinc-plot", data);
+                }
+            });
+
+
+            /* ASSOC DATA */
+            fetch('/api/phenocode/' + phenocode + '/assocs.json', {
+                cache: 'default',
+                mode: 'same-origin'
+            }).then((response) => {
+                return response.json();
+            }).then((assoc_data) => {
+                /* ASSOC PLOT */
+                new Vue({
+                    el: '#assoc-plot',
+                    data: {
+                        assoc_data: assoc_data["plot"]
+                    },
+                    components: { AssocPlot },
+                });
+
+                /* ASSOC TABLE */
+                new Vue({
+                    el: '#assoc-table',
+                    data: {
+                        assoc_data: assoc_data["table"]
+                    },
+                    components: { AssocTable },
+                });
+            });
+
+
+            /* DRUG TABLE */
+            fetch('/api/phenocode/' + phenocode + '/drugs.json', {
+                cache: 'default',
+                mode: 'same-origin'
+            }).then((response) => {
+                return response.json();
+            }).then((drug_data) => {
+                new Vue({
+                    el: '#drug-table',
+                    data: {
+                        drug_data: drug_data
+                    },
+                    components: { DrugTable },
+                });
+            });            
         }
-    });
-
-
-    /* ASSOC DATA */
-    fetch('/api/phenocode/' + phenocode + '/assocs.json', {
-        cache: 'default',
-        mode: 'same-origin'
-    }).then((response) => {
-        return response.json();
-    }).then((assoc_data) => {
-        /* ASSOC PLOT */
-        new Vue({
-            el: '#assoc-plot',
-            data: {
-                assoc_data: assoc_data["plot"]
-            },
-            components: { AssocPlot },
-        });
-
-        /* ASSOC TABLE */
-        new Vue({
-            el: '#assoc-table',
-            data: {
-                assoc_data: assoc_data["table"]
-            },
-            components: { AssocTable },
-        });
-    });
-
-
-    /* DRUG TABLE */
-    fetch('/api/phenocode/' + phenocode + '/drugs.json', {
-        cache: 'default',
-        mode: 'same-origin'
-    }).then((response) => {
-        return response.json();
-    }).then((drug_data) => {
-        new Vue({
-            el: '#drug-table',
-            data: {
-                drug_data: drug_data
-            },
-            components: { DrugTable },
-        });
     });
 }

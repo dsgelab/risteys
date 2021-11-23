@@ -2,10 +2,21 @@ defmodule RisteysWeb.StatsDataChannel do
   use RisteysWeb, :channel
 
   alias Risteys.FGEndpoint
+  require Logger
 
   def join("stats_data", _payload, socket) do
     {:ok, socket}
   end
+
+  def handle_in("test_exclusion", %{"endpoint" => endpoint_name}, socket) do
+    payload = FGEndpoint.test_exclusion(endpoint_name)
+    Logger.info("payload in stats_data_channel: #{inspect(payload)}")
+
+    :ok = push(socket, "result_exclusion", payload)
+    {:noreply, socket}
+
+  end
+
 
   def handle_in("get_correlations", %{"endpoint" => endpoint_name}, socket) do
     payload = FGEndpoint.list_correlations(endpoint_name)
