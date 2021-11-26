@@ -24,7 +24,9 @@ corr_variants =
     %{
       "pheno1" => endpoint_a,
       "pheno2" => endpoint_b,
-      "variant" => variant
+      "variant" => variant,
+      "beta1" => beta1,
+      "beta2" => beta2
     } = row
 
     # Reformat variant to format used in PheWeb URL: CHR-POS-REF-ALT
@@ -33,12 +35,22 @@ corr_variants =
       |> String.trim_leading("chr")
       |> String.replace("_", "-")
 
-    Map.update(
-      acc,
-      {endpoint_a, endpoint_b},
-      [variant],
-      fn variants -> [variant | variants] end
-    )
+    # We are showing coloc GWS hits with same direction of effect (doe), so only import those.
+    {beta1, _} = Float.parse(beta1)
+    {beta2, _} = Float.parse(beta2)
+
+    same_doe = (beta1 > 0 and beta2 > 0) or (beta1 < 0 and beta2 < 0)
+
+    if same_doe do
+      Map.update(
+        acc,
+        {endpoint_a, endpoint_b},
+        [variant],
+        fn variants -> [variant | variants] end
+      )
+    else
+      acc
+    end
   end)
 
 Logger.info("Import phenotypic+genotypic correlations")
