@@ -5,6 +5,7 @@ const purgecss = require('@fullhuman/postcss-purgecss')({
   // Specify the paths to all of the template files in your project
   content: [
     '../lib/risteys_web/templates/**/*.html.eex',
+    '../lib/risteys_web/templates/**/*.html.heex',
     './js/**/*.vue',
     './js/*.js',
     './css/*.css',
