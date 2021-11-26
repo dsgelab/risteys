@@ -22,7 +22,7 @@ from lifelines import CoxPHFitter
 from lifelines.utils import ConvergenceError
 from lifelines.utils import interpolate_at_times
 
-from log import logger
+from risteys_pipeline.log import logger
 
 
 STUDY_STARTS = 1998.0  # inclusive

@@ -9,7 +9,7 @@ import numpy as np
 import pandas as pd
 from lifelines import CoxPHFitter
 
-from log import logger
+from risteys_pipeline.log import logger
 
 
 # -- CONFIGURATION
