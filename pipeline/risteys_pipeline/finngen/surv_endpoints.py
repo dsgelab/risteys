@@ -54,8 +54,8 @@ import re
 import numpy as np
 import pandas as pd
 
-from common import get_all_inclusions
-from log import logger
+from risteys_pipeline.finngen.common import get_all_inclusions
+from risteys_pipeline.log import logger
 
 
 # Where to look for ICD in the endpoint definitions file

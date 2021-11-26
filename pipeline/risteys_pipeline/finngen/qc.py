@@ -18,7 +18,7 @@ from sys import argv
 
 import pandas as pd
 
-from log import logger
+from risteys_pipeline.log import logger
 
 
 EVENT_YEAR_LESS_THAN = 2021
