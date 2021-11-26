@@ -31,7 +31,7 @@ from sys import argv
 import numpy as np
 import pandas as pd
 
-from log import logger
+from risteys_pipeline.log import logger
 
 
 def main(first_event_path, info_path, samples_path, output_path):
