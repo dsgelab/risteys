@@ -13,7 +13,7 @@ from sys import argv
 import pandas as pd
 import numpy as np
 
-from log import logger
+from risteys_pipeline.log import logger
 
 
 def main(input_path, output_path):

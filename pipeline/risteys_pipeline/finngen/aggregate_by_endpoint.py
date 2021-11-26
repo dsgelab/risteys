@@ -13,7 +13,7 @@ from sys import argv
 import numpy as np
 import pandas as pd
 
-from log import logger
+from risteys_pipeline.log import logger
 
 
 # Values which are considered individual-level data
