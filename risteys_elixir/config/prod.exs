@@ -78,6 +78,7 @@ config :ueberauth, Ueberauth,
       [
 	hd: "finngen.fi",  # preselects the @finngen.fi account on Google screen
 	default_scope: "email",  # ask for the minimum needed info
+	callback_url: "https://risteys.finngen.fi/auth/google/callback",  # needed otherwise it will generate the URL with the local IP instead of risteys.finngen.fi
       ]
     }
   ]
