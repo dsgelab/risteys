@@ -86,8 +86,6 @@ def load_data(first_event_path, info_path, ep_path):
 	df_info["days_past"] = pd.DatetimeIndex(df_info.date_of_birth).strftime('%j')
 	df_info['BIRTH_TYEAR'] = df_info.apply(lambda row:calculate_dob_float(row), axis=1)
 
-	###############3df_info = df_info.drop(columns=["sex", "date_of_birth"])
-
 	# set age at start and end of study for each indiv
 	# if one is born after the study start date, set the start age as 0.0
 	df_info["START_AGE"] = df_info.apply(lambda r: max(STUDY_STARTS - r.BIRTH_TYEAR, 0.0), axis=1)
@@ -165,6 +163,11 @@ def load_data(first_event_path, info_path, ep_path):
 	df_samples["weight"] = 1.0
 	df_samples.loc[df_samples.death_bool == True, "weight"] = weight_cases
 	df_samples.loc[df_samples.death_bool == False, "weight"] = weight_controls
+
+	# remove duplicates
+	df_samples = df_samples.drop_duplicates()
+	df_fevents = df_fevents.drop_duplicates()
+	endpoints = endpoints.drop_duplicates()
 
 	return df_fevents, df_samples, endpoints
 
