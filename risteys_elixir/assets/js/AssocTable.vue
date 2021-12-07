@@ -18,10 +18,10 @@
 						</div>
 					</th>
 					<th colspan="4" scope="colgroup">
-						<div class="border-t h-full pt-2">Before {{ phenocode }}</div>
+						<div class="border-t h-full pt-2"> {{ phenocode }} as outcome</div>
 					</th>
 					<th colspan="4" scope="colgroup">
-						<div class="border-t h-full pt-2">After {{ phenocode }}</div>
+						<div class="border-t h-full pt-2"> {{ phenocode }} as exposure</div>
 					</th>
 				</tr>
 				<tr>
