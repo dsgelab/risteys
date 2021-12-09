@@ -8,7 +8,7 @@ from risteys_pipeline.log import logger
 def load_minimal_phenotype_data(data_path=FINREGISTRY_MINIMAL_PHENOTYPE_DATA_PATH):
     """Loads minimal phenotype data as a data frame."""
     logger.info("Loading minimal phenotype data")
-    cols = ["FINREGISTRYID", "date_of_birth", "sex"]
+    cols = ["FINREGISTRYID", "date_of_birth", "death_date", "sex"]
     df = pd.read_csv(data_path, usecols=cols, header=0, sep=",")
     return df
 
