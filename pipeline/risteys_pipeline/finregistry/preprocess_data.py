@@ -1,6 +1,7 @@
 """Functions for preprocessing FinRegistry data"""
 
 import pandas as pd
+from risteys_pipeline.log import logger
 
 
 def preprocess_endpoints_data(df):
