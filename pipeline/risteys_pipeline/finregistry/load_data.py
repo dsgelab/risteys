@@ -2,6 +2,7 @@
 
 import pandas as pd
 from risteys_pipeline.config import *
+from risteys_pipeline.log import logger
 
 
 def load_minimal_phenotype_data(data_path=FINREGISTRY_MINIMAL_PHENOTYPE_DATA_PATH):
@@ -13,7 +14,8 @@ def load_minimal_phenotype_data(data_path=FINREGISTRY_MINIMAL_PHENOTYPE_DATA_PAT
 
 def load_first_events_data(data_path=FINREGISTRY_FIRST_EVENTS_DATA_PATH):
     """Loads minimal phenotype data as a data frame."""
-    df = pd.read_csv(data_path, header=0, sep=",")
+    cols = ["FINNGENID", "ENDPOINT", "AGE", "YEAR", "NEVT"]
+    df = pd.read_csv(data_path, header=0, sep=",", usecols=cols)
     return df
 
 
