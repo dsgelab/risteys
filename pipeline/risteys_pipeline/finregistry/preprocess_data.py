@@ -9,8 +9,9 @@ def preprocess_endpoints_data(df):
         - lowercase column names
         - exclude omitted endpoints and drop the "omit" column
     """
-    df.columns = df.columns.lower()
-    df = df[df["omit"].isnull()].drop(columns=["omit"])
+    df.columns = df.columns.str.lower()
+    df = df[df["omit"].isnull()].reset_index(drop=True)
+    df = df.drop(columns=["omit"])
     return df
 
 
@@ -21,6 +22,6 @@ def preprocess_first_events_data(df):
         - TODO: exclude subjects who died before the start of the follow-up
         - TODO: exclude subjects who were born after the end of the study
     """
-    df.columns = df.columns.lower()
-    df = df.drop_duplicates()
+    df.columns = df.columns.str.lower()
+    df = df.drop_duplicates().reset_index(drop=True)
     return df
