@@ -24,5 +24,4 @@ def load_endpoints_data(data_path=FINREGISTRY_ENDPOINTS_DATA_PATH):
     # TODO: replace excel with csv for speed
     cols = ["NAME", "SEX", "OMIT"]
     df = pd.read_excel(data_path, sheet_name="Sheet 1", usecols=cols, header=0)
-    df.columns = ["name", "sex", "omit"]
     return df
