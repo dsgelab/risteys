@@ -12,3 +12,15 @@ def preprocess_endpoints_data(df):
     df.columns = df.columns.lower()
     df = df[df["omit"].isnull()].drop(columns=["omit"])
     return df
+
+
+def preprocess_first_events_data(df):
+    """Applies the following preprocessing steps to first events data: 
+        - lowercase columns names
+        - drop duplicated rows
+        - TODO: exclude subjects who died before the start of the follow-up
+        - TODO: exclude subjects who were born after the end of the study
+    """
+    df.columns = df.columns.lower()
+    df = df.drop_duplicates()
+    return df
