@@ -13,6 +13,7 @@ def list_excluded_subjects(minimal_phenotype):
         - missing finregistryid
         - missing sex
     """
+    logger.info("Finding subjects to be excluded")
     birth_year = minimal_phenotype["date_of_birth"].dt.year
     death_year = minimal_phenotype["death_year"].dt.year
     id_missing = minimal_phenotype["FINREGISTRYID"].isna()
@@ -35,6 +36,7 @@ def preprocess_endpoints_data(df):
         Returns a dataframe with the following columns: 
         endpoint, sex
     """
+    logger.info("Preprocessing endpoints data")
     df = df.rename(columns={"NAME": "endpoint", "SEX": "sex", "OMIT": "omit"})
     df = df[df["omit"].isnull()].reset_index(drop=True)
     df = df.drop(columns=["omit"])
@@ -47,6 +49,7 @@ def preprocess_wide_first_events_data(df, excluded_subjects):
         - rename columns
         - drop excluded subjects
     """
+    logger.info("Preprocessing wide first events data")
     df.columns = ["finregistryid", "endpoint", "age", "year"]
     df = df[~df["finregistryid"].isin(excluded_subjects)]
 
@@ -65,13 +68,11 @@ def preprocess_minimal_phenotype_data(df, excluded_subjects):
         Returns a dataframe with the following columns: 
         finregistryid, date_of_birth, death_date, sex, birth_year, death_year, death_age, dead, female
     """
+    logger.info("Preprocessing minimal phenotype data")
     df.columns = df.columns.str.lower()
-
     df = df.drop_duplicates().reset_index(drop=True)
-
     excluded_subjects = list_excluded_subjects(df)
     df = df[~df["finregistryid"].isin(excluded_subjects)]
-
     df["death_age"] = (df["death_date"] - df["date_of_birth"]).dt.days / 365.25
     df["dead"] = ~df["death_date"].isna()
     df["female"] = df["sex"] == 2
