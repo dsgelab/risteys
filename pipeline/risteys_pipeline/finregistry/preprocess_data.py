@@ -42,28 +42,6 @@ def preprocess_endpoints_data(df):
     return df
 
 
-def preprocess_long_first_events_data(df, excluded_subjects):
-    """Applies the following preprocessing steps to first events data: 
-        - lowercase columns names
-        - rename fingenid to finregistryid
-        - drop duplicated rows
-        - TODO: exclude subjects who died before the start of the follow-up
-        - TODO: exclude subjects who were born after the end of the follow-up
-        
-        Returns a dataframe with the following columns: 
-        finregistryid, endpoint, age, year, nevt
-    """
-    df.columns = df.columns.str.lower()
-    df = df.rename(columns={"finngenid": "finregistryid"})
-
-    df = df.dropna(subset=["finregistryid"])
-    df = df[~df["finregistryid"].isin(excluded_subjects)]
-
-    df = df.drop_duplicates().reset_index(drop=True)
-
-    return df
-
-
 def preprocess_wide_first_events_data(df, excluded_subjects):
     """Applies the following preprocessing steps to wide first events data:
         - rename columns
