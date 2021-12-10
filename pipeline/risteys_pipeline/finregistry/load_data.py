@@ -13,14 +13,6 @@ def load_minimal_phenotype_data(data_path=FINREGISTRY_MINIMAL_PHENOTYPE_DATA_PAT
     return df
 
 
-def load_long_first_events_data(data_path=FINREGISTRY_LONG_FIRST_EVENTS_DATA_PATH):
-    """Loads long first events data as a data frame."""
-    logger.info("Loading long first events data")
-    cols = ["FINNGENID", "ENDPOINT", "AGE", "YEAR", "NEVT"]
-    df = pd.read_csv(data_path, header=0, sep=",", usecols=cols)
-    return df
-
-
 def load_wide_first_events_data(
     endpoint, data_path=FINREGISTRY_WIDE_FIRST_EVENTS_DATA_PATH
 ):
