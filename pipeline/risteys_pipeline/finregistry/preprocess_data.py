@@ -42,7 +42,7 @@ def preprocess_endpoints_data(df):
     return df
 
 
-def preprocess_first_events_data(df, excluded_subjects):
+def preprocess_long_first_events_data(df, excluded_subjects):
     """Applies the following preprocessing steps to first events data: 
         - lowercase columns names
         - rename fingenid to finregistryid
@@ -64,11 +64,22 @@ def preprocess_first_events_data(df, excluded_subjects):
     return df
 
 
+def preprocess_wide_first_events_data(df, excluded_subjects):
+    """Applies the following preprocessing steps to wide first events data:
+        - rename columns
+        - drop excluded subjects
+    """
+    df.columns = ["finregistryid", "endpoint", "age", "year"]
+    df = df[~df["finregistryid"].isin(excluded_subjects)]
+
+    return df
+
+
 def preprocess_minimal_phenotype_data(df, excluded_subjects):
     """Applies the following preprocessing steps to minimal phenotype data:
         - lowercase column names 
         - drop duplicated rows 
-        - remove subjects with missing ID and/or sex
+        - drop excluded subjects
         - add indicator for dead subjects (bool)
         - add indicator for females (bool)
         - add approximate death age (num)
