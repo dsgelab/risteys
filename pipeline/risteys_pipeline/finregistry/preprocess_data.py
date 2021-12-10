@@ -8,22 +8,33 @@ def preprocess_endpoints_data(df):
     """Applies the following preprocessing steps to endpoints data: 
         - lowercase column names
         - exclude omitted endpoints and drop the "omit" column
+
+        Returns a dataframe with the following columns: 
+        endpoint, sex
     """
-    df.columns = df.columns.str.lower()
+    df = df.rename(columns={"NAME": "endpoint", "SEX": "sex", "OMIT": "omit"})
     df = df[df["omit"].isnull()].reset_index(drop=True)
     df = df.drop(columns=["omit"])
+
     return df
 
 
 def preprocess_first_events_data(df):
     """Applies the following preprocessing steps to first events data: 
         - lowercase columns names
+        - rename fingenid to finregistryid
         - drop duplicated rows
         - TODO: exclude subjects who died before the start of the follow-up
         - TODO: exclude subjects who were born after the end of the follow-up
+        
+        Returns a dataframe with the following columns: 
+        finregistryid, endpoint, age, year, nevt
     """
     df.columns = df.columns.str.lower()
+    df = df.rename(columns={"finngenid": "finregistryid"})
     df = df.drop_duplicates().reset_index(drop=True)
+    df = df.dropna(subset=["finregistryid"])
+
     return df
 
 
@@ -38,6 +49,9 @@ def preprocess_minimal_phenotype_data(df):
         - add approximate death age (num)
         - TODO: exclude subjects who died before the start of the follow-up
         - TODO: exclude subjects who were born after the end of the follow-up
+
+        Returns a dataframe with the following columns: 
+        finregistryid, date_of_birth, death_date, sex, birth_year, death_year, death_age, dead, female
     """
     df.columns = df.columns.str.lower()
     df = df.drop_duplicates().reset_index(drop=True)
