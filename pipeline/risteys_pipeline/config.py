@@ -1,5 +1,6 @@
 import os
 
+# Input data
 ROOT_DIR = os.path.join("data", "processed_data")
 
 FINREGISTRY_MINIMAL_PHENOTYPE_DATA_PATH = os.path.join(
@@ -14,3 +15,7 @@ FINREGISTRY_FIRST_EVENTS_DATA_PATH = os.path.join(
 FINREGISTRY_ENDPOINTS_DATA_PATH = os.path.join(
     ROOT_DIR, "endpointer", "main", "FINNGEN_ENDPOINTS_DF8_Final_2021-06-21.xlsx"
 )
+
+# Constants
+FOLLOWUP_START = 1998.0
+FOLLOWUP_END = 2020.99
