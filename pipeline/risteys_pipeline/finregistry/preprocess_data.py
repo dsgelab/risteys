@@ -6,12 +6,13 @@ from risteys_pipeline.config import FOLLOWUP_START, FOLLOWUP_END
 
 
 def list_excluded_subjects(minimal_phenotype):
-    """
-    List subjects who should be excluded from the analyses based on the following criteria: 
+    """List subjects who should be excluded from the analyses based on the following criteria: 
         - born after the end of the follow-up
         - died before the start of the follow-up
         - missing finregistryid
         - missing sex
+
+        Returns a list of finregistryids.
     """
     logger.info("Finding subjects to be excluded")
     birth_year = minimal_phenotype["date_of_birth"].dt.year
@@ -48,6 +49,9 @@ def preprocess_wide_first_events_data(df, excluded_subjects):
     """Applies the following preprocessing steps to wide first events data:
         - rename columns
         - drop excluded subjects
+
+        Returns a dataframe with the following columns: 
+        finregistryid, endpoint, age, year
     """
     logger.info("Preprocessing wide first events data")
     df.columns = ["finregistryid", "endpoint", "age", "year"]
@@ -59,7 +63,7 @@ def preprocess_wide_first_events_data(df, excluded_subjects):
 def preprocess_minimal_phenotype_data(df, excluded_subjects):
     """Applies the following preprocessing steps to minimal phenotype data:
         - lowercase column names 
-        - drop duplicated rows 
+        - drop duplicated rows
         - drop excluded subjects
         - add indicator for dead subjects (bool)
         - add indicator for females (bool)
