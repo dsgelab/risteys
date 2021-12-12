@@ -45,7 +45,7 @@ def preprocess_endpoints_data(df):
     return df
 
 
-def preprocess_wide_first_events_data(df, excluded_subjects):
+def preprocess_wide_first_events_data(df):
     """Applies the following preprocessing steps to wide first events data:
         - rename columns
         - remove duplicated finregistryids
@@ -80,7 +80,7 @@ def preprocess_minimal_phenotype_data(df, excluded_subjects):
         - add approximate death age (num)
 
         Returns a dataframe with the following columns: 
-        finregistryid, date_of_birth, death_date, sex, birth_year, death_year, death_age, dead, female
+        finregistryid, date_of_birth, death_date, sex, death_age, dead, female
     """
     logger.info("Preprocessing minimal phenotype data")
     df.columns = df.columns.str.lower()
