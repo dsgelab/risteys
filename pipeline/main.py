@@ -1,5 +1,6 @@
 """Run analyses for FinRegistry data"""
 
+from random import sample
 import pandas as pd
 
 from itertools import product
@@ -30,8 +31,5 @@ for outcome, exposure in product(outcomes, exposures):
     df = minimal_phenotype.merge(first_events, how="left", on="finregistryid")
 
     # Sample cases and controls based on outcome
-    caseids, controlids = sample_cases_and_controls(
-        df, n_cases=250000, controls_per_case=2
-    )
-    df = df.loc[df["finregistryid"].isin(caseids + controlids), :].reset_index()
+    df = sample_cases_and_controls(df, n_cases=250000, controls_per_case=2)
 
