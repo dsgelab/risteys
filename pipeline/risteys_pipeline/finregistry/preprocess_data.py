@@ -48,6 +48,7 @@ def preprocess_endpoints_data(df):
 def preprocess_wide_first_events_data(df, excluded_subjects):
     """Applies the following preprocessing steps to wide first events data:
         - rename columns
+        - remove duplicated finregistryids
         - drop excluded subjects
 
         Returns a dataframe with the following columns: 
@@ -55,6 +56,7 @@ def preprocess_wide_first_events_data(df, excluded_subjects):
     """
     logger.info("Preprocessing wide first events data")
     df.columns = ["finregistryid", "endpoint", "age", "year"]
+    df = df.drop_duplicates(subset=["finregistryid"]).reset_index(drop=True)
     df = df[~df["finregistryid"].isin(excluded_subjects)]
 
     return df
