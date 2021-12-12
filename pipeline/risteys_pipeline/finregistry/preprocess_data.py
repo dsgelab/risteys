@@ -53,9 +53,19 @@ def preprocess_wide_first_events_data(df, excluded_subjects):
 
         Returns a dataframe with the following columns: 
         finregistryid, endpoint, age, year
+
+        TODO: make sure column order is retained
     """
     logger.info("Preprocessing wide first events data")
-    df.columns = ["finregistryid", "endpoint", "age", "year"]
+    df.columns = [
+        "finregistryid",
+        "exposure",
+        "exposure_age",
+        "exposure_year",
+        "outcome",
+        "outcome_age",
+        "outcome_year",
+    ]
     df = df.drop_duplicates(subset=["finregistryid"]).reset_index(drop=True)
     df = df[~df["finregistryid"].isin(excluded_subjects)]
 

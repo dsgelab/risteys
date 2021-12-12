@@ -14,11 +14,19 @@ def load_minimal_phenotype_data(data_path=FINREGISTRY_MINIMAL_PHENOTYPE_DATA_PAT
 
 
 def load_wide_first_events_data(
-    endpoint, data_path=FINREGISTRY_WIDE_FIRST_EVENTS_DATA_PATH
+    exposure, outcome, data_path=FINREGISTRY_WIDE_FIRST_EVENTS_DATA_PATH
 ):
-    """Loads wide first_events data for an endpoint as a data frame."""
+    """Loads wide first_events data for two endpoints as a data frame."""
     logger.info("Loading wide first events data")
-    cols = ["FINREGISTRYID", endpoint, endpoint + "_AGE", endpoint + "_YEAR"]
+    cols = [
+        "FINREGISTRYID",
+        exposure,
+        exposure + "_AGE",
+        exposure + "_YEAR",
+        outcome,
+        outcome + "_AGE",
+        outcome + "_YEAR",
+    ]
     df = pd.read_csv(data_path, header=0, sep="\t", usecols=cols)
     return df
 
