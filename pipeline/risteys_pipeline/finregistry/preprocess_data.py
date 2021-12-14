@@ -4,6 +4,8 @@ import pandas as pd
 from risteys_pipeline.log import logger
 from risteys_pipeline.config import FOLLOWUP_START, FOLLOWUP_END
 
+DAYS_IN_YEAR = 365.25
+
 
 def list_excluded_subjects(minimal_phenotype):
     """List subjects who should be excluded from the analyses based on the following criteria: 
@@ -87,7 +89,7 @@ def preprocess_minimal_phenotype_data(df, excluded_subjects):
     df = df.drop_duplicates().reset_index(drop=True)
     excluded_subjects = list_excluded_subjects(df)
     df = df[~df["finregistryid"].isin(excluded_subjects)]
-    df["death_age"] = (df["death_date"] - df["date_of_birth"]).dt.days / 365.25
+    df["death_age"] = (df["death_date"] - df["date_of_birth"]).dt.days / DAYS_IN_YEAR
     df["dead"] = ~df["death_date"].isna()
     df["female"] = df["sex"] == 2
 
