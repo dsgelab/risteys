@@ -28,12 +28,12 @@ def sample_cases_and_controls(df, n_cases=250000, controls_per_case=2):
         caseids, controlids, sample_of_caseids, sample_of_controlids
     )
 
-    df_sample_cases = df[df["finregistryid"].isin(sample_of_caseids)].copy()
+    df_sample_cases = df.loc[df["finregistryid"].isin(sample_of_caseids)].copy()
     df_sample_cases = df_sample_cases.reset_index(drop=True)
     df_sample_cases["case"] = 1
     df_sample_cases["weight"] = weight_cases
 
-    df_sample_controls = df[df["finregistryid"].isin(sample_of_controlids)].copy()
+    df_sample_controls = df.loc[df["finregistryid"].isin(sample_of_controlids)].copy()
     df_sample_controls = df_sample_controls.reset_index(drop=True)
     df_sample_controls["case"] = 0
     df_sample_controls["weight"] = weight_controls
