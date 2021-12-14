@@ -42,7 +42,7 @@ def preprocess_endpoints_data(df):
     """
     logger.info("Preprocessing endpoints data")
     df = df.rename(columns={"NAME": "endpoint", "SEX": "sex", "OMIT": "omit"})
-    df = df[df["omit"].isnull()].reset_index(drop=True)
+    df = df.loc[df["omit"].isnull()].reset_index(drop=True)
     df = df.drop(columns=["omit"])
 
     return df
@@ -89,7 +89,7 @@ def preprocess_minimal_phenotype_data(df, excluded_subjects):
     df.columns = df.columns.str.lower()
     df = df.drop_duplicates().reset_index(drop=True)
     excluded_subjects = list_excluded_subjects(df)
-    df = df[~df["finregistryid"].isin(excluded_subjects)]
+    df = df.loc[~df["finregistryid"].isin(excluded_subjects)]
     df["death_age"] = (df["death_date"] - df["date_of_birth"]).dt.days / DAYS_IN_YEAR
     df["dead"] = ~df["death_date"].isna()
     df["female"] = df["sex"] == SEX_FEMALE
