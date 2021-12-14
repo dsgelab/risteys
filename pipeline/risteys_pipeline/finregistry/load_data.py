@@ -5,7 +5,7 @@ from risteys_pipeline.config import *
 from risteys_pipeline.log import logger
 from risteys_pipeline.finregistry.preprocess_data import (
     preprocess_minimal_phenotype_data,
-    preprocess_wide_first_events_data,
+    preprocess_exposure_and_outcome_data,
     preprocess_endpoints_data,
 )
 
@@ -13,44 +13,79 @@ from risteys_pipeline.finregistry.preprocess_data import (
 def load_minimal_phenotype_data(
     data_path=FINREGISTRY_MINIMAL_PHENOTYPE_DATA_PATH, preprocess=False
 ):
-    """Loads minimal phenotype data as a dataframe and optionally performs preprocessing."""
-    logger.info("Loading minimal phenotype data")
+    """Loads minimal phenotype data as a dataframe and optionally performs preprocessing.
+    
+    Args:
+        data_path (str, optional): file path of the minimal phenotype csv file
+        preprocessing (bool, optional): will the data be preprocessed 
+
+    Returns: 
+        df (DataFrame): minimal phenotype dataframe
+    """
     cols = ["FINREGISTRYID", "date_of_birth", "death_date", "sex"]
-    df = pd.read_csv(data_path, usecols=cols, header=0, sep=",")
+    dtypes = {
+        "FINREGISTRYID": "str",
+        "date_of_birth": "str",
+        "death_date": "str",
+        "sex": "float",  # NAs are not allowed for int in pandas
+    }
+    date_cols = ["date_of_birth", "death_date"]
+    df = pd.read_csv(
+        data_path, usecols=cols, dtype=dtypes, parse_dates=date_cols, header=0, sep=","
+    )
+    logger.info(f"{df.shape[0]} rows loaded")
     if preprocess:
         df = preprocess_minimal_phenotype_data(df)
     return df
 
 
-def load_wide_first_events_data(
+def load_exposure_and_outcome_data(
     exposure,
     outcome,
+    nrows=None,
     data_path=FINREGISTRY_WIDE_FIRST_EVENTS_DATA_PATH,
     preprocess=False,
 ):
-    """Loads wide first_events data for two endpoints as a dataframe and optionally performs preprocessing."""
-    logger.info("Loading wide first events data")
+    """Loads wide first_events data for two endpoints as a dataframe and optionally performs preprocessing.
+    
+    Args:
+        exposure (str): name of the exposure endpoint
+        outcome (str): name of the outcome endpoint
+        nrows (int, optional): number of rows to read
+        data_path (str, optional): file path of the first events csv file
+        preprocess (bool, optional): will the data be preprocessed
+
+    Returns:
+        df (DataFrame): first events dataframe with exposure and outcome related columns
+    """
     cols = [
         "FINREGISTRYID",
-        exposure,
+        exposure + "_NEVT",
         exposure + "_AGE",
-        exposure + "_YEAR",
-        outcome,
+        outcome + "_NEVT",
         outcome + "_AGE",
-        outcome + "_YEAR",
     ]
-    df = pd.read_csv(data_path, header=0, sep="\t", usecols=cols)
+    df = pd.read_csv(data_path, header=0, sep=",", usecols=cols, nrows=nrows)[cols]
+    logger.info(f"{df.shape[0]} rows loaded")
     if preprocess:
-        df = preprocess_wide_first_events_data(df)
+        df = preprocess_exposure_and_outcome_data(df)
     return df
 
 
 def load_endpoints_data(data_path=FINREGISTRY_ENDPOINTS_DATA_PATH, preprocess=False):
-    """Loads endpoints data as a dataframe and optionally performs preprocessing."""
+    """Loads endpoints data as a dataframe and optionally performs preprocessing.
+    
+    Args:
+        data_path (str, optional): file path of the FinnGen endpoints excel file
+        preprocess (bool, optional): will the data be preprocessed
+
+    Returns:
+        df (DataFrame): FinnGen endpoints dataframe
+    """
     # TODO: replace excel with csv for speed
-    logger.info("Loading endpoints data")
     cols = ["NAME", "SEX", "OMIT"]
     df = pd.read_excel(data_path, sheet_name="Sheet 1", usecols=cols, header=0)
+    logger.info(f"{df.shape[0]} rows loaded")
     if preprocess:
         df = preprocess_endpoints_data(df)
     return df
