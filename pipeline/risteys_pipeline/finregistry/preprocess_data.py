@@ -17,15 +17,12 @@ def list_excluded_subjects(minimal_phenotype):
 
         Returns a list of finregistryids.
     """
-    birth_year = minimal_phenotype["date_of_birth"].dt.year
-    death_year = minimal_phenotype["death_date"].dt.year
+    born_after_followup_end = minimal_phenotype["birth_year"] >= FOLLOWUP_END
+    dead_before_followup_start = minimal_phenotype["death_year"] <= FOLLOWUP_START
     id_missing = minimal_phenotype["finregistryid"].isna()
     sex_missing = minimal_phenotype["sex"].isna()
     exclude = (
-        (birth_year >= FOLLOWUP_END)
-        | (death_year <= FOLLOWUP_START)
-        | id_missing
-        | sex_missing
+        born_after_followup_end | dead_before_followup_start | id_missing | sex_missing
     )
     excluded_subjects = minimal_phenotype.loc[exclude, "finregistryid"].tolist()
     logger.info(f"{len(excluded_subjects)} subjects to be excluded")
@@ -77,8 +74,8 @@ def preprocess_minimal_phenotype_data(df):
     """Applies the following preprocessing steps to minimal phenotype data:
         - lowercase column names 
         - drop duplicated rows
+        - add birth and death year
         - drop excluded subjects
-        - add indicator for dead subjects (bool)
         - add indicator for females (bool)
         - add approximate death age (num)
 
@@ -88,10 +85,11 @@ def preprocess_minimal_phenotype_data(df):
     logger.info("Preprocessing minimal phenotype data")
     df.columns = df.columns.str.lower()
     df = df.drop_duplicates().reset_index(drop=True)
+    df["birth_year"] = df["date_of_birth"].dt.year
+    df["death_year"] = df["death_date"].dt.year
     excluded_subjects = list_excluded_subjects(df)
     df = df.loc[~df["finregistryid"].isin(excluded_subjects)]
     df["death_age"] = (df["death_date"] - df["date_of_birth"]).dt.days / DAYS_IN_YEAR
-    df["dead"] = ~df["death_date"].isna()
     df["female"] = df["sex"] == SEX_FEMALE
 
     return df
