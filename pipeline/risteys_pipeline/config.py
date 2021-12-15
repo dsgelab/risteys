@@ -5,7 +5,7 @@ from pathlib import Path
 ROOT_DIR = Path("/data") / "processed_data"
 
 FINREGISTRY_MINIMAL_PHENOTYPE_DATA_PATH = (
-    ROOT_DIR / "notebooks" / "mpf" / "minimal_phenotype_file.csv"
+    ROOT_DIR / "minimal_phenotype" / "minimal_phenotype_file.csv"
 )
 
 FINREGISTRY_WIDE_FIRST_EVENTS_DATA_PATH = (
