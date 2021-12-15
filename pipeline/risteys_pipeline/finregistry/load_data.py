@@ -16,7 +16,16 @@ def load_minimal_phenotype_data(
     """Loads minimal phenotype data as a dataframe and optionally performs preprocessing."""
     logger.info("Loading minimal phenotype data")
     cols = ["FINREGISTRYID", "date_of_birth", "death_date", "sex"]
-    df = pd.read_csv(data_path, usecols=cols, header=0, sep=",")
+    dtypes = {
+        "FINREGISTRYID": "str",
+        "date_of_birth": "str",
+        "death_date": "str",
+        "sex": "float",  # NAs are not allowed for int in pandas
+    }
+    date_cols = ["date_of_birth", "death_date"]
+    df = pd.read_csv(
+        data_path, usecols=cols, dtype=dtypes, parse_dates=date_cols, header=0, sep=","
+    )
     if preprocess:
         df = preprocess_minimal_phenotype_data(df)
     return df
