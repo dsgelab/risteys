@@ -62,7 +62,7 @@ pheno_geno_corr_filepath
   %{
     "endpoint_a" => endpoint_a_pheno,
     "endpoint_b" => endpoint_b_pheno,
-    "case_ratio" => case_ratio,
+    "case_ratio" => case_overlap,
     "ratio_shared_of_a" => shared_of_a,
     "ratio_shared_of_b" => shared_of_b,
     "pheno1" => endpoint_a_geno,
@@ -121,7 +121,7 @@ pheno_geno_corr_filepath
         FGEndpoint.upsert_correlation(%{
           phenocode_a_id: endpoint_a_id,
           phenocode_b_id: endpoint_b_id,
-          case_ratio: case_ratio,
+          case_overlap: case_overlap,
           shared_of_a: shared_of_a,
           shared_of_b: shared_of_b,
           coloc_gws_hits_same_dir: coloc_gws_hits_same_dir,

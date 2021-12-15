@@ -347,7 +347,7 @@ defmodule Risteys.FGEndpoint do
         select: %{
           name: pp.name,
           longname: pp.longname,
-          case_ratio: corr.case_ratio,
+          case_overlap: corr.case_overlap,
           gws_hits: pp.gws_hits,
           coloc_gws_hits_same_dir: corr.coloc_gws_hits_same_dir,
           coloc_gws_hits_opp_dir: corr.coloc_gws_hits_opp_dir,

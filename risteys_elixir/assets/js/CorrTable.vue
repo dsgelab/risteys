@@ -15,9 +15,9 @@
 					</p>
 				</div>
 				<div role="columnheader">
-					<p>Case-control overlap (%)</p>
+					<p>Case overlap (%)</p>
 					<p>
-						<input type="radio" id="case_ratio_asc" value="case_ratio_asc" v-model="sorter" v-on:change="refreshTable()" checked><label for="case_ratio_asc" class="radio-left">▲</label><input type="radio" id="case_ratio_desc" value="case_ratio_desc" v-model="sorter" v-on:change="refreshTable()"><label for="case_ratio_desc" class="radio-right">▼</label>
+						<input type="radio" id="case_overlap_asc" value="case_overlap_asc" v-model="sorter" v-on:change="refreshTable()" checked><label for="case_overlap_asc" class="radio-left">▲</label><input type="radio" id="case_overlap_desc" value="case_overlap_desc" v-model="sorter" v-on:change="refreshTable()"><label for="case_overlap_desc" class="radio-right">▼</label>
 					</p>
 				</div>
 				<div role="columnheader">
@@ -62,7 +62,7 @@
 						{{ corr.longname }}
 					</a>
 				</div>
-				<div role="cell">{{ corr.case_ratio }}</div>
+				<div role="cell">{{ corr.case_overlap }}</div>
 				<div role="cell">{{ corr.gws_hits }}</div>
 				<div role="cell">
 					<template v-if="corr.coloc_gws_hits_same_dir > 0">
@@ -84,8 +84,8 @@
 import { filter, map, reverse, orderBy } from 'lodash-es';
 
 function formatRow(row) {
-	const case_ratio_perc = (row.case_ratio * 100).toFixed(2);
-	const case_ratio = row.case_ratio === null ? "-" : case_ratio_perc;
+	const case_overlap_perc = (row.case_overlap * 100).toFixed(2);
+	const case_overlap = row.case_overlap === null ? "-" : case_overlap_perc;
 	const gws_hits = row.gws_hits === null ? "-" : row.gws_hits;
 	const coloc_gws_hits_same_dir = row.coloc_gws_hits_same_dir === null ? "-" : row.coloc_gws_hits_same_dir;
 	const rel_beta = row.rel_beta === null ? "-" : row.rel_beta;
@@ -93,7 +93,7 @@ function formatRow(row) {
 	return {
 		name: row.name,
 		longname: row.longname,
-		case_ratio: case_ratio,
+		case_overlap: case_overlap,
 		gws_hits: gws_hits,
 		coloc_gws_hits_same_dir: coloc_gws_hits_same_dir,
 		rel_beta: rel_beta,
@@ -117,11 +117,11 @@ function computeTable(rows, endpoint_filter, sorter) {
 
 	switch (sorter) {
 		// In the following we use `row.<col> || ""` to put null values at the bottom when using descending order
-		case "case_ratio_desc":
-			computed_rows = orderBy(computed_rows, [(row) => row.case_ratio || ""], ["desc"]);
+		case "case_overlap_desc":
+			computed_rows = orderBy(computed_rows, [(row) => row.case_overlap || ""], ["desc"]);
 			break;
-		case "case_ratio_asc":
-			computed_rows = orderBy(computed_rows, ["case_ratio"], ["asc"]);
+		case "case_overlap_asc":
+			computed_rows = orderBy(computed_rows, ["case_overlap"], ["asc"]);
 			break;
 
 		case "gws_hits_desc":
@@ -165,7 +165,7 @@ function displayTable(rows, endpoint_filter, sorter) {
 export default {
 	data() {
 		return {
-			sorter: "case_ratio_desc",
+			sorter: "case_overlap_desc",
 			endpoint_filter: "",
 			live_rows: []
 		};
