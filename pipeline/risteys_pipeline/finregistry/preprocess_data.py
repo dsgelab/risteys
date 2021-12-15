@@ -17,18 +17,18 @@ def list_excluded_subjects(minimal_phenotype):
 
         Returns a list of finregistryids.
     """
-    logger.info("Finding subjects to be excluded")
     birth_year = minimal_phenotype["date_of_birth"].dt.year
-    death_year = minimal_phenotype["death_year"].dt.year
-    id_missing = minimal_phenotype["FINREGISTRYID"].isna()
-    sex_missing = minimal_phenotype["SEX"].isna()
+    death_year = minimal_phenotype["death_date"].dt.year
+    id_missing = minimal_phenotype["finregistryid"].isna()
+    sex_missing = minimal_phenotype["sex"].isna()
     exclude = (
         (birth_year >= FOLLOWUP_END)
         | (death_year <= FOLLOWUP_START)
         | id_missing
         | sex_missing
     )
-    excluded_subjects = minimal_phenotype.loc[exclude, "FINREGISTRYID"].tolist()
+    excluded_subjects = minimal_phenotype.loc[exclude, "finregistryid"].tolist()
+    logger.info(f"{len(excluded_subjects)} subjects to be excluded")
     return excluded_subjects
 
 
@@ -73,7 +73,7 @@ def preprocess_wide_first_events_data(df):
     return df
 
 
-def preprocess_minimal_phenotype_data(df, excluded_subjects):
+def preprocess_minimal_phenotype_data(df):
     """Applies the following preprocessing steps to minimal phenotype data:
         - lowercase column names 
         - drop duplicated rows
