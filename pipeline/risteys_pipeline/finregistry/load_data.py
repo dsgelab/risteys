@@ -14,7 +14,6 @@ def load_minimal_phenotype_data(
     data_path=FINREGISTRY_MINIMAL_PHENOTYPE_DATA_PATH, preprocess=False
 ):
     """Loads minimal phenotype data as a dataframe and optionally performs preprocessing."""
-    logger.info("Loading minimal phenotype data")
     cols = ["FINREGISTRYID", "date_of_birth", "death_date", "sex"]
     dtypes = {
         "FINREGISTRYID": "str",
@@ -26,6 +25,7 @@ def load_minimal_phenotype_data(
     df = pd.read_csv(
         data_path, usecols=cols, dtype=dtypes, parse_dates=date_cols, header=0, sep=","
     )
+    logger.info(f"{df.shape[0]} rows loaded")
     if preprocess:
         df = preprocess_minimal_phenotype_data(df)
     return df
@@ -38,7 +38,6 @@ def load_wide_first_events_data(
     preprocess=False,
 ):
     """Loads wide first_events data for two endpoints as a dataframe and optionally performs preprocessing."""
-    logger.info("Loading wide first events data")
     cols = [
         "FINREGISTRYID",
         exposure,
@@ -49,6 +48,7 @@ def load_wide_first_events_data(
         outcome + "_YEAR",
     ]
     df = pd.read_csv(data_path, header=0, sep="\t", usecols=cols)
+    logger.info(f"{df.shape[0]} rows loaded")
     if preprocess:
         df = preprocess_wide_first_events_data(df)
     return df
@@ -57,9 +57,9 @@ def load_wide_first_events_data(
 def load_endpoints_data(data_path=FINREGISTRY_ENDPOINTS_DATA_PATH, preprocess=False):
     """Loads endpoints data as a dataframe and optionally performs preprocessing."""
     # TODO: replace excel with csv for speed
-    logger.info("Loading endpoints data")
     cols = ["NAME", "SEX", "OMIT"]
     df = pd.read_excel(data_path, sheet_name="Sheet 1", usecols=cols, header=0)
+    logger.info(f"{df.shape[0]} rows loaded")
     if preprocess:
         df = preprocess_endpoints_data(df)
     return df

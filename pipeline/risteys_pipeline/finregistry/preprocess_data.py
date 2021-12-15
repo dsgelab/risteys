@@ -25,7 +25,9 @@ def list_excluded_subjects(minimal_phenotype):
         born_after_followup_end | dead_before_followup_start | id_missing | sex_missing
     )
     excluded_subjects = minimal_phenotype.loc[exclude, "finregistryid"].tolist()
-    logger.info(f"{len(excluded_subjects)} subjects to be excluded")
+    logger.info(
+        f"{len(excluded_subjects)} excluded subjects (born after follow-up: {sum(born_after_followup_end)}, dead before follow-up: {sum(dead_before_followup_start)}, id missing: {sum(id_missing)}, sex missing: {sum(sex_missing)})"
+    )
     return excluded_subjects
 
 
@@ -41,6 +43,7 @@ def preprocess_endpoints_data(df):
     df = df.rename(columns={"NAME": "endpoint", "SEX": "sex", "OMIT": "omit"})
     df = df.loc[df["omit"].isnull()].reset_index(drop=True)
     df = df.drop(columns=["omit"])
+    logger.info(f"{df.shape[0]} rows after data pre-processing")
 
     return df
 
@@ -55,7 +58,6 @@ def preprocess_wide_first_events_data(df):
 
         TODO: make sure column order is retained
     """
-    logger.info("Preprocessing wide first events data")
     df.columns = [
         "finregistryid",
         "exposure",
@@ -66,7 +68,7 @@ def preprocess_wide_first_events_data(df):
         "outcome_year",
     ]
     df = df.drop_duplicates(subset=["finregistryid"]).reset_index(drop=True)
-
+    logger.info(f"{df.shape[0]} rows after data pre-processing")
     return df
 
 
@@ -82,7 +84,6 @@ def preprocess_minimal_phenotype_data(df):
         Returns a dataframe with the following columns: 
         finregistryid, date_of_birth, death_date, sex, death_age, dead, female
     """
-    logger.info("Preprocessing minimal phenotype data")
     df.columns = df.columns.str.lower()
     df = df.drop_duplicates().reset_index(drop=True)
     df["birth_year"] = df["date_of_birth"].dt.year
@@ -91,5 +92,7 @@ def preprocess_minimal_phenotype_data(df):
     df = df.loc[~df["finregistryid"].isin(excluded_subjects)]
     df["death_age"] = (df["death_date"] - df["date_of_birth"]).dt.days / DAYS_IN_YEAR
     df["female"] = df["sex"] == SEX_FEMALE
+
+    logger.info(f"{df.shape[0]} rows after data pre-processing")
 
     return df
