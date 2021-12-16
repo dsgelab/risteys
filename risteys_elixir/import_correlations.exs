@@ -58,6 +58,19 @@ Logger.info("Import phenotypic+genotypic correlations")
 pheno_geno_corr_filepath
 |> File.stream!()
 |> CSV.decode!(headers: true)
+
+# Replace empty strings with nil in phenotypic info for easier processing afterwards
+|> Stream.map(fn row ->
+  empty_to_nil = fn val -> if val == "", do: nil, else: val end
+  row = %{row | "pheno1" => empty_to_nil.(row["pheno1"])}
+  row = %{row | "pheno2" => empty_to_nil.(row["pheno2"])}
+  row = %{row | "n_gwsig_1" => empty_to_nil.(row["n_gwsig_1"])}
+  row = %{row | "n_gwsig_2" => empty_to_nil.(row["n_gwsig_2"])}
+  row = %{row | "overlap_same_doe" => empty_to_nil.(row["overlap_same_doe"])}
+  row = %{row | "overlap_diff_doe" => empty_to_nil.(row["overlap_diff_doe"])}
+  row = %{row | "rel_beta" => empty_to_nil.(row["rel_beta"])}
+  %{row | "rel_beta_opposite_doe" => empty_to_nil.(row["rel_beta_opposite_doe"])}
+end)
 |> Enum.each(fn row ->
   %{
     "endpoint_a" => endpoint_a_pheno,
@@ -100,9 +113,20 @@ pheno_geno_corr_filepath
       Logger.warn("Skipping row, B not found: #{endpoint_b}")
 
     _ ->
-      # Update this endpoint GWS hits
+      endpoint_a = Repo.get(Phenocode, endpoint_a_id)
+
+      # Update this endpoint GWS hits.
+      # Sometimes an endpoint pair in the input file has no genotypic
+      # info, so no GWS hits info is set for that particular
+      # pair. However, that doesn't mean this endpoint has no GWS
+      # hits! The info for this endpoint GWS hits can exist in other
+      # endpoint pairs where the genotypic info is available.
+      # So here we make sure to not overwrite the GWS hits info when
+      # we are looking at a pair that doesn't have any genotypic info.
+      gws_hits_a = gws_hits_a || endpoint_a.gws_hits
+
       upsert =
-        Repo.get(Phenocode, endpoint_a_id)
+        endpoint_a
         |> Phenocode.changeset(%{gws_hits: gws_hits_a})
         |> Repo.insert_or_update()
 
