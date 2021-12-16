@@ -27,21 +27,9 @@
 					</p>
 				</div>
 				<div role="columnheader">
-					<p>Coloc GWS hits (same&nbsp;dir)</p>
+					<p>Coloc GWS hits</p>
 					<p>
-						<input type="radio" id="coloc_gws_hits_same_dir_asc" value="coloc_gws_hits_same_dir_asc" v-model="sorter" v-on:change="refreshTable()" checked><label for="coloc_gws_hits_same_dir_asc" class="radio-left">▲</label><input type="radio" id="coloc_gws_hits_same_dir_desc" value="coloc_gws_hits_same_dir_desc" v-model="sorter" v-on:change="refreshTable()"><label for="coloc_gws_hits_same_dir_desc" class="radio-right">▼</label>
-					</p>
-				</div>
-				<div role="columnheader">
-					<p>Relative β with index</p>
-					<p>
-						<input type="radio" id="rel_beta_asc" value="rel_beta_asc" v-model="sorter" v-on:change="refreshTable()" checked><label for="rel_beta_asc" class="radio-left">▲</label><input type="radio" id="rel_beta_desc" value="rel_beta_desc" v-model="sorter" v-on:change="refreshTable()"><label for="rel_beta_desc" class="radio-right">▼</label>
-					</p>
-				</div>
-				<div role="columnheader">
-					<p>Coloc GWS hits (opp&nbsp;dir)</p>
-					<p>
-						<input type="radio" id="coloc_gws_hits_opp_dir_asc" value="coloc_gws_hits_opp_dir_asc" v-model="sorter" v-on:change="refreshTable()" checked><label for="coloc_gws_hits_opp_dir_asc" class="radio-left">▲</label><input type="radio" id="coloc_gws_hits_opp_dir_desc" value="coloc_gws_hits_opp_dir_desc" v-model="sorter" v-on:change="refreshTable()"><label for="coloc_gws_hits_opp_dir_desc" class="radio-right">▼</label>
+						<input type="radio" id="coloc_gws_hits_asc" value="coloc_gws_hits_asc" v-model="sorter" v-on:change="refreshTable()" checked><label for="coloc_gws_hits_asc" class="radio-left">▲</label><input type="radio" id="coloc_gws_hits_desc" value="coloc_gws_hits_desc" v-model="sorter" v-on:change="refreshTable()"><label for="coloc_gws_hits_desc" class="radio-right">▼</label>
 					</p>
 				</div>
 			</div>
@@ -65,15 +53,13 @@
 				<div role="cell">{{ corr.case_overlap }}</div>
 				<div role="cell">{{ corr.gws_hits }}</div>
 				<div role="cell">
-					<template v-if="corr.coloc_gws_hits_same_dir > 0">
-						<a :href="'#dialog-corr-' + corr.name" v-on:click="openDialogAuthz(corr.name)">{{ corr.coloc_gws_hits_same_dir }}</a>
+					<template v-if="corr.coloc_gws_hits > 0">
+						<a :href="'#dialog-corr-' + corr.name" v-on:click="openDialogAuthz(corr.name)">{{ corr.coloc_gws_hits }}</a>
 					</template>
 					<template v-else>
-						{{ corr.coloc_gws_hits_same_dir }}
+						{{ corr.coloc_gws_hits }}
 					</template>
 				</div>
-				<div role="cell">{{ corr.rel_beta }}</div>
-				<div role="cell">{{ corr.coloc_gws_hits_opp_dir }}</div>
 			</div>
 		</div>
 
@@ -87,17 +73,13 @@ function formatRow(row) {
 	const case_overlap_perc = (row.case_overlap * 100).toFixed(2);
 	const case_overlap = row.case_overlap === null ? "-" : case_overlap_perc;
 	const gws_hits = row.gws_hits === null ? "-" : row.gws_hits;
-	const coloc_gws_hits_same_dir = row.coloc_gws_hits_same_dir === null ? "-" : row.coloc_gws_hits_same_dir;
-	const rel_beta = row.rel_beta === null ? "-" : row.rel_beta;
-	const coloc_gws_hits_opp_dir = row.coloc_gws_hits_opp_dir === null ? "-" : row.coloc_gws_hits_opp_dir;
+	const coloc_gws_hits = row.coloc_gws_hits === null ? "-" : row.coloc_gws_hits;
 	return {
 		name: row.name,
 		longname: row.longname,
 		case_overlap: case_overlap,
 		gws_hits: gws_hits,
-		coloc_gws_hits_same_dir: coloc_gws_hits_same_dir,
-		rel_beta: rel_beta,
-		coloc_gws_hits_opp_dir: coloc_gws_hits_opp_dir
+		coloc_gws_hits: coloc_gws_hits,
 	}
 }
 
@@ -131,25 +113,11 @@ function computeTable(rows, endpoint_filter, sorter) {
 			computed_rows = orderBy(computed_rows, ["gws_hits"], ["asc"]);
 			break;
 
-		case "coloc_gws_hits_same_dir_desc":
-			computed_rows = orderBy(computed_rows, [(row) => row.coloc_gws_hits_same_dir || ""], ["desc"]);
+		case "coloc_gws_hits_desc":
+			computed_rows = orderBy(computed_rows, [(row) => row.coloc_gws_hits || ""], ["desc"]);
 			break;
-		case "coloc_gws_hits_same_dir_asc":
-			computed_rows = orderBy(computed_rows, ["coloc_gws_hits_same_dir"], ["asc"]);
-			break;
-
-		case "rel_beta_desc":
-			computed_rows = orderBy(computed_rows, [(row) => row.rel_beta || ""], ["desc"]);
-			break;
-		case "rel_beta_asc":
-			computed_rows = orderBy(computed_rows, ["rel_beta"], ["asc"]);
-			break;
-
-		case "coloc_gws_hits_opp_dir_desc":
-			computed_rows = orderBy(computed_rows, [(row) => row.coloc_gws_hits_opp_dir || ""], ["desc"]);
-			break;
-		case "coloc_gws_hits_opp_dir_asc":
-			computed_rows = orderBy(computed_rows, ["coloc_gws_hits_opp_dir"], ["asc"]);
+		case "coloc_gws_hits_asc":
+			computed_rows = orderBy(computed_rows, ["coloc_gws_hits"], ["asc"]);
 			break;
 	}
 
@@ -235,11 +203,11 @@ export default {
 /* Grid table layout */
 .grid-corr-header {
 	display: grid;
-	grid-template-columns: 9fr     2fr 2fr 2fr 2fr 2fr;  /* first column spans 2 body columns */
+	grid-template-columns: 9fr     2fr 2fr 2fr;  /* first column spans 2 body columns */
 }
 .grid-corr-body {
 	display: grid;
-	grid-template-columns: 3fr 6fr 2fr 2fr 2fr 2fr 2fr;
+	grid-template-columns: 3fr 6fr 2fr 2fr 2fr;
 }
 
 /* Place table header widget near the bottom */

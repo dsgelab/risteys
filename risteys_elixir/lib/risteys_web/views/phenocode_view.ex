@@ -2,8 +2,6 @@ defmodule RisteysWeb.PhenocodeView do
   use RisteysWeb, :view
   require Integer
 
-  alias Risteys.Genomics
-
   def render("assocs.json", %{
         phenocode: phenocode,
         assocs: assocs,
@@ -469,8 +467,7 @@ defmodule RisteysWeb.PhenocodeView do
 
   defp sort_variants(variants) do
     # Sort variant by CHR, POS.
-    variants
-    |> Enum.sort_by(fn variant ->
+    Enum.sort_by(variants, fn {variant, _genes} ->
       [chr, pos, _ref, _alt] = String.split(variant, "-")
       chr = String.to_integer(chr)
       pos = String.to_integer(pos)
@@ -478,8 +475,8 @@ defmodule RisteysWeb.PhenocodeView do
     end)
   end
 
-  defp list_genes(variant) do
-    Genomics.list_closest_genes(variant)
+  defp list_genes(genes) do
+    genes
     |> Enum.map(fn gene -> gene.name end)
     |> Enum.map(fn name -> ahref(name, "https://results.finngen.fi/gene/" <> name) end)
     |> Enum.intersperse(", ")
