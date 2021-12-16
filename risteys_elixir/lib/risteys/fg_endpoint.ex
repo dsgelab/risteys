@@ -8,6 +8,7 @@ defmodule Risteys.FGEndpoint do
   alias Risteys.Phenocode
   alias Risteys.Icd10
   alias Risteys.StatsSex
+  alias Risteys.Genomics
 
   alias Risteys.FGEndpoint.Correlation
   alias Risteys.FGEndpoint.ExplainerStep
@@ -25,8 +26,8 @@ defmodule Risteys.FGEndpoint do
   def get_explainer_steps(endpoint) do
     steps = [
       %{
-	name: :all,
-	data: nil,
+        name: :all,
+        data: nil
       },
       %{
         name: :sex_rule,
@@ -130,8 +131,9 @@ defmodule Risteys.FGEndpoint do
     |> Map.take(registries)
     |> Map.merge(icd10s_exp)
     |> Enum.reject(fn {_registry, values} ->
-      is_nil(values)   # for data coming from the database
-      or values == []  # when ICD expansion lead to empty list
+      # for data coming from the database when ICD expansion lead to empty list
+      is_nil(values) or
+        values == []
     end)
     |> Enum.into(%{})
   end
@@ -170,7 +172,7 @@ defmodule Risteys.FGEndpoint do
       hd_icd_10_exp: [],
       hd_icd_10_excl_exp: [],
       kela_reimb_icd_exp: [],
-      outpat_icd_exp: [],
+      outpat_icd_exp: []
     }
 
     Map.merge(defaults, expanded)
@@ -300,10 +302,10 @@ defmodule Risteys.FGEndpoint do
       distrib_year: %{"hist" => hist_year}
     } =
       Repo.one(
-	from ss in StatsSex,
-	where:
-          ss.phenocode_id == ^endpoint.id
-          and ss.sex == ^sex_all
+        from ss in StatsSex,
+          where:
+            ss.phenocode_id == ^endpoint.id and
+              ss.sex == ^sex_all
       )
 
     %{age: hist_age, year: hist_year}
@@ -318,7 +320,6 @@ defmodule Risteys.FGEndpoint do
     %{year: hist} = get_histograms(endpoint_name)
     hist
   end
-
 
   # -- Correlation --
   def upsert_correlation(attrs) do
@@ -340,7 +341,6 @@ defmodule Risteys.FGEndpoint do
       from corr in Correlation,
         join: pp in Phenocode,
         on: corr.phenocode_b_id == pp.id,
-        order_by: [desc_nulls_last: pp.gws_hits],
         where:
           corr.phenocode_a_id == ^phenocode.id and
             corr.phenocode_a_id != corr.phenocode_b_id,
@@ -350,10 +350,27 @@ defmodule Risteys.FGEndpoint do
           case_overlap: corr.case_overlap,
           gws_hits: pp.gws_hits,
           coloc_gws_hits_same_dir: corr.coloc_gws_hits_same_dir,
-          coloc_gws_hits_opp_dir: corr.coloc_gws_hits_opp_dir,
-          rel_beta: corr.rel_beta
+          coloc_gws_hits_opp_dir: corr.coloc_gws_hits_opp_dir
         }
     )
+    |> Enum.map(fn row ->
+      coloc_gws_hits =
+        case {row.coloc_gws_hits_same_dir, row.coloc_gws_hits_opp_dir} do
+          {nil, nil} ->
+            nil
+
+          {nil, hits} ->
+            hits
+
+          {hits, nil} ->
+            hits
+
+          {hits_same_dir, hits_opp_dir} ->
+            hits_same_dir + hits_opp_dir
+        end
+
+      Map.put_new(row, :coloc_gws_hits, coloc_gws_hits)
+    end)
   end
 
   def broader_endpoints(phenocode, limit \\ 5) do
@@ -387,15 +404,48 @@ defmodule Risteys.FGEndpoint do
   end
 
   def list_variants_by_correlation(phenocode) do
-    Repo.all(
-      from corr in Correlation,
-      join: pp in Phenocode,
-      on: corr.phenocode_b_id == pp.id,
-      where:
-      corr.phenocode_a_id == ^phenocode.id
-      and not is_nil(corr.variants),
-      select: %{corr_endpoint: pp.name, variants: corr.variants}
-    )
+    by_corr =
+      Repo.all(
+        from corr in Correlation,
+          join: pp in Phenocode,
+          on: corr.phenocode_b_id == pp.id,
+          where: corr.phenocode_a_id == ^phenocode.id,
+          select: %{
+            corr_endpoint: pp.name,
+            variants_same_dir: corr.variants_same_dir,
+            variants_opp_dir: corr.variants_opp_dir,
+            beta_same_dir: corr.rel_beta_same_dir,
+            beta_opp_dir: corr.rel_beta_opp_dir
+          }
+      )
+      # Remove correlations without any variants
+      |> Enum.reject(fn corr ->
+        Enum.empty?(corr.variants_same_dir) and Enum.empty?(corr.variants_opp_dir)
+      end)
+
+    # Gather all the variants
+    all_corr_variants =
+      for corr <- by_corr, reduce: MapSet.new() do
+        acc ->
+          variants =
+            MapSet.union(MapSet.new(corr.variants_same_dir), MapSet.new(corr.variants_opp_dir))
+
+          MapSet.union(acc, variants)
+      end
+
+    # Map each variant to its closest genes
+    genes =
+      for variant <- all_corr_variants, reduce: %{} do
+        acc ->
+          Map.put_new(acc, variant, Genomics.list_closest_genes(variant))
+      end
+
+    # Merge all info into one data structure
+    for corr <- by_corr do
+      variants_same_dir = Enum.map(corr.variants_same_dir, fn vv -> {vv, genes[vv]} end)
+      variants_opp_dir = Enum.map(corr.variants_opp_dir, fn vv -> {vv, genes[vv]} end)
+      %{corr | variants_same_dir: variants_same_dir, variants_opp_dir: variants_opp_dir}
+    end
   end
 
   # -- StatsCumulativeIncidence --
@@ -428,11 +478,11 @@ defmodule Risteys.FGEndpoint do
   defp get_cumulinc_sex(endpoint_id, sex) do
     Repo.all(
       from stats in StatsCumulativeIncidence,
-      where:
-        stats.phenocode_id == ^endpoint_id and
-        stats.sex == ^sex,
-      # The following will be reversed when we build the list by prepending values
-      order_by: [desc: stats.age]
+        where:
+          stats.phenocode_id == ^endpoint_id and
+            stats.sex == ^sex,
+        # The following will be reversed when we build the list by prepending values
+        order_by: [desc: stats.age]
     )
     |> Enum.reduce([], fn changeset, acc ->
       %{
@@ -440,7 +490,8 @@ defmodule Risteys.FGEndpoint do
         value: value
       } = changeset
 
-      data_point = %{age: age, value: value * 100}  # convert value to percentage
+      # convert value to percentage
+      data_point = %{age: age, value: value * 100}
       [data_point | acc]
     end)
   end
