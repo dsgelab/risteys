@@ -127,7 +127,7 @@ def survival_analysis(df):
         df_cph,
         entry_col="start",
         duration_col="stop",
-        status_col="outcome",
+        event_col="outcome",
         weights_col="weight",
         robust=True,
     )
