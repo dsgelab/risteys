@@ -25,8 +25,8 @@ for outcome, exposure in product(outcomes, exposures):
     first_events = load_wide_first_events_data(exposure, outcome, preprocess=True)
 
     # Merge minimal phenotype with first events
-    # Note: only subjects in minimal phenotype are included (left join)
-    df = minimal_phenotype.merge(first_events, how="left", on="finregistryid")
+    # Note: only subjects in both datasets are included (inner join)
+    df = minimal_phenotype.merge(first_events, how="inner", on="finregistryid")
 
     # Sample cases and controls based on outcome
     df = sample_cases_and_controls(df, n_cases=250000, controls_per_case=2)
