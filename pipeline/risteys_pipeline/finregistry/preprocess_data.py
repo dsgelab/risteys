@@ -108,7 +108,7 @@ def merge_first_events_with_minimal_phenotype(first_events, minimal_phenotype):
     Only subjects in both datasets are included (inner join).
 
     Returns a dataframe with the following columns: 
-    finregistryid, female, exposure_age, exposure_year, outcome_age, outcome_year
+    finregistryid, female, birth_year, death_year, exposure_age, exposure_year, outcome_age, outcome_year
     """
     df = minimal_phenotype.merge(first_events, how="inner", on="finregistryid")
     df["exposure_year"] = df["birth_year"] + df["exposure_age"]
@@ -117,6 +117,8 @@ def merge_first_events_with_minimal_phenotype(first_events, minimal_phenotype):
     cols = [
         "finregistryid",
         "female",
+        "birth_year",
+        "death_year",
         "exposure_age",
         "exposure_year",
         "outcome_age",
