@@ -18,7 +18,7 @@ def build_outcome_dataset(df):
     Outcomes before the start of the follow-up and after the end of the follow-up are omitted.
 
     Returns a dataframe with the following columns: 
-    finregistryid, start, stop, outcome, birth_year, weight, sex
+    finregistryid, start, stop, outcome, birth_year, weight, female
     """
     FOLLOWUP_DURATION = FOLLOWUP_END - FOLLOWUP_START
 
@@ -36,7 +36,15 @@ def build_outcome_dataset(df):
     outcome["stop"] = np.minimum(outcome["death_year"], outcome["outcome_year"])
     outcome["stop"] = np.minimum(outcome["stop"] - FOLLOWUP_START, FOLLOWUP_DURATION)
 
-    cols = ["finregistryid", "start", "stop", "outcome", "birth_year", "weight", "sex"]
+    cols = [
+        "finregistryid",
+        "start",
+        "stop",
+        "outcome",
+        "birth_year",
+        "weight",
+        "female",
+    ]
     outcome = outcome[cols]
 
     return outcome
@@ -90,10 +98,10 @@ def build_cph_dataset(df):
     Exposure is modeled as a time-varying covariate.
 
     Input is a dataset with (at least) the following columns:
-    finregistryid, birth_year, death_year, exposure_year, outcome_year, weight, sex
+    finregistryid, birth_year, death_year, exposure_year, outcome_year, weight, female
 
     Returns a dataframe with the following columns: 
-    start, stop, outcome, exposure, birth_year, weight, sex
+    start, stop, outcome, exposure, birth_year, weight, female
     """
 
     # Create dataframes for exposure and outcome
