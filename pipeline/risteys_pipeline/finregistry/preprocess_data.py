@@ -1,5 +1,6 @@
 """Functions for preprocessing FinRegistry data"""
 
+import numpy as np
 import pandas as pd
 from risteys_pipeline.log import logger
 from risteys_pipeline.config import FOLLOWUP_START, FOLLOWUP_END
@@ -52,7 +53,8 @@ def preprocess_wide_first_events_data(df):
     """Applies the following preprocessing steps to wide first events data:
         - rename columns
         - remove duplicated finregistryids
-        - replace numeric event columns (e.g. <outcome>_NEVT) with boolean
+        - replace numeric event columns (e.g. <outcome>_NEVT) with numeric boolean (1=yes, 0=no)
+        - replace endpoint ages (e.g. <outcome>_AGE) with NaN when the subject did not experience the endpoint
 
         Returns a dataframe with the following columns: 
         finregistryid, exposure, exposure_age, outcome, outcome_age
@@ -69,6 +71,8 @@ def preprocess_wide_first_events_data(df):
     df = df.drop_duplicates(subset=["finregistryid"]).reset_index(drop=True)
     df["exposure"] = (df["exposure"] > 0).astype(int)
     df["outcome"] = (df["outcome"] > 0).astype(int)
+    df["exposure_age"] = np.where(df["exposure"] == 1, df["exposure_age"], np.nan)
+    df["outcome_age"] = np.where(df["outcome"] == 1, df["outcome_age"], np.nan)
     logger.info(f"{df.shape[0]} rows after data pre-processing")
     return df
 
