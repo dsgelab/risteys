@@ -7,6 +7,7 @@ from lifelines import CoxPHFitter
 
 from lifelines.utils import add_covariate_to_timeline
 from risteys_pipeline.config import FOLLOWUP_START, FOLLOWUP_END
+from risteys_pipeline.log import logger
 
 
 def build_outcome_dataset(df):
@@ -86,7 +87,7 @@ def build_cph_dataset(df):
     finregistryid, birth_year, death_year, exposure_year, outcome_year, weight, sex
 
     Returns a dataframe with the following columns: 
-    finregistryid, start, stop, outcome, exposure, birth_year, weight, sex
+    start, stop, outcome, exposure, birth_year, weight, sex
     """
 
     # Create dataframes for exposure and outcome
@@ -108,6 +109,11 @@ def build_cph_dataset(df):
     # Add exposure if missing
     if "exposure" not in res:
         res["exposure"] = np.nan
+
+    # Drop rows where start >= stop
+    start_after_stop = res["start"] >= res["stop"]
+    res = res.loc[~start_after_stop]
+    logger.info(f"{sum(start_after_stop)} rows had start >= stop")
 
     # Change data types
     res["exposure"] = res["exposure"].fillna(0)
