@@ -100,3 +100,29 @@ def preprocess_minimal_phenotype_data(df):
     logger.info(f"{df.shape[0]} rows after data pre-processing")
 
     return df
+
+
+def merge_first_events_with_minimal_phenotype(first_events, minimal_phenotype):
+    """
+    Merge first events dataset with minimal phenotype data and calculate exposure and outcome years.
+    Only subjects in both datasets are included (inner join).
+
+    Returns a dataframe with the following columns: 
+    finregistryid, female, exposure_age, exposure_year, outcome_age, outcome_year
+    """
+    df = minimal_phenotype.merge(first_events, how="inner", on="finregistryid")
+    df["exposure_year"] = df["birth_year"] + df["exposure_age"]
+    df["outcome_year"] = df["birth_year"] + df["outcome_age"]
+
+    cols = [
+        "finregistryid",
+        "female",
+        "exposure_age",
+        "exposure_year",
+        "outcome_age",
+        "outcome_year",
+    ]
+
+    df = df[cols]
+
+    return df
