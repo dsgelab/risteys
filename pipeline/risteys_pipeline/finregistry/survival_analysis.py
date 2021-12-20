@@ -27,14 +27,21 @@ def build_outcome_dataset(df):
     outcome["start"] = np.maximum(0, outcome["birth_year"] - FOLLOWUP_START)
 
     outcome["outcome_year"] = outcome["birth_year"] + outcome["outcome_age"]
-    outcome = outcome.fillna({"outcome_year": np.Inf, "death_year": np.Inf})
 
-    outcome["outcome"] = outcome["outcome_year"].between(
-        FOLLOWUP_START, FOLLOWUP_END, inclusive="both"
+    outcome["outcome"] = (
+        outcome["outcome_year"]
+        .between(FOLLOWUP_START, FOLLOWUP_END, inclusive="both")
+        .astype(int)
     )
 
+    outcome["outcome_year"] = np.where(
+        outcome["outcome"] == 1, outcome["outcome_year"], np.nan
+    )
+
+    outcome = outcome.fillna({"outcome_year": np.Inf, "death_year": np.Inf})
+
     outcome["stop"] = np.minimum(outcome["death_year"], outcome["outcome_year"])
-    outcome["stop"] = np.minimum(outcome["stop"] - FOLLOWUP_START, FOLLOWUP_DURATION)
+    outcome["stop"] = np.minimum(outcome["stop"], FOLLOWUP_END) - FOLLOWUP_START
 
     cols = [
         "finregistryid",
