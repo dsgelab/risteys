@@ -19,6 +19,7 @@ def generate_df(birth_year, death_year, exposure_age, outcome_age):
             "outcome_age": outcome_age,
             "weight": [0],
             "female": [0],
+            "case": [np.isnan(exposure_age).astype(int)],
         }
     )
     return df

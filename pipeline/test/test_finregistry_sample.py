@@ -12,7 +12,14 @@ def test_sample_cases_and_controls_n_cases():
     df = pd.DataFrame(
         {
             "finregistryid": [1, 2, 3, 4, 5],
-            "outcome_year": [FOLLOWUP_START + 1, FOLLOWUP_START + 1, 0, 0, 0],
+            "outcome_year": [
+                FOLLOWUP_START + 1,
+                FOLLOWUP_START + 1,
+                np.nan,
+                np.nan,
+                np.nan,
+            ],
+            "case": [1, 1, 0, 0, 0],
         }
     )
     df_sample = sample_cases_and_controls(df, n_cases=3, controls_per_case=1)
@@ -26,7 +33,14 @@ def test_sample_cases_and_controls_n_controls():
     df = pd.DataFrame(
         {
             "finregistryid": [1, 2, 3, 4, 5],
-            "outcome_year": [FOLLOWUP_START + 1, FOLLOWUP_START + 1, 0, 0, 0],
+            "outcome_year": [
+                FOLLOWUP_START + 1,
+                FOLLOWUP_START + 1,
+                np.nan,
+                np.nan,
+                np.nan,
+            ],
+            "case": [1, 1, 0, 0, 0],
         }
     )
     df_sample = sample_cases_and_controls(df, n_cases=2, controls_per_case=10)
