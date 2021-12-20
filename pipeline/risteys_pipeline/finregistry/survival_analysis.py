@@ -110,6 +110,11 @@ def build_cph_dataset(df):
     Returns a dataframe with the following columns: 
     start, stop, outcome, exposure, birth_year, weight, female
     """
+    # Copy dataframe
+    df = df.copy()
+
+    # Add case/control identifier to finregistryids as the same individual may be in both cases and controls
+    df["finregistryid"] = df["finregistryid"].map(str) + df["case"].map(str)
 
     # Create dataframes for exposure and outcome
     exposure = build_exposure_dataset(df)
