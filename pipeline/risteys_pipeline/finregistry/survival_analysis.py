@@ -135,6 +135,8 @@ def survival_analysis(df):
         robust=True,
     )
 
+    cph.print_summary()
+
     hr = cph.hazard_ratios_[0]
 
     return hr
