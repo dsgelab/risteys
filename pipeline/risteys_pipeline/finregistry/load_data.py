@@ -34,6 +34,7 @@ def load_minimal_phenotype_data(
 def load_wide_first_events_data(
     exposure,
     outcome,
+    nrows=None,
     data_path=FINREGISTRY_WIDE_FIRST_EVENTS_DATA_PATH,
     preprocess=False,
 ):
@@ -47,7 +48,7 @@ def load_wide_first_events_data(
         outcome + "_AGE",
         outcome + "_YEAR",
     ]
-    df = pd.read_csv(data_path, header=0, sep="\t", usecols=cols)
+    df = pd.read_csv(data_path, header=0, sep="\t", usecols=cols, nrows=nrows)
     logger.info(f"{df.shape[0]} rows loaded")
     if preprocess:
         df = preprocess_wide_first_events_data(df)
