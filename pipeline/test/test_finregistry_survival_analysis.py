@@ -18,7 +18,7 @@ def generate_df(birth_year, death_year, exposure_age, outcome_age):
             "exposure_age": exposure_age,
             "outcome_age": outcome_age,
             "weight": [0],
-            "sex": [0],
+            "female": [0],
         }
     )
     return df
@@ -152,6 +152,24 @@ def test_build_cph_dataset_exposure_before_followup():
     assert_frame_equal(res[cols], expected, check_dtype=False)
 
 
+def test_build_cph_dataset_outcome_before_followup():
+    """
+    Test building the cph dataset: outcome before follow-up, no exposure
+                  start                    end
+    >-----O-----|----- ----- ----- -----|----
+    """
+    df = generate_df(
+        birth_year=FOLLOWUP_START - 10,
+        death_year=np.nan,
+        exposure_age=np.nan,
+        outcome_age=5,
+    )
+    cols = ["start", "stop", "exposure", "outcome"]
+    res = build_cph_dataset(df)
+    expected = pd.DataFrame([[0, FOLLOWUP_END - FOLLOWUP_START, 0, 0]], columns=cols)
+    assert_frame_equal(res[cols], expected, check_dtype=False)
+
+
 def test_build_cph_dataset_late_entry():
     """
     Test building the cph dataset: late entry
@@ -188,7 +206,7 @@ def test_build_cph_dataset_outcome_before_exposure():
     assert_frame_equal(res[cols], expected, check_dtype=False)
 
 
-def test_build_cph_dataset_death():
+def test_build_cph_dataset_exposure_and_death():
     """
     Test building the cph dataset: exposure, death
               start                    end
@@ -203,6 +221,24 @@ def test_build_cph_dataset_death():
     cols = ["start", "stop", "exposure", "outcome"]
     res = build_cph_dataset(df)
     expected = pd.DataFrame([[5, 10, 0, 0], [10, 15, 1, 0]], columns=cols)
+    assert_frame_equal(res[cols], expected, check_dtype=False)
+
+
+def test_build_cph_dataset_outcome_and_death():
+    """
+    Test building the cph dataset: exposure, death
+              start                    end
+                |     >-----O     D     |
+    """
+    df = generate_df(
+        birth_year=FOLLOWUP_START + 5,
+        death_year=FOLLOWUP_START + 15,
+        exposure_age=np.nan,
+        outcome_age=5,
+    )
+    cols = ["start", "stop", "exposure", "outcome"]
+    res = build_cph_dataset(df)
+    expected = pd.DataFrame([[5, 10, 0, 1]], columns=cols)
     assert_frame_equal(res[cols], expected, check_dtype=False)
 
 
