@@ -88,6 +88,12 @@ def preprocess_minimal_phenotype_data(df):
     df = df.drop_duplicates().reset_index(drop=True)
     df["birth_year"] = df["date_of_birth"].dt.year
     df["death_year"] = df["death_date"].dt.year
+    df["birth_year"] = (
+        df["date_of_birth"].dt.year + (df["date_of_birth"].dayofyear - 1) / DAYS_IN_YEAR
+    )
+    df["death_year"] = (
+        df["death_date"].dt.year + (df["death_date"].dayofyear - 1) / DAYS_IN_YEAR
+    )
     excluded_subjects = list_excluded_subjects(df)
     df = df.loc[~df["finregistryid"].isin(excluded_subjects)]
     df["death_age"] = (df["death_date"] - df["date_of_birth"]).dt.days / DAYS_IN_YEAR
