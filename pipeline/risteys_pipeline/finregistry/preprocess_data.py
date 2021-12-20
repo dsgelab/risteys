@@ -52,9 +52,10 @@ def preprocess_wide_first_events_data(df):
     """Applies the following preprocessing steps to wide first events data:
         - rename columns
         - remove duplicated finregistryids
+        - replace numeric event columns (e.g. <outcome>_NEVT) with boolean
 
         Returns a dataframe with the following columns: 
-        finregistryid, endpoint, age, year
+        finregistryid, exposure, exposure_age, outcome, outcome_age
 
         TODO: make sure column order is retained
     """
@@ -62,12 +63,12 @@ def preprocess_wide_first_events_data(df):
         "finregistryid",
         "exposure",
         "exposure_age",
-        "exposure_year",
         "outcome",
         "outcome_age",
-        "outcome_year",
     ]
     df = df.drop_duplicates(subset=["finregistryid"]).reset_index(drop=True)
+    df["exposure"] = (df["exposure"] > 0).astype(int)
+    df["outcome"] = (df["outcome"] > 0).astype(int)
     logger.info(f"{df.shape[0]} rows after data pre-processing")
     return df
 

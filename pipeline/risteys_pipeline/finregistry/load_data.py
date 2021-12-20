@@ -41,14 +41,12 @@ def load_wide_first_events_data(
     """Loads wide first_events data for two endpoints as a dataframe and optionally performs preprocessing."""
     cols = [
         "FINREGISTRYID",
-        exposure,
+        exposure + "_NEVT",
         exposure + "_AGE",
-        exposure + "_YEAR",
-        outcome,
+        outcome + "_NEVT",
         outcome + "_AGE",
-        outcome + "_YEAR",
     ]
-    df = pd.read_csv(data_path, header=0, sep="\t", usecols=cols, nrows=nrows)
+    df = pd.read_csv(data_path, header=0, sep="\t", usecols=cols, nrows=nrows)[cols]
     logger.info(f"{df.shape[0]} rows loaded")
     if preprocess:
         df = preprocess_wide_first_events_data(df)

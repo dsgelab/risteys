@@ -2,23 +2,44 @@ import numpy as np
 import pandas as pd
 from pandas._testing import assert_frame_equal
 from risteys_pipeline.config import FOLLOWUP_START, FOLLOWUP_END
-from risteys_pipeline.finregistry.survival_analysis import build_cph_dataset
+from risteys_pipeline.finregistry.survival_analysis import (
+    build_cph_dataset,
+    build_exposure_dataset,
+)
 
 
-def generate_df(birth_year, death_year, exposure_year, outcome_year):
+def generate_df(birth_year, death_year, exposure_age, outcome_age):
     """Generate a test dataframe for build_cph_dataset() tests"""
     df = pd.DataFrame(
         {
             "finregistryid": [0],
             "birth_year": birth_year,
             "death_year": death_year,
-            "exposure_year": exposure_year,
-            "outcome_year": outcome_year,
+            "exposure_age": exposure_age,
+            "outcome_age": outcome_age,
             "weight": [0],
             "sex": [0],
         }
     )
     return df
+
+
+def test_build_exposure_dataset():
+    """
+    Test building the exposure dataset: exposure during follow-up
+                  start                    end
+    >----- -----|-----X-----O           |
+    """
+    df = generate_df(
+        birth_year=FOLLOWUP_START - 10,
+        death_year=np.nan,
+        exposure_age=15,
+        outcome_age=20,
+    )
+    res = build_exposure_dataset(df)
+    cols = ["finregistryid", "duration", "exposure"]
+    expected = pd.DataFrame([[0, 5, 1]], columns=cols)
+    assert_frame_equal(res[cols], expected, check_dtype=False)
 
 
 def test_build_cph_dataset_outcome_exposure():
@@ -30,8 +51,8 @@ def test_build_cph_dataset_outcome_exposure():
     df = generate_df(
         birth_year=FOLLOWUP_START - 10,
         death_year=np.nan,
-        exposure_year=FOLLOWUP_START + 5,
-        outcome_year=FOLLOWUP_START + 10,
+        exposure_age=15,
+        outcome_age=20,
     )
     cols = ["start", "stop", "exposure", "outcome"]
     res = build_cph_dataset(df)
@@ -43,13 +64,13 @@ def test_build_cph_dataset_no_exposure_no_outcome():
     """
     Test building the cph dataset: no exposure, no outcome
               start                    end
-    >----- -----|----- ----- ----- -----|---- 
+    >----- -----|----- ----- ----- -----|----
     """
     df = generate_df(
         birth_year=FOLLOWUP_START - 10,
         death_year=np.nan,
-        exposure_year=np.nan,
-        outcome_year=np.nan,
+        exposure_age=np.nan,
+        outcome_age=np.nan,
     )
     cols = ["start", "stop", "exposure", "outcome"]
     res = build_cph_dataset(df)
@@ -66,8 +87,8 @@ def test_build_cph_dataset_outcome_no_exposure():
     df = generate_df(
         birth_year=FOLLOWUP_START - 10,
         death_year=np.nan,
-        exposure_year=np.nan,
-        outcome_year=FOLLOWUP_START + 10,
+        exposure_age=np.nan,
+        outcome_age=20,
     )
     cols = ["start", "stop", "exposure", "outcome"]
     res = build_cph_dataset(df)
@@ -84,8 +105,8 @@ def test_build_cph_dataset_no_outcome_exposure():
     df = generate_df(
         birth_year=FOLLOWUP_START - 10,
         death_year=np.nan,
-        exposure_year=FOLLOWUP_START + 10,
-        outcome_year=np.nan,
+        exposure_age=20,
+        outcome_age=np.nan,
     )
     cols = ["start", "stop", "exposure", "outcome"]
     res = build_cph_dataset(df)
@@ -104,8 +125,8 @@ def test_build_cph_dataset_exposure_after_followup():
     df = generate_df(
         birth_year=FOLLOWUP_START - 10,
         death_year=np.nan,
-        exposure_year=FOLLOWUP_END + 5,
-        outcome_year=np.nan,
+        exposure_age=(FOLLOWUP_START - 10) + (FOLLOWUP_END - FOLLOWUP_START) + 5,
+        outcome_age=np.nan,
     )
     cols = ["start", "stop", "exposure", "outcome"]
     res = build_cph_dataset(df)
@@ -122,8 +143,8 @@ def test_build_cph_dataset_exposure_before_followup():
     df = generate_df(
         birth_year=FOLLOWUP_START - 10,
         death_year=np.nan,
-        exposure_year=FOLLOWUP_START - 5,
-        outcome_year=np.nan,
+        exposure_age=5,
+        outcome_age=np.nan,
     )
     cols = ["start", "stop", "exposure", "outcome"]
     res = build_cph_dataset(df)
@@ -140,8 +161,8 @@ def test_build_cph_dataset_late_entry():
     df = generate_df(
         birth_year=FOLLOWUP_START + 5,
         death_year=np.nan,
-        exposure_year=FOLLOWUP_START + 10,
-        outcome_year=FOLLOWUP_START + 15,
+        exposure_age=5,
+        outcome_age=10,
     )
     cols = ["start", "stop", "exposure", "outcome"]
     res = build_cph_dataset(df)
@@ -158,8 +179,8 @@ def test_build_cph_dataset_outcome_before_exposure():
     df = generate_df(
         birth_year=FOLLOWUP_START + 5,
         death_year=np.nan,
-        exposure_year=FOLLOWUP_START + 15,
-        outcome_year=FOLLOWUP_START + 10,
+        exposure_age=10,
+        outcome_age=5,
     )
     cols = ["start", "stop", "exposure", "outcome"]
     res = build_cph_dataset(df)
@@ -176,8 +197,8 @@ def test_build_cph_dataset_death():
     df = generate_df(
         birth_year=FOLLOWUP_START + 5,
         death_year=FOLLOWUP_START + 15,
-        exposure_year=FOLLOWUP_START + 10,
-        outcome_year=np.nan,
+        exposure_age=5,
+        outcome_age=np.nan,
     )
     cols = ["start", "stop", "exposure", "outcome"]
     res = build_cph_dataset(df)
@@ -194,8 +215,8 @@ def test_build_cph_dataset_same_time():
     df = generate_df(
         birth_year=FOLLOWUP_START - 10,
         death_year=np.nan,
-        exposure_year=FOLLOWUP_START + 10,
-        outcome_year=FOLLOWUP_START + 10,
+        exposure_age=20,
+        outcome_age=20,
     )
     cols = ["start", "stop", "exposure", "outcome"]
     res = build_cph_dataset(df)

@@ -22,13 +22,14 @@ def build_outcome_dataset(df):
 
     outcome = df.copy()
 
+    outcome["start"] = np.maximum(0, outcome["birth_year"] - FOLLOWUP_START)
+
+    outcome["outcome_year"] = outcome["birth_year"] + outcome["outcome_age"]
     outcome = outcome.fillna({"outcome_year": np.Inf, "death_year": np.Inf})
 
     outcome["outcome"] = outcome["outcome_year"].between(
         FOLLOWUP_START, FOLLOWUP_END, inclusive="both"
     )
-
-    outcome["start"] = np.maximum(0, outcome["birth_year"] - FOLLOWUP_START)
 
     outcome["stop"] = np.minimum(outcome["death_year"], outcome["outcome_year"])
     outcome["stop"] = np.minimum(outcome["stop"] - FOLLOWUP_START, FOLLOWUP_DURATION)
@@ -51,10 +52,13 @@ def build_exposure_dataset(df):
         "finregistryid",
         "birth_year",
         "death_year",
-        "outcome_year",
-        "exposure_year",
+        "outcome_age",
+        "exposure_age",
     ]
-    exposure = df[cols]
+    exposure = df[cols].reset_index(drop=True)
+
+    exposure["outcome_year"] = exposure["birth_year"] + exposure["outcome_age"]
+    exposure["exposure_year"] = exposure["birth_year"] + exposure["exposure_age"]
 
     exposure = exposure.fillna({"outcome_year": np.Inf, "exposure_year": np.Inf})
 
@@ -102,9 +106,6 @@ def build_cph_dataset(df):
         duration_col="duration",
         event_col="outcome",
     )
-
-    # Drop finregistryid
-    res = res.drop("finregistryid", axis=1)
 
     # Add exposure if missing
     if "exposure" not in res:
