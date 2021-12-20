@@ -9,6 +9,8 @@ from lifelines.utils import add_covariate_to_timeline
 from risteys_pipeline.config import FOLLOWUP_START, FOLLOWUP_END
 from risteys_pipeline.log import logger
 
+MIN_SUBJECTS = 100
+
 
 def build_outcome_dataset(df):
     """
@@ -127,23 +129,34 @@ def build_cph_dataset(df):
 def survival_analysis(df):
     """
     Survival/mortality analysis with time-on-study as timescale.
-    Returns the hazard ratio between the outcome and exposure.
+    Analysis is only run if there's more than MIN_SUBJECTS subjects in exposed and unexposed cases and controls.
+    Returns the hazard ratio between the outcome and exposure or None if there aren't enough subjects.
     """
 
     df_cph = build_cph_dataset(df)
 
-    cph = CoxPHFitter()
-    cph.fit(
-        df_cph,
-        entry_col="start",
-        duration_col="stop",
-        event_col="outcome",
-        weights_col="weight",
-        robust=True,
+    df_cph = df_cph.drop("finregistryid", axis=1)
+
+    # Check that there's enough subjects in each cell
+    min_subjects_check = (
+        pd.crosstab(df_cph["outcome"], df_cph["exposure"]).values.min() > MIN_SUBJECTS
     )
 
-    cph.print_summary()
-
-    hr = cph.hazard_ratios_[0]
+    if min_subjects_check:
+        logger.info("Fitting Cox PH model")
+        cph = CoxPHFitter()
+        cph.fit(
+            df_cph,
+            entry_col="start",
+            duration_col="stop",
+            event_col="outcome",
+            weights_col="weight",
+            robust=True,
+        )
+        cph.print_summary()
+        hr = cph.hazard_ratios_[0]
+    else:
+        logger.info("Not enough subjects")
+        hr = None
 
     return hr
