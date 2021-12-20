@@ -80,7 +80,6 @@ def preprocess_minimal_phenotype_data(df):
         - add birth and death year
         - drop excluded subjects
         - add indicator for females (bool)
-        - add approximate death age (num)
 
         Returns a dataframe with the following columns: 
         finregistryid, date_of_birth, death_date, sex, death_age, dead, female
@@ -88,15 +87,15 @@ def preprocess_minimal_phenotype_data(df):
     df.columns = df.columns.str.lower()
     df = df.drop_duplicates().reset_index(drop=True)
     df["birth_year"] = (
-        df["date_of_birth"].dt.year + (df["date_of_birth"].dt.dayofyear - 1) / DAYS_IN_YEAR
+        df["date_of_birth"].dt.year
+        + (df["date_of_birth"].dt.dayofyear - 1) / DAYS_IN_YEAR
     )
     df["death_year"] = (
         df["death_date"].dt.year + (df["death_date"].dt.dayofyear - 1) / DAYS_IN_YEAR
     )
+    df["female"] = df["sex"] == SEX_FEMALE
     excluded_subjects = list_excluded_subjects(df)
     df = df.loc[~df["finregistryid"].isin(excluded_subjects)]
-    df["death_age"] = (df["death_date"] - df["date_of_birth"]).dt.days / DAYS_IN_YEAR
-    df["female"] = df["sex"] == SEX_FEMALE
 
     logger.info(f"{df.shape[0]} rows after data pre-processing")
 
