@@ -102,6 +102,9 @@ def build_cph_dataset(df):
         event_col="outcome",
     )
 
+    # Drop finregistryid
+    res = res.drop("finregistryid", axis=1)
+
     # Add exposure if missing
     if "exposure" not in res:
         res["exposure"] = np.nan
