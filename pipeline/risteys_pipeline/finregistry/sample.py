@@ -4,11 +4,15 @@ import numpy as np
 import pandas as pd
 from random import sample
 from risteys_pipeline.log import logger
+from risteys_pipeline.config import FOLLOWUP_START, FOLLOWUP_END
 
 
 def sample_cases_and_controls(df, n_cases=250000, controls_per_case=2):
     """Samples df and adds case-cohort weights and indicators for cases/controls"""
-    caseids = df.loc[df["outcome"] == 1, "finregistryid"].tolist()
+
+    caseids = df.loc[
+        df["outcome_year"].between(FOLLOWUP_START, FOLLOWUP_END), "finregistryid"
+    ].tolist()
     controlids = df["finregistryid"].tolist()
 
     if n_cases > len(caseids):
