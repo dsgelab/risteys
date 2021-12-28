@@ -17,8 +17,18 @@ def build_outcome_dataset(df, timescale):
     Build the outcome dataset for Cox proportional hazard model.
     Outcomes before the start of the follow-up and after the end of the follow-up are omitted.
 
-    Returns a dataframe with the following columns: 
-    finregistryid, start, stop, outcome, birth_year, weight, female
+    Args:
+        df (DataFrame): dataframe with the following columns: 
+        finregistryid, birth_year, death_year, outcome_age, weight, female
+        timescale (bool): timescale for Cox regression, either time-on-study or age
+
+
+    Returns:
+        outcome (DataFrame): outcome dataframe with the following columns: 
+        finregistryid, start, stop, outcome, birth_year, weight, female
+
+    TODO: outcome_year already calculated in merge_first_events_with_minimal_phenotype()
+    TODO: remove timescale and always add both (start_time, end_time) and (start_age, end_age)
     """
 
     outcome = df.copy()
@@ -71,8 +81,17 @@ def build_exposure_dataset(df, timescale):
     Build the exposure dataset for modeling exposure as a time-varying covariate.
     Exposures before the start of the follow-up, after the end of the follow-up, and after the outcome are omitted.
 
-    Returns a dataframe with the following columns:
-    finregistryid, duration, exposure
+    Args: 
+        df (DataFrame): dataframe with the following columns: 
+        finregistryid, birth_year, death_year, outcome_age, exposure_age
+        timescale (bool): timescale for Cox regression, either time-on-study or age
+
+    Returns:
+        exposure (DataFrame): exposure dataframe with the following columns:
+        finregistryid, duration, exposure
+
+    TODO: outcome_year and exposure_year already calculated in merge_first_events_with_minimal_phenotype()
+    TODO: remove timescale and always add both duration_time and duration_age
     """
     cols = [
         "finregistryid",
@@ -119,11 +138,16 @@ def build_cph_dataset(df, timescale):
     Build the dataset for survival analysis using time-on-study or age as timescale.
     Exposure is modeled as a time-varying covariate.
 
-    Input is a dataset with (at least) the following columns:
-    finregistryid, birth_year, death_year, exposure_year, outcome_year, weight, female
+    Args:
+        df (DataFrame): dataframe with the following columns:
+        finregistryid, birth_year, death_year, exposure_year, outcome_year, weight, female
+        timescale (bool): timescale for Cox regression, either time-on-study or age
 
-    Returns a dataframe with the following columns: 
-    start, stop, outcome, exposure, birth_year, weight, female
+    Returns:
+        res (DataFrame): a dataframe with the following columns: 
+        start, stop, outcome, exposure, birth_year, weight, female
+
+    TODO: handle timescales here instead of in build_exposure_dataset and build_outcome_dataset
     """
     # Copy dataframe
     df = df.copy()
@@ -165,7 +189,14 @@ def survival_analysis(df, timescale="time-on-study"):
     """
     Survival/mortality analysis with time-on-study or age as timescale.
     Analysis is only run if there's more than MIN_SUBJECTS subjects in exposed and unexposed cases and controls.
-    Returns the hazard ratio between the outcome and exposure or None if there aren't enough subjects.
+
+    Args: 
+        df (DataFrame): dataframe with the following columns:
+        finregistryid, birth_year, death_year, exposure_year, outcome_year, weight, female
+        timescale (bool, optional): timescale for Cox regression, either time-on-study or age. Defaults to time-on-study.
+
+    Returns:
+        hr (float): the hazard ratio between the outcome and exposure. None if there aren't enough subjects.
     """
 
     df_cph = build_cph_dataset(df, timescale)

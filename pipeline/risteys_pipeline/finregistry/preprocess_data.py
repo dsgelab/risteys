@@ -16,7 +16,12 @@ def list_excluded_subjects(minimal_phenotype):
         - missing finregistryid
         - missing sex
 
-        Returns a list of finregistryids.
+    Args:
+        minimal_phenotype (dataframe): minimal phenotype dataset with the following columns included: 
+        birth_year, death_year, finregistryid, sex
+
+    Returns:
+        excluded_subjects (list): finregistryids of the excluded subjects
     """
     born_after_followup_end = minimal_phenotype["birth_year"] >= FOLLOWUP_END
     dead_before_followup_start = minimal_phenotype["death_year"] <= FOLLOWUP_START
@@ -37,8 +42,11 @@ def preprocess_endpoints_data(df):
         - lowercase column names
         - exclude omitted endpoints and drop the "omit" column
 
-        Returns a dataframe with the following columns: 
-        endpoint, sex
+    Args:
+        df (DataFrame): endpoints dataframe
+
+    Returns:
+        df (DataFrame): endpoints dataframe with the following columns: endpoint, sex
     """
     logger.info("Preprocessing endpoints data")
     df = df.rename(columns={"NAME": "endpoint", "SEX": "sex", "OMIT": "omit"})
@@ -56,10 +64,12 @@ def preprocess_wide_first_events_data(df):
         - replace numeric event columns (e.g. <outcome>_NEVT) with numeric boolean (1=yes, 0=no)
         - replace endpoint ages (e.g. <outcome>_AGE) with NaN when the subject did not experience the endpoint
 
-        Returns a dataframe with the following columns: 
-        finregistryid, exposure, exposure_age, outcome, outcome_age
+    Args:
+        df (DataFrame): wide first events dataframe
 
-        TODO: make sure column order is retained
+    Returns:
+        df (DataFrame): wide first events dataframe with the following columns: 
+        finregistryid, exposure, exposure_age, outcome, outcome_age
     """
     df.columns = [
         "finregistryid",
@@ -85,7 +95,11 @@ def preprocess_minimal_phenotype_data(df):
         - drop excluded subjects
         - add indicator for females (bool)
 
-        Returns a dataframe with the following columns: 
+    Args:
+        df (DataFrame): minimal phenotype dataframe
+
+    Returns:
+        df (DataFrame): minimal phenotype dataframe with the following columns: 
         finregistryid, date_of_birth, death_date, sex, death_age, dead, female
     """
     df.columns = df.columns.str.lower()
@@ -107,14 +121,19 @@ def preprocess_minimal_phenotype_data(df):
 
 
 def merge_first_events_with_minimal_phenotype(first_events, minimal_phenotype):
-    """
-    Merge first events dataset with minimal phenotype data and calculate exposure and outcome years.
+    """Merge first events dataset with minimal phenotype data and calculate exposure and outcome years.
     Only subjects in both datasets are included (inner join).
 
-    Returns a dataframe with the following columns: 
-    finregistryid, female, birth_year, death_year, exposure_age, exposure_year, outcome_age, outcome_year
+    Args:
+        first_events (DataFrame): preprocessed first events dataframe
+        minimal_phenotype (DataFrame): preprocessed minimal phenotype dataframe
+
+    Returns:
+        df (DataFrame): merged dataframe with the following columns: 
+        finregistryid, female, birth_year, death_year, exposure_age, exposure_year, outcome_age, outcome_year
     """
     df = minimal_phenotype.merge(first_events, how="inner", on="finregistryid")
+
     df["exposure_year"] = df["birth_year"] + df["exposure_age"]
     df["outcome_year"] = df["birth_year"] + df["outcome_age"]
 
