@@ -12,7 +12,7 @@ from risteys_pipeline.log import logger
 MIN_SUBJECTS = 100
 
 
-def build_outcome_dataset(df):
+def build_outcome_dataset(df, timescale):
     """
     Build the outcome dataset for Cox proportional hazard model.
     Outcomes before the start of the follow-up and after the end of the follow-up are omitted.
@@ -20,11 +20,8 @@ def build_outcome_dataset(df):
     Returns a dataframe with the following columns: 
     finregistryid, start, stop, outcome, birth_year, weight, female
     """
-    FOLLOWUP_DURATION = FOLLOWUP_END - FOLLOWUP_START
 
     outcome = df.copy()
-
-    outcome["start"] = np.maximum(0, outcome["birth_year"] - FOLLOWUP_START)
 
     outcome["outcome_year"] = outcome["birth_year"] + outcome["outcome_age"]
 
@@ -40,8 +37,20 @@ def build_outcome_dataset(df):
 
     outcome = outcome.fillna({"outcome_year": np.Inf, "death_year": np.Inf})
 
-    outcome["stop"] = np.minimum(outcome["death_year"], outcome["outcome_year"])
-    outcome["stop"] = np.minimum(outcome["stop"], FOLLOWUP_END) - FOLLOWUP_START
+    if timescale == "time-on-study":
+        start = np.maximum(0, outcome["birth_year"] - FOLLOWUP_START)
+        stop = np.minimum(outcome["death_year"], outcome["outcome_year"])
+        stop = np.minimum(stop, FOLLOWUP_END) - FOLLOWUP_START
+    if timescale == "age":
+        start = np.maximum(0, FOLLOWUP_START - outcome["birth_year"])
+        stop = np.minimum(
+            outcome["death_year"] - outcome["birth_year"],
+            outcome["outcome_year"] - outcome["birth_year"],
+        )
+        stop = np.minimum(stop, FOLLOWUP_END - outcome["birth_year"])
+
+    outcome["start"] = start
+    outcome["stop"] = stop
 
     cols = [
         "finregistryid",
@@ -57,7 +66,7 @@ def build_outcome_dataset(df):
     return outcome
 
 
-def build_exposure_dataset(df):
+def build_exposure_dataset(df, timescale):
     """
     Build the exposure dataset for modeling exposure as a time-varying covariate.
     Exposures before the start of the follow-up, after the end of the follow-up, and after the outcome are omitted.
@@ -91,7 +100,13 @@ def build_exposure_dataset(df):
     exposure = exposure.reset_index(drop=True)
 
     exposure["exposure"] = 1
-    exposure["duration"] = exposure["exposure_year"] - FOLLOWUP_START
+
+    if timescale == "time-on-study":
+        duration = exposure["exposure_year"] - FOLLOWUP_START
+    if timescale == "age":
+        duration = exposure["exposure_age"]
+
+    exposure["duration"] = duration
 
     cols = ["finregistryid", "duration", "exposure"]
     exposure = exposure[cols]
@@ -99,9 +114,9 @@ def build_exposure_dataset(df):
     return exposure
 
 
-def build_cph_dataset(df):
+def build_cph_dataset(df, timescale):
     """
-    Build the dataset for survival analysis using time-on-study as timescale.
+    Build the dataset for survival analysis using time-on-study or age as timescale.
     Exposure is modeled as a time-varying covariate.
 
     Input is a dataset with (at least) the following columns:
@@ -117,8 +132,8 @@ def build_cph_dataset(df):
     df["finregistryid"] = df["finregistryid"].map(str) + df["case"].map(str)
 
     # Create dataframes for exposure and outcome
-    exposure = build_exposure_dataset(df)
-    outcome = build_outcome_dataset(df)
+    exposure = build_exposure_dataset(df, timescale)
+    outcome = build_outcome_dataset(df, timescale)
 
     # Combine datasets
     res = add_covariate_to_timeline(
@@ -146,24 +161,30 @@ def build_cph_dataset(df):
     return res
 
 
-def survival_analysis(df):
+def survival_analysis(df, timescale="time-on-study"):
     """
-    Survival/mortality analysis with time-on-study as timescale.
+    Survival/mortality analysis with time-on-study or age as timescale.
     Analysis is only run if there's more than MIN_SUBJECTS subjects in exposed and unexposed cases and controls.
     Returns the hazard ratio between the outcome and exposure or None if there aren't enough subjects.
     """
 
-    df_cph = build_cph_dataset(df)
-
-    df_cph = df_cph.drop("finregistryid", axis=1)
+    df_cph = build_cph_dataset(df, timescale)
 
     # Check that there's enough subjects in each cell
+    # Unique finregistryids are counted, so the last char representing the case/control group is dropped
     min_subjects_check = (
-        pd.crosstab(df_cph["outcome"], df_cph["exposure"]).values.min() > MIN_SUBJECTS
+        pd.crosstab(
+            df_cph["outcome"],
+            df_cph["exposure"],
+            values=df_cph["finregistryid"].str[:-1],
+            aggfunc=pd.Series.nunique,
+        ).values.min()
+        > MIN_SUBJECTS
     )
 
     if min_subjects_check:
         logger.info("Fitting Cox PH model")
+        df_cph = df_cph.drop("finregistryid", axis=1)
         cph = CoxPHFitter()
         cph.fit(
             df_cph,
