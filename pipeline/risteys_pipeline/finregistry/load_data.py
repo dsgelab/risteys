@@ -13,7 +13,15 @@ from risteys_pipeline.finregistry.preprocess_data import (
 def load_minimal_phenotype_data(
     data_path=FINREGISTRY_MINIMAL_PHENOTYPE_DATA_PATH, preprocess=False
 ):
-    """Loads minimal phenotype data as a dataframe and optionally performs preprocessing."""
+    """Loads minimal phenotype data as a dataframe and optionally performs preprocessing.
+    
+    Args:
+        data_path (str, optional): file path of the minimal phenotype csv file
+        preprocessing (bool, optional): will the data be preprocessed 
+
+    Returns: 
+        df (DataFrame): minimal phenotype dataframe
+    """
     cols = ["FINREGISTRYID", "date_of_birth", "death_date", "sex"]
     dtypes = {
         "FINREGISTRYID": "str",
@@ -38,7 +46,18 @@ def load_wide_first_events_data(
     data_path=FINREGISTRY_WIDE_FIRST_EVENTS_DATA_PATH,
     preprocess=False,
 ):
-    """Loads wide first_events data for two endpoints as a dataframe and optionally performs preprocessing."""
+    """Loads wide first_events data for two endpoints as a dataframe and optionally performs preprocessing.
+    
+    Args:
+        exposure (str): name of the exposure endpoint
+        outcome (str): name of the outcome endpoint
+        nrows (int, optional): number of rows to read
+        data_path (str, optional): file path of the first events csv file
+        preprocess (bool, optional): will the data be preprocessed
+
+    Returns:
+        df (DataFrame): first events dataframe with exposure and outcome related columns
+    """
     cols = [
         "FINREGISTRYID",
         exposure + "_NEVT",
@@ -54,7 +73,15 @@ def load_wide_first_events_data(
 
 
 def load_endpoints_data(data_path=FINREGISTRY_ENDPOINTS_DATA_PATH, preprocess=False):
-    """Loads endpoints data as a dataframe and optionally performs preprocessing."""
+    """Loads endpoints data as a dataframe and optionally performs preprocessing.
+    
+    Args:
+        data_path (str, optional): file path of the first events csv file
+        preprocess (bool, optional): will the data be preprocessed
+
+    Returns:
+        df (DataFrame): endpoints dataframe
+    """
     # TODO: replace excel with csv for speed
     cols = ["NAME", "SEX", "OMIT"]
     df = pd.read_excel(data_path, sheet_name="Sheet 1", usecols=cols, header=0)

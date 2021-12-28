@@ -8,7 +8,16 @@ from risteys_pipeline.config import FOLLOWUP_START, FOLLOWUP_END
 
 
 def sample_cases_and_controls(df, n_cases=250000, controls_per_case=2):
-    """Samples df and adds case-cohort weights and indicators for cases/controls"""
+    """Samples df and adds case-cohort weights (`weight`) and indicators for cases/controls (`case`).
+    
+    Args:
+        df (DataFrame): dataframe with the following columns: outcome_year, finregistryid
+        n_cases (int, optional): maximum number of cases to include
+        controls_per_case (int, optional): number of controls to include per case
+
+    Returns: 
+        df_sample (DataFrame): sampled dataframe
+    """
 
     caseids = df.loc[
         df["outcome_year"].between(FOLLOWUP_START, FOLLOWUP_END), "finregistryid"
@@ -48,13 +57,29 @@ def sample_cases_and_controls(df, n_cases=250000, controls_per_case=2):
     return df_sample
 
 
-def calculate_case_cohort_weights(cases, controls, sample_of_cases, sample_of_controls):
-    """Calculate case-cohort weights for cases and controls."""
-    non_cases = set(controls) - set(cases)
-    non_cases_in_sample = set(sample_of_controls) - set(sample_of_cases)
+def calculate_case_cohort_weights(
+    caseids, controlids, sample_of_caseids, sample_of_controlids
+):
+    """Calculate case-cohort weights for cases and controls.
+
+    Args:
+        caseids (list): finregistryids for cases
+        controlids (list): finregistryids for controls
+        sample_of_caseids (list): finregistryids for cases included in the sample
+        sample_of_controlids (list): finregistryids for controls included in the sample
+
+    Returns: 
+        weight_cases (float): case-cohort weight for cases
+        weight_controls (float): case-cohort weight for controls
+
+    Raises: 
+        ZeroDivisionError: if there are no non-cases among controls
+    """
+    non_cases = set(controlids) - set(caseids)
+    non_cases_in_sample = set(sample_of_controlids) - set(sample_of_caseids)
 
     try:
-        weight_cases = 1 / len(sample_of_cases) / len(cases)
+        weight_cases = 1 / len(sample_of_caseids) / len(caseids)
         weight_controls = 1 / len(non_cases_in_sample) / len(non_cases)
     except ZeroDivisionError as err:
         logger.warning(f"{err}: No non-cases among controls")
