@@ -37,7 +37,7 @@ def test_build_exposure_dataset():
         exposure_age=15,
         outcome_age=20,
     )
-    res = build_exposure_dataset(df)
+    res = build_exposure_dataset(df, "time-on-study")
     cols = ["finregistryid", "duration", "exposure"]
     expected = pd.DataFrame([[0, 5, 1]], columns=cols)
     assert_frame_equal(res[cols], expected, check_dtype=False)
@@ -56,7 +56,7 @@ def test_build_cph_dataset_outcome_exposure():
         outcome_age=20,
     )
     cols = ["start", "stop", "exposure", "outcome"]
-    res = build_cph_dataset(df)
+    res = build_cph_dataset(df, "time-on-study")
     expected = pd.DataFrame([[0, 5, 0, 0], [5, 10, 1, 1]], columns=cols)
     assert_frame_equal(res[cols], expected, check_dtype=False)
 
@@ -74,7 +74,7 @@ def test_build_cph_dataset_no_exposure_no_outcome():
         outcome_age=np.nan,
     )
     cols = ["start", "stop", "exposure", "outcome"]
-    res = build_cph_dataset(df)
+    res = build_cph_dataset(df, "time-on-study")
     expected = pd.DataFrame([[0, FOLLOWUP_END - FOLLOWUP_START, 0, 0]], columns=cols)
     assert_frame_equal(res[cols], expected, check_dtype=False)
 
@@ -92,7 +92,7 @@ def test_build_cph_dataset_outcome_no_exposure():
         outcome_age=20,
     )
     cols = ["start", "stop", "exposure", "outcome"]
-    res = build_cph_dataset(df)
+    res = build_cph_dataset(df, "time-on-study")
     expected = pd.DataFrame([[0, 10, 0, 1]], columns=cols)
     assert_frame_equal(res[cols], expected, check_dtype=False)
 
@@ -110,7 +110,7 @@ def test_build_cph_dataset_no_outcome_exposure():
         outcome_age=np.nan,
     )
     cols = ["start", "stop", "exposure", "outcome"]
-    res = build_cph_dataset(df)
+    res = build_cph_dataset(df, "time-on-study")
     expected = pd.DataFrame(
         [[0, 10, 0, 0], [10, FOLLOWUP_END - FOLLOWUP_START, 1, 0]], columns=cols
     )
@@ -130,7 +130,7 @@ def test_build_cph_dataset_exposure_after_followup():
         outcome_age=np.nan,
     )
     cols = ["start", "stop", "exposure", "outcome"]
-    res = build_cph_dataset(df)
+    res = build_cph_dataset(df, "time-on-study")
     expected = pd.DataFrame([[0, FOLLOWUP_END - FOLLOWUP_START, 0, 0]], columns=cols)
     assert_frame_equal(res[cols], expected, check_dtype=False)
 
@@ -148,7 +148,7 @@ def test_build_cph_dataset_exposure_before_followup():
         outcome_age=np.nan,
     )
     cols = ["start", "stop", "exposure", "outcome"]
-    res = build_cph_dataset(df)
+    res = build_cph_dataset(df, "time-on-study")
     expected = pd.DataFrame([[0, FOLLOWUP_END - FOLLOWUP_START, 0, 0]], columns=cols)
     assert_frame_equal(res[cols], expected, check_dtype=False)
 
@@ -166,7 +166,7 @@ def test_build_cph_dataset_outcome_before_followup():
         outcome_age=5,
     )
     cols = ["start", "stop", "exposure", "outcome"]
-    res = build_cph_dataset(df)
+    res = build_cph_dataset(df, "time-on-study")
     expected = pd.DataFrame([[0, FOLLOWUP_END - FOLLOWUP_START, 0, 0]], columns=cols)
     assert_frame_equal(res[cols], expected, check_dtype=False)
 
@@ -184,7 +184,7 @@ def test_build_cph_dataset_late_entry():
         outcome_age=10,
     )
     cols = ["start", "stop", "exposure", "outcome"]
-    res = build_cph_dataset(df)
+    res = build_cph_dataset(df, "time-on-study")
     expected = pd.DataFrame([[5, 10, 0, 0], [10, 15, 1, 1]], columns=cols)
     assert_frame_equal(res[cols], expected, check_dtype=False)
 
@@ -202,7 +202,7 @@ def test_build_cph_dataset_outcome_before_exposure():
         outcome_age=5,
     )
     cols = ["start", "stop", "exposure", "outcome"]
-    res = build_cph_dataset(df)
+    res = build_cph_dataset(df, "time-on-study")
     expected = pd.DataFrame([[5, 10, 0, 1]], columns=cols)
     assert_frame_equal(res[cols], expected, check_dtype=False)
 
@@ -220,7 +220,7 @@ def test_build_cph_dataset_exposure_and_death():
         outcome_age=np.nan,
     )
     cols = ["start", "stop", "exposure", "outcome"]
-    res = build_cph_dataset(df)
+    res = build_cph_dataset(df, "time-on-study")
     expected = pd.DataFrame([[5, 10, 0, 0], [10, 15, 1, 0]], columns=cols)
     assert_frame_equal(res[cols], expected, check_dtype=False)
 
@@ -238,7 +238,7 @@ def test_build_cph_dataset_outcome_and_death():
         outcome_age=5,
     )
     cols = ["start", "stop", "exposure", "outcome"]
-    res = build_cph_dataset(df)
+    res = build_cph_dataset(df, "time-on-study")
     expected = pd.DataFrame([[5, 10, 0, 1]], columns=cols)
     assert_frame_equal(res[cols], expected, check_dtype=False)
 
@@ -256,7 +256,24 @@ def test_build_cph_dataset_same_time():
         outcome_age=20,
     )
     cols = ["start", "stop", "exposure", "outcome"]
-    res = build_cph_dataset(df)
+    res = build_cph_dataset(df, "time-on-study")
     expected = pd.DataFrame([[0, 10, 0, 1]], columns=cols)
     assert_frame_equal(res[cols], expected, check_dtype=False)
 
+
+def test_build_cph_dataset_age_as_timescale():
+    """
+    Test building the cph dataset: age as timescale
+              start                    end
+    >----- -----|-----X-----O           |
+    """
+    df = generate_df(
+        birth_year=FOLLOWUP_START - 10,
+        death_year=np.nan,
+        exposure_age=15,
+        outcome_age=20,
+    )
+    cols = ["start", "stop", "exposure", "outcome"]
+    res = build_cph_dataset(df, "age")
+    expected = pd.DataFrame([[10, 15, 0, 0], [15, 20, 1, 1]], columns=cols)
+    assert_frame_equal(res[cols], expected, check_dtype=False)
