@@ -103,7 +103,7 @@ def preprocess_minimal_phenotype_data(df):
         finregistryid, date_of_birth, death_date, sex, death_age, dead, female
     """
     df.columns = df.columns.str.lower()
-    df = df.drop_duplicates().reset_index(drop=True)
+    df = df.drop_duplicates(subset=["finregistryid"]).reset_index(drop=True)
     df["birth_year"] = (
         df["date_of_birth"].dt.year
         + (df["date_of_birth"].dt.dayofyear - 1) / DAYS_IN_YEAR
