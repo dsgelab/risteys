@@ -65,7 +65,7 @@ def load_wide_first_events_data(
         outcome + "_NEVT",
         outcome + "_AGE",
     ]
-    df = pd.read_csv(data_path, header=0, sep="\t", usecols=cols, nrows=nrows)[cols]
+    df = pd.read_csv(data_path, header=0, sep=",", usecols=cols, nrows=nrows)[cols]
     logger.info(f"{df.shape[0]} rows loaded")
     if preprocess:
         df = preprocess_wide_first_events_data(df)
