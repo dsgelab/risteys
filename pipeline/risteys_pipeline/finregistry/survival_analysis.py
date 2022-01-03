@@ -196,7 +196,7 @@ def survival_analysis(df, timescale="time-on-study"):
         timescale (bool, optional): timescale for Cox regression, either time-on-study or age. Defaults to time-on-study.
 
     Returns:
-        hr (float): the hazard ratio between the outcome and exposure. None if there aren't enough subjects.
+        cph (Object): fitted Cox Proportional Hazard model object. None if there aren't enough subjects.
     """
 
     df_cph = build_cph_dataset(df, timescale)
@@ -225,10 +225,8 @@ def survival_analysis(df, timescale="time-on-study"):
             weights_col="weight",
             robust=True,
         )
-        cph.print_summary()
-        hr = cph.hazard_ratios_[0]
     else:
         logger.info("Not enough subjects")
-        hr = None
+        cph = None
 
-    return hr
+    return cph
