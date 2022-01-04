@@ -160,22 +160,17 @@ def build_cph_dataset(df, timescale):
     return res
 
 
-def survival_analysis(df, timescale="time-on-study"):
+def survival_analysis(df_cph):
     """
     Survival/mortality analysis with time-on-study or age as timescale.
     Analysis is only run if there's more than MIN_SUBJECTS subjects in exposed and unexposed cases and controls.
 
     Args: 
-        df (DataFrame): dataframe with the following columns:
-        finregistryid, birth_year, death_year, exposure_year, outcome_year, weight, female
-        timescale (bool, optional): timescale for Cox regression, either time-on-study or age. Defaults to time-on-study.
+        df (DataFrame): output of build_cph_dataset()
 
     Returns:
         cph (Object): fitted Cox Proportional Hazard model object. None if there aren't enough subjects.
     """
-
-    df_cph = build_cph_dataset(df, timescale)
-
     # Check that there's enough subjects in each cell
     # Unique finregistryids are counted, so the last char representing the case/control group is dropped
     min_subjects_check = (
