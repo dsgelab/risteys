@@ -19,6 +19,6 @@ defmodule RisteysWeb.LayoutView do
       end
 
     # url to current page in a selected version
-    link = "https://r#{version}.risteys.finngen.fi/#{path}"
+    "https://r#{version}.risteys.finngen.fi/#{path}"
   end
 end
