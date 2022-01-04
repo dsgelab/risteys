@@ -11,7 +11,10 @@ from risteys_pipeline.finregistry.preprocess_data import (
     merge_first_events_with_minimal_phenotype,
 )
 from risteys_pipeline.finregistry.sample import sample_cases_and_controls
-from risteys_pipeline.finregistry.survival_analysis import survival_analysis
+from risteys_pipeline.finregistry.survival_analysis import (
+    build_cph_dataset,
+    survival_analysis,
+)
 
 # Load and preprocess endpoint definitions and minimal phenotype data
 endpoints = load_endpoints_data(preprocess=True)
@@ -33,10 +36,11 @@ for outcome, exposure in product(outcomes, exposures):
     # Sample cases and controls based on outcome
     df = sample_cases_and_controls(df, n_cases=250000, controls_per_case=2)
 
+    # Build dataset for mortality analysis
+    df = build_cph_dataset(df, "time-on-study")
+
     # Run the mortality analysis
-    hr = survival_analysis(df)
+    cph = survival_analysis(df)
 
     # Print the results
-    print(outcome, "-", exposure)
-    print(hr)
-
+    cph.print_summary()
