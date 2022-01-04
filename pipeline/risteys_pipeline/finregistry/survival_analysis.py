@@ -12,55 +12,49 @@ from risteys_pipeline.log import logger
 MIN_SUBJECTS = 100
 
 
-def build_outcome_dataset(df, timescale):
+def build_outcome_dataset(df):
     """
     Build the outcome dataset for Cox proportional hazard model.
     Outcomes before the start of the follow-up and after the end of the follow-up are omitted.
 
     Args:
         df (DataFrame): dataframe with the following columns: 
-        finregistryid, birth_year, death_year, outcome_age, weight, female
+        finregistryid, birth_year, death_year, outcome_year, weight, female
         timescale (bool): timescale for Cox regression, either time-on-study or age
-
 
     Returns:
         outcome (DataFrame): outcome dataframe with the following columns: 
         finregistryid, start, stop, outcome, birth_year, weight, female
-
-    TODO: outcome_year already calculated in merge_first_events_with_minimal_phenotype()
-    TODO: remove timescale and always add both (start_time, end_time) and (start_age, end_age)
     """
 
     outcome = df.copy()
 
-    outcome["outcome_year"] = outcome["birth_year"] + outcome["outcome_age"]
-
+    # Exclude outcomes outside follow-up timeframe
     outcome["outcome"] = (
         outcome["outcome_year"]
         .between(FOLLOWUP_START, FOLLOWUP_END, inclusive="both")
         .astype(int)
     )
-
     outcome["outcome_year"] = np.where(
         outcome["outcome"] == 1, outcome["outcome_year"], np.nan
     )
 
+    # Fill missing years with Inf (needed for min/max)
     outcome = outcome.fillna({"outcome_year": np.Inf, "death_year": np.Inf})
 
-    if timescale == "time-on-study":
-        start = np.maximum(0, outcome["birth_year"] - FOLLOWUP_START)
-        stop = np.minimum(outcome["death_year"], outcome["outcome_year"])
-        stop = np.minimum(stop, FOLLOWUP_END) - FOLLOWUP_START
-    if timescale == "age":
-        start = np.maximum(0, FOLLOWUP_START - outcome["birth_year"])
-        stop = np.minimum(
-            outcome["death_year"] - outcome["birth_year"],
-            outcome["outcome_year"] - outcome["birth_year"],
-        )
-        stop = np.minimum(stop, FOLLOWUP_END - outcome["birth_year"])
+    # Start and stop year
+    n = outcome.shape[0]
+    start_year = np.maximum.reduce([[FOLLOWUP_START] * n, outcome["birth_year"].values])
+    stop_year = np.minimum.reduce(
+        [
+            outcome["death_year"].values,
+            outcome["outcome_year"].values,
+            [FOLLOWUP_END] * n,
+        ]
+    )
 
-    outcome["start"] = start
-    outcome["stop"] = stop
+    outcome["start"] = start_year - FOLLOWUP_START
+    outcome["stop"] = stop_year - FOLLOWUP_START
 
     cols = [
         "finregistryid",
@@ -76,56 +70,34 @@ def build_outcome_dataset(df, timescale):
     return outcome
 
 
-def build_exposure_dataset(df, timescale):
+def build_exposure_dataset(df):
     """
     Build the exposure dataset for modeling exposure as a time-varying covariate.
     Exposures before the start of the follow-up, after the end of the follow-up, and after the outcome are omitted.
 
     Args: 
         df (DataFrame): dataframe with the following columns: 
-        finregistryid, birth_year, death_year, outcome_age, exposure_age
+        finregistryid, birth_year, exposure_year, outcome_year
         timescale (bool): timescale for Cox regression, either time-on-study or age
 
     Returns:
         exposure (DataFrame): exposure dataframe with the following columns:
         finregistryid, duration, exposure
-
-    TODO: outcome_year and exposure_year already calculated in merge_first_events_with_minimal_phenotype()
-    TODO: remove timescale and always add both duration_time and duration_age
     """
-    cols = [
-        "finregistryid",
-        "birth_year",
-        "death_year",
-        "outcome_age",
-        "exposure_age",
-    ]
-    exposure = df[cols].reset_index(drop=True)
+    exposure = df.copy()
 
-    exposure["outcome_year"] = exposure["birth_year"] + exposure["outcome_age"]
-    exposure["exposure_year"] = exposure["birth_year"] + exposure["exposure_age"]
+    # Exclude exposures occuring outside the study timeframe or after outcome
+    before_outcome = exposure["exposure_year"] <= exposure["outcome_year"].fillna(
+        np.Inf
+    )
+    inside_timeframe = exposure["exposure_year"].between(
+        FOLLOWUP_START, FOLLOWUP_END, inclusive="both"
+    )
+    exposure = exposure[before_outcome & inside_timeframe].reset_index(drop=True)
 
-    exposure = exposure.fillna({"outcome_year": np.Inf, "exposure_year": np.Inf})
-
-    exposure_before_followup_start = exposure["exposure_year"] <= FOLLOWUP_START
-    exposure_after_followup_end = exposure["exposure_year"] >= FOLLOWUP_END
-    exposure_after_outcome = exposure["exposure_year"] >= exposure["outcome_year"]
-
-    exposure = exposure.loc[
-        ~exposure_before_followup_start
-        & ~exposure_after_followup_end
-        & ~exposure_after_outcome
-    ]
-    exposure = exposure.reset_index(drop=True)
-
+    # Calculate duration for both time-on-study and age as timescale
+    exposure["duration"] = exposure["exposure_year"] - FOLLOWUP_START
     exposure["exposure"] = 1
-
-    if timescale == "time-on-study":
-        duration = exposure["exposure_year"] - FOLLOWUP_START
-    if timescale == "age":
-        duration = exposure["exposure_age"]
-
-    exposure["duration"] = duration
 
     cols = ["finregistryid", "duration", "exposure"]
     exposure = exposure[cols]
@@ -147,7 +119,6 @@ def build_cph_dataset(df, timescale):
         res (DataFrame): a dataframe with the following columns: 
         start, stop, outcome, exposure, birth_year, weight, female
 
-    TODO: handle timescales here instead of in build_exposure_dataset and build_outcome_dataset
     """
     # Copy dataframe
     df = df.copy()
@@ -156,8 +127,8 @@ def build_cph_dataset(df, timescale):
     df["finregistryid"] = df["finregistryid"].map(str) + df["case"].map(str)
 
     # Create dataframes for exposure and outcome
-    exposure = build_exposure_dataset(df, timescale)
-    outcome = build_outcome_dataset(df, timescale)
+    exposure = build_exposure_dataset(df)
+    outcome = build_outcome_dataset(df)
 
     # Combine datasets
     res = add_covariate_to_timeline(
@@ -168,18 +139,22 @@ def build_cph_dataset(df, timescale):
         event_col="outcome",
     )
 
+    # Change time-on-study to age if timescale is age
+    if timescale == "age":
+        res["start"] = res["start"] - res["birth_year"] + FOLLOWUP_START
+        res["stop"] = res["stop"] - res["birth_year"] + FOLLOWUP_START
+
     # Add exposure if missing
     if "exposure" not in res:
         res["exposure"] = np.nan
 
     # Drop rows where start >= stop
     start_after_stop = res["start"] >= res["stop"]
-    res = res.loc[~start_after_stop]
+    res = res.loc[~start_after_stop].reset_index(drop=True)
     logger.info(f"{sum(start_after_stop)} rows had start >= stop")
 
     # Change data types
-    res["exposure"] = res["exposure"].fillna(0)
-    res["exposure"] = res["exposure"].astype(int)
+    res["exposure"] = res["exposure"].fillna(0).astype(int)
     res["outcome"] = res["outcome"].astype(int)
 
     return res
