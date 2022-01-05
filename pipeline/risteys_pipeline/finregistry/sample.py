@@ -79,8 +79,8 @@ def calculate_case_cohort_weights(
     non_cases_in_sample = set(sample_of_controlids) - set(sample_of_caseids)
 
     try:
-        weight_cases = 1 / len(sample_of_caseids) / len(caseids)
-        weight_controls = 1 / len(non_cases_in_sample) / len(non_cases)
+        weight_cases = 1 / (len(sample_of_caseids) / len(caseids))
+        weight_controls = 1 / (len(non_cases_in_sample) / len(non_cases))
     except ZeroDivisionError as err:
         logger.warning(f"{err}: No non-cases among controls")
         weight_cases = np.nan
