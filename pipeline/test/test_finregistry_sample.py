@@ -58,7 +58,7 @@ def test_calculate_case_cohort_weights_cases():
     weight_cases, _ = calculate_case_cohort_weights(
         cases, controls, sample_of_cases, sample_of_controls
     )
-    expected = 1 / 2 / 4
+    expected = 1 / (2 / 4)
     assert weight_cases == expected
 
 
@@ -71,7 +71,7 @@ def test_calculate_case_cohort_weights_controls():
     _, weight_controls = calculate_case_cohort_weights(
         cases, controls, sample_of_cases, sample_of_controls
     )
-    expected = 1 / 3 / 6
+    expected = 1 / (3 / 6)
     assert weight_controls == expected
 
 
