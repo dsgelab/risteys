@@ -59,7 +59,7 @@ config.xTicks.y2 = config.xTicks.y1 + config.xTicks.height;
 // Vertical bins
 config.vbin = {};
 config.vbin.width = 30;  // px
-config.vbin.color = "#1c3d5a";
+config.vbin.color = "#0b592f";
 
 // Capture bins: transparent area drawn over bins to capture mouse or touch events
 config.capbin = {};

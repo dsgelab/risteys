@@ -15,7 +15,7 @@
 }
 .help-button {
     @apply border-2;
-    @apply border-blue-dark;
+    @apply border-green-dark;
     @apply rounded-full;
     @apply px-2;
     @apply bg-white;
