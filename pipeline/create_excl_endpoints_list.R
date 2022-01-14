@@ -5,7 +5,9 @@
 
 # columns in output file
 # NAME: endpoint name
-# EXCL: 1 = omitted endpoint, 2 = different definition, 3 = both
+# EXCL: "excl_omitted" = omitted endpoint (OMIT == 1 | OMIT == 2), 
+      # "excl_diff_def" = different definition, 
+      # "excl_both" = both
 
 # USAGE:
 # Rscript path_to_create_excl_endpoints_list.R path_to_endpoint_definition_file 
@@ -27,9 +29,7 @@ endp_definitions <- slice(endp_definitions,2:nrow(endp_definitions))
 
 # create a data frame of endpoints that are excluded: omitted or have different definition
 
-# consider only endpoints with OMIT value 1 because 
-# endpoints with OMIT value 2  are not in FinnGen sandbox -> not in Risteys
-omitted <- filter(endp_definitions, OMIT==1)
+omitted <- filter(endp_definitions, OMIT==1 | OMIT ==2)
 
 # NOTE, endpoints having values in OUTPAT_ICD are excluded because the version
 # of endpointter used for creating R8 endpoints for FinRegistry incorrectly  
@@ -37,19 +37,19 @@ omitted <- filter(endp_definitions, OMIT==1)
 diff_def <- filter(endp_definitions, !is.na(endp_definitions$OUTPAT_ICD))
 
 # endpoints that are omitted and have different definition
-excl_both <- filter(endp_definitions, !is.na(OUTPAT_ICD) & OMIT==1)
+excl_both <- filter(endp_definitions, !is.na(OUTPAT_ICD) & (OMIT==1 | OMIT==2))
 
 # remove duplicates
 excl_omitted <- filter(omitted, !NAME %in% excl_both$NAME)
 excl_diff_def <- filter(diff_def, !NAME %in% excl_both$NAME)
 
 # give value for each exclusion reason. 
-excl_omitted$FR_EXCL <- "excl_omitted" # 1478 endpoints
+excl_omitted$FR_EXCL <- "excl_omitted" # 1486 endpoints
 excl_diff_def$FR_EXCL <- "excl_diff_def" # 53 endpoints
 excl_both$FR_EXCL <- "excl_both" # 25 endpoints
 
 # combine
-excluded_endpoints <- rbind(excl_omitted, excl_diff_def, excl_both)
+excluded_endpoints <- rbind(excl_omitted, excl_diff_def, excl_both) # 1564 endpoints
 
 # keep only needed columns
 excluded_endpoints <- select(excluded_endpoints,  NAME,  FR_EXCL) 
