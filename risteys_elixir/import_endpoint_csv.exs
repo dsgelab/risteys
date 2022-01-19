@@ -134,6 +134,9 @@ endpoints_path
     "INCLUDE" => include,
     "PRE_CONDITIONS" => pre_conditions,
     "CONDITIONS" => conditions,
+    "CONTROL_EXCLUDE" => control_exclude,
+    "CONTROL_PRECONDITIONS" => control_preconditions,
+    "CONTROL_CONDITIONS" => control_conditions,
     "OUTPAT_ICD" => outpat_icd,
     "HD_MAINONLY" => hd_mainonly,
     "HD_ICD_10_ATC" => hd_icd_10_atc,
@@ -183,6 +186,9 @@ endpoints_path
     include: include,
     pre_conditions: pre_conditions,
     conditions: conditions,
+    control_exclude: control_exclude,
+    control_preconditions: control_preconditions,
+    control_conditions: control_conditions,
     outpat_icd: outpat_icd,
     hd_mainonly: hd_mainonly,
     hd_icd_10_atc: hd_icd_10_atc,
@@ -332,12 +338,12 @@ end)
 |> Stream.each(fn row ->
   valid_conditions = is_nil(row.conditions) or not String.contains?(row.conditions, ["(", ")"])
 
+  valid_control_conditions =
+    is_nil(row.control_conditions) or not String.contains?(row.control_conditions, ["(", ")"])
 
-  if not is_nil(conditions) and String.contains?(conditions, ["(", ")"]) do
-  if not valid_conditions do
+  if not valid_conditions or not valid_control_conditions do
     Logger.warn(
-      "Endpoint #{name} has 'conditions' with '(' or ')': it will be incorrectly displayed."
-      "Endpoint #{row.name} has 'conditions' with '(' or ')': it will be incorrectly displayed."
+      "Endpoint #{row.name} has 'conditions' or 'control_conditions' with '(' or ')': it will be incorrectly displayed."
     )
   end
 end)
