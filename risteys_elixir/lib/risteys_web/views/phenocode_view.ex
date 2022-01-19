@@ -2,6 +2,8 @@ defmodule RisteysWeb.PhenocodeView do
   use RisteysWeb, :view
   require Integer
 
+  alias Risteys.FGEndpoint
+
   def render("assocs.json", %{
         phenocode: phenocode,
         assocs: assocs,
@@ -97,6 +99,26 @@ defmodule RisteysWeb.PhenocodeView do
     icd_numbers
     |> Enum.map(&Integer.to_string/1)
     |> Enum.intersperse(", ")
+  end
+
+  defp control_definitions(endpoint) do
+    for %{field: field, value: value} <- FGEndpoint.get_control_definitions(endpoint) do
+      case field do
+        :control_exclude ->
+          {
+            "Control exclude",
+            value
+            |> Enum.map(&content_tag(:a, &1, href: &1))
+            |> Enum.intersperse(", ")
+          }
+
+        :control_preconditions ->
+          {"Control pre-conditions", value}
+
+        :control_conditions ->
+          {"Control conditions", readable_conditions(value)}
+      end
+    end
   end
 
   defp readable_metadata(endpoint) do
