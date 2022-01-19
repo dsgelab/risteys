@@ -226,7 +226,7 @@ end)
 # Replace NA values with nil
 |> Stream.map(fn row ->
   Enum.reduce(row, %{}, fn {header, value}, acc ->
-    value = if value == "NA", do: nil, else: value
+    value = if value == ["NA", ""], do: nil, else: value
     Map.put_new(acc, header, value)
   end)
 end)
