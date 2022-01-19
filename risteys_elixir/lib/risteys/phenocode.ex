@@ -13,6 +13,12 @@ defmodule Risteys.Phenocode do
     field :include, :string
     field :pre_conditions, :string
     field :conditions, :string
+
+    # Definitions of specific controls
+    field :control_exclude, :string
+    field :control_preconditions, :string
+    field :control_conditions, :string
+
     # raw, unprocessed Outpat ICD_10
     field :outpat_icd, :string
     field :hd_mainonly, :string
@@ -91,6 +97,9 @@ defmodule Risteys.Phenocode do
       :include,
       :pre_conditions,
       :conditions,
+      :control_exclude,
+      :control_preconditions,
+      :control_conditions,
       :outpat_icd,
       :hd_mainonly,
       :hd_icd_10_atc,
@@ -132,6 +141,9 @@ defmodule Risteys.Phenocode do
       :gws_hits
     ])
     |> validate_required([:name])
+    |> validate_exclusion(:control_exclude, [""], message: "must be 'nil' instead of an empty string")
+    |> validate_exclusion(:control_preconditions, [""], message: "must be 'nil' instead of an empty string")
+    |> validate_exclusion(:control_conditions, [""], message: "must be 'nil' instead of an empty string")
     |> validate_change(:ontology, fn :ontology, ontology ->
       allowed = allowed_ontology_types()
 
