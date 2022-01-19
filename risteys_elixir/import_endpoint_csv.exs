@@ -79,9 +79,10 @@ defmodule AssocICDs do
   end
 end
 
-# 1. Get meta information for endpoint processing
+# Get meta information for endpoint processing
 ####
 Logger.info("Pre-processing endpoint metadata files")
+
 tags =
   tagged_path
   |> File.stream!()
@@ -112,16 +113,115 @@ categories =
   map_parent_children
 } = Risteys.Icd10.init_parser(icd10fi_file_path)
 
-
-# 2. Clean-up & Transform endpoints
+# Clean-up & Transform endpoints
 ####
 Logger.info("Cleaning-up endpoint from the definition files")
+
 endpoints_path
 |> File.stream!()
 |> CSV.decode!(headers: true)
 
+# Assert necessary columns are here and convert their names to atoms
+|> Stream.map(fn row ->
+  %{
+    "NAME" => name,
+    "TAGS" => tags,
+    "LEVEL" => level,
+    "OMIT" => omit,
+    "LONGNAME" => longname,
+    "SEX" => sex,
+    "INCLUDE" => include,
+    "PRE_CONDITIONS" => pre_conditions,
+    "CONDITIONS" => conditions,
+    "OUTPAT_ICD" => outpat_icd,
+    "HD_MAINONLY" => hd_mainonly,
+    "HD_ICD_10_ATC" => hd_icd_10_atc,
+    "HD_ICD_10" => hd_icd_10,
+    "HD_ICD_9" => hd_icd_9,
+    "HD_ICD_8" => hd_icd_8,
+    "HD_ICD_10_EXCL" => hd_icd_10_excl,
+    "HD_ICD_9_EXCL" => hd_icd_9_excl,
+    "HD_ICD_8_EXCL" => hd_icd_8_excl,
+    "COD_MAINONLY" => cod_mainonly,
+    "COD_ICD_10" => cod_icd_10,
+    "COD_ICD_9" => cod_icd_9,
+    "COD_ICD_8" => cod_icd_8,
+    "COD_ICD_10_EXCL" => cod_icd_10_excl,
+    "COD_ICD_9_EXCL" => cod_icd_9_excl,
+    "COD_ICD_8_EXCL" => cod_icd_8_excl,
+    "OPER_NOM" => oper_nom,
+    "OPER_HL" => oper_hl,
+    "OPER_HP1" => oper_hp1,
+    "OPER_HP2" => oper_hp2,
+    "KELA_REIMB" => kela_reimb,
+    "KELA_REIMB_ICD" => kela_reimb_icd,
+    "KELA_ATC_NEEDOTHER" => kela_atc_needother,
+    "KELA_ATC" => kela_atc,
+    "KELA_VNRO_NEEDOTHER" => kela_vnro_needother,
+    "KELA_VNRO" => kela_vnro,
+    "CANC_TOPO" => canc_topo,
+    "CANC_TOPO_EXCL" => canc_topo_excl,
+    "CANC_MORPH" => canc_morph,
+    "CANC_MORPH_EXCL" => canc_morph_excl,
+    "CANC_BEHAV" => canc_behav,
+    "Special" => special,
+    "version" => version,
+    "PARENT" => parent,
+    "Latin" => latin
+  } = row
+
+  # Use atoms as map keys.
+  # This prevents unexpectedly getting a nil on e.g. row["NAMe"]
+  %{
+    name: name,
+    tags: tags,
+    level: level,
+    omit: omit,
+    longname: longname,
+    sex: sex,
+    include: include,
+    pre_conditions: pre_conditions,
+    conditions: conditions,
+    outpat_icd: outpat_icd,
+    hd_mainonly: hd_mainonly,
+    hd_icd_10_atc: hd_icd_10_atc,
+    hd_icd_10: hd_icd_10,
+    hd_icd_9: hd_icd_9,
+    hd_icd_8: hd_icd_8,
+    hd_icd_10_excl: hd_icd_10_excl,
+    hd_icd_9_excl: hd_icd_9_excl,
+    hd_icd_8_excl: hd_icd_8_excl,
+    cod_mainonly: cod_mainonly,
+    cod_icd_10: cod_icd_10,
+    cod_icd_9: cod_icd_9,
+    cod_icd_8: cod_icd_8,
+    cod_icd_10_excl: cod_icd_10_excl,
+    cod_icd_9_excl: cod_icd_9_excl,
+    cod_icd_8_excl: cod_icd_8_excl,
+    oper_nom: oper_nom,
+    oper_hl: oper_hl,
+    oper_hp1: oper_hp1,
+    oper_hp2: oper_hp2,
+    kela_reimb: kela_reimb,
+    kela_reimb_icd: kela_reimb_icd,
+    kela_atc_needother: kela_atc_needother,
+    kela_atc: kela_atc,
+    kela_vnro_needother: kela_vnro_needother,
+    kela_vnro: kela_vnro,
+    canc_topo: canc_topo,
+    canc_topo_excl: canc_topo_excl,
+    canc_morph: canc_morph,
+    canc_morph_excl: canc_morph_excl,
+    canc_behav: canc_behav,
+    special: special,
+    version: version,
+    parent: parent,
+    latin: latin
+  }
+end)
+
 # Omit comment line
-|> Stream.reject(fn %{"NAME" => name} -> String.starts_with?(name, "#") end)
+|> Stream.reject(fn %{name: name} -> String.starts_with?(name, "#") end)
 
 # Replace NA values with nil
 |> Stream.map(fn row ->
@@ -133,9 +233,7 @@ end)
 
 # Add endpoint category
 |> Stream.map(fn row ->
-  %{"NAME" => name} = row
-
-  case Map.fetch(tags, name) do
+  case Map.fetch(tags, row.name) do
     :error ->
       Map.put_new(row, :category, "Unknown")
 
@@ -147,45 +245,37 @@ end)
 
 # Parse ICD-10: HD
 |> Stream.map(fn row ->
-  %{"HD_ICD_10" => hd} = row
-  expanded = Risteys.Icd10.parse_rule(hd, icd10s, map_child_parent, map_parent_children)
+  expanded =
+    Risteys.Icd10.parse_rule(row.hd_icd_10, icd10s, map_child_parent, map_parent_children)
+
   Map.put_new(row, :hd_icd10s_exp, expanded)
 end)
 
 # Parse excl ICD-10: HD
 |> Stream.map(fn row ->
-  %{"HD_ICD_10_EXCL" => hd_excl} = row
-  expanded = Risteys.Icd10.parse_rule(hd_excl, icd10s, map_child_parent, map_parent_children)
+  expanded =
+    Risteys.Icd10.parse_rule(row.hd_icd_10_excl, icd10s, map_child_parent, map_parent_children)
+
   Map.put_new(row, :hd_icd10s_excl_exp, expanded)
 end)
 
 # Parse ICD-10: OUTPAT
-|> Stream.map(fn row ->
-  %{
-    "OUTPAT_ICD" => outpat,
-    "HD_ICD_10" => hd
-  } = row
-
+|> Stream.map(fn %{hd_icd_10: hd} = row ->
   expanded =
-    case outpat do
+    case row.outpat_icd do
       ^hd -> row.hd_icd10s_exp
-      _ -> Risteys.Icd10.parse_rule(outpat, icd10s, map_child_parent, map_parent_children)
+      _ -> Risteys.Icd10.parse_rule(row.outpat_icd, icd10s, map_child_parent, map_parent_children)
     end
 
   Map.put_new(row, :outpat_icd10s_exp, expanded)
 end)
 
 # Parse ICD-10: COD
-|> Stream.map(fn row ->
-  %{
-    "COD_ICD_10" => cod,
-    "HD_ICD_10" => hd
-  } = row
-
+|> Stream.map(fn %{hd_icd_10: hd} = row ->
   expanded =
-    case cod do
+    case row.cod_icd_10 do
       ^hd -> row.hd_icd10s_exp
-      _ -> Risteys.Icd10.parse_rule(cod, icd10s, map_child_parent, map_parent_children)
+      _ -> Risteys.Icd10.parse_rule(row.cod_icd_10, icd10s, map_child_parent, map_parent_children)
     end
 
   Map.put_new(row, :cod_icd10s_exp, expanded)
@@ -193,22 +283,26 @@ end)
 
 # Parse excl ICD-10: COD
 |> Stream.map(fn row ->
-  %{"COD_ICD_10_EXCL" => cod_excl} = row
-  expanded = Risteys.Icd10.parse_rule(cod_excl, icd10s, map_child_parent, map_parent_children)
+  expanded =
+    Risteys.Icd10.parse_rule(row.cod_icd_10_excl, icd10s, map_child_parent, map_parent_children)
+
   Map.put_new(row, :cod_icd10s_excl_exp, expanded)
 end)
 
 # Parse ICD-10: KELA
-|> Stream.map(fn row ->
-  %{
-    "KELA_REIMB_ICD" => kela,
-    "HD_ICD_10" => hd
-  } = row
-
+|> Stream.map(fn %{hd_icd_10: hd} = row ->
   expanded =
-    case kela do
-      ^hd -> row.hd_icd10s_exp
-      _ -> Risteys.Icd10.parse_rule(kela, icd10s, map_child_parent, map_parent_children)
+    case row.kela_reimb_icd do
+      ^hd ->
+        row.hd_icd10s_exp
+
+      _ ->
+        Risteys.Icd10.parse_rule(
+          row.kela_reimb_icd,
+          icd10s,
+          map_child_parent,
+          map_parent_children
+        )
     end
 
   Map.put_new(row, :kela_icd10s_exp, expanded)
@@ -232,74 +326,79 @@ end)
 
   Map.merge(row, dotted)
 end)
+
+# Inform about difficulty to parse CONDITIONS or CONTROL_CONDITIONS
 |> Stream.each(fn row ->
-  %{
-    "NAME" => name,
-    "CONDITIONS" => conditions
-  } = row
+  valid_conditions = is_nil(row.conditions) or not String.contains?(row.conditions, ["(", ")"])
+
 
   if not is_nil(conditions) and String.contains?(conditions, ["(", ")"]) do
+  if not valid_conditions do
     Logger.warn(
       "Endpoint #{name} has 'conditions' with '(' or ')': it will be incorrectly displayed."
+      "Endpoint #{row.name} has 'conditions' with '(' or ')': it will be incorrectly displayed."
     )
   end
 end)
 
-# 3. Add endpoints to DB
+# Add endpoints to DB
 ####
 |> Enum.each(fn row ->
-  Logger.info("Inserting/updating: #{row["NAME"]}")
+  Logger.info("Inserting/updating: #{row.name}")
 
   phenocode =
-    case Repo.get_by(Phenocode, name: row["NAME"]) do
+    case Repo.get_by(Phenocode, name: row.name) do
       nil -> %Phenocode{}
       existing -> existing
     end
     |> Phenocode.changeset(%{
-      name: row["NAME"],
-      tags: row["TAGS"],
-      level: row["LEVEL"],
-      omit: row["OMIT"],
-      longname: row["LONGNAME"],
-      sex: row["SEX"],
-      include: row["INCLUDE"],
-      pre_conditions: row["PRE_CONDITIONS"],
-      conditions: row["CONDITIONS"],
-      outpat_icd: row["OUTPAT_ICD"],
-      hd_mainonly: row["HD_MAINONLY"],
-      hd_icd_10_atc: row["HD_ICD_10_ATC"],
-      hd_icd_10: row["HD_ICD_10"],
-      hd_icd_9: row["HD_ICD_9"],
-      hd_icd_8: row["HD_ICD_8"],
-      hd_icd_10_excl: row["HD_ICD_10_EXCL"],
-      hd_icd_9_excl: row["HD_ICD_9_EXCL"],
-      hd_icd_8_excl: row["HD_ICD_8_EXCL"],
-      cod_mainonly: row["COD_MAINONLY"],
-      cod_icd_10: row["COD_ICD_10"],
-      cod_icd_9: row["COD_ICD_9"],
-      cod_icd_8: row["COD_ICD_8"],
-      cod_icd_10_excl: row["COD_ICD_10_EXCL"],
-      cod_icd_9_excl: row["COD_ICD_9_EXCL"],
-      cod_icd_8_excl: row["COD_ICD_8_EXCL"],
-      oper_nom: row["OPER_NOM"],
-      oper_hl: row["OPER_HL"],
-      oper_hp1: row["OPER_HP1"],
-      oper_hp2: row["OPER_HP2"],
-      kela_reimb: row["KELA_REIMB"],
-      kela_reimb_icd: row["KELA_REIMB_ICD"],
-      kela_atc_needother: row["KELA_ATC_NEEDOTHER"],
-      kela_atc: row["KELA_ATC"],
-      kela_vnro_needother: row["KELA_VNRO_NEEDOTHER"],
-      kela_vnro: row["KELA_VNRO"],
-      canc_topo: row["CANC_TOPO"],
-      canc_topo_excl: row["CANC_TOPO_EXCL"],
-      canc_morph: row["CANC_MORPH"],
-      canc_morph_excl: row["CANC_MORPH_EXCL"],
-      canc_behav: row["CANC_BEHAV"],
-      special: row["Special"],
-      version: row["version"],
-      parent: row["PARENT"],
-      latin: row["Latin"],
+      name: row.name,
+      tags: row.tags,
+      level: row.level,
+      omit: row.omit,
+      longname: row.longname,
+      sex: row.sex,
+      include: row.include,
+      pre_conditions: row.pre_conditions,
+      conditions: row.conditions,
+      control_exclude: row.control_exclude,
+      control_preconditions: row.control_preconditions,
+      control_conditions: row.control_conditions,
+      outpat_icd: row.outpat_icd,
+      hd_mainonly: row.hd_mainonly,
+      hd_icd_10_atc: row.hd_icd_10_atc,
+      hd_icd_10: row.hd_icd_10,
+      hd_icd_9: row.hd_icd_9,
+      hd_icd_8: row.hd_icd_8,
+      hd_icd_10_excl: row.hd_icd_10_excl,
+      hd_icd_9_excl: row.hd_icd_9_excl,
+      hd_icd_8_excl: row.hd_icd_8_excl,
+      cod_mainonly: row.cod_mainonly,
+      cod_icd_10: row.cod_icd_10,
+      cod_icd_9: row.cod_icd_9,
+      cod_icd_8: row.cod_icd_8,
+      cod_icd_10_excl: row.cod_icd_10_excl,
+      cod_icd_9_excl: row.cod_icd_9_excl,
+      cod_icd_8_excl: row.cod_icd_8_excl,
+      oper_nom: row.oper_nom,
+      oper_hl: row.oper_hl,
+      oper_hp1: row.oper_hp1,
+      oper_hp2: row.oper_hp2,
+      kela_reimb: row.kela_reimb,
+      kela_reimb_icd: row.kela_reimb_icd,
+      kela_atc_needother: row.kela_atc_needother,
+      kela_atc: row.kela_atc,
+      kela_vnro_needother: row.kela_vnro_needother,
+      kela_vnro: row.kela_vnro,
+      canc_topo: row.canc_topo,
+      canc_topo_excl: row.canc_topo_excl,
+      canc_morph: row.canc_morph,
+      canc_morph_excl: row.canc_morph_excl,
+      canc_behav: row.canc_behav,
+      special: row.special,
+      version: row.version,
+      parent: row.parent,
+      latin: row.latin,
       category: row.category
     })
     |> Repo.insert_or_update!()
