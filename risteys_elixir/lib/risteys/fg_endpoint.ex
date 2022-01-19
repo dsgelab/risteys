@@ -51,7 +51,7 @@ defmodule Risteys.FGEndpoint do
       },
       %{
         name: :includes,
-        data: parse_includes(endpoint)
+        data: parse_include(endpoint)
       }
     ]
 
@@ -65,12 +65,20 @@ defmodule Risteys.FGEndpoint do
     end)
   end
 
-  defp parse_conditions(%{conditions: nil}), do: []
-
   defp parse_conditions(endpoint) do
+    parse_logic_expression(endpoint.conditions)
+  end
+
+  defp parse_control_conditions(endpoint) do
+    parse_logic_expression(endpoint.control_conditions)
+  end
+
+  defp parse_logic_expression(nil), do: []
+
+  defp parse_logic_expression(expr) do
     non_word = ~r{\W}
 
-    Regex.split(non_word, endpoint.conditions, include_captures: true, trim: true)
+    Regex.split(non_word, expr, include_captures: true, trim: true)
     |> Enum.reduce([""], fn token, acc ->
       [previous | remaining] = acc
       item = previous <> token
@@ -263,12 +271,18 @@ defmodule Risteys.FGEndpoint do
     end
   end
 
-  defp parse_includes(endpoint) do
-    if is_nil(endpoint.include) do
-      []
-    else
-      String.split(endpoint.include, "|")
-    end
+  defp parse_include(endpoint) do
+    parse_delim_endpoints(endpoint.include)
+  end
+
+  defp parse_control_exclude(endpoint) do
+    parse_delim_endpoints(endpoint.control_exclude)
+  end
+
+  defp parse_delim_endpoints(nil), do: []
+
+  defp parse_delim_endpoints(endpoints) do
+    String.split(endpoints, "|")
   end
 
   def upsert_explainer_step(attrs) do
@@ -290,6 +304,25 @@ defmodule Risteys.FGEndpoint do
       step_name = String.to_atom(step_name)
       Map.put_new(acc, step_name, count)
     end)
+  end
+
+  # -- Control definitions --
+  def get_control_definitions(endpoint) do
+    [
+      %{
+        field: :control_exclude,
+        value: parse_control_exclude(endpoint)
+      },
+      %{
+        field: :control_preconditions,
+        value: endpoint.control_preconditions
+      },
+      %{
+        field: :control_conditions,
+        value: parse_control_conditions(endpoint)
+      }
+    ]
+    |> Enum.reject(fn %{value: val} -> is_nil(val) or val == [] end)
   end
 
   # -- Histograms --
