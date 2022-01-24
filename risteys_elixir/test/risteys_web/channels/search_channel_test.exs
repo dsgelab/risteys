@@ -6,7 +6,7 @@ defmodule RisteysWeb.SearchChannelTest do
       socket(RisteysWeb.UserSocket, "user_id", %{some: :assign})
       |> subscribe_and_join(RisteysWeb.SearchChannel, "search")
 
-    Risteys.DataCase.data_fixture("longname for XYZ00")
+    Risteys.DataCase.data_fixture("XYZ00")
 
     {:ok, socket: socket}
   end
