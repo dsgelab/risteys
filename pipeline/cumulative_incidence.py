@@ -61,7 +61,6 @@ def load_endpoints(file_path):
     df = pd.read_csv(
         file_path,
         usecols=["NAME", "SEX"],
-        skiprows=[1]  # first row is a comment
     )
     return df
 
