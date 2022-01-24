@@ -9,16 +9,13 @@ Steps:
 - merge events that are within a 30-day time window
 
 Usage:
-    python build_input_hdf.py <path-to-first-events> <path-to-info> <path-to-endpoint-defs> <path-to-samples> <output-output>
+    python build_input_hdf.py <path-to-first-events> <path-to-info> <path-to-samples> <output-output>
 
 Input files:
 - dense_first_events.csv
   Source: previous pipeline step
 - FINNGEN_MINIMUM_DATA.txt
   Each row is an individual in FinnGen with some information.
-  Source: FinnGen data
-- Endpoint_definitions_FINNGEN_ENDPOINTS.tsv
-  Each row is an endpoint definition.
   Source: FinnGen data
 - COV_PHENO.txt
   Each row is an individual in FinnGen, with FinnGen ID. Only these
