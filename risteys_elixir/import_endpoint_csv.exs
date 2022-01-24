@@ -3,15 +3,16 @@
 # Usage
 # -----
 # mix run import_endpoint_csv.exs \
-#     <path-to-endpoints-file> \
+#     <path-to-endpoint-definitions-file> \
 #     <path-to-tagged-ordered-endpoints-file> \
 #     <path-to-categories-file> \
 #     <path-to-icd10fi>
 #
-# <path-to-endpoints-file>
-#   Endpoint file in CSV format.
-#   Provided in the FinnGen data.
-#   This file usually have the name "finngen_RX_endpoint_definitions.txt"
+# <path-to-endpoint-definitions-file>
+#   Endpoint definition file in CSV format.
+#   This file contains all endpoints:
+#   - endpoints without any specific controls
+#   - endpoints with specific controls
 #
 # <path-to-tagged-ordered-endpoints-file>
 #   CSV file with header: TAG,CLASS,NAME
