@@ -86,4 +86,4 @@ config :ueberauth, Ueberauth.Strategy.Google.OAuth,
   client_secret: System.get_env("GOOGLE_CLIENT_SECRET")
 
 
-import_config "newristeys_dev.secret.exs"
+import_config "newristeys_FGFR_dev.secret.exs"

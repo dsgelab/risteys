@@ -2,9 +2,10 @@
 # Clean-up endpoints without statistics afterwards.
 #
 # Usage:
-#     mix run import_aggregated_stats.exs <json-file-aggregegated-stats>
+#     mix run import_aggregated_stats.exs <json-file-aggregegated-stats> <project>
 #
-# where <json-file-aggregegated-stats> is a JSON file with all the
+# where
+# <json-file-aggregegated-stats> is a JSON file with all the
 # aggregated stats, with the following format:
 #
 # {
@@ -24,12 +25,20 @@
 #   },
 #   ...}
 # }
+#
+# and project is a string indicating which project the reults belong to,
+# either "FG" for FinnGen or "FR" for FinRegistry
 
 alias Risteys.{Repo, Phenocode, StatsSex}
 require Logger
 
 Logger.configure(level: :info)
-[stats_filepath | _] = System.argv()
+[stats_filepath, project | _] = System.argv()
+
+# raise an error if correct project info is not provided
+if project != "FG" and project != "FR" do
+  raise ArgumentError, message: "Project need to be given as a second argument, either FG or FR."
+end
 
 defmodule Risteys.ImportAgg do
   def stats(
@@ -39,14 +48,16 @@ defmodule Risteys.ImportAgg do
         n_individuals,
         prevalence,
         distrib_year,
-        distrib_age
+        distrib_age,
+        project
       ) do
     # Wrap distributions in a map
     distrib_year = %{hist: distrib_year}
     distrib_age = %{hist: distrib_age}
 
     stats =
-      case Repo.get_by(StatsSex, sex: sex, phenocode_id: phenocode.id) do
+      # update existing table if data with same phenocode id, sex and prjoect is already in the db
+      case Repo.get_by(StatsSex, sex: sex, phenocode_id: phenocode.id, project: project) do
         nil -> %StatsSex{}
         existing -> existing
       end
@@ -57,7 +68,8 @@ defmodule Risteys.ImportAgg do
         n_individuals: n_individuals,
         prevalence: prevalence,
         distrib_year: distrib_year,
-        distrib_age: distrib_age
+        distrib_age: distrib_age,
+        project: project
       })
       |> Repo.insert_or_update()
 
@@ -106,7 +118,7 @@ stats # stats from the map???
         "mean_age_male" => mean_age_male,
         "prevalence_all" => prevalence_all,
         "prevalence_female" => prevalence_female,
-        "prevalence_male" => prevalence_male,
+        "prevalence_male" => prevalence_male
       } = data
 
       # Distribution are missing for endpoints with total N in 1..4
@@ -145,7 +157,8 @@ stats # stats from the map???
           nindivs_all,
           prevalence_all,
           distrib_year_all,
-          distrib_age_all
+          distrib_age_all,
+          project
         )
       else
         Logger.warn("Skipping stats for #{phenocode.name} - all : None or 0 individual")
@@ -160,7 +173,8 @@ stats # stats from the map???
           nindivs_male,
           prevalence_male,
           distrib_year_male,
-          distrib_age_male
+          distrib_age_male,
+          project
         )
       else
         Logger.warn("Skipping stats for #{phenocode.name} - male : None or 0 individual")
@@ -175,7 +189,8 @@ stats # stats from the map???
           nindivs_female,
           prevalence_female,
           distrib_year_female,
-          distrib_age_female
+          distrib_age_female,
+          project
         )
       else
         Logger.warn("Skipping stats for #{phenocode.name} - female : None or 0 individual")
