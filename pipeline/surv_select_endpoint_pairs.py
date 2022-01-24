@@ -53,7 +53,7 @@ def main():
 def cli_parser():
     parser = argparse.ArgumentParser()
 
-    # CSV file converted from FinnGen endpoint definition TSV file
+    # CSV file converted from FinnGen endpoint definition Excel file
     parser.add_argument(
         '-e', '--endpoint-definitions',
         help='path to the endpoint definitions (CSV)',
