@@ -78,21 +78,9 @@ defmodule Risteys.Icd10Test do
       assert_parsed(cell, expected, context)
     end
 
-    test "I_INFECT_PARASIT: A|B", context do
-      cell = "A|B"
-      expected = ["A00-B99"]
-      assert_parsed(cell, expected, context)
-    end
-
-    test "VI_NERVOUS: G", context do
-      cell = "G"
-      expected = ["G00-G99"]
-      assert_parsed(cell, expected, context)
-    end
-
     test "XIII_MUSCULOSKELET: M", context do
       cell = "M"
-      expected = ["M00-M99"]
+      expected = ["M00-M99", "M90.6*C40.99", "M90.6*C41.99"]
       assert_parsed(cell, expected, context)
     end
   end
@@ -235,12 +223,6 @@ defmodule Risteys.Icd10Test do
         "C34.97&"
       ]
 
-      assert_parsed(cell, expected, context)
-    end
-
-    test "G6_MENINGBACT: G0[0-1]", context do
-      cell = "G0[0-1]"
-      expected = ["G00", "G01*"]
       assert_parsed(cell, expected, context)
     end
   end

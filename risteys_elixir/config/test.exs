@@ -9,5 +9,10 @@ config :risteys, RisteysWeb.Endpoint,
 # Print only warnings and errors during test
 config :logger, level: :warn
 
+config :ueberauth, Ueberauth,
+  providers: [
+    google: {Ueberauth.Strategy.Google, []}
+  ]
+
 
 import_config "test.secret.exs"

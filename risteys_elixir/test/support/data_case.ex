@@ -60,44 +60,7 @@ defmodule Risteys.DataCase do
   """
   def data_fixture(name) do
     phenocode =
-      Phenocode.changeset(%Phenocode{}, %{
-        name: name,
-        longname: "Longname for #{name}",
-        category: "test",
-        tags: "",
-        level: "",
-        omit: false,
-        sex: 1,
-        include: "",
-        pre_conditions: "",
-        conditions: "",
-        outpat_icd: "",
-        hd_mainonly: false,
-        hd_icd_8: "",
-        hd_icd_10_excl: "",
-        hd_icd_9_excl: "",
-        hd_icd_8_excl: "",
-        cod_mainonly: false,
-        cod_icd_8: "",
-        cod_icd_10_excl: "",
-        cod_icd_9_excl: "",
-        cod_icd_8_excl: "",
-        oper_nom: "",
-        oper_hl: "",
-        oper_hp1: "",
-        oper_hp2: "",
-        kela_reimb: "",
-        kela_atc_needother: "",
-        kela_atc: "",
-        canc_topo: "",
-        canc_morph: "",
-        canc_behav: 0,
-        special: "",
-        version: "",
-        distrib_year: %{},
-        distrib_age: %{},
-        ontology: nil
-      })
+      Phenocode.changeset(%Phenocode{}, %{name: name, longname: "Longname for #{name}"})
 
     {:ok, phenocode} = Repo.insert(phenocode)
 
