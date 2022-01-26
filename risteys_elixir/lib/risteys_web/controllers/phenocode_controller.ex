@@ -118,12 +118,14 @@ defmodule RisteysWeb.PhenocodeController do
       end
 
     # Get stats
-    stats = get_stats(phenocode)
-    %{all: %{distrib_year: distrib_year, distrib_age: distrib_age}} = stats
+    stats_FG = get_stats(phenocode, "FG")
+    stats_FR = get_stats(phenocode, "FR")
+    %{all: %{distrib_year: distrib_year_FG, distrib_age: distrib_age_FG}} = stats_FG
+    %{all: %{distrib_year: distrib_year_FR, distrib_age: distrib_age_FR}} = stats_FR
 
     # Unwrap histograms
-    %{"hist" => distrib_year} =
-      case distrib_year do
+    %{"hist" => distrib_year_FG} =
+      case distrib_year_FG do
         nil ->
           %{"hist" => nil}
 
@@ -131,11 +133,11 @@ defmodule RisteysWeb.PhenocodeController do
           %{"hist" => nil}
 
         _ ->
-          distrib_year
+          distrib_year_FG
       end
 
-    %{"hist" => distrib_age} =
-      case distrib_age do
+    %{"hist" => distrib_year_FR} =
+      case distrib_year_FR do
         nil ->
           %{"hist" => nil}
 
@@ -143,7 +145,31 @@ defmodule RisteysWeb.PhenocodeController do
           %{"hist" => nil}
 
         _ ->
-          distrib_age
+          distrib_year_FR
+      end
+
+    %{"hist" => distrib_age_FG} =
+      case distrib_age_FG do
+        nil ->
+          %{"hist" => nil}
+
+        [] ->
+          %{"hist" => nil}
+
+        _ ->
+          distrib_age_FG
+      end
+
+    %{"hist" => distrib_age_FR} =
+      case distrib_age_FR do
+        nil ->
+          %{"hist" => nil}
+
+        [] ->
+          %{"hist" => nil}
+
+        _ ->
+          distrib_age_FR
       end
 
     # Mortality stats
@@ -171,9 +197,12 @@ defmodule RisteysWeb.PhenocodeController do
     |> assign(:ontology, ontology)
     |> assign(:broader_endpoints, FGEndpoint.broader_endpoints(phenocode))
     |> assign(:narrower_endpoints, FGEndpoint.narrower_endpoints(phenocode))
-    |> assign(:stats, stats)
-    |> assign(:distrib_year, distrib_year)
-    |> assign(:distrib_age, distrib_age)
+    |> assign(:stats_FG, stats_FG)
+    |> assign(:stats_FR, stats_FR)
+    |> assign(:distrib_year_FG, distrib_year_FG)
+    |> assign(:distrib_year_FR, distrib_year_FR)
+    |> assign(:distrib_age_FG, distrib_age_FG)
+    |> assign(:distrib_age_FR, distrib_age_FR)
     |> assign(:description, description)
     |> assign(:mortality, mortality_stats)
     |> assign(:data_assocs, data_assocs(phenocode))
@@ -182,8 +211,8 @@ defmodule RisteysWeb.PhenocodeController do
     |> render("show.html")
   end
 
-  defp get_stats(phenocode) do
-    stats = Repo.all(from ss in StatsSex, where: ss.phenocode_id == ^phenocode.id)
+  defp get_stats(phenocode, project) do
+    stats = Repo.all(from ss in StatsSex, where: ss.phenocode_id == ^phenocode.id and ss.project == ^project)
 
     no_stats = %{
       n_individuals: "-",
