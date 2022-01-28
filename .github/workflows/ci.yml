@@ -1,0 +1,72 @@
+name: Web portal CI (Elixir)
+
+on: [push, pull_request]
+
+jobs:
+  test:
+    name: Elixir tests
+    runs-on: ubuntu-latest
+
+    services:
+      postgres:
+        image: postgres
+        env:
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_USER: postgres
+          POSTGRES_DB: risteys_test
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+        ports:
+          - 5432:5432
+
+    defaults:
+      run:
+        working-directory: risteys_elixir
+
+    env:
+      MIX_ENV: test
+
+    steps:
+    - uses: actions/checkout@v2
+    - name: Set up Elixir
+      uses: erlef/setup-beam@v1
+      with:
+        otp-version: '24'
+        elixir-version: '1.13.2'
+    - name: Restore dependency cache
+      uses: actions/cache@v2
+      with:
+        path: deps
+        key: ${{ runner.os }}-mix-${{ hashFiles('**/mix.lock') }}
+        restore-keys: ${{ runner.os }}-mix-
+    - name: Make dummy config secret file
+      run: touch config/config.secret.exs
+    - name: Populate minimal config file for tests
+      run: |
+        cat > config/test.secret.exs <<EOF
+        import Config
+
+        config :risteys, RisteysWeb.Endpoint,
+          # Generated key for GitHub actions with 'mix phx.gen.secret'
+          secret_key_base: "ksSa6eSFx74oBBZ0himTvCRucvXGUjVG1itNVWV4sp+b4d/GdaSwjtFC2PqrPsKU",
+          pubsub_server: Risteys.PubSub
+
+        config :risteys, Risteys.Repo,
+          username: "postgres",
+          password: "postgres",
+          database: "risteys_test#{System.get_env("MIX_TEST_PARTITION")}",
+          hostname: "localhost",
+          pool: Ecto.Adapters.SQL.Sandbox,
+          pool_size: 10
+        EOF
+    - name: Install dependencies
+      run: mix deps.get
+    - name: Run tests
+      run: mix test
+    - name: Print test coverage
+      # Check test coverage for documentation purpose, but we don't care about
+      # the coverage value so we use '|| true' to mark this step as passing
+      run: mix test --cover || true
