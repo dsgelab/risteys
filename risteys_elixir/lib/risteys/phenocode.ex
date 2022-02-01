@@ -8,6 +8,12 @@ defmodule Risteys.Phenocode do
     field :tags, :string
     field :level, :string
     field :omit, :string
+
+    # Core/non-core endpoint info
+    field :is_core, :boolean
+    field :reason_non_core, :string
+    field :selected_core_id, :id
+
     field :longname, :string
     field :sex, :string
     field :include, :string
@@ -92,6 +98,9 @@ defmodule Risteys.Phenocode do
       :tags,
       :level,
       :omit,
+      :is_core,
+      :reason_non_core,
+      :selected_core_id,
       :longname,
       :sex,
       :include,
@@ -141,6 +150,7 @@ defmodule Risteys.Phenocode do
       :gws_hits
     ])
     |> validate_required([:name])
+    |> validate_inclusion(:reason_non_core, [nil, "exallc_priority", "correlated", "other"])
     |> validate_exclusion(:control_exclude, [""], message: "must be 'nil' instead of an empty string")
     |> validate_exclusion(:control_preconditions, [""], message: "must be 'nil' instead of an empty string")
     |> validate_exclusion(:control_conditions, [""], message: "must be 'nil' instead of an empty string")

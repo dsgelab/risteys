@@ -167,6 +167,7 @@ defmodule RisteysWeb.PhenocodeController do
     conn
     |> assign(:endpoint, phenocode)
     |> assign(:page_title, phenocode.name)
+    |> assign(:replacements, FGEndpoint.find_replacement_endpoints(phenocode))
     |> assign(:explainer_steps, FGEndpoint.get_explainer_steps(phenocode))
     |> assign(:ontology, ontology)
     |> assign(:broader_endpoints, FGEndpoint.broader_endpoints(phenocode))
