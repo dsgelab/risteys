@@ -22,6 +22,66 @@ defmodule Risteys.FGEndpoint do
     end)
   end
 
+  def get_core_endpoints() do
+    Repo.all(from pp in Phenocode, where: pp.is_core, select: pp.name)
+    |> Enum.into(MapSet.new())
+  end
+
+  def find_replacement_endpoints(endpoint) do
+    cond do
+      endpoint.is_core ->
+        {:is_core, nil}
+
+      not is_nil(endpoint.selected_core_id) ->
+        {:selected_core, Repo.get!(Phenocode, endpoint.selected_core_id)}
+
+      endpoint.reason_non_core == "exallc_priority" ->
+        {:exallc_priority, find_exallc_replacement(endpoint)}
+
+      true ->
+        {:correlated, find_correlated_replacements(endpoint)}
+    end
+  end
+
+  defp find_exallc_replacement(endpoint) do
+    map_exallc =
+      Repo.all(
+        from endp in Phenocode,
+          where: like(endp.name, "%_EXALLC"),
+          select: {endp.name, endp}
+      )
+      |> Enum.into(%{})
+
+    exallc_alternative = endpoint.name <> "_EXALLC"
+
+    Map.get(map_exallc, exallc_alternative)
+  end
+
+  defp find_correlated_replacements(endpoint) do
+    overlap_threshold = 0.5
+    max_results = 3
+
+    list_correlated =
+      Repo.all(
+        from corr in Correlation,
+          join: endp in Phenocode,
+          on: corr.phenocode_b_id == endp.id,
+          where:
+            corr.phenocode_a_id == ^endpoint.id and
+              corr.phenocode_b_id != ^endpoint.id and
+              corr.case_overlap >= ^overlap_threshold and
+              endp.is_core,
+          select: %{name: endp.name},
+          order_by: [desc: corr.case_overlap],
+          limit: ^max_results
+      )
+
+    case list_correlated do
+      [] -> nil
+      _ -> list_correlated
+    end
+  end
+
   # -- Endpoint Explainer --
   def get_explainer_steps(endpoint) do
     steps = [
