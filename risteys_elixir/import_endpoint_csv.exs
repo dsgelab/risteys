@@ -6,7 +6,8 @@
 #     <path-to-endpoint-definitions-file> \
 #     <path-to-tagged-ordered-endpoints-file> \
 #     <path-to-categories-file> \
-#     <path-to-icd10fi>
+#     <path-to-icd10fi> \
+#     <path-to-correlation-clusters
 #
 # <path-to-endpoint-definitions-file>
 #   Endpoint definition file in CSV format.
@@ -30,8 +31,11 @@
 #   It is used to match an ICD-10 definition into a list of ICD-10s.
 #   Must contain columns: CodeId, ParentId
 #
+# <path-to-correlation-clusters>
+#   CSV file with mapping of selected endpoint to correlated endpoints.
+#   Exported as CSV from the Excel document "core and non-core endpoints" from FinnGen
 
-alias Risteys.{Repo, Phenocode, PhenocodeIcd10, Icd10}
+alias Risteys.{Repo, FGEndpoint, Phenocode, PhenocodeIcd10, Icd10}
 require Logger
 import Ecto.Query
 
@@ -44,7 +48,8 @@ Logger.info("Loading ICD-10 from files")
   endpoints_path,
   tagged_path,
   categories_path,
-  icd10fi_file_path
+  icd10fi_file_path,
+  correlation_clusters_path
 ] = System.argv()
 
 # HELPERS
@@ -114,6 +119,37 @@ categories =
   map_parent_children
 } = Risteys.Icd10.init_parser(icd10fi_file_path)
 
+# -- Get info on selected endpoint for a set of correlated endpoint
+redundant_endpoints =
+  correlation_clusters_path
+  |> File.stream!()
+  |> CSV.decode!()
+
+# Check the header
+[
+  [
+    "Top endpoint according the correlation run",
+    _,
+    "Redundant endpoints (OMITed)"
+    | _
+  ]
+  | redundant_endpoints
+] = Enum.into(redundant_endpoints, [])
+
+# Map correlated endpoint -> selected endpoint
+map_corr_selected =
+  for row <- redundant_endpoints, reduce: %{} do
+    acc ->
+      [selected, _ | correlated_endpoints] = row
+
+      row_endpoints =
+        for endpoint <- correlated_endpoints, endpoint != "" and endpoint != "-", into: %{} do
+          {endpoint, selected}
+        end
+
+      Map.merge(acc, row_endpoints)
+  end
+
 # Clean-up & Transform endpoints
 ####
 Logger.info("Cleaning-up endpoint from the definition files")
@@ -129,6 +165,8 @@ endpoints_path
     "TAGS" => tags,
     "LEVEL" => level,
     "OMIT" => omit,
+    "CORE_ENDPOINTS" => is_core_endpoint,
+    "REASON_FOR_NONCORE" => reason_non_core,
     "LONGNAME" => longname,
     "SEX" => sex,
     "INCLUDE" => include,
@@ -181,6 +219,8 @@ endpoints_path
     tags: tags,
     level: level,
     omit: omit,
+    is_core_endpoint: is_core_endpoint,
+    reason_non_core: reason_non_core,
     longname: longname,
     sex: sex,
     include: include,
@@ -248,6 +288,37 @@ end)
       %{^tag => cat} = categories
       Map.put_new(row, :category, cat)
   end
+end)
+
+# Parse core / non-core
+|> Stream.map(fn row ->
+  is_core =
+    case row.is_core_endpoint do
+      "yes" -> true
+      "no" -> false
+    end
+
+  Map.put_new(row, :is_core, is_core)
+end)
+
+# Normalize 'reason for non-core'
+|> Stream.map(fn row ->
+  reason =
+    cond do
+      row.reason_non_core == "" ->
+        nil
+
+      row.reason_non_core =~ "EXALLC priorities" ->
+        "exallc_priority"
+
+      row.reason_non_core == "Correlated endpoint, see Correlation cluster Sheet" ->
+        "correlated"
+
+      true ->
+        "other"
+    end
+
+  %{row | reason_non_core: reason}
 end)
 
 # Parse ICD-10: HD
@@ -363,6 +434,11 @@ end)
       tags: row.tags,
       level: row.level,
       omit: row.omit,
+      is_core: row.is_core,
+      reason_non_core: row.reason_non_core,
+      # We need all the endpoints to be in the DB first, to then use their id.
+      # We will set that in a second phase.
+      selected_core_id: nil,
       longname: row.longname,
       sex: row.sex,
       include: row.include,
@@ -416,4 +492,40 @@ end)
   AssocICDs.insert_or_update("COD", 10, phenocode, row.cod_icd10s_exp)
   AssocICDs.insert_or_update("COD_EXCL", 10, phenocode, row.cod_icd10s_excl_exp)
   AssocICDs.insert_or_update("KELA", 10, phenocode, row.kela_icd10s_exp)
+end)
+
+# Set the selected core endpoint for correlated endpoints
+###
+Logger.info("Setting the selected core endpoint for correlated endpoints")
+
+# Prefetch endpoint info
+endpoints_ids = FGEndpoint.list_endpoints_ids()
+core_endpoints = FGEndpoint.get_core_endpoints()
+
+
+map_corr_selected
+
+# Don't act on correlated endpoints from the correlation cluster sheet
+# that are no longer present in the endpoint definitions.
+|> Enum.filter(fn {correlated, _selected} -> correlated in Map.keys(endpoints_ids) end)
+
+# The map of correlated -> selected endpoints might be outdated, so we
+# take care of discarding selected endpoints that have since become
+# non-core endpoints.
+|> Enum.filter(fn {_correlated, selected} -> selected in Map.keys(core_endpoints) end)
+
+|> Enum.each(fn {correlated, selected} ->
+  endp_correlated = Repo.get_by!(Phenocode, name: correlated)
+
+  case Map.fetch(endpoints_ids, selected) do
+    {:ok, id_selected} ->
+      endp_correlated
+      |> Phenocode.changeset(%{selected_core_id: id_selected})
+      |> Repo.insert_or_update!()
+
+    :error ->
+      Logger.warning(
+        "Selected core endpoint #{selected} not found in DB (correlated endpoint: #{correlated})"
+      )
+  end
 end)
