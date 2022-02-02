@@ -181,7 +181,8 @@ if (path.startsWith("/phenocode/")) {  // Load only on phenocode pages
         const xAxisLabel = "age";
         const yAxisLabel = "individuals";
         const data = payload.data;
-        varBinPlot(elementSelector, data, xAxisLabel, yAxisLabel);
+        const plot_color = "#1c3d5a";
+        varBinPlot(elementSelector, data, xAxisLabel, yAxisLabel, plot_color);
     });
 
     /* YEAR HISTOGRAM FG */
@@ -191,7 +192,8 @@ if (path.startsWith("/phenocode/")) {  // Load only on phenocode pages
         const xAxisLabel = "year";
         const yAxisLabel = "individuals";
         const data = payload.data;
-        varBinPlot(elementSelector, data, xAxisLabel, yAxisLabel);
+        const plot_color = "#1c3d5a";
+        varBinPlot(elementSelector, data, xAxisLabel, yAxisLabel, plot_color);
     }); 
 
 
@@ -208,7 +210,8 @@ if (path.startsWith("/phenocode/")) {  // Load only on phenocode pages
                 const xAxisLabel = "age";
                 const yAxisLabel = "individuals";
                 const data = payload.data;
-                varBinPlot(elementSelector, data, xAxisLabel, yAxisLabel);
+                const plot_color = "#0b592f";
+                varBinPlot(elementSelector, data, xAxisLabel, yAxisLabel, plot_color);
             });
 
             /* YEAR HISTOGRAM FR */
@@ -218,7 +221,8 @@ if (path.startsWith("/phenocode/")) {  // Load only on phenocode pages
                 const xAxisLabel = "year";
                 const yAxisLabel = "individuals";
                 const data = payload.data;
-                varBinPlot(elementSelector, data, xAxisLabel, yAxisLabel);
+                const plot_color = "#0b592f";
+                varBinPlot(elementSelector, data, xAxisLabel, yAxisLabel, plot_color);
             });
                         
             /* CORRELATION TABLE */
