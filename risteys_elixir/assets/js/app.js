@@ -179,7 +179,7 @@ if (path.startsWith("/phenocode/")) {  // Load only on phenocode pages
     stats_data_channel.on("data_age_histogram_FG", payload => {
         const elementSelector = "#bin-plot-age-FG";
         const xAxisLabel = "age";
-        const yAxisLabel = "1, individuals, FG";
+        const yAxisLabel = "individuals";
         const data = payload.data;
         varBinPlot(elementSelector, data, xAxisLabel, yAxisLabel);
     });
@@ -189,7 +189,7 @@ if (path.startsWith("/phenocode/")) {  // Load only on phenocode pages
     stats_data_channel.on("data_year_histogram_FG", payload => {
         const elementSelector = "#bin-plot-year-FG";
         const xAxisLabel = "year";
-        const yAxisLabel = "2, individuals, FG";
+        const yAxisLabel = "individuals";
         const data = payload.data;
         varBinPlot(elementSelector, data, xAxisLabel, yAxisLabel);
     }); 
@@ -206,7 +206,7 @@ if (path.startsWith("/phenocode/")) {  // Load only on phenocode pages
             stats_data_channel.on("data_age_histogram_FR", payload => {
                 const elementSelector = "#bin-plot-age-FR";
                 const xAxisLabel = "age";
-                const yAxisLabel = "3, individuals, FR";
+                const yAxisLabel = "individuals";
                 const data = payload.data;
                 varBinPlot(elementSelector, data, xAxisLabel, yAxisLabel);
             });
@@ -216,7 +216,7 @@ if (path.startsWith("/phenocode/")) {  // Load only on phenocode pages
             stats_data_channel.on("data_year_histogram_FR", payload => {
                 const elementSelector = "#bin-plot-year-FR";
                 const xAxisLabel = "year";
-                const yAxisLabel = "4, individuals, FR";
+                const yAxisLabel = "individuals";
                 const data = payload.data;
                 varBinPlot(elementSelector, data, xAxisLabel, yAxisLabel);
             });
