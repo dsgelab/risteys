@@ -174,32 +174,53 @@ if (path.startsWith("/phenocode/")) {  // Load only on phenocode pages
         components: { HelpMortality },
     });
 
+    /* AGE HISTOGRAM FG */
+    stats_data_channel.push("get_age_histogram", {endpoint: phenocode, project: "FG"});
+    stats_data_channel.on("data_age_histogram_FG", payload => {
+        const elementSelector = "#bin-plot-age-FG";
+        const xAxisLabel = "age";
+        const yAxisLabel = "1, individuals, FG";
+        const data = payload.data;
+        varBinPlot(elementSelector, data, xAxisLabel, yAxisLabel);
+    });
+
+    /* YEAR HISTOGRAM FG */
+    stats_data_channel.push("get_year_histogram", {endpoint: phenocode, project: "FG"});
+    stats_data_channel.on("data_year_histogram_FG", payload => {
+        const elementSelector = "#bin-plot-year-FG";
+        const xAxisLabel = "year";
+        const yAxisLabel = "2, individuals, FG";
+        const data = payload.data;
+        varBinPlot(elementSelector, data, xAxisLabel, yAxisLabel);
+    }); 
+
+
     stats_data_channel.push("test_exclusion", {endpoint: phenocode});
     stats_data_channel.on("result_exclusion", payload => {
         const excluded = payload.excl;
 
         /* Get results if endpoint is not excluded */
         if (excluded === null) {
-            /* AGE HISTOGRAM */
-            stats_data_channel.push("get_age_histogram", {endpoint: phenocode});
-            stats_data_channel.on("data_age_histogram", payload => {
-                const elementSelector = "#bin-plot-age";
+            /* AGE HISTOGRAM FR */
+            stats_data_channel.push("get_age_histogram", {endpoint: phenocode, project: "FR"});
+            stats_data_channel.on("data_age_histogram_FR", payload => {
+                const elementSelector = "#bin-plot-age-FR";
                 const xAxisLabel = "age";
-                const yAxisLabel = "individuals";
+                const yAxisLabel = "3, individuals, FR";
                 const data = payload.data;
                 varBinPlot(elementSelector, data, xAxisLabel, yAxisLabel);
             });
 
-            /* YEAR HISTOGRAM */
-            stats_data_channel.push("get_year_histogram", {endpoint: phenocode});
-            stats_data_channel.on("data_year_histogram", payload => {
-                const elementSelector = "#bin-plot-year";
+            /* YEAR HISTOGRAM FR */
+            stats_data_channel.push("get_year_histogram", {endpoint: phenocode, project: "FR"});
+            stats_data_channel.on("data_year_histogram_FR", payload => {
+                const elementSelector = "#bin-plot-year-FR";
                 const xAxisLabel = "year";
-                const yAxisLabel = "individuals";
+                const yAxisLabel = "4, individuals, FR";
                 const data = payload.data;
                 varBinPlot(elementSelector, data, xAxisLabel, yAxisLabel);
-            }); 
-            
+            });
+                        
             /* CORRELATION TABLE */
             stats_data_channel.push("get_correlations", {endpoint: phenocode});
             stats_data_channel.on("data_correlations", payload => {
