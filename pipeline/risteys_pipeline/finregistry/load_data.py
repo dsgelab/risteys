@@ -5,7 +5,7 @@ from risteys_pipeline.config import *
 from risteys_pipeline.log import logger
 from risteys_pipeline.finregistry.preprocess_data import (
     preprocess_minimal_phenotype_data,
-    preprocess_wide_first_events_data,
+    preprocess_exposure_and_outcome_data,
     preprocess_endpoints_data,
 )
 
@@ -39,7 +39,7 @@ def load_minimal_phenotype_data(
     return df
 
 
-def load_wide_first_events_data(
+def load_exposure_and_outcome_data(
     exposure,
     outcome,
     nrows=None,
@@ -68,7 +68,7 @@ def load_wide_first_events_data(
     df = pd.read_csv(data_path, header=0, sep=",", usecols=cols, nrows=nrows)[cols]
     logger.info(f"{df.shape[0]} rows loaded")
     if preprocess:
-        df = preprocess_wide_first_events_data(df)
+        df = preprocess_exposure_and_outcome_data(df)
     return df
 
 
@@ -76,11 +76,11 @@ def load_endpoints_data(data_path=FINREGISTRY_ENDPOINTS_DATA_PATH, preprocess=Fa
     """Loads endpoints data as a dataframe and optionally performs preprocessing.
     
     Args:
-        data_path (str, optional): file path of the first events csv file
+        data_path (str, optional): file path of the FinnGen endpoints excel file
         preprocess (bool, optional): will the data be preprocessed
 
     Returns:
-        df (DataFrame): endpoints dataframe
+        df (DataFrame): FinnGen endpoints dataframe
     """
     # TODO: replace excel with csv for speed
     cols = ["NAME", "SEX", "OMIT"]

@@ -57,18 +57,18 @@ def preprocess_endpoints_data(df):
     return df
 
 
-def preprocess_wide_first_events_data(df):
-    """Applies the following preprocessing steps to wide first events data:
+def preprocess_exposure_and_outcome_data(df):
+    """Applies the following preprocessing steps to exposure and outcome data:
         - rename columns
         - remove duplicated finregistryids
         - replace numeric event columns (e.g. <outcome>_NEVT) with numeric boolean (1=yes, 0=no)
         - replace endpoint ages (e.g. <outcome>_AGE) with NaN when the subject did not experience the endpoint
 
     Args:
-        df (DataFrame): wide first events dataframe
+        df (DataFrame): exposure and outcome dataframe
 
     Returns:
-        df (DataFrame): wide first events dataframe with the following columns: 
+        df (DataFrame): exposure and outcome dataframe with the following columns: 
         finregistryid, exposure, exposure_age, outcome, outcome_age
     """
     df.columns = [
@@ -120,19 +120,21 @@ def preprocess_minimal_phenotype_data(df):
     return df
 
 
-def merge_first_events_with_minimal_phenotype(first_events, minimal_phenotype):
-    """Merge first events dataset with minimal phenotype data and calculate exposure and outcome years.
+def merge_exposure_and_outcome_with_minimal_phenotype(
+    exposure_and_outcome, minimal_phenotype
+):
+    """Merge exposure and outcome dataset with minimal phenotype data and calculate exposure and outcome years.
     Only subjects in both datasets are included (inner join).
 
     Args:
-        first_events (DataFrame): preprocessed first events dataframe
+        exposure_and_outcome (DataFrame): preprocessed exposure and outcome dataframe
         minimal_phenotype (DataFrame): preprocessed minimal phenotype dataframe
 
     Returns:
         df (DataFrame): merged dataframe with the following columns: 
         finregistryid, female, birth_year, death_year, exposure_age, exposure_year, outcome_age, outcome_year
     """
-    df = minimal_phenotype.merge(first_events, how="inner", on="finregistryid")
+    df = minimal_phenotype.merge(exposure_and_outcome, how="inner", on="finregistryid")
 
     df["exposure_year"] = df["birth_year"] + df["exposure_age"]
     df["outcome_year"] = df["birth_year"] + df["outcome_age"]
