@@ -4,6 +4,7 @@ import pandas as pd
 from risteys_pipeline.config import *
 from risteys_pipeline.log import logger
 from risteys_pipeline.finregistry.preprocess_data import (
+    preprocess_first_events_data,
     preprocess_minimal_phenotype_data,
     preprocess_exposure_and_outcome_data,
     preprocess_endpoints_data,
@@ -36,6 +37,24 @@ def load_minimal_phenotype_data(
     logger.info(f"{df.shape[0]} rows loaded")
     if preprocess:
         df = preprocess_minimal_phenotype_data(df)
+    return df
+
+
+def load_first_events_data(
+    data_path=FINREGISTRY_LONG_FIRST_EVENTS_DATA_PATH, preprocess=False
+):
+    """Loads the long first events data
+    
+    Args:
+        data_path (str, optional): file path of the long first events feather file
+
+    Returns:
+        df (DataFrame): long first events dataframe
+    """
+    cols = ["FINNGENID", "ENDPOINT", "AGE", "YEAR"]
+    df = pd.read_feather(FINREGISTRY_LONG_FIRST_EVENTS_DATA_PATH, columns=cols)
+    if preprocess:
+        df = preprocess_first_events_data(df)
     return df
 
 
