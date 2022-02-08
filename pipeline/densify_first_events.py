@@ -25,16 +25,19 @@ Input file
 
 Output
 ------
-Ouputs to stdout by default, use redirection to put the result in a file.
+Outputs a Parquet file in narrow format with all control information discarded.
 - Dense first events
-  CSV format
+  Parquet format
   . columns: individual FinnGen ID, endpoint, age, year, number of events
-  . rows: one row per event, so an individual's events span multiple rows
+  . rows: one row per event, so all the events from the same individual span multiple rows
 
 """
 
 import argparse
 from pathlib import Path
+
+import pyarrow
+import pyarrow.parquet as parquet
 
 
 # How the controls, cases, and excluded controls are coded in the input file
@@ -43,7 +46,7 @@ CASE         = "1"
 EXCL_CONTROL = "NA"
 
 # Headers of the output file
-OUT_HEADER = ",".join([
+OUT_HEADER = [
     "FINNGENID",
     "ENDPOINT",
     # Input notation:  control=0, case=1, excluded control=NA
@@ -52,7 +55,7 @@ OUT_HEADER = ",".join([
     "AGE",
     "YEAR",
     "NEVT"
-])
+]
 
 
 def cli_parser():
@@ -65,7 +68,7 @@ def cli_parser():
     )
     parser.add_argument(
         "-o", "--output",
-        help="path to output 'densified' file (CSV)",
+        help="path to output 'densified' file (Parquet)",
         required=True,
         type=Path
     )
@@ -82,7 +85,6 @@ def cli_parser():
 def main():
     args = cli_parser()
 
-    out_file = open(args.output, "x")
     in_file = open(args.input_first_events)
 
     # Read the header to build a lookup table for column -> column index
@@ -98,9 +100,13 @@ def main():
         lambda c: c + "_AGE" in in_header and c + "_YEAR" in in_header and c + "_NEVT" in in_header,
         in_header))
 
-
-    # Add headers to output file
-    print(OUT_HEADER, file=out_file)
+    # Initialize arrays that will be used to make the Parquet output file
+    fgid_values = []
+    endpoint_values = []
+    kind_values = []
+    age_values = []
+    year_values = []
+    nevt_values = []
 
     # Get the endpoint data for each individual
     for row in in_file:
@@ -128,13 +134,27 @@ def main():
                 val_year = records[col_year]
                 val_nevt = records[col_nevt]
 
-                print(
-                    f"{val_fgid},{endp},{kind},{val_age},{val_year},{val_nevt}",
-                    file=out_file
-                )
+                fgid_values.append(val_fgid)
+                endpoint_values.append(endp)
+                kind_values.append(int(kind))
+                age_values.append(float(val_age))
+                year_values.append(int(val_year))
+                nevt_values.append(int(val_nevt))
 
     in_file.close()
-    out_file.close()
+
+    out_table = pyarrow.table(
+        [
+            fgid_values,
+            endpoint_values,
+            kind_values,
+            age_values,
+            year_values,
+            nevt_values,
+        ],
+        names=OUT_HEADER
+    )
+    parquet.write_table(out_table, args.output)
 
 
 if __name__ == "__main__":
