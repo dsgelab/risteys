@@ -34,7 +34,7 @@ def cli_parser():
     )
     parser.add_argument(
         "-d", "--dense-events",
-        help="path to the dense events file (CSV)",
+        help="path to the dense events file (Parquet)",
         required=True,
         type=Path
     )
@@ -67,9 +67,9 @@ def load_endpoints(file_path):
 
 def load_data(dense_events, info):
     logger.info("Loading data")
-    df_events = pd.read_csv(
+    df_events = pd.read_parquet(
         dense_events,
-        usecols=[
+        columns=[
             "FINNGENID",
             "ENDPOINT",
             "AGE"

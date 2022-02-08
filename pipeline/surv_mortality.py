@@ -121,7 +121,7 @@ def load_data(path_definitions, path_dense_fevents, path_info):
     endpoints = pd.read_csv(path_definitions, usecols=["NAME", "SEX"])
 
     # Get first events
-    df_events = pd.read_csv(path_dense_fevents)
+    df_events = pd.read_parquet(path_dense_fevents)
 
     # Get sex and approximate birth date of each indiv
     df_info = pd.read_csv(path_info, usecols=["FINNGENID", "BL_YEAR", "BL_AGE", "SEX"])
