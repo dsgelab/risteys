@@ -4,7 +4,7 @@ from risteys_pipeline.log import logger
 from risteys_pipeline.config import FOLLOWUP_START, FOLLOWUP_END
 
 DAYS_IN_YEAR = 365.25
-SEX_FEMALE = 2
+SEX_FEMALE = 1.0
 
 
 def preprocess_endpoints_data(df):
