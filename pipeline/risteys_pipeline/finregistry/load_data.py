@@ -52,7 +52,7 @@ def load_first_events_data(
         df (DataFrame): long first events dataframe
     """
     cols = ["FINNGENID", "ENDPOINT", "AGE", "YEAR"]
-    df = pd.read_feather(FINREGISTRY_LONG_FIRST_EVENTS_DATA_PATH, columns=cols)
+    df = pd.read_feather(data_path, columns=cols)
     if preprocess:
         df = preprocess_first_events_data(df)
     return df
