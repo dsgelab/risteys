@@ -6,7 +6,6 @@ from risteys_pipeline.log import logger
 from risteys_pipeline.finregistry.preprocess_data import (
     preprocess_first_events_data,
     preprocess_minimal_phenotype_data,
-    preprocess_exposure_and_outcome_data,
     preprocess_endpoints_data,
 )
 
@@ -47,6 +46,7 @@ def load_first_events_data(
     
     Args:
         data_path (str, optional): file path of the long first events feather file
+        preprocess (bool, optional): will the data be preprocessed
 
     Returns:
         df (DataFrame): long first events dataframe
@@ -55,39 +55,6 @@ def load_first_events_data(
     df = pd.read_feather(FINREGISTRY_LONG_FIRST_EVENTS_DATA_PATH, columns=cols)
     if preprocess:
         df = preprocess_first_events_data(df)
-    return df
-
-
-def load_exposure_and_outcome_data(
-    exposure,
-    outcome,
-    nrows=None,
-    data_path=FINREGISTRY_WIDE_FIRST_EVENTS_DATA_PATH,
-    preprocess=False,
-):
-    """Loads wide first_events data for two endpoints as a dataframe and optionally performs preprocessing.
-    
-    Args:
-        exposure (str): name of the exposure endpoint
-        outcome (str): name of the outcome endpoint
-        nrows (int, optional): number of rows to read
-        data_path (str, optional): file path of the first events csv file
-        preprocess (bool, optional): will the data be preprocessed
-
-    Returns:
-        df (DataFrame): first events dataframe with exposure and outcome related columns
-    """
-    cols = [
-        "FINREGISTRYID",
-        exposure + "_NEVT",
-        exposure + "_AGE",
-        outcome + "_NEVT",
-        outcome + "_AGE",
-    ]
-    df = pd.read_csv(data_path, header=0, sep=",", usecols=cols, nrows=nrows)[cols]
-    logger.info(f"{df.shape[0]} rows loaded")
-    if preprocess:
-        df = preprocess_exposure_and_outcome_data(df)
     return df
 
 
