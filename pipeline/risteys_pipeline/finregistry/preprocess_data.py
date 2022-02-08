@@ -1,7 +1,6 @@
 """Functions for preprocessing FinRegistry data"""
 
 import numpy as np
-import pandas as pd
 from risteys_pipeline.log import logger
 from risteys_pipeline.config import FOLLOWUP_START, FOLLOWUP_END
 
@@ -55,6 +54,30 @@ def preprocess_endpoints_data(df):
     logger.info(f"{df.shape[0]} rows after data pre-processing")
 
     return df
+
+
+def preprocess_first_events_data(df):
+    """Applies the following preprocessing steps to first events data:
+        - rename columns
+        - drop events outside study timeframe
+
+    Args:
+        df (DataFrame): long first events dataframe
+
+    Returns 
+        df (DataFrame): long first events dataframe with the following columns:
+        finregistryid, endpoint, age, year
+    """
+    df.columns = ["finregistryid", "endpoint", "age", "year"]
+    df = df.loc[(df["year"] >= FOLLOWUP_START) & (df["year"] <= FOLLOWUP_END)]
+    df = df.reset_index(drop=True)
+    return df
+
+
+def merge_first_events_data_with_minimal_phenotype(first_events, minimal_phenotype):
+    """Merge first events data with minimal phenotype"""
+    first_events = first_events.merge(minimal_phenotype, how="left", on="finregistryid")
+    return first_events
 
 
 def preprocess_exposure_and_outcome_data(df):

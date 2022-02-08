@@ -12,6 +12,10 @@ FINREGISTRY_WIDE_FIRST_EVENTS_DATA_PATH = (
     ROOT_DIR / "endpointer" / "wide_first_events_endpoints_2021-12-20_no_OMITS.txt"
 )
 
+FINREGISTRY_LONG_FIRST_EVENTS_DATA_PATH = (
+    ROOT_DIR / "endpointer" / "long_first_events_2021-09-04.feather"
+)
+
 FINREGISTRY_ENDPOINTS_DATA_PATH = (
     ROOT_DIR / "endpointer" / "main" / "FINNGEN_ENDPOINTS_DF8_Final_2021-06-21.xlsx"
 )
