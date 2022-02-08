@@ -1,12 +1,15 @@
 """
-Aggregate data by endpoint on a couple of metrics, for female, male and all sex.
+Basic summary statistics for endpoints, computed for female, male and all sex.
 
 Usage:
-    python aggregate_by_endpoint.py <path-to-input> <output-path>
+    python basic_stats.py --help
 
 Output:
-- stats.df5: HDF5 file with statistics and distributions for each endpoint
+- stats.json: JSON file with statistics and distributions for each endpoint
 """
+import argparse
+import json
+from collections import defaultdict
 from pathlib import Path
 from sys import argv
 
@@ -37,28 +40,28 @@ MALE_COLS = [
 ]
 
 
-def main(input_path, output_path):
+def main():
     """Compute statistics on input data and put them into an HDF5 file"""
-    # Loading input data
-    df_fevent = pd.read_hdf(input_path, "/first_event")
+    args = cli_parser()
+
+    df_fevents = load_filter_data(
+        args.dense_first_events,
+        args.filter_individuals,
+        args.minimum_phenotypes
+    )
+
     stats = pd.DataFrame()
 
     # Get the latest year of events in the data
-    max_year = df_fevent.YEAR.max()
+    max_year = df_fevents.YEAR.max()
 
     # Building up the aggregated statisitcs by endpoint
-    stats = compute_prevalence(df_fevent, stats)
-    stats.to_hdf(output_path, "/stats")
-
-    stats = compute_mean_age(df_fevent, stats)
-    stats.to_hdf(output_path, "/stats")
+    stats = compute_prevalence(df_fevents, stats)
+    stats = compute_mean_age(df_fevents, stats)
 
     # Making the distributions by endpoint
-    distrib_age = compute_age_distribution(df_fevent)
-    logger.debug("Writing age distribution to HDF5")
-
-    distrib_year = compute_year_distribution(df_fevent, max_year)
-    logger.debug("Writing year distribution to HDF5")
+    distrib_age = compute_age_distribution(df_fevents)
+    distrib_year = compute_year_distribution(df_fevents, max_year)
 
     # Checking that we don't miss any column with individual-level data
     expected_columns = set(ALL_COLS + FEMALE_COLS + MALE_COLS)
@@ -66,15 +69,75 @@ def main(input_path, output_path):
 
     # Filtering the data to remove individual-level data
     filter_stats(stats)
-    stats.to_hdf(output_path, "/stats")
-
     check_distrib_green(distrib_age)
-    distrib_age.to_hdf(output_path, "/distrib/age")
-
     check_distrib_green(distrib_year)
-    distrib_year.to_hdf(output_path, "/distrib/year")
+
+    # Output all stats to a JSON file
+    logger.info(f"Writing output data to JSON file {args.output}")
+
+    stats = stats.to_dict(orient='index')
+    distrib_age = dict_distrib(distrib_age)
+    distrib_year = dict_distrib(distrib_year)
+
+    with open(args.output, 'x') as out_file:
+        json.dump({
+            "stats": stats,
+            "distrib_age": distrib_age,
+            "distrib_year": distrib_year
+        }, out_file)
 
     logger.info("Done.")
+
+
+def cli_parser():
+    parser = argparse.ArgumentParser()
+    parser.add_argument(
+        '-d', '--dense-first-events',
+        help="path to 'densified' first-events phenotype file (Parquet)",
+        required=True,
+        type=Path
+    )
+    parser.add_argument(
+        '-f', '--filter-individuals',
+        help="path to file containing ID list of individuals to use (CSV)",
+        required=False,
+        type=Path
+    )
+    parser.add_argument(
+        '-m', '--minimum-phenotypes',
+        help="path to 'minimum phenotypes' file (CSV)",
+        required=True,
+        type=Path
+    )
+    parser.add_argument(
+        '-o', '--output',
+        help='path to output file (JSON)',
+        required=True,
+        type=Path
+    )
+    args = parser.parse_args()
+    return args
+
+
+def load_filter_data(first_events, filter_individuals, minimum_phenotypes):
+    """Load, filter and merge data into single dataframe."""
+    df_fevents = pd.read_parquet(first_events)
+
+    # Filter individuals
+    df_filter_indivs = pd.read_csv(filter_individuals, usecols=["FINNGENID"])
+    df_fevents = df_fevents.loc[df_fevents.FINNGENID.isin(df_filter_indivs.FINNGENID), :]
+
+    # Add sex information
+    df_mpheno = pd.read_csv(
+        minimum_phenotypes,
+        usecols=["FINNGENID", "SEX"]
+    )
+    df_mpheno = df_mpheno.rename(columns={"SEX": "sex"})
+    df_mpheno = df_mpheno.astype({"sex": "category"})
+
+    df_fevents = df_fevents.merge(df_mpheno, on="FINNGENID", how="left")
+
+    return df_fevents
 
 
 def compute_prevalence(df, outdata):
@@ -87,30 +150,36 @@ def compute_prevalence(df, outdata):
     # Count total number of individuals by sex
     logger.info("Computing count by sex")
     count_all = df.FINNGENID.unique().shape[0]
-    count_female = df.loc[df.female > 0, "FINNGENID"].unique().shape[0]
-    count_male = df.loc[df.male > 0, "FINNGENID"].unique().shape[0]
+    count_female = df.loc[df.sex == "female", "FINNGENID"].unique().shape[0]
+    count_male = df.loc[df.sex == "male", "FINNGENID"].unique().shape[0]
 
     # Number of individuals / endpoint for prevalence
     logger.info("Computing un-adjusted prevalence")
-    count_by_endpoint_all = (
+    grouped = (
         df
         .groupby(["ENDPOINT", "FINNGENID"])
-        .first()
+        .first()  # group multiple events with same ENDPOINT and FGID into 1 record
+    )
+    count_by_endpoint_all = (
+        grouped
         .groupby("ENDPOINT")
-        .AGE  # to select just one column, but any column will lead to the same result
+        .sex  # to select just one column, but any column will lead to the same result
         .count()
     )
-    count_by_endpoint_sex = (
-        df
-        .groupby(["ENDPOINT", "FINNGENID"])
-        .first()
+    count_by_endpoint_female = (
+        grouped
+        .loc[grouped.sex == "female", :]
         .groupby("ENDPOINT")
-        .sum()
+        .sex
+        .count()
     )
-    count_by_endpoint_female = count_by_endpoint_sex["female"]
-    count_by_endpoint_female = count_by_endpoint_female.astype(np.int)
-    count_by_endpoint_male = count_by_endpoint_sex["male"]
-    count_by_endpoint_male = count_by_endpoint_male.astype(np.int)
+    count_by_endpoint_male = (
+        grouped
+        .loc[grouped.sex == "male", :]
+        .groupby("ENDPOINT")
+        .sex
+        .count()
+    )
 
     # Add number of individuals to the output DataFrame
     outdata["nindivs_all"] = count_by_endpoint_all
@@ -128,32 +197,33 @@ def compute_prevalence(df, outdata):
 def compute_mean_age(df, outdata):
     """Compute the mean age at first event for each endpoint"""
     logger.info("Computing mean age at first event")
-    # sex: all
-    outdata["mean_age_all"] = (
+
+    grouped = (
         df
         .groupby(["ENDPOINT", "FINNGENID"])
-        ["AGE"]
-        .min()
+        .first()
+    )
+
+    # sex: all
+    outdata["mean_age_all"] = (
+        grouped
+        .AGE
         .groupby("ENDPOINT")
         .mean()
     )
 
     # sex: female
     outdata["mean_age_female"] = (
-        df[df.female > 0]
-        .groupby(["ENDPOINT", "FINNGENID"])
-        ["AGE"]
-        .min()
+        grouped
+        .loc[grouped.sex == "female", "AGE"]
         .groupby("ENDPOINT")
         .mean()
     )
 
     # sex: male
     outdata["mean_age_male"] = (
-        df[df.male > 0]
-        .groupby(["ENDPOINT", "FINNGENID"])
-        ["AGE"]
-        .min()
+        grouped
+        .loc[grouped.sex == "male", "AGE"]
         .groupby("ENDPOINT")
         .mean()
     )
@@ -197,30 +267,29 @@ def compute_distrib(df, column, brackets):
     Output:
     - pd.DataFrame
     """
-    sex_all = (
+    grouped = (
         df
         .groupby(["ENDPOINT", "FINNGENID"])
-        [column]
         .first()
+    )
+    sex_all = (
+        grouped
+        [column]
         .groupby("ENDPOINT")
         # Perform binning for each row, then count how many occurences for each bin
         .apply(lambda grp: green_hist(grp, brackets))
     )
 
     sex_female = (
-        df[df["female"] == 1]
-        .groupby(["ENDPOINT", "FINNGENID"])
-        [column]
-        .first()
+        grouped
+        .loc[grouped.sex == "female", column]
         .groupby("ENDPOINT")
         .apply(lambda grp: green_hist(grp, brackets))
     )
 
     sex_male = (
-        df[df["male"] == 1]
-        .groupby(["ENDPOINT", "FINNGENID"])
-        [column]
-        .first()
+        grouped
+        .loc[grouped.sex == "male", column]
         .groupby("ENDPOINT")
         .apply(lambda grp: green_hist(grp, brackets))
     )
@@ -333,9 +402,54 @@ def check_distrib_green(distrib):
     assert (~ distrib.loc[:, "count"].isin(INDIV_LEVELS)).all(), error_msg
 
 
-if __name__ == '__main__':
-    # Get filenames from the command line arguments
-    INPUT = Path(argv[1])
-    OUTPUT = Path(argv[2])
+def dict_distrib(distrib):
+    """Transform distributions from a DataFrame to a Python dict
 
-    main(INPUT, OUTPUT)
+    Arguments:
+    - distrib: pd.DataFrame
+      Contains the data that will be turned into a dict.
+      Must have columns:
+      . 'sex' with values in 'all', 'male', 'female'
+      . 'interval_left'
+      . 'interval_right'
+      . 'count'
+
+    Return:
+    - dict
+      {"endpoint1": {
+        "all": [
+          [
+            # Note that 10.0 is in this interval, but values > 10.0
+            # (e.g. 10.1) will be in the [10, 20] interval
+            [0, 10],  # [left, right] interval.
+            12
+          ], [[10, 20], 101] ...]},
+        "female": ...},
+       "endpoint 2": ...}
+    """
+    res = defaultdict(dict)
+
+    # Some JSON implementations don't support NaN, so this will use null.
+    # Use null to mark unbounded intervals.
+    distrib = distrib.replace({np.nan: None, np.NINF: None, np.PINF: None})
+
+    for (endpoint, df) in distrib.groupby("endpoint"):
+        endpoint_dist = {"all": [], "female": [], "male": []}
+
+        # Sort bin by interval, putting left unbounded interval as the first bin
+        df = df.sort_values("interval_left", na_position="first")
+
+        for _, row in df.iterrows():
+            bin = [
+                [row.interval_left, row.interval_right],
+                row["count"]  # can't use row.count because it references the count method
+            ]
+            endpoint_dist[row.sex].append(bin)
+
+        res[endpoint] = endpoint_dist
+
+    return res
+
+
+if __name__ == '__main__':
+    main()
