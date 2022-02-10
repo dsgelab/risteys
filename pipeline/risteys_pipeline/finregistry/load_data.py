@@ -65,7 +65,9 @@ def load_endpoints_data(data_path=FINREGISTRY_ENDPOINTS_DATA_PATH):
     return df
 
 
-def load_endpoints_data(data_path=FINREGISTRY_ENDPOINTS_DATA_PATH):
+def load_first_events_data(
+    endpoints, minimal_phenotype, data_path=FINREGISTRY_LONG_FIRST_EVENTS_DATA_PATH
+):
     """
     Loads and applies the following steps to first events data:
     - rename columns
@@ -82,6 +84,11 @@ def load_endpoints_data(data_path=FINREGISTRY_ENDPOINTS_DATA_PATH):
     df = pd.read_feather(data_path, columns=cols)
     df.columns = ["finregistryid", "endpoint", "age", "year"]
     logger.info(f"{df.shape[0]} rows loaded")
+
+    df = df.loc[df["endpoint"].isin(endpoints["endpoint"])]
+    df = df.reset_index(drop=True)
+    df = df.merge(minimal_phenotype, how="left", on="finregistryid")
+    df = df.fillna({"sex": "unknown"})
     logger.info(f"{df.shape[0]} rows after data pre-processing")
 
     return df
