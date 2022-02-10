@@ -43,9 +43,7 @@ def load_minimal_phenotype_data(data_path=FINREGISTRY_MINIMAL_PHENOTYPE_DATA_PAT
     return df
 
 
-def load_first_events_data(
-    data_path=FINREGISTRY_LONG_FIRST_EVENTS_DATA_PATH, preprocess=False
-):
+def load_first_events_data(data_path=FINREGISTRY_LONG_FIRST_EVENTS_DATA_PATH):
     """Loads the long first events data
     
     Args:
