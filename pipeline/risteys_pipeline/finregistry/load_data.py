@@ -3,15 +3,18 @@
 import pandas as pd
 from risteys_pipeline.config import *
 from risteys_pipeline.log import logger
-from risteys_pipeline.finregistry.preprocess_data import (
-    preprocess_minimal_phenotype_data,
-)
+from risteys_pipeline.utils import to_decimal_year
+
+SEX_FEMALE = 1.0
 
 
-def load_minimal_phenotype_data(
-    data_path=FINREGISTRY_MINIMAL_PHENOTYPE_DATA_PATH, preprocess=False
-):
-    """Loads minimal phenotype data as a dataframe and optionally performs preprocessing.
+def load_minimal_phenotype_data(data_path=FINREGISTRY_MINIMAL_PHENOTYPE_DATA_PATH):
+    """
+    Loads and lightly preprocesses minimal phenotype data
+    - drop rows with no FinRegistry ID
+    - drop duplicated rows
+    - add birth and death year
+    - add `female`
     
     Args:
         data_path (str, optional): file path of the minimal phenotype csv file
@@ -22,19 +25,21 @@ def load_minimal_phenotype_data(
     """
     cols = ["FINREGISTRYID", "date_of_birth", "death_date", "sex"]
     dtypes = {
-        "FINREGISTRYID": "str",
-        "date_of_birth": "str",
-        "death_date": "str",
-        "sex": "float",  # NAs are not allowed for int in pandas
+        "FINREGISTRYID": str,
+        "date_of_birth": str,
+        "death_date": str,
+        "sex": float,  # NAs are not allowed for int in pandas
     }
     date_cols = ["date_of_birth", "death_date"]
-    df = pd.read_csv(
-        data_path, usecols=cols, dtype=dtypes, parse_dates=date_cols, header=0, sep=","
-    )
+    df = pd.read_csv(data_path, usecols=cols, dtype=dtypes, parse_dates=date_cols)
     logger.info(f"{df.shape[0]} rows loaded")
     df.columns = df.columns.str.lower()
-    if preprocess:
-        df = preprocess_minimal_phenotype_data(df)
+    df = df.loc[~df["finregistryid"].isna()]
+    df = df.drop_duplicates(subset=["finregistryid"]).reset_index(drop=True)
+    df["birth_year"] = to_decimal_year(df["date_of_birth"])
+    df["death_year"] = to_decimal_year(df["death_year"])
+    df["female"] = df["sex"] == SEX_FEMALE
+    logger.info(f"{df.shape[0]} rows after data pre-processing")
     return df
 
 
