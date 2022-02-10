@@ -4,7 +4,6 @@ import pandas as pd
 from risteys_pipeline.config import *
 from risteys_pipeline.log import logger
 from risteys_pipeline.finregistry.preprocess_data import (
-    preprocess_first_events_data,
     preprocess_minimal_phenotype_data,
     preprocess_endpoints_data,
 )
@@ -34,6 +33,7 @@ def load_minimal_phenotype_data(
         data_path, usecols=cols, dtype=dtypes, parse_dates=date_cols, header=0, sep=","
     )
     logger.info(f"{df.shape[0]} rows loaded")
+    df.columns = df.columns.str.lower()
     if preprocess:
         df = preprocess_minimal_phenotype_data(df)
     return df
@@ -53,8 +53,7 @@ def load_first_events_data(
     """
     cols = ["FINNGENID", "ENDPOINT", "AGE", "YEAR"]
     df = pd.read_feather(data_path, columns=cols)
-    if preprocess:
-        df = preprocess_first_events_data(df)
+    df.columns = ["finregistryid", "endpoint", "age", "year"]
     return df
 
 

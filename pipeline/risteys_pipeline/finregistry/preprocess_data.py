@@ -27,24 +27,6 @@ def preprocess_endpoints_data(df):
     return df
 
 
-def preprocess_first_events_data(df):
-    """Applies the following preprocessing steps to first events data:
-        - rename columns
-        - drop events outside study timeframe
-
-    Args:
-        df (DataFrame): long first events dataframe
-
-    Returns: 
-        df (DataFrame): long first events dataframe with the following columns:
-        finregistryid, endpoint, age, year
-    """
-    df.columns = ["finregistryid", "endpoint", "age", "year"]
-    df = df.loc[(df["year"] >= FOLLOWUP_START) & (df["year"] <= FOLLOWUP_END)]
-    df = df.reset_index(drop=True)
-    return df
-
-
 def list_excluded_subjects(minimal_phenotype):
     """List subjects who should be excluded from the analyses based on the following criteria: 
         - born after the end of the follow-up
@@ -88,7 +70,6 @@ def preprocess_minimal_phenotype_data(df):
         df (DataFrame): minimal phenotype dataframe with the following columns: 
         finregistryid, date_of_birth, death_date, sex, death_age, dead, female
     """
-    df.columns = df.columns.str.lower()
     df = df.drop_duplicates(subset=["finregistryid"]).reset_index(drop=True)
     df["birth_year"] = (
         df["date_of_birth"].dt.year
