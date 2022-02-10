@@ -15,6 +15,7 @@ def load_minimal_phenotype_data(data_path=FINREGISTRY_MINIMAL_PHENOTYPE_DATA_PAT
     - drop duplicated rows
     - add birth and death year
     - add `female`
+    - drop redundant columns (date_of_birth, death_date, sex)
     
     Args:
         data_path (str, optional): file path of the minimal phenotype csv file
@@ -32,6 +33,7 @@ def load_minimal_phenotype_data(data_path=FINREGISTRY_MINIMAL_PHENOTYPE_DATA_PAT
     df["birth_year"] = to_decimal_year(df["date_of_birth"])
     df["death_year"] = to_decimal_year(df["death_date"])
     df["female"] = df["sex"] == SEX_FEMALE
+    df = df.drop(columns=["date_of_birth", "death_date", "sex"])
     logger.info(f"{df.shape[0]} rows after data pre-processing")
     return df
 
