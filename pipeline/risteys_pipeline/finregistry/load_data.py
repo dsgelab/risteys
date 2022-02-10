@@ -67,10 +67,7 @@ def load_endpoints_data(data_path=FINREGISTRY_ENDPOINTS_DATA_PATH, preprocess=Fa
     Returns:
         df (DataFrame): FinnGen endpoints dataframe
     """
-    # TODO: replace excel with csv for speed
     cols = ["NAME", "SEX", "OMIT"]
-    df = pd.read_excel(data_path, sheet_name="Sheet 1", usecols=cols, header=0)
+    df = pd.read_csv(data_path, sep=";", usecols=cols, header=0)
     logger.info(f"{df.shape[0]} rows loaded")
-    if preprocess:
-        df = preprocess_endpoints_data(df)
     return df

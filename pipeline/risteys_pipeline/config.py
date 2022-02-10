@@ -13,7 +13,7 @@ FINREGISTRY_LONG_FIRST_EVENTS_DATA_PATH = (
 )
 
 FINREGISTRY_ENDPOINTS_DATA_PATH = (
-    ROOT_DIR / "endpointer" / "main" / "FINNGEN_ENDPOINTS_DF8_Final_2021-06-21.xlsx"
+    ROOT_DIR / "endpointer" / "main" / "finngen_endpoints_2021-06-21.csv"
 )
 
 # Constants
