@@ -10,7 +10,7 @@ SEX_FEMALE = 1.0
 
 def load_minimal_phenotype_data(data_path=FINREGISTRY_MINIMAL_PHENOTYPE_DATA_PATH):
     """
-    Loads and lightly preprocesses minimal phenotype data
+    Loads and applies the following steps to minimal phenotype data:
     - drop rows with no FinRegistry ID
     - drop duplicated rows
     - add birth and death year
@@ -19,7 +19,6 @@ def load_minimal_phenotype_data(data_path=FINREGISTRY_MINIMAL_PHENOTYPE_DATA_PAT
     
     Args:
         data_path (str, optional): file path of the minimal phenotype csv file
-        preprocessing (bool, optional): will the data be preprocessed 
 
     Returns: 
         df (DataFrame): minimal phenotype dataframe
@@ -39,29 +38,31 @@ def load_minimal_phenotype_data(data_path=FINREGISTRY_MINIMAL_PHENOTYPE_DATA_PAT
 
 
 def load_first_events_data(data_path=FINREGISTRY_LONG_FIRST_EVENTS_DATA_PATH):
-    """Loads the long first events data
+    """
+    Loads and applies the following steps to first events data:
+    - rename columns
     
     Args:
-        data_path (str, optional): file path of the long first events feather file
-        preprocess (bool, optional): will the data be preprocessed
+        data_path (str, optional): file path of the long (densified) first events feather file
 
     Returns:
-        df (DataFrame): long first events dataframe
+        df (DataFrame): first events dataframe
     """
     cols = ["FINNGENID", "ENDPOINT", "AGE", "YEAR"]
     df = pd.read_feather(data_path, columns=cols)
     df.columns = ["finregistryid", "endpoint", "age", "year"]
+    logger.info(f"{df.shape[0]} rows loaded")
     return df
 
 
 def load_endpoints_data(data_path=FINREGISTRY_ENDPOINTS_DATA_PATH):
     """
-    Loads and lightly preprocesses endpoints data as a dataframe.
+    Loads and applies the following steps to FinnGen endpoints data:
     - rename columns
     - drop omitted endpoints 
     
     Args:
-        data_path (str, optional): file path of the FinnGen endpoints excel file
+        data_path (str, optional): file path of the FinnGen endpoints csv file
 
     Returns:
         df (DataFrame): FinnGen endpoints dataframe
