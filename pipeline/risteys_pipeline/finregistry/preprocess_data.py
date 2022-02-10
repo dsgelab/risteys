@@ -7,26 +7,6 @@ DAYS_IN_YEAR = 365.25
 SEX_FEMALE = 1.0
 
 
-def preprocess_endpoints_data(df):
-    """Applies the following preprocessing steps to endpoints data: 
-        - lowercase column names
-        - exclude omitted endpoints and drop the "omit" column
-
-    Args:
-        df (DataFrame): endpoints dataframe
-
-    Returns:
-        df (DataFrame): endpoints dataframe with the following columns: endpoint, sex
-    """
-    logger.info("Preprocessing endpoints data")
-    df = df.rename(columns={"NAME": "endpoint", "SEX": "sex", "OMIT": "omit"})
-    df = df.loc[df["omit"].isnull()].reset_index(drop=True)
-    df = df.drop(columns=["omit"])
-    logger.info(f"{df.shape[0]} rows after data pre-processing")
-
-    return df
-
-
 def list_excluded_subjects(minimal_phenotype):
     """List subjects who should be excluded from the analyses based on the following criteria: 
         - born after the end of the follow-up
