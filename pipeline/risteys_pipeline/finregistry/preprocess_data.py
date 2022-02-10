@@ -7,44 +7,6 @@ DAYS_IN_YEAR = 365.25
 SEX_FEMALE = 1.0
 
 
-def preprocess_endpoints_data(df):
-    """Applies the following preprocessing steps to endpoints data: 
-        - lowercase column names
-        - exclude omitted endpoints and drop the "omit" column
-
-    Args:
-        df (DataFrame): endpoints dataframe
-
-    Returns:
-        df (DataFrame): endpoints dataframe with the following columns: endpoint, sex
-    """
-    logger.info("Preprocessing endpoints data")
-    df = df.rename(columns={"NAME": "endpoint", "SEX": "sex", "OMIT": "omit"})
-    df = df.loc[df["omit"].isnull()].reset_index(drop=True)
-    df = df.drop(columns=["omit"])
-    logger.info(f"{df.shape[0]} rows after data pre-processing")
-
-    return df
-
-
-def preprocess_first_events_data(df):
-    """Applies the following preprocessing steps to first events data:
-        - rename columns
-        - drop events outside study timeframe
-
-    Args:
-        df (DataFrame): long first events dataframe
-
-    Returns: 
-        df (DataFrame): long first events dataframe with the following columns:
-        finregistryid, endpoint, age, year
-    """
-    df.columns = ["finregistryid", "endpoint", "age", "year"]
-    df = df.loc[(df["year"] >= FOLLOWUP_START) & (df["year"] <= FOLLOWUP_END)]
-    df = df.reset_index(drop=True)
-    return df
-
-
 def list_excluded_subjects(minimal_phenotype):
     """List subjects who should be excluded from the analyses based on the following criteria: 
         - born after the end of the follow-up
@@ -71,39 +33,6 @@ def list_excluded_subjects(minimal_phenotype):
         f"{len(excluded_subjects)} excluded subjects (born after follow-up: {sum(born_after_followup_end)}, dead before follow-up: {sum(dead_before_followup_start)}, id missing: {sum(id_missing)}, sex missing: {sum(sex_missing)})"
     )
     return excluded_subjects
-
-
-def preprocess_minimal_phenotype_data(df):
-    """Applies the following preprocessing steps to minimal phenotype data:
-        - lowercase column names 
-        - drop duplicated rows
-        - add birth and death year
-        - drop excluded subjects
-        - add indicator for females (bool)
-
-    Args:
-        df (DataFrame): minimal phenotype dataframe
-
-    Returns:
-        df (DataFrame): minimal phenotype dataframe with the following columns: 
-        finregistryid, date_of_birth, death_date, sex, death_age, dead, female
-    """
-    df.columns = df.columns.str.lower()
-    df = df.drop_duplicates(subset=["finregistryid"]).reset_index(drop=True)
-    df["birth_year"] = (
-        df["date_of_birth"].dt.year
-        + (df["date_of_birth"].dt.dayofyear - 1) / DAYS_IN_YEAR
-    )
-    df["death_year"] = (
-        df["death_date"].dt.year + (df["death_date"].dt.dayofyear - 1) / DAYS_IN_YEAR
-    )
-    df["female"] = df["sex"] == SEX_FEMALE
-    excluded_subjects = list_excluded_subjects(df)
-    df = df.loc[~df["finregistryid"].isin(excluded_subjects)]
-
-    logger.info(f"{df.shape[0]} rows after data pre-processing")
-
-    return df
 
 
 def merge_first_events_data_with_minimal_phenotype(first_events, minimal_phenotype):
