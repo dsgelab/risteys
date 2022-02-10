@@ -5,18 +5,19 @@ from pathlib import Path
 ROOT_DIR = Path("/data") / "processed_data"
 
 FINREGISTRY_MINIMAL_PHENOTYPE_DATA_PATH = (
-    ROOT_DIR / "minimal_phenotype" / "minimal_phenotype_file.csv"
+    ROOT_DIR / "minimal_phenotype" / "minimal_phenotype_2022-02-17.feather"
 )
 
 FINREGISTRY_LONG_FIRST_EVENTS_DATA_PATH = (
-    ROOT_DIR / "endpointer" / "long_first_events_2021-09-04.feather"
+    ROOT_DIR / "endpointer" / "wide_first_events_endpoints_2021-09-04_all_densified.feather"
 )
 
 FINREGISTRY_ENDPOINTS_DATA_PATH = (
-    ROOT_DIR / "endpointer" / "main" / "FINNGEN_ENDPOINTS_DF8_Final_2021-06-21.xlsx"
+    ROOT_DIR / "endpoint_metadata" / "finngen_endpoints_2021-06-21.csv"
 )
 
 # Constants
 
 FOLLOWUP_START = 1998.0
 FOLLOWUP_END = 2020.99
+MIN_SUBJECTS_PERSONAL_DATA = 5
