@@ -1,11 +1,13 @@
 """Functions for loading the FinRegistry datasets"""
 
 import pandas as pd
+import numpy as np
 from risteys_pipeline.config import *
 from risteys_pipeline.log import logger
 from risteys_pipeline.utils import to_decimal_year
 
 SEX_FEMALE = 1.0
+SEX_MALE = 0.0
 
 
 def load_minimal_phenotype_data(data_path=FINREGISTRY_MINIMAL_PHENOTYPE_DATA_PATH):
@@ -15,7 +17,8 @@ def load_minimal_phenotype_data(data_path=FINREGISTRY_MINIMAL_PHENOTYPE_DATA_PAT
     - drop duplicated rows
     - add birth and death year
     - add `female`
-    - drop redundant columns (date_of_birth, death_date, sex)
+    - replace numeric sex with strings
+    - drop redundant columns (date_of_birth, death_date)
     
     Args:
         data_path (str, optional): file path of the minimal phenotype csv file
@@ -32,7 +35,8 @@ def load_minimal_phenotype_data(data_path=FINREGISTRY_MINIMAL_PHENOTYPE_DATA_PAT
     df["birth_year"] = to_decimal_year(df["date_of_birth"])
     df["death_year"] = to_decimal_year(df["death_date"])
     df["female"] = df["sex"] == SEX_FEMALE
-    df = df.drop(columns=["date_of_birth", "death_date", "sex"])
+    df["sex"] = df["sex"].replace({SEX_FEMALE: "female", SEX_MALE: "male", np.nan: "unknown"})
+    df = df.drop(columns=["date_of_birth", "death_date"])
     logger.info(f"{df.shape[0]} rows after data pre-processing")
     return df
 
