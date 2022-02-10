@@ -5,7 +5,6 @@ from risteys_pipeline.config import *
 from risteys_pipeline.log import logger
 from risteys_pipeline.finregistry.preprocess_data import (
     preprocess_minimal_phenotype_data,
-    preprocess_endpoints_data,
 )
 
 
@@ -57,12 +56,14 @@ def load_first_events_data(
     return df
 
 
-def load_endpoints_data(data_path=FINREGISTRY_ENDPOINTS_DATA_PATH, preprocess=False):
-    """Loads endpoints data as a dataframe and optionally performs preprocessing.
+def load_endpoints_data(data_path=FINREGISTRY_ENDPOINTS_DATA_PATH):
+    """
+    Loads and lightly preprocesses endpoints data as a dataframe.
+    - rename columns
+    - drop omitted endpoints 
     
     Args:
         data_path (str, optional): file path of the FinnGen endpoints excel file
-        preprocess (bool, optional): will the data be preprocessed
 
     Returns:
         df (DataFrame): FinnGen endpoints dataframe
@@ -70,4 +71,8 @@ def load_endpoints_data(data_path=FINREGISTRY_ENDPOINTS_DATA_PATH, preprocess=Fa
     cols = ["NAME", "SEX", "OMIT"]
     df = pd.read_csv(data_path, sep=";", usecols=cols, header=0)
     logger.info(f"{df.shape[0]} rows loaded")
+    df = df.rename(columns={"NAME": "endpoint", "SEX": "sex", "OMIT": "omit"})
+    df = df.loc[df["omit"].isnull()].reset_index(drop=True)
+    df = df.drop(columns=["omit"])
+    logger.info(f"{df.shape[0]} rows after data pre-processing")
     return df
