@@ -24,20 +24,13 @@ def load_minimal_phenotype_data(data_path=FINREGISTRY_MINIMAL_PHENOTYPE_DATA_PAT
         df (DataFrame): minimal phenotype dataframe
     """
     cols = ["FINREGISTRYID", "date_of_birth", "death_date", "sex"]
-    dtypes = {
-        "FINREGISTRYID": str,
-        "date_of_birth": str,
-        "death_date": str,
-        "sex": float,  # NAs are not allowed for int in pandas
-    }
-    date_cols = ["date_of_birth", "death_date"]
-    df = pd.read_csv(data_path, usecols=cols, dtype=dtypes, parse_dates=date_cols)
+    df = pd.read_feather(data_path, columns=cols)
     logger.info(f"{df.shape[0]} rows loaded")
     df.columns = df.columns.str.lower()
     df = df.loc[~df["finregistryid"].isna()]
     df = df.drop_duplicates(subset=["finregistryid"]).reset_index(drop=True)
     df["birth_year"] = to_decimal_year(df["date_of_birth"])
-    df["death_year"] = to_decimal_year(df["death_year"])
+    df["death_year"] = to_decimal_year(df["death_date"])
     df["female"] = df["sex"] == SEX_FEMALE
     logger.info(f"{df.shape[0]} rows after data pre-processing")
     return df
