@@ -35,27 +35,11 @@ def load_minimal_phenotype_data(data_path=FINREGISTRY_MINIMAL_PHENOTYPE_DATA_PAT
     df["birth_year"] = to_decimal_year(df["date_of_birth"])
     df["death_year"] = to_decimal_year(df["death_date"])
     df["female"] = df["sex"] == SEX_FEMALE
-    df["sex"] = df["sex"].replace({SEX_FEMALE: "female", SEX_MALE: "male", np.nan: "unknown"})
+    df["sex"] = df["sex"].replace(
+        {SEX_FEMALE: "female", SEX_MALE: "male", np.nan: "unknown"}
+    )
     df = df.drop(columns=["date_of_birth", "death_date"])
     logger.info(f"{df.shape[0]} rows after data pre-processing")
-    return df
-
-
-def load_first_events_data(data_path=FINREGISTRY_LONG_FIRST_EVENTS_DATA_PATH):
-    """
-    Loads and applies the following steps to first events data:
-    - rename columns
-    
-    Args:
-        data_path (str, optional): file path of the long (densified) first events feather file
-
-    Returns:
-        df (DataFrame): first events dataframe
-    """
-    cols = ["FINNGENID", "ENDPOINT", "AGE", "YEAR"]
-    df = pd.read_feather(data_path, columns=cols)
-    df.columns = ["finregistryid", "endpoint", "age", "year"]
-    logger.info(f"{df.shape[0]} rows loaded")
     return df
 
 
@@ -78,4 +62,26 @@ def load_endpoints_data(data_path=FINREGISTRY_ENDPOINTS_DATA_PATH):
     df = df.loc[df["omit"].isnull()].reset_index(drop=True)
     df = df.drop(columns=["omit"])
     logger.info(f"{df.shape[0]} rows after data pre-processing")
+    return df
+
+
+def load_endpoints_data(data_path=FINREGISTRY_ENDPOINTS_DATA_PATH):
+    """
+    Loads and applies the following steps to first events data:
+    - rename columns
+    - remove endpoints not in endpoints dataset
+    - add demographics from minimal phenotype
+    
+    Args:
+        data_path (str, optional): file path of the long (densified) first events feather file
+
+    Returns:
+        df (DataFrame): first events dataframe
+    """
+    cols = ["FINNGENID", "ENDPOINT", "AGE", "YEAR"]
+    df = pd.read_feather(data_path, columns=cols)
+    df.columns = ["finregistryid", "endpoint", "age", "year"]
+    logger.info(f"{df.shape[0]} rows loaded")
+    logger.info(f"{df.shape[0]} rows after data pre-processing")
+
     return df
