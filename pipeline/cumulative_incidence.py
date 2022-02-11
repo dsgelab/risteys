@@ -60,12 +60,16 @@ def load_endpoints(file_path):
     """Load the CSV file with endpoints under the column NAME"""
     df = pd.read_csv(
         file_path,
-        usecols=["NAME", "SEX"],
+        usecols=["NAME", "SEX", "CORE_ENDPOINTS"],
     )
+
+    # Keep only core endpoints
+    df = df.loc[df.CORE_ENDPOINTS == "yes", :]
+
     return df
 
 
-def load_data(dense_events, info):
+def load_data(dense_events, info, core_endpoints):
     logger.info("Loading data")
     df_events = pd.read_parquet(
         dense_events,
@@ -77,6 +81,9 @@ def load_data(dense_events, info):
     ).rename(columns={
         "AGE": "ENDPOINT_AGE"
     })
+
+    # Keep only core endpoints
+    df_events = df_events.loc[df_events.ENDPOINT.isin(core_endpoints), :]
 
     df_info = pd.read_csv(info)
 
@@ -223,7 +230,8 @@ def main():
     endpoints = load_endpoints(args.endpoint_definitions)
     df_events, df_info = load_data(
         args.dense_events,
-        args.info
+        args.info,
+        endpoints.NAME
     )
 
     # Compute cumulative incidences

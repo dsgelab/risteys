@@ -42,7 +42,7 @@ def main():
     args = cli_parser()
 
     endpoints = load_endpoints(args.endpoint_definitions)
-    endpoints = filter_omit(endpoints)
+    endpoints = filter_core(endpoints)
     prios = load_priority_endpoints(args.priority_endpoints)
     pairs = gen_pairs(prios, endpoints)
     pairs = filter_correlations(args.correlations, pairs)
@@ -98,7 +98,8 @@ def load_endpoints(filepath):
         for row in reader:
             endpoints.append({
                 'NAME': row['NAME'],
-                'OMIT': row['OMIT']
+                'OMIT': row['OMIT'],
+                'CORE_ENDPOINTS': row['CORE_ENDPOINTS']
             })
 
     return endpoints
@@ -115,9 +116,9 @@ def load_priority_endpoints(filepath):
     return prios
 
 
-def filter_omit(endpoints):
-    """Discard any endpoint marked as ommited in its definition"""
-    return list(filter(lambda ee: ee['OMIT'] == 'NA', endpoints))
+def filter_core(endpoints):
+    """Keep only core endpoints"""
+    return list(filter(lambda endp: endp["CORE_ENDPOINTS"] == "yes", endpoints))
 
 
 def gen_pairs(prios, endpoints):
