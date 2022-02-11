@@ -177,7 +177,7 @@ def find_time_points(dfcox, n_min, max_time_points):
     if len(time_points) > max_time_points:
         arr_time_points = np.array(time_points)
         last_idx = len(time_points) - 1
-        keep_idx = np.linspace(0, last_idx, max_time_points).astype(np.int)
+        keep_idx = np.linspace(0, last_idx, max_time_points).astype(int)
         time_points = arr_time_points[keep_idx]
 
     return time_points
