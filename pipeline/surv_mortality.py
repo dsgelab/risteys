@@ -118,10 +118,15 @@ def main(path_definitions, path_dense_fevents, path_info, output_path, timings_p
 def load_data(path_definitions, path_dense_fevents, path_info):
     logger.info("Loading data")
     # Get endpoint list
-    endpoints = pd.read_csv(path_definitions, usecols=["NAME", "SEX"])
+    endpoints = pd.read_csv(path_definitions, usecols=["NAME", "SEX", "CORE_ENDPOINTS"])
 
     # Get first events
     df_events = pd.read_parquet(path_dense_fevents)
+
+    # Keep only core endpoints
+    endpoints = endpoints.loc[endpoints.CORE_ENDPOINTS == "yes", :]
+    select_endpoints = set(endpoints.NAME).union(["DEATH"])  # we need the DEATH endpoint to compute mortality
+    df_events = df_events.loc[df_events.ENDPOINT.isin(select_endpoints), :]
 
     # Get sex and approximate birth date of each indiv
     df_info = pd.read_csv(path_info, usecols=["FINNGENID", "BL_YEAR", "BL_AGE", "SEX"])
