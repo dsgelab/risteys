@@ -1,66 +1,104 @@
 """Functions for sampling the data"""
 
 import numpy as np
-import pandas as pd
-from random import sample
 from risteys_pipeline.log import logger
 from risteys_pipeline.config import FOLLOWUP_START, FOLLOWUP_END
 
 
-def sample_cases_and_controls(df, n_cases=250000, controls_per_case=2):
-    """Samples df and adds case-cohort weights (`weight`) and indicators for cases/controls (`case`).
-    
-    Args:
-        df (DataFrame): dataframe with the following columns: outcome_year, finregistryid
-        n_cases (int, optional): maximum number of cases to include
-        controls_per_case (int, optional): number of controls to include per case
-
-    Returns: 
-        df_sample (DataFrame): sampled dataframe
+def get_cohort(minimal_phenotype):
     """
+    Get cohort dataset with the following eligibility criteria:
+        - born before the end of the follow-up
+        - either not dead or died after the start of the follow-up
+        - sex information is not missing
 
-    caseids = df.loc[
-        df["outcome_year"].between(FOLLOWUP_START, FOLLOWUP_END), "finregistryid"
-    ].tolist()
-    controlids = df["finregistryid"].tolist()
+    Args:
+        minimal_phenotype (DataFrame): minimal phenotype dataset
 
-    if n_cases > len(caseids):
-        logger.info(f"Requested {n_cases} cases but found {len(caseids)}")
-        n_cases = len(caseids)
+    Returns:
+        cohort (DataFrame): cohort dataset with the following columns:
+        finregistryid, birth_year, female, start, stop, outcome
 
-    n_controls = round(n_cases * controls_per_case)
+    TODO: move to survival analysis
+    """
+    logger.info("Building the cohort")
+    cols = ["finregistryid", "birth_year", "death_year", "female"]
+    cohort = minimal_phenotype[cols]
 
-    if n_controls > len(controlids):
-        logger.info(f"Requested {n_controls} controls but found {len(controlids)}")
-        n_controls = len(controlids)
+    born_before_fu_end = cohort["birth_year"] <= FOLLOWUP_END
+    not_dead = minimal_phenotype["death_year"].isna()
+    died_after_fu_start = minimal_phenotype["death_year"] >= FOLLOWUP_START
+    inside_timeframe = born_before_fu_end & (not_dead | died_after_fu_start)
+    cohort = cohort.loc[inside_timeframe]
+    cohort = cohort.loc[~cohort["female"].isna()]
 
-    sample_of_caseids = sample(caseids, n_cases)
-    sample_of_controlids = sample(controlids, n_controls)
+    cohort["start"] = np.maximum(cohort["birth_year"], FOLLOWUP_START)
+    cohort["stop"] = np.minimum(cohort["death_year"].fillna(np.Inf), FOLLOWUP_END)
+    cohort["outcome"] = 0
+    cohort = cohort.drop(columns=["death_year"])
 
-    weight_cases, weight_controls = calculate_case_cohort_weights(
-        caseids, controlids, sample_of_caseids, sample_of_controlids
-    )
+    return cohort
 
-    df_sample_cases = df.loc[df["finregistryid"].isin(sample_of_caseids)].copy()
-    df_sample_cases = df_sample_cases.reset_index(drop=True)
-    df_sample_cases["case"] = 1
-    df_sample_cases["weight"] = weight_cases
 
-    df_sample_controls = df.loc[df["finregistryid"].isin(sample_of_controlids)].copy()
-    df_sample_controls = df_sample_controls.reset_index(drop=True)
-    df_sample_controls["case"] = 0
-    df_sample_controls["weight"] = weight_controls
+def get_controls(cohort, n_controls):
+    """
+    Sample controls from the cohort
+    
+    Args: 
+        cohort (DataFrame): cohort dataset, output of get_cohort()
+        n_controls (num): number of controls to sample
 
-    df_sample = pd.concat([df_sample_cases, df_sample_controls], axis=0)
-    df_sample = df_sample.reset_index(drop=True)
+    Returns:
+        controls (DataFrame): controls sampled from the cohort
+    """
+    if n_controls < cohort.shape[0]:
+        controls = cohort.sample(n=n_controls).reset_index(drop=True)
+    else:
+        controls = cohort
+    logger.info(f"{controls.shape[0]} controls sampled")
+    return controls
 
-    return df_sample
+
+def get_cases(all_cases, endpoint, n_cases=250_000):
+    """
+    Sample cases
+    """
+    cols = ["finregistryid", "birth_year", "death_year", "female", "age"]
+    cases = all_cases.loc[all_cases["endpoint"] == endpoint, cols]
+    cases = cases.reset_index(drop=True)
+    if n_cases < cases.shape[0]:
+        cases = cases.sample(n_cases).reset_index(drop=True)
+    cases["start"] = np.maximum(cases["birth_year"], FOLLOWUP_START)
+    cases["stop"] = cases["birth_year"] + cases["age"]
+    cases["outcome"] = 1
+    cases = cases.drop(columns=["age"])
+    logger.info(f"{cases.shape[0]} cases sampled")
+    return cases
+
+
+def get_exposed(first_events, exposure, cases):
+    """Get exposed subjects. Exposures after outcome are excluded."""
+    logger.info("Finding exposed subjects")
+    cols = ["finregistryid", "birth_year", "age"]
+    exposed = first_events.loc[first_events["endpoint"] == exposure, cols]
+
+    exposed = exposed.rename({"age": "exposure_age"})
+    outcome_age = cases[["finregistryid", "age"]].rename({"age": "outcome_age"})
+    exposed = exposed.merge(outcome_age, how="left", on="finregistryid")
+    exposed = exposed.loc[exposed["age"] > exposed["exposure_age"]]
+
+    exposed["duration"] = exposed["birth_year"] + exposed["age"]
+    exposed["exposure"] = 1
+    exposed = exposed[["finregistryid", "duration", "exposure"]]
+
+    return exposed
 
 
 def calculate_case_cohort_weights(
     caseids, controlids, sample_of_caseids, sample_of_controlids
 ):
-    """Calculate case-cohort weights for cases and controls.
+    """
+    Calculate case-cohort weights for cases and controls.
 
     Args:
         caseids (list): finregistryids for cases
