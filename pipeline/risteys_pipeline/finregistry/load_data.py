@@ -56,7 +56,7 @@ def load_endpoints_data(data_path=FINREGISTRY_ENDPOINTS_DATA_PATH):
         df (DataFrame): FinnGen endpoints dataframe
     """
     cols = ["NAME", "SEX", "OMIT"]
-    df = pd.read_csv(data_path, sep=";", usecols=cols, header=0)
+    df = pd.read_csv(data_path, sep=";", usecols=cols, header=0, skiprows=[1])
     logger.info(f"{df.shape[0]} rows loaded")
     df = df.rename(columns={"NAME": "endpoint", "SEX": "sex", "OMIT": "omit"})
     df = df.loc[df["omit"].isnull()].reset_index(drop=True)
