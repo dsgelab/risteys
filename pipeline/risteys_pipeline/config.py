@@ -9,7 +9,7 @@ FINREGISTRY_MINIMAL_PHENOTYPE_DATA_PATH = (
 )
 
 FINREGISTRY_LONG_FIRST_EVENTS_DATA_PATH = (
-    ROOT_DIR / "endpointer" / "long_first_events_2021-09-04.feather"
+    ROOT_DIR / "endpointer" / "wide_first_events_endpoints_2021-09-04_all_densified.feather"
 )
 
 FINREGISTRY_ENDPOINTS_DATA_PATH = (
