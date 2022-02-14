@@ -46,7 +46,6 @@ defmodule Risteys.Icd10 do
         Map.put(acc, child, parent)
       end)
 
-    # ????? a map, key "parent" is the value of "ParentId" column and value is a MapSet data structure of values in "CodeId" column????
     map_parent_children =
       Enum.reduce(map_child_parent, %{}, fn {child, parent}, acc ->
         Map.update(acc, parent, MapSet.new([child]), fn set ->

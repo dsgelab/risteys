@@ -56,7 +56,7 @@ defmodule AssocICDs do
     )
 
     # Add new associations
-    Enum.each(icds, fn icd -> # goes through each icd in icds, where icds is a row in a icd code map?
+    Enum.each(icds, fn icd ->
       Logger.debug("Inserting: #{registry}, ICD-10, #{inspect(icd)}")
       icd_db = Repo.get_by!(Icd10, code: icd)
 
