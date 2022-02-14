@@ -211,8 +211,8 @@ defmodule RisteysWeb.PhenocodeController do
     |> render("show.html")
   end
 
-  defp get_stats(phenocode, project) do
-    stats = Repo.all(from ss in StatsSex, where: ss.phenocode_id == ^phenocode.id and ss.project == ^project)
+  defp get_stats(phenocode, dataset) do
+    stats = Repo.all(from ss in StatsSex, where: ss.phenocode_id == ^phenocode.id and ss.dataset == ^dataset)
 
     no_stats = %{
       n_individuals: "-",

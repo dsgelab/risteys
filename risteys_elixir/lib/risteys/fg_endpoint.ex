@@ -300,7 +300,7 @@ defmodule Risteys.FGEndpoint do
 
 
   # -- Histograms --
-  defp get_histograms(endpoint_name, project) do
+  defp get_histograms(endpoint_name, dataset) do
     endpoint = Repo.get_by!(Phenocode, name: endpoint_name)
     sex_all = 0
 
@@ -313,20 +313,20 @@ defmodule Risteys.FGEndpoint do
 	where:
           ss.phenocode_id == ^endpoint.id
           and ss.sex == ^sex_all
-          and ss.project == ^project
+          and ss.dataset == ^dataset
       )
 
     %{age: hist_age, year: hist_year}
 
   end
 
-  def get_age_histogram(endpoint_name, project) do
-    %{age: hist} = get_histograms(endpoint_name, project)
+  def get_age_histogram(endpoint_name, dataset) do
+    %{age: hist} = get_histograms(endpoint_name, dataset)
     hist
   end
 
-  def get_year_histogram(endpoint_name, project) do
-    %{year: hist} = get_histograms(endpoint_name, project)
+  def get_year_histogram(endpoint_name, dataset) do
+    %{year: hist} = get_histograms(endpoint_name, dataset)
     hist
   end
 

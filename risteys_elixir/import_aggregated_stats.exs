@@ -2,7 +2,7 @@
 # Clean-up endpoints without statistics afterwards.
 #
 # Usage:
-#     mix run import_aggregated_stats.exs <json-file-aggregegated-stats> <project>
+#     mix run import_aggregated_stats.exs <json-file-aggregegated-stats> <dataset>
 #
 # where
 # <json-file-aggregegated-stats> is a JSON file with all the
@@ -26,18 +26,18 @@
 #   ...}
 # }
 #
-# and project is a string indicating which project the reults belong to,
+# and dataset is a string indicating which project the reults belong to,
 # either "FG" for FinnGen or "FR" for FinRegistry
 
 alias Risteys.{Repo, Phenocode, StatsSex}
 require Logger
 
 Logger.configure(level: :info)
-[stats_filepath, project | _] = System.argv()
+[stats_filepath, dataset | _] = System.argv()
 
-# raise an error if correct project info is not provided
-if project != "FG" and project != "FR" do
-  raise ArgumentError, message: "Project need to be given as a second argument, either FG or FR."
+# raise an error if correct dataset info is not provided
+if dataset != "FG" and dataset != "FR" do
+  raise ArgumentError, message: "Dataset need to be given as a second argument, either FG or FR."
 end
 
 defmodule Risteys.ImportAgg do
@@ -49,7 +49,7 @@ defmodule Risteys.ImportAgg do
         prevalence,
         distrib_year,
         distrib_age,
-        project
+        dataset
       ) do
     # Wrap distributions in a map
     distrib_year = %{hist: distrib_year}
@@ -57,7 +57,7 @@ defmodule Risteys.ImportAgg do
 
     stats =
       # update existing table if data with same phenocode id, sex and prjoect is already in the db
-      case Repo.get_by(StatsSex, sex: sex, phenocode_id: phenocode.id, project: project) do
+      case Repo.get_by(StatsSex, sex: sex, phenocode_id: phenocode.id, dataset: dataset) do
         nil -> %StatsSex{}
         existing -> existing
       end
@@ -69,7 +69,7 @@ defmodule Risteys.ImportAgg do
         prevalence: prevalence,
         distrib_year: distrib_year,
         distrib_age: distrib_age,
-        project: project
+        dataset: dataset
       })
       |> Repo.insert_or_update()
 
@@ -158,7 +158,7 @@ stats # stats from the map???
           prevalence_all,
           distrib_year_all,
           distrib_age_all,
-          project
+          dataset
         )
       else
         Logger.warn("Skipping stats for #{phenocode.name} - all : None or 0 individual")
@@ -174,7 +174,7 @@ stats # stats from the map???
           prevalence_male,
           distrib_year_male,
           distrib_age_male,
-          project
+          dataset
         )
       else
         Logger.warn("Skipping stats for #{phenocode.name} - male : None or 0 individual")
@@ -190,7 +190,7 @@ stats # stats from the map???
           prevalence_female,
           distrib_year_female,
           distrib_age_female,
-          project
+          dataset
         )
       else
         Logger.warn("Skipping stats for #{phenocode.name} - female : None or 0 individual")
