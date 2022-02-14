@@ -96,7 +96,7 @@ end
   |> Jason.decode!() # Parses a JSON value from input iodata. read the file as JSON and convert values to values that can be used in Elixir
 
 # Add stats to DB
-stats # stats from the map???
+stats
 |> Enum.each(fn {name, data} -> # goes through each endpoint and its stats
   Logger.info("Processing stats for #{name}")
 
@@ -108,7 +108,6 @@ stats # stats from the map???
 
     _ -> # when phenocode is not nil
       # Import stats for this phenocode
-      # the data for each enpoint in stats has below data -> pattern matching? is used to create a map
       %{
         "nindivs_all" => nindivs_all,
         "nindivs_female" => nindivs_female,
@@ -125,7 +124,6 @@ stats # stats from the map???
       empty_distrib = %{"all" => [], "female" => [], "male" => []}
 
       # for each endpoint, create a map of year distributions for females, males, and all
-      # by using pattern matching? to match the data from distrib_year map
       # get(map, key, default \\ nil). -> if endpoint ("name" key) is present in the map (distrib_year),
       # get the data from the map, otherwise return empty_distrib, i.e. []
       %{
