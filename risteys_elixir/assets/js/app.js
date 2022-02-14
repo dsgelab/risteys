@@ -175,7 +175,7 @@ if (path.startsWith("/phenocode/")) {  // Load only on phenocode pages
     });
 
     /* AGE HISTOGRAM FG */
-    stats_data_channel.push("get_age_histogram", {endpoint: phenocode, project: "FG"});
+    stats_data_channel.push("get_age_histogram", {endpoint: phenocode, dataset: "FG"});
     stats_data_channel.on("data_age_histogram_FG", payload => {
         const elementSelector = "#bin-plot-age-FG";
         const xAxisLabel = "age";
@@ -186,7 +186,7 @@ if (path.startsWith("/phenocode/")) {  // Load only on phenocode pages
     });
 
     /* YEAR HISTOGRAM FG */
-    stats_data_channel.push("get_year_histogram", {endpoint: phenocode, project: "FG"});
+    stats_data_channel.push("get_year_histogram", {endpoint: phenocode, dataset: "FG"});
     stats_data_channel.on("data_year_histogram_FG", payload => {
         const elementSelector = "#bin-plot-year-FG";
         const xAxisLabel = "year";
@@ -204,7 +204,7 @@ if (path.startsWith("/phenocode/")) {  // Load only on phenocode pages
         /* Get results if endpoint is not excluded */
         if (excluded === null) {
             /* AGE HISTOGRAM FR */
-            stats_data_channel.push("get_age_histogram", {endpoint: phenocode, project: "FR"});
+            stats_data_channel.push("get_age_histogram", {endpoint: phenocode, dataset: "FR"});
             stats_data_channel.on("data_age_histogram_FR", payload => {
                 const elementSelector = "#bin-plot-age-FR";
                 const xAxisLabel = "age";
@@ -215,7 +215,7 @@ if (path.startsWith("/phenocode/")) {  // Load only on phenocode pages
             });
 
             /* YEAR HISTOGRAM FR */
-            stats_data_channel.push("get_year_histogram", {endpoint: phenocode, project: "FR"});
+            stats_data_channel.push("get_year_histogram", {endpoint: phenocode, dataset: "FR"});
             stats_data_channel.on("data_year_histogram_FR", payload => {
                 const elementSelector = "#bin-plot-year-FR";
                 const xAxisLabel = "year";

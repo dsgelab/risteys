@@ -30,22 +30,22 @@ defmodule RisteysWeb.StatsDataChannel do
     {:noreply, socket}
   end
 
-  def handle_in("get_age_histogram", %{"endpoint" => endpoint_name, "project" => project}, socket) do
+  def handle_in("get_age_histogram", %{"endpoint" => endpoint_name, "dataset" => dataset}, socket) do
     payload =
-      FGEndpoint.get_age_histogram(endpoint_name, project)
+      FGEndpoint.get_age_histogram(endpoint_name, dataset)
       |> to_d3_shape()
 
-    age_hist_event = "data_age_histogram_" <> project
+    age_hist_event = "data_age_histogram_" <> dataset
     :ok = push(socket, age_hist_event, %{data: payload})
     {:noreply, socket}
   end
 
-  def handle_in("get_year_histogram", %{"endpoint" => endpoint_name, "project" => project}, socket) do
+  def handle_in("get_year_histogram", %{"endpoint" => endpoint_name, "dataset" => dataset}, socket) do
     payload =
-      FGEndpoint.get_year_histogram(endpoint_name, project)
+      FGEndpoint.get_year_histogram(endpoint_name, dataset)
       |> to_d3_shape()
 
-    year_hist_event = "data_year_histogram_" <> project
+    year_hist_event = "data_year_histogram_" <> dataset
     :ok = push(socket, year_hist_event, %{data: payload})
     {:noreply, socket}
   end
