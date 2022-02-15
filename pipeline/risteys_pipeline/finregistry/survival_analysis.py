@@ -4,7 +4,11 @@ import pandas as pd
 from lifelines import CoxPHFitter
 from lifelines.utils import add_covariate_to_timeline
 from risteys_pipeline.log import logger
-from risteys_pipeline.config import MIN_SUBJECTS_PERSONAL_DATA
+from risteys_pipeline.config import (
+    FOLLOWUP_END,
+    FOLLOWUP_START,
+    MIN_SUBJECTS_PERSONAL_DATA,
+)
 from risteys_pipeline.finregistry.sample import (
     get_cases,
     get_controls,
@@ -17,7 +21,35 @@ CONTROLS_PER_CASE = 4
 MIN_SUBJECTS_SURVIVAL_ANALYSIS = 100
 
 
-def build_cph_dataset(outcome, exposure, cohort, first_events):
+def prep_all_cases(first_events, cohort):
+    """
+    Prep all cases for survival analysis
+    - drop endpoints outside study timeframe
+    - drop IDs not included in the cohort
+    
+    Args:
+        first_events (DataFrame): first events dataset
+        cohort (DataFrame): cohort dataset, output of get_cohort()
+
+    Returns:
+        all_cases (DataFrame)
+    """
+    logger.info("Prepping all cases")
+    all_cases = first_events.copy()
+
+    inside_timeframe = (all_cases["birth_year"] + all_cases["age"]).between(
+        FOLLOWUP_START, FOLLOWUP_END
+    )
+    all_cases = all_cases.loc[inside_timeframe].reset_index(drop=True)
+
+    cohortids = cohort["finregistryid"]
+    all_cases = all_cases.merge(cohortids, how="right", on="finregistryid")
+    all_cases = all_cases.reset_index(drop=True)
+
+    return all_cases
+
+
+def build_cph_dataset(outcome, exposure, cohort, all_cases):
     """
     Build a dataset for fitting a Cox PH model.
     Exposure is included as a time-varying covariate if present.
@@ -32,7 +64,7 @@ def build_cph_dataset(outcome, exposure, cohort, first_events):
         df_cph (DataFrame): dataset with the following columns:
         finregistryid, start (year), stop (year), exposure, outcome, birth_year, female, weight
     """
-    cases = get_cases(first_events, outcome, n_cases=N_CASES)
+    cases = get_cases(all_cases, outcome, n_cases=N_CASES)
     controls = get_controls(cohort, CONTROLS_PER_CASE * cases.shape[0])
 
     weight_cases, weight_controls = calculate_case_cohort_weights(
@@ -51,7 +83,7 @@ def build_cph_dataset(outcome, exposure, cohort, first_events):
         df_cph["finregistryid_unique"] = (
             df_cph["finregistryid"] + "_" + df_cph["outcome"].map(str)
         )
-        exposed = get_exposed(first_events, exposure, cases)
+        exposed = get_exposed(all_cases, exposure, cases)
         exposed = exposed.merge(
             df_cph[["finregistryid", "finregistryid_unique"]],
             how="left",

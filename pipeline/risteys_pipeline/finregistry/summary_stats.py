@@ -8,14 +8,11 @@ Functions for the following summary statistics:
 import numpy as np
 import pandas as pd
 from risteys_pipeline.log import logger
-from risteys_pipeline.config import (
-    FOLLOWUP_END,
-    FOLLOWUP_START,
-    MIN_SUBJECTS_PERSONAL_DATA,
-)
+from risteys_pipeline.config import MIN_SUBJECTS_PERSONAL_DATA
 from risteys_pipeline.finregistry.sample import get_cohort
 from risteys_pipeline.finregistry.survival_analysis import (
     build_cph_dataset,
+    prep_all_cases,
     survival_analysis,
 )
 
@@ -102,7 +99,7 @@ def compute_key_figures(first_events, minimal_phenotype):
 
 def cumulative_incidence(minimal_phenotype, first_events, endpoints):
     """
-    Cumulative incidence
+    Cumulative incidence with age as timescale
 
     Args:
         minimal_phenotype (DataFrame): minimal phenotype dataset
@@ -114,22 +111,13 @@ def cumulative_incidence(minimal_phenotype, first_events, endpoints):
             endpoint: the name of the endpoint
             bch: baseline cumulative hazard by age group and sex
             params: coefficients
-
-    TODO: move prepping cases to a function
     """
     # Set up cohort and cases
     cohort = get_cohort(minimal_phenotype)
-    cohortids = cohort["finregistryid"]
-    all_cases = first_events.copy()
-    inside_timeframe = (all_cases["birth_year"] + all_cases["age"]).between(
-        FOLLOWUP_START, FOLLOWUP_END
-    )
-    all_cases = all_cases.loc[inside_timeframe].reset_index(drop=True)
-    all_cases = all_cases.merge(cohortids, how="right", on="finregistryid")
-    all_cases = all_cases.reset_index(drop=True)
+    all_cases = prep_all_cases(first_events, cohort)
 
     unique_endpoints = endpoints["endpoint"]
-    result = pd.DataFrame(index=unique_endpoints, columns=["bch", "params"])
+    result = pd.DataFrame(index=unique_endpoints, columns=["bch", "paramas"])
 
     for outcome in unique_endpoints:
 
