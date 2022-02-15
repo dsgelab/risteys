@@ -2,12 +2,22 @@
 Functions for the following summary statistics:
 - key figures (number of individuals, unadjusted prevalence, mean age at first event)
 - distributions: age at first event, year at first event
+- cumulative incidence
 """
 
 import numpy as np
 import pandas as pd
 from risteys_pipeline.log import logger
-from risteys_pipeline.config import MIN_SUBJECTS_PERSONAL_DATA
+from risteys_pipeline.config import (
+    FOLLOWUP_END,
+    FOLLOWUP_START,
+    MIN_SUBJECTS_PERSONAL_DATA,
+)
+from risteys_pipeline.finregistry.sample import get_cohort
+from risteys_pipeline.finregistry.survival_analysis import (
+    build_cph_dataset,
+    survival_analysis,
+)
 
 
 def compute_key_figures(first_events, minimal_phenotype):
@@ -88,3 +98,71 @@ def compute_key_figures(first_events, minimal_phenotype):
     key_figures.columns = ["".join(col).strip() for col in key_figures.columns.values]
 
     return key_figures
+
+
+def cumulative_incidence(minimal_phenotype, first_events, endpoints):
+    """
+    Cumulative incidence
+
+    Args:
+        minimal_phenotype (DataFrame): minimal phenotype dataset
+        first_events (DataFrame): first events dataset
+        endpoints (DataFrame): endpoint definition dataset
+
+    Returns:
+        result (DataFrame): dataset with the following columns:
+            endpoint: the name of the endpoint
+            bch: baseline cumulative hazard by age group and sex
+            params: coefficients
+
+    TODO: move prepping cases to a function
+    """
+    # Set up cohort and cases
+    cohort = get_cohort(minimal_phenotype)
+    cohortids = cohort["finregistryid"]
+    all_cases = first_events.copy()
+    inside_timeframe = (all_cases["birth_year"] + all_cases["age"]).between(
+        FOLLOWUP_START, FOLLOWUP_END
+    )
+    all_cases = all_cases.loc[inside_timeframe].reset_index(drop=True)
+    all_cases = all_cases.merge(cohortids, how="right", on="finregistryid")
+    all_cases = all_cases.reset_index(drop=True)
+
+    unique_endpoints = endpoints["endpoint"]
+    result = pd.DataFrame(index=unique_endpoints, columns=["bch", "params"])
+
+    for outcome in unique_endpoints:
+
+        # Fit the Cox PH model
+        logger.info(f"Outcome: {outcome}")
+        df_cph = build_cph_dataset(outcome, None, cohort, all_cases)
+        cph = survival_analysis(df_cph, "age")
+
+        bch = np.nan
+        params = np.nan
+
+        if cph:
+            # Calculate number of events by age group
+            counts = df_cph.loc[df_cph["outcome"] == 1].reset_index(drop=True)
+            counts["age"] = round((counts["stop"] - counts["birth_year"]) / 10) * 10
+            counts = counts.groupby("age")["outcome"].sum().reset_index()
+            counts = counts.rename(columns={"outcome": "n_events"})
+
+            # Calculate baseline cumulative hazard by age group
+            bch = cph.baseline_cumulative_hazard_
+            bch = bch.reset_index().rename(columns={"index": "age"})
+            bch["age"] = round(bch["age"] / 10) * 10
+            bch = bch.groupby("age").mean()
+            bch = bch.merge(counts, on="age", how="left")
+            bch = bch.loc[bch["n_events"] > MIN_SUBJECTS_PERSONAL_DATA]
+            bch = bch.drop(columns=["n_events"])
+            bch = bch.set_index("age").to_dict()["baseline cumulative hazard"]
+
+            # Extract parameters
+            params = cph.params_.to_dict()
+
+        # Add data to resuls
+        result.loc[outcome] = {"bch": bch, "params": params}
+
+    return result
+
