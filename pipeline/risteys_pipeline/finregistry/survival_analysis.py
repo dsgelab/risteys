@@ -4,10 +4,7 @@ import pandas as pd
 from lifelines import CoxPHFitter
 from lifelines.utils import add_covariate_to_timeline
 from risteys_pipeline.log import logger
-from risteys_pipeline.config import (
-    FOLLOWUP_START,
-    MIN_SUBJECTS_PERSONAL_DATA,
-)
+from risteys_pipeline.config import MIN_SUBJECTS_PERSONAL_DATA
 from risteys_pipeline.finregistry.sample import (
     get_cases,
     get_controls,
@@ -33,7 +30,7 @@ def build_cph_dataset(outcome, exposure, cohort, first_events):
 
     Returns:
         df_cph (DataFrame): dataset with the following columns:
-        finregistryid, start, stop, exposure, outcome, birth_year, female, weight
+        finregistryid, start (year), stop (year), exposure, outcome, birth_year, female, weight
     """
     cases = get_cases(first_events, outcome, n_cases=N_CASES)
     controls = get_controls(cohort, CONTROLS_PER_CASE * cases.shape[0])
@@ -121,17 +118,26 @@ def survival_analysis(df_cph, timescale="time-on-study"):
         logger.info("Not enough subjects")
         cph = None
     else:
-        df_cph = df_cph.drop(columns=["finregistryid"])
+
+        df_timescale = df_cph.copy()
+
+        if timescale == "time-on-study":
+            df_timescale["stop"] = df_timescale["stop"] - df_timescale["start"]
+            df_timescale = df_timescale.drop(columns=["start"])
+            entry_col = None
 
         if timescale == "age":
-            df_cph["start"] = df_cph["start"] - df_cph["birth_year"]
-            df_cph["end"] = df_cph["end"] - df_cph["birth_year"]
+            df_timescale["start"] = df_timescale["start"] - df_timescale["birth_year"]
+            df_timescale["stop"] = df_timescale["stop"] - df_timescale["birth_year"]
+            entry_col = "start"
+
+        df_timescale = df_timescale.drop(columns=["finregistryid"])
 
         logger.info("Fitting the Cox PH model")
         cph = CoxPHFitter()
         cph.fit(
-            df_cph,
-            entry_col="start",
+            df_timescale,
+            entry_col=entry_col,
             duration_col="stop",
             event_col="outcome",
             weights_col="weight",
