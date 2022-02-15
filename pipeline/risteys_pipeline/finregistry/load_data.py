@@ -6,8 +6,10 @@ from risteys_pipeline.config import *
 from risteys_pipeline.log import logger
 from risteys_pipeline.utils import to_decimal_year
 
-SEX_FEMALE = 1.0
-SEX_MALE = 0.0
+SEX_FEMALE_ENDPOINTS = 2.0
+SEX_MALE_ENDPOINTS = 1.0
+SEX_FEMALE_MINIMAL_PHENOTYPE = 1.0
+SEX_MALE_MINIMAL_PHENOTYPE = 0.0
 
 
 def load_minimal_phenotype_data(data_path=FINREGISTRY_MINIMAL_PHENOTYPE_DATA_PATH):
@@ -17,7 +19,7 @@ def load_minimal_phenotype_data(data_path=FINREGISTRY_MINIMAL_PHENOTYPE_DATA_PAT
     - drop duplicated rows
     - add birth and death year
     - add `female`
-    - replace numeric sex with strings
+    - replace numeric `sex` with strings
     - drop redundant columns (date_of_birth, death_date)
     
     Args:
@@ -34,9 +36,15 @@ def load_minimal_phenotype_data(data_path=FINREGISTRY_MINIMAL_PHENOTYPE_DATA_PAT
     df = df.drop_duplicates(subset=["finregistryid"]).reset_index(drop=True)
     df["birth_year"] = to_decimal_year(df["date_of_birth"])
     df["death_year"] = to_decimal_year(df["death_date"])
-    df["female"] = df["sex"] == SEX_FEMALE
+    df["female"] = pd.NA
+    df.loc[df["sex"] == SEX_FEMALE_MINIMAL_PHENOTYPE, "female"] = True
+    df.loc[df["sex"] == SEX_MALE_MINIMAL_PHENOTYPE, "female"] = False
     df["sex"] = df["sex"].replace(
-        {SEX_FEMALE: "female", SEX_MALE: "male", np.nan: "unknown"}
+        {
+            SEX_FEMALE_MINIMAL_PHENOTYPE: "female",
+            SEX_MALE_MINIMAL_PHENOTYPE: "male",
+            np.nan: "unknown",
+        }
     )
     df = df.drop(columns=["date_of_birth", "death_date"])
     logger.info(f"{df.shape[0]} rows after data pre-processing")
@@ -48,6 +56,7 @@ def load_endpoints_data(data_path=FINREGISTRY_ENDPOINTS_DATA_PATH):
     Loads and applies the following steps to FinnGen endpoints data:
     - rename columns
     - drop omitted endpoints 
+    - replace `sex` with `female`
     
     Args:
         data_path (str, optional): file path of the FinnGen endpoints csv file
@@ -60,7 +69,10 @@ def load_endpoints_data(data_path=FINREGISTRY_ENDPOINTS_DATA_PATH):
     logger.info(f"{df.shape[0]} rows loaded")
     df = df.rename(columns={"NAME": "endpoint", "SEX": "sex", "OMIT": "omit"})
     df = df.loc[df["omit"].isnull()].reset_index(drop=True)
-    df = df.drop(columns=["omit"])
+    df["female"] = pd.NA
+    df.loc[df["sex"] == SEX_FEMALE_ENDPOINTS, "female"] = True
+    df.loc[df["sex"] == SEX_MALE_ENDPOINTS, "female"] = False
+    df = df.drop(columns=["omit", "sex"])
     logger.info(f"{df.shape[0]} rows after data pre-processing")
     return df
 
