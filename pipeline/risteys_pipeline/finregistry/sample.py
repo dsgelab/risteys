@@ -19,6 +19,7 @@ def get_cohort(minimal_phenotype):
         cohort (DataFrame): cohort dataset with the following columns:
         finregistryid, birth_year, female, start, stop, outcome
     """
+    logger.info("Building the cohort")
     cols = ["finregistryid", "birth_year", "death_year", "female"]
     cohort = minimal_phenotype[cols]
 
@@ -39,6 +40,7 @@ def get_cohort(minimal_phenotype):
 
 def get_controls(cohort, n_controls):
     """Sample controls from the cohort"""
+    logger.info("Sampling controls")
     n_controls = min(n_controls, cohort.shape[0])
     if n_controls < cohort.shape[0]:
         controls = cohort.sample(n=n_controls).reset_index(drop=True)
@@ -49,6 +51,7 @@ def get_controls(cohort, n_controls):
 
 def get_cases(first_events, endpoint, n_cases=250_000):
     """Get cases dataset"""
+    logger.info("Sampling cases")
     cols = ["finregistryid", "birth_year", "death_year", "female", "age"]
     cases = first_events.loc[first_events["endpoint"] == endpoint, cols]
     cases = cases.reset_index(drop=True)
@@ -63,6 +66,7 @@ def get_cases(first_events, endpoint, n_cases=250_000):
 
 def get_exposed(first_events, exposure, cases):
     """Get exposed subjects. Exposures after outcome are excluded."""
+    logger.info("Finding exposed subjects")
     cols = ["finregistryid", "birth_year", "age"]
     exposed = first_events.loc[first_events["endpoint"] == exposure, cols]
 
@@ -97,6 +101,7 @@ def calculate_case_cohort_weights(
     Raises: 
         ZeroDivisionError: if there are no non-cases among controls
     """
+    logger.info("Calculating case cohort weights")
     non_cases = set(controlids) - set(caseids)
     non_cases_in_sample = set(sample_of_controlids) - set(sample_of_caseids)
 
