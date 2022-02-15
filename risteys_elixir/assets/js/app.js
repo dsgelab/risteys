@@ -174,6 +174,10 @@ if (path.startsWith("/phenocode/")) {  // Load only on phenocode pages
         components: { HelpMortality },
     });
 
+    /* set colors for plots */
+    const color_blue = "#1c3d5a"
+    const color_green = "#0b592f"
+
     /* AGE HISTOGRAM FG */
     stats_data_channel.push("get_age_histogram", {endpoint: phenocode, dataset: "FG"});
     stats_data_channel.on("data_age_histogram_FG", payload => {
@@ -181,7 +185,7 @@ if (path.startsWith("/phenocode/")) {  // Load only on phenocode pages
         const xAxisLabel = "age";
         const yAxisLabel = "individuals";
         const data = payload.data;
-        const plot_color = "#1c3d5a";
+        const plot_color = color_blue;
         varBinPlot(elementSelector, data, xAxisLabel, yAxisLabel, plot_color);
     });
 
@@ -192,7 +196,7 @@ if (path.startsWith("/phenocode/")) {  // Load only on phenocode pages
         const xAxisLabel = "year";
         const yAxisLabel = "individuals";
         const data = payload.data;
-        const plot_color = "#1c3d5a";
+        const plot_color = color_blue;
         varBinPlot(elementSelector, data, xAxisLabel, yAxisLabel, plot_color);
     }); 
 
@@ -210,7 +214,7 @@ if (path.startsWith("/phenocode/")) {  // Load only on phenocode pages
                 const xAxisLabel = "age";
                 const yAxisLabel = "individuals";
                 const data = payload.data;
-                const plot_color = "#0b592f";
+                const plot_color = color_green;
                 varBinPlot(elementSelector, data, xAxisLabel, yAxisLabel, plot_color);
             });
 
@@ -221,7 +225,7 @@ if (path.startsWith("/phenocode/")) {  // Load only on phenocode pages
                 const xAxisLabel = "year";
                 const yAxisLabel = "individuals";
                 const data = payload.data;
-                const plot_color = "#0b592f";
+                const plot_color = color_green;
                 varBinPlot(elementSelector, data, xAxisLabel, yAxisLabel, plot_color);
             });
                         
