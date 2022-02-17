@@ -18,6 +18,8 @@ def get_cohort(minimal_phenotype):
     Returns:
         cohort (DataFrame): cohort dataset with the following columns:
         finregistryid, birth_year, female, start, stop, outcome
+
+    TODO: move to survival analysis
     """
     logger.info("Building the cohort")
     cols = ["finregistryid", "birth_year", "death_year", "female"]
@@ -39,21 +41,30 @@ def get_cohort(minimal_phenotype):
 
 
 def get_controls(cohort, n_controls):
-    """Sample controls from the cohort"""
-    logger.info("Sampling controls")
-    n_controls = min(n_controls, cohort.shape[0])
+    """
+    Sample controls from the cohort
+    
+    Args: 
+        cohort (DataFrame): cohort dataset, output of get_cohort()
+        n_controls (num): number of controls to sample
+
+    Returns:
+        controls (DataFrame): controls sampled from the cohort
+    """
     if n_controls < cohort.shape[0]:
         controls = cohort.sample(n=n_controls).reset_index(drop=True)
     else:
         controls = cohort
+    logger.info(f"{controls.shape[0]} controls sampled")
     return controls
 
 
-def get_cases(first_events, endpoint, n_cases=250_000):
-    """Get cases dataset"""
-    logger.info("Sampling cases")
+def get_cases(all_cases, endpoint, n_cases=250_000):
+    """
+    Sample cases
+    """
     cols = ["finregistryid", "birth_year", "death_year", "female", "age"]
-    cases = first_events.loc[first_events["endpoint"] == endpoint, cols]
+    cases = all_cases.loc[all_cases["endpoint"] == endpoint, cols]
     cases = cases.reset_index(drop=True)
     if n_cases < cases.shape[0]:
         cases = cases.sample(n_cases).reset_index(drop=True)
@@ -61,6 +72,7 @@ def get_cases(first_events, endpoint, n_cases=250_000):
     cases["stop"] = cases["birth_year"] + cases["age"]
     cases["outcome"] = 1
     cases = cases.drop(columns=["age"])
+    logger.info(f"{cases.shape[0]} cases sampled")
     return cases
 
 
@@ -101,7 +113,6 @@ def calculate_case_cohort_weights(
     Raises: 
         ZeroDivisionError: if there are no non-cases among controls
     """
-    logger.info("Calculating case cohort weights")
     non_cases = set(controlids) - set(caseids)
     non_cases_in_sample = set(sample_of_controlids) - set(sample_of_caseids)
 
