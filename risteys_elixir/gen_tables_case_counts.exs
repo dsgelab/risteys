@@ -98,7 +98,7 @@ end)
 |> Stream.map(fn %{endpoint: endpoint, table: table} ->
   %{
     endpoint: endpoint.name,
-    html: EEx.eval_file("template_table.html.eex", endpoint: endpoint, table: table)
+    html: EEx.eval_file("template_table.html.heex", endpoint: endpoint, table: table)
   }
 end)
 
