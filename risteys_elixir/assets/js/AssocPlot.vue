@@ -158,7 +158,7 @@ let getScales = (data, y_axis) => {
 		var yFmt = yScale.tickFormat();  // use the default tick format
 	} else if (y_axis === "hr") {
 		var yScale = d3.scaleLog().domain([yMin, yMax]).range([plotHeight, 0]);
-		var yFmt = yScale.tickFormat(100, "");
+		var yFmt = yScale.tickFormat(10, "");
 	}
 
 	return {
@@ -296,7 +296,7 @@ let makePlot = (data, y_axis, ticks, categoryNames, other_pheno) => {
 export default {
 	data () {
 		return {
-			y_axis: "pvalue",
+			y_axis: "hr",
 		}
 	},
 	props: {
