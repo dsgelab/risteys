@@ -116,7 +116,12 @@ defmodule RisteysWeb.PhenocodeView do
           {"Control pre-conditions", value}
 
         :control_conditions ->
-          {"Control conditions", readable_conditions(value)}
+          conditions =
+            value
+            |> readable_conditions()
+            |> Enum.intersperse(tag("br"))
+
+          {"Control conditions", conditions}
       end
     end
   end
