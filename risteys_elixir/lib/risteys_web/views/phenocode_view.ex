@@ -95,12 +95,6 @@ defmodule RisteysWeb.PhenocodeView do
     end)
   end
 
-  defp readable_icdver(icd_numbers) do
-    icd_numbers
-    |> Enum.map(&Integer.to_string/1)
-    |> Enum.intersperse(", ")
-  end
-
   defp control_definitions(endpoint) do
     for %{field: field, value: value} <- FGEndpoint.get_control_definitions(endpoint) do
       case field do
