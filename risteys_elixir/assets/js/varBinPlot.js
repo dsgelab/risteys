@@ -59,7 +59,6 @@ config.xTicks.y2 = config.xTicks.y1 + config.xTicks.height;
 // Vertical bins
 config.vbin = {};
 config.vbin.width = 30;  // px
-config.vbin.color = "#1c3d5a";
 
 // Capture bins: transparent area drawn over bins to capture mouse or touch events
 config.capbin = {};
@@ -201,7 +200,7 @@ let scaleY = (data) => {
 }
 
 // VBin
-function vbinPosDim(data) {
+function vbinPosDim(data, plot_color) {
 	return map(data, (datum) => {
 		const pos = binXpos(data, datum);
 		const middle = (pos.x1 + pos.x2) / 2;
@@ -214,7 +213,7 @@ function vbinPosDim(data) {
 			width: config.vbin.width,
 			y: top,
 			height: height,
-			fill: config.vbin.color
+			fill: plot_color
 		}
 	})
 };
@@ -314,7 +313,7 @@ function tooltipPosDim(data) {
 }
 
 // Apply all data transformations
-function dataToPlot(plotId, data, config) {
+function dataToPlot(plotId, data, plot_color) {
 	const ids = map(data, (_datum, idx) => `${plotId}-datum${idx}`);
 	const cdata = map(data, closeInterval);
 
@@ -325,7 +324,7 @@ function dataToPlot(plotId, data, config) {
 	const hbins = hbinPosDim(cdata);
 
 	// Compute vbin
-	const vbins = vbinPosDim(cdata);
+	const vbins = vbinPosDim(cdata, plot_color);
 
 	// Tooltips
 	const tooltips = tooltipPosDim(cdata);
@@ -348,9 +347,9 @@ function dataToPlot(plotId, data, config) {
 
 
 // -- PLOTTING --
-function plot(selector, data, xAxisLabel, yAxisLabel) {
+function plot(selector, data, xAxisLabel, yAxisLabel, plot_color) {
 	const plotId = selector.slice(1);  // turn the selector into letter only by removing the leading '#'
-	const pdata = dataToPlot(plotId, data, config);
+	const pdata = dataToPlot(plotId, data, plot_color);
 
 	// Separate data for X ticks since we remove the last datum
 	const xTicksData = xTicksAndLabels(data);

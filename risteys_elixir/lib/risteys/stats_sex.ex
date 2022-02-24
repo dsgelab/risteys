@@ -12,6 +12,7 @@ defmodule Risteys.StatsSex do
     # can't specify more than ':map' since composite types
     field :distrib_year, :map
     field :distrib_age, :map
+    field :dataset, :string
 
     timestamps()
   end
@@ -26,7 +27,8 @@ defmodule Risteys.StatsSex do
       :mean_age,
       :phenocode_id,
       :distrib_year,
-      :distrib_age
+      :distrib_age,
+      :dataset
     ])
     |> validate_required([:sex, :phenocode_id])
     # 0: all, 1: male, 2: female
@@ -40,7 +42,8 @@ defmodule Risteys.StatsSex do
       check_distrib(hist)
     end)
     |> validate_change(:distrib_age, fn :distrib_age, %{hist: hist} -> check_distrib(hist) end)
-    |> unique_constraint(:sex, name: :sex_phenocode_id)
+    |> unique_constraint(:sex, name: :sex_dataset_phenocode_id)
+    |> validate_inclusion(:dataset, ["FG", "FR"])
   end
 
   defp check_distrib(hist) do
