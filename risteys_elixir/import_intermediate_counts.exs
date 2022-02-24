@@ -24,8 +24,7 @@ counts_filepath
     "N(all)" => nall,
     "N(-sex)" => nsex,
     "N(-conditions)" => nconditions,
-    "N(-regex)" => nregex,
-    "N(-pre_conditions/mainonly/mode/icdver/reimb_icd)" => nmulti,
+    "N(-pre_conditions/mainonly/mode/regex_icdver/reimb_icd)" => nmulti,
     "N(-nevt)" => nevt,
     "N(pass+include_unique)" => nend
   } = row
@@ -37,7 +36,6 @@ counts_filepath
       {"all", nall},
       {"sex_rule", nsex},
       {"conditions", nconditions},
-      {"filter_registries", nregex},
       {"multi", nmulti},
       {"min_number_events", nevt},
       {"includes", nend}

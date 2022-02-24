@@ -98,10 +98,6 @@ defmodule Risteys.FGEndpoint do
         data: parse_conditions(endpoint)
       },
       %{
-        name: :filter_registries,
-        data: parse_registry_filters(endpoint)
-      },
-      %{
         name: :multi,
         data: parse_multi(endpoint)
       },
@@ -154,6 +150,53 @@ defmodule Risteys.FGEndpoint do
     |> Enum.drop(1)
     # reversing to get original order since we prepended items
     |> Enum.reverse()
+  end
+
+  defp parse_multi(endpoint) do
+    multi = %{}
+    mode = parse_mode(endpoint)
+    filters = parse_registry_filters(endpoint)
+
+    multi =
+      case endpoint.pre_conditions do
+        nil ->
+          multi
+
+        _ ->
+          Map.put(multi, :precond, endpoint.pre_conditions)
+      end
+
+    multi =
+      case parse_main_only(endpoint) do
+        false -> multi
+        main_only -> Map.put(multi, :main_only, main_only)
+      end
+
+    multi =
+      if Enum.empty?(mode) do
+        multi
+      else
+        Map.put(multi, :mode, mode)
+      end
+
+    multi =
+    if Enum.empty?(filters) do
+      multi
+    else
+      Map.put(multi, :filter_registries, filters)
+    end
+
+    multi
+  end
+
+  defp parse_mode(endpoint) do
+    endpoint
+    |> Map.take([:hd_icd_8, :hd_icd_9, :hd_icd_10, :cod_icd_8, :cod_icd_9, :cod_icd_10])
+    |> Map.values()
+    |> Enum.reject(&is_nil/1)
+    |> Enum.filter(fn rule -> String.starts_with?(rule, "%") end)
+    # remove duplicates, e.g. same in HD and COD
+    |> MapSet.new()
   end
 
   defp parse_registry_filters(endpoint) do
@@ -246,73 +289,8 @@ defmodule Risteys.FGEndpoint do
     Map.merge(defaults, expanded)
   end
 
-  defp parse_multi(endpoint) do
-    multi = %{}
-    mode = parse_mode(endpoint)
-    only_icdver = parse_icdver(endpoint)
-
-    multi =
-      case endpoint.pre_conditions do
-        nil ->
-          multi
-
-        _ ->
-          Map.put(multi, :precond, endpoint.pre_conditions)
-      end
-
-    multi =
-      case parse_main_only(endpoint) do
-        false -> multi
-        main_only -> Map.put(multi, :main_only, main_only)
-      end
-
-    multi =
-      if Enum.empty?(mode) do
-        multi
-      else
-        Map.put(multi, :mode, mode)
-      end
-
-    if Enum.empty?(only_icdver) do
-      multi
-    else
-      Map.put(multi, :only_icdver, only_icdver)
-    end
-  end
-
   defp parse_main_only(endpoint) do
     not is_nil(endpoint.hd_mainonly) or not is_nil(endpoint.cod_mainonly)
-  end
-
-  defp parse_mode(endpoint) do
-    endpoint
-    |> Map.take([:hd_icd_8, :hd_icd_9, :hd_icd_10, :cod_icd_8, :cod_icd_9, :cod_icd_10])
-    |> Map.values()
-    |> Enum.reject(&is_nil/1)
-    |> Enum.filter(fn rule -> String.starts_with?(rule, "%") end)
-    # remove duplicates, e.g. same in HD and COD
-    |> MapSet.new()
-  end
-
-  defp parse_icdver(endpoint) do
-    endpoint
-    |> Map.take([:hd_icd_8, :hd_icd_9, :hd_icd_10, :cod_icd_8, :cod_icd_9, :cod_icd_10])
-    |> Enum.reject(fn {_registry, rule} -> is_nil(rule) end)
-    |> Enum.map(fn {registry, _rule} -> registry end)
-    |> Enum.map(fn reg_ver ->
-      case reg_ver do
-        :hd_icd_8 -> {:hd, 8}
-        :hd_icd_9 -> {:hd, 9}
-        :hd_icd_10 -> {:hd, 10}
-        :cod_icd_8 -> {:cod, 8}
-        :cod_icd_9 -> {:cod, 9}
-        :cod_icd_10 -> {:cod, 10}
-      end
-    end)
-    |> Enum.group_by(
-      fn {registry, _icd_version} -> registry end,
-      fn {_registry, icd_version} -> icd_version end
-    )
   end
 
   defp parse_min_number_events(endpoint) do
