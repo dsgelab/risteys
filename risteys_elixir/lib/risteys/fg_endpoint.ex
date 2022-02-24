@@ -442,8 +442,16 @@ defmodule Risteys.FGEndpoint do
     |> Enum.reject(fn %{value: val} -> is_nil(val) or val == [] end)
   end
 
+  # -- Handle excluded endpoints --
+  def test_exclusion(endpoint_name) do
+    endpoint = Repo.get_by!(Definition, name: endpoint_name)
+    excl = endpoint.fr_excl
+
+    %{excl: excl}
+  end
+
   # -- Histograms --
-  defp get_histograms(endpoint_name) do
+  defp get_histograms(endpoint_name, dataset) do
     endpoint = Repo.get_by!(Definition, name: endpoint_name)
     sex_all = 0
 
@@ -455,19 +463,20 @@ defmodule Risteys.FGEndpoint do
         from ss in StatsSex,
           where:
             ss.fg_endpoint_id == ^endpoint.id and
-              ss.sex == ^sex_all
+            ss.sex == ^sex_all and
+            ss.dataset == ^dataset
       )
 
     %{age: hist_age, year: hist_year}
   end
 
-  def get_age_histogram(endpoint_name) do
-    %{age: hist} = get_histograms(endpoint_name)
+  def get_age_histogram(endpoint_name, dataset) do
+    %{age: hist} = get_histograms(endpoint_name, dataset)
     hist
   end
 
-  def get_year_histogram(endpoint_name) do
-    %{year: hist} = get_histograms(endpoint_name)
+  def get_year_histogram(endpoint_name, dataset) do
+    %{year: hist} = get_histograms(endpoint_name, dataset)
     hist
   end
 

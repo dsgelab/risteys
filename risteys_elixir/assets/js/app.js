@@ -172,24 +172,31 @@ if (path.startsWith("/endpoint/")) {  // Load only on endpoint pages
         components: { HelpMortality },
     });
 
-    /* AGE HISTOGRAM */
-    stats_data_channel.push("get_age_histogram", {endpoint: endpoint});
-    stats_data_channel.on("data_age_histogram", payload => {
-        const elementSelector = "#bin-plot-age";
+    /* set colors for plots */
+    const color_blue = "#1c3d5a"
+    const color_green = "#0b592f"
+
+    /* FinnGen results*/
+    /* AGE HISTOGRAM FG */
+    stats_data_channel.push("get_age_histogram", {endpoint: endpoint, dataset: "FG"});
+    stats_data_channel.on("data_age_histogram_FG", payload => {
+        const elementSelector = "#bin-plot-age-FG";
         const xAxisLabel = "age";
         const yAxisLabel = "individuals";
         const data = payload.data;
-        varBinPlot(elementSelector, data, xAxisLabel, yAxisLabel);
+        const plot_color = color_blue;
+        varBinPlot(elementSelector, data, xAxisLabel, yAxisLabel, plot_color);
     });
 
-    /* YEAR HISTOGRAM */
-    stats_data_channel.push("get_year_histogram", {endpoint: endpoint});
-    stats_data_channel.on("data_year_histogram", payload => {
-        const elementSelector = "#bin-plot-year";
+    /* YEAR HISTOGRAM FG */
+    stats_data_channel.push("get_year_histogram", {endpoint: endpoint, dataset: "FG"});
+    stats_data_channel.on("data_year_histogram_FG", payload => {
+        const elementSelector = "#bin-plot-year-FG";
         const xAxisLabel = "year";
         const yAxisLabel = "individuals";
         const data = payload.data;
-        varBinPlot(elementSelector, data, xAxisLabel, yAxisLabel);
+        const plot_color = color_blue;
+        varBinPlot(elementSelector, data, xAxisLabel, yAxisLabel, plot_color);
     });
 
     /* CORRELATION TABLE */
@@ -204,77 +211,109 @@ if (path.startsWith("/endpoint/")) {  // Load only on endpoint pages
         });
     });
 
-    /* CUMMULATIVE INCIDENCE */
-    stats_data_channel.push("get_cumulative_incidence", {endpoint: endpoint});  // request plot data
-    stats_data_channel.on("data_cumulative_incidence", payload => {
-        const color_female = "#9f0065";
-        const color_male = "#2779bd";
-        const pattern_female = "1 0";
-        const pattern_male = "9 1";
-        const data = [
-            {
-                name: "female",
-                color: color_female,
-                dasharray: pattern_female,
-                cumulinc: payload.females
-            },
-            {
-                name: "male",
-                color: color_male,
-                dasharray: pattern_male,
-                cumulinc: payload.males
-            }
-        ];
+    /* FinRegistry results*/
+    stats_data_channel.push("test_exclusion", {endpoint: endpoint});
+    stats_data_channel.on("result_exclusion", payload => {
+        const excluded = payload.excl;
 
-        if (data[0].cumulinc.length === 0 && data[1].cumulinc.length === 0) {
-            const node = document.getElementById("cumulinc-plot");
-            node.innerText = "No data";
-        } else {
-            drawPlotCumulInc("#cumulinc-plot", data);
+        /* Get results if endpoint is not excluded */
+        if (excluded === null) {
+            /* AGE HISTOGRAM FR */
+            stats_data_channel.push("get_age_histogram", {endpoint: endpoint, dataset: "FR"});
+            stats_data_channel.on("data_age_histogram_FR", payload => {
+                const elementSelector = "#bin-plot-age-FR";
+                const xAxisLabel = "age";
+                const yAxisLabel = "individuals";
+                const data = payload.data;
+                const plot_color = color_green;
+                varBinPlot(elementSelector, data, xAxisLabel, yAxisLabel, plot_color);
+            });
+
+            /* YEAR HISTOGRAM FR */
+            stats_data_channel.push("get_year_histogram", {endpoint: endpoint, dataset: "FR"});
+            stats_data_channel.on("data_year_histogram_FR", payload => {
+                const elementSelector = "#bin-plot-year-FR";
+                const xAxisLabel = "year";
+                const yAxisLabel = "individuals";
+                const data = payload.data;
+                const plot_color = color_green;
+                varBinPlot(elementSelector, data, xAxisLabel, yAxisLabel, plot_color);
+            });
+
+
+            /* CUMMULATIVE INCIDENCE */
+            stats_data_channel.push("get_cumulative_incidence", {endpoint: endpoint});  // request plot data
+            stats_data_channel.on("data_cumulative_incidence", payload => {
+                const color_female = "#9f0065";
+                const color_male = "#2779bd";
+                const pattern_female = "1 0";
+                const pattern_male = "9 1";
+                const data = [
+                    {
+                        name: "female",
+                        color: color_female,
+                        dasharray: pattern_female,
+                        cumulinc: payload.females
+                    },
+                    {
+                        name: "male",
+                        color: color_male,
+                        dasharray: pattern_male,
+                        cumulinc: payload.males
+                    }
+                ];
+
+                if (data[0].cumulinc.length === 0 && data[1].cumulinc.length === 0) {
+                    const node = document.getElementById("cumulinc-plot");
+                    node.innerText = "No data";
+                } else {
+                    drawPlotCumulInc("#cumulinc-plot", data);
+                }
+            });
+
+
+            /* SURVIVAL ANALYSIS DATA */
+            fetch('/api/endpoint/' + endpoint + '/assocs.json', {
+                cache: 'default',
+                mode: 'same-origin'
+            }).then((response) => {
+                return response.json();
+            }).then((assoc_data) => {
+                /* SURVIVAL ANALYSIS PLOT */
+                new Vue({
+                    el: '#assoc-plot',
+                    data: {
+                        assoc_data: assoc_data["plot"]
+                    },
+                    components: { AssocPlot },
+                });
+
+                /* SURVIVAL ANALYSIS TABLE */
+                new Vue({
+                    el: '#assoc-table',
+                    data: {
+                        assoc_data: assoc_data["table"]
+                    },
+                    components: { AssocTable },
+                });
+            });
+
+
+            /* DRUG TABLE */
+            fetch('/api/endpoint/' + endpoint + '/drugs.json', {
+                cache: 'default',
+                mode: 'same-origin'
+            }).then((response) => {
+                return response.json();
+            }).then((drug_data) => {
+                new Vue({
+                    el: '#drug-table',
+                    data: {
+                        drug_data: drug_data
+                    },
+                    components: { DrugTable },
+                });
+            });
         }
-    });
-
-
-    /* SURVIVAL ANALYSIS DATA */
-    fetch('/api/endpoint/' + endpoint + '/assocs.json', {
-        cache: 'default',
-        mode: 'same-origin'
-    }).then((response) => {
-        return response.json();
-    }).then((assoc_data) => {
-        /* SURVIVAL ANALYSIS PLOT */
-        new Vue({
-            el: '#assoc-plot',
-            data: {
-                assoc_data: assoc_data["plot"]
-            },
-            components: { AssocPlot },
-        });
-
-        /* SURVIVAL ANALYSIS TABLE */
-        new Vue({
-            el: '#assoc-table',
-            data: {
-                assoc_data: assoc_data["table"]
-            },
-            components: { AssocTable },
-        });
-    });
-
-
-    /* DRUG TABLE */
-    fetch('/api/endpoint/' + endpoint + '/drugs.json', {
-        cache: 'default',
-        mode: 'same-origin'
-    }).then((response) => {
-        return response.json();
-    }).then((drug_data) => {
-        new Vue({
-            el: '#drug-table',
-            data: {
-                drug_data: drug_data
-            },
-            components: { DrugTable },
-        });
     });
 }

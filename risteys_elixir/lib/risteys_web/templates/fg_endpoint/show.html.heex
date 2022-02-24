@@ -64,12 +64,12 @@
 			</div>
 
 			<%= render(
-					RisteysWeb.FGEndpointView,
-					"endpoint_explainer.html",
-					steps: @explainer_steps,
-					endpoint: @endpoint,
-					stats: @stats,
-					count_registries: @count_registries
+				RisteysWeb.FGEndpointView,
+				"endpoint_explainer.html",
+				steps: @explainer_steps,
+				endpoint: @endpoint,
+				stats: @stats_FG,
+				count_registries: @count_registries
 				)
 			%>
 
@@ -82,12 +82,15 @@
 					<a href="#">↥</a>
 				</div>
 
-			<%= render(RisteysWeb.FGEndpointView, "similar_endpoints.html", assigns) %>
-
+			<%= #render(RisteysWeb.FGEndpointView, "similar_endpoints.html", assigns) %>
+			<p> (Coming later!)</p>
 			</article>
 		</div>
 	</div>
 
+	<!-- Show FR results only if endpoint is not excluded.
+	if EXCL_REASON is nil, endpoint is not excluded -> show results, otherwise explanation text -->
+	<% excluded = @endpoint.fr_excl # to make case work, value needs to be saved in a variable%>
 
 	<article id="summary-statistics" class="stats-grid box">
 		<div class="left-right-heading">
@@ -95,87 +98,86 @@
 			<a href="#">↥</a>
 		</div>
 
-		<article>
-			<h3>Key figures</h3>
-			<table class="horizontal">
-				<thead>
-					<tr>
-						<th></th>
-						<th>All</th>
-						<th>Female</th>
-						<th>Male</th>
-					</tr>
-				</thead>
-				<tbody>
-					<tr>
-						<th><span id="help-button-nindivs"></span> Number of individuals</th>
-						<td><%= @stats.all.n_individuals %></td>
-						<td><%= @stats.female.n_individuals %></td>
-						<td><%= @stats.male.n_individuals %></td>
-					</tr>
-					<tr>
-						<th><span id="help-button-prevalence"></span> Unadjusted prevalence (%)</th>
-						<td><%= @stats.all.prevalence |> percentage() |> round(2) %></td>
-						<td><%= @stats.female.prevalence |> percentage() |> round(2) %></td>
-						<td><%= @stats.male.prevalence |> percentage() |> round(2) %></td>
-					</tr>
-					<tr>
-						<th><span id="help-button-mean-age"></span> Mean age at first event (years)</th>
-						<td><%= @stats.all.mean_age |> round(2) %></td>
-						<td><%= @stats.female.mean_age |> round(2) %></td>
-						<td><%= @stats.male.mean_age |> round(2) %></td>
-					</tr>
-				</tbody>
-			</table>
+		<article class="sumstats">
+			<h3>-FinRegistry-</h3>
+			<%= case excluded do %>
+				<% nil -> %>
+					<%= render(RisteysWeb.FGEndpointView, "sumstats_key_figures.html", stats: @stats_FR) %>
+				<% "excl_omitted" -> %>
+					<p class = "explanation_text"> This endpoint is excluded from FinRegistry analyses (omitted endpoint). </p>
+
+				<% "excl_diff_def" -> %>
+					<p> This endpoint is excluded (different definition than used in FinnGen).</p>
+
+				<% "excl_both" -> %>
+					<p>This endpoint is excluded (omitted and has different definition than used in FinnGen).</p>
+				<% _ -> %>
+					<p> An issue occured with rendering results for this endpoint.</p>
+			<% end %>
 		</article>
 
-		<article>
+		<article class="sumstats">
+			<h3>-FinnGen-</h3>
+			<%= render(RisteysWeb.FGEndpointView, "sumstats_key_figures.html", stats: @stats_FG) %>
+		</article>
+
+		<article class="sumstats">
+			<%= if is_nil(excluded) do %>
+				<h3 class="narrow_screen_info">-FinRegistry-</h3>
+				<!-- Temporarily (until have data), show only Mortality title and "Coming later" text-->
+				<h3><span id="help-mortality"></span> Mortality</h3>
+				<p> Coming later!</p>
+				<%= #render(RisteysWeb.FGEndpointView, "sumstats_mortality.html", mortality_stats: @mortality_stats_FR) %>
+			<% end %>
+		</article>
+
+		<article class="sumstats">
+			<h3 class="narrow_screen_info">-FinnGen-</h3>
 			<h3><span id="help-mortality"></span> Mortality</h3>
-			<%= if @endpoint.is_core do %>
-			<table class="horizontal">
-				<thead>
-					<tr>
-						<th>Follow-up</th>
-						<th>Absolute risk</th>
-						<th><abbr data-title="Hazard Ratio">HR</abbr> [95% <abbr data-title="confidence interval">CI</abbr>]</th>
-						<th><abbr data-title="p-value">p</abbr></th>
-						<th><abbr data-title="number of individuals">N</abbr></th>
-					</tr>
-				</thead>
-				<tbody>
-					<%= for {title, stat} <- mortality_table(@mortality) do %>
-					<tr>
-						<th><%= title %></th>
-						<td><%= stat.absolute_risk %></td>
-						<td><%= stat.hr %></td>
-						<td><%= stat.pvalue%></td>
-						<td><%= stat.n_individuals %></td>
-					</tr>
-					<% end %>
-				</tbody>
-			</table>
-			<% else %>
-			<p class="no-data">Not a core endpoint, no data to show.</p>
+			<p> Coming later!</p>
+			<%= #render(RisteysWeb.FGEndpointView, "sumstats_mortality.html", mortality_stats: @mortality_stats_FG) %>
+		</article>
+
+		<article class="sumstats">
+			<%= if is_nil(excluded) do %>
+				<h3 class="narrow_screen_info">-FinRegistry-</h3>
+				<h3>Age distribution of first events</h3>
+				<div id={"bin-plot-age-FR"}></div>
 			<% end %>
 		</article>
 
-		<article>
+		<article class="sumstats">
+			<h3 class="narrow_screen_info">-FinnGen-</h3>
 			<h3>Age distribution of first events</h3>
-			<div id="bin-plot-age"></div>
+			<div id={"bin-plot-age-FG"}></div>
 		</article>
 
-		<article>
-			<h3>Year distribution of first events</h3>
-			<div id="bin-plot-year"></div>
-		</article>
-
-		<article>
-			<h3>Cumulative Incidence</h3>
-			<%= if @endpoint.is_core do %>
-			<div id="cumulinc-plot" class="mt-4"></div>
-			<% else %>
-			<p class="no-data">Not a core endpoint, no data to show.</p>
+		<article class="sumstats">
+			<%= if is_nil(excluded) do %>
+				<h3 class="narrow_screen_info">-FinRegistry-</h3>
+				<h3>Year distribution of first events</h3>
+				<div id={"bin-plot-year-FR"}></div>
 			<% end %>
+		</article>
+
+		<article class="sumstats">
+			<h3 class="narrow_screen_info">-FinnGen-</h3>
+			<h3>Year distribution of first events</h3>
+			<div id={"bin-plot-year-FG"}></div>
+		</article>
+
+		<article class="sumstats">
+			<%= if is_nil(excluded) do %>
+				<h3 class="narrow_screen_info">-FinRegistry-</h3>
+				<h3>Cumulative Incidence</h3>
+				<p> Coming later! </p>
+			<% end %>
+		</article>
+
+		<article class="sumstats">
+			<h3 class="narrow_screen_info">-FinnGen-</h3>
+			<h3>Cumulative Incidence</h3>
+			<p> Coming later! </p>
 		</article>
 	</article>
 
@@ -184,8 +186,21 @@
 			<h2>Correlations</h2>
 			<a href="#">↥</a>
 		</div>
+		<%= case excluded do %>
+			<% excluded when is_nil(excluded) -> %>
+				<p> (Coming later!) </p>
 
-		<%= render(RisteysWeb.FGEndpointView, "correlations.html", assigns) %>
+			<% "excl_omitted" -> %>
+				<p> This endpoint is excluded from FinRegistry analyses (omitted endpoint). </p>
+
+			<% "excl_diff_def" -> %>
+				<p> This endpoint is excluded (different definition than used in FinnGen).</p>
+
+			<% "excl_both" -> %>
+				<p>This endpoint is excluded (omitted and has different definition than used in FinnGen).</p>
+			<% _ -> %>
+				<p> An issue occured with rendering results for this endpoint.</p>
+		<% end %>
 	</article>
 
 	<article id="survival-analyses" class="box">
@@ -193,43 +208,20 @@
 			<h2>Survival analyses between endpoints</h2>
 			<a href="#">↥</a>
 		</div>
+		<%= case excluded do %>
+			<% excluded when is_nil(excluded) -> %>
+				<p> (Coming later!) </p>
 
-		<%= case @data_assocs do %>
-		<% [] -> %>
-		<p class="no-data">Not a core endpoint, no data to show.</p>
+			<% "excl_omitted" -> %>
+				<p class> This endpoint is excluded from FinRegistry analyses (omitted endpoint). </p>
 
-		<% _data -> %>
-		<article class="surv-plot">
-			<h3>Plot</h3>
-			<div id="assoc-plot"> <%# Vue.js instance %>
-				<div class="text-center">
-					<p class="legend">
-						<svg width="10" height="10"><circle r="5" cx="5" cy="5" fill="#000000"/></svg> before <%= @endpoint.longname %>
-						<br>
-						<svg width="9" height="9"><rect height="9" width="9" fill="#000000"/></svg> after <%= @endpoint.longname %>
-					</p>
-				</div>
-				<assoc-plot v-bind:assocs="assoc_data" endpoint={@endpoint.name}>
-					<p>
-						<img src={Routes.static_path(@conn, "/images/spinner.svg")} alt="loading spinner">
-						Loading survival analyses plot
-					</p>
-				</assoc-plot>
-			</div>
-		</article>
+			<% "excl_diff_def" -> %>
+				<p> This endpoint is excluded (different definition than used in FinnGen).</p>
 
-		<article>
-			<h3>Table</h3>
-			<div id="assoc-table"> <%# Vue.js instance %>
-				<assoc-table v-bind:table="assoc_data" endpoint={@endpoint.name}>
-					<p>
-						<img src={Routes.static_path(@conn, "/images/spinner.svg")} alt="loading spinner">
-						Loading survival analyses table
-					</p>
-				</assoc-table>
-			</div>
-			<a href={"/api/endpoint/#{@endpoint.name}/assocs.csv"}><button class="button-faded mt-2">Download CSV</button></a>
-		</article>
+			<% "excl_both" -> %>
+				<p>This endpoint is excluded (omitted and has different definition than used in FinnGen).</p>
+			<% _ -> %>
+				<p> An issue occured with rendering results for this endpoint.</p>
 		<% end %>
 	</article>
 
@@ -239,17 +231,20 @@
 			<a href="#">↥</a>
 		</div>
 
-		<%= if @has_drug_stats do %>
-		<article>
-			<div id="drug-table">
-				<drug-table v-bind:drug_data="drug_data" endpoint={@endpoint.name} />
-			</div>
-			<a href={"/api/endpoint/#{@endpoint.name}/drugs.csv"}><button class="button-faded mt-2">Download CSV</button></a>
-		</article>
+		<%= case excluded do %>
+			<% excluded when is_nil(excluded) -> %>
+				<p> (Coming later!) </p>
 
-		<% else %>
-		<p class="no-data">Not a core endpoint, no data to show.</p>
+			<% "excl_omitted" -> %>
+				<p> This endpoint is excluded from FinRegistry analyses (omitted endpoint). </p>
 
+			<% "excl_diff_def" -> %>
+				<p> This endpoint is excluded (different definition than used in FinnGen).</p>
+
+			<% "excl_both" -> %>
+				<p>This endpoint is excluded (omitted and has different definition than used in FinnGen).</p>
+			<% _ -> %>
+				<p> An issue occured with rendering results for this endpoint.</p>
 		<% end %>
 	</article>
 </main>
