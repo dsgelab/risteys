@@ -7,6 +7,14 @@ defmodule RisteysWeb.StatsDataChannel do
     {:ok, socket}
   end
 
+  def handle_in("test_exclusion", %{"endpoint" => endpoint_name}, socket) do
+    payload = FGEndpoint.test_exclusion(endpoint_name)
+
+    :ok = push(socket, "result_exclusion", payload)
+    {:noreply, socket}
+
+  end
+
   def handle_in("get_correlations", %{"endpoint" => endpoint_name}, socket) do
     payload = FGEndpoint.list_correlations(endpoint_name)
     :ok = push(socket, "data_correlations", %{rows: payload})
@@ -19,23 +27,23 @@ defmodule RisteysWeb.StatsDataChannel do
     {:noreply, socket}
   end
 
-  def handle_in("get_age_histogram", %{"endpoint" => endpoint_name}, socket) do
+  def handle_in("get_age_histogram", %{"endpoint" => endpoint_name, "dataset" => dataset}, socket) do
     payload =
-      endpoint_name
-      |> FGEndpoint.get_age_histogram()
+      FGEndpoint.get_age_histogram(endpoint_name, dataset)
       |> to_d3_shape()
 
-    :ok = push(socket, "data_age_histogram", %{data: payload})
+    age_hist_event = "data_age_histogram_" <> dataset
+    :ok = push(socket, age_hist_event, %{data: payload})
     {:noreply, socket}
   end
 
-  def handle_in("get_year_histogram", %{"endpoint" => endpoint_name}, socket) do
+  def handle_in("get_year_histogram", %{"endpoint" => endpoint_name, "dataset" => dataset}, socket) do
     payload =
-      endpoint_name
-      |> FGEndpoint.get_year_histogram()
+      FGEndpoint.get_year_histogram(endpoint_name, dataset)
       |> to_d3_shape()
 
-    :ok = push(socket, "data_year_histogram", %{data: payload})
+    year_hist_event = "data_year_histogram_" <> dataset
+    :ok = push(socket, year_hist_event, %{data: payload})
     {:noreply, socket}
   end
 
