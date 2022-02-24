@@ -13,7 +13,6 @@
     position: relative;
     display: inline-block;
 }
-
 .help-content {
     /* positioning */
     position: absolute;

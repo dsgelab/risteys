@@ -81,6 +81,8 @@ defmodule Risteys.FGEndpoint.Definition do
     # Upset plot and table info
     field :status_upset_plot, :string
     field :status_upset_table, :string
+    # exclusion reason for FinRegistry enpoints. nil = not exluded
+    field :fr_excl, :string
 
     many_to_many :icd10s, Risteys.Icd10,
       join_through: Risteys.FGEndpoint.DefinitionICD10,
@@ -165,7 +167,8 @@ defmodule Risteys.FGEndpoint.Definition do
       :description,
       :gws_hits,
       :status_upset_plot,
-      :status_upset_table
+      :status_upset_table,
+      :fr_excl
     ])
     |> validate_required([:name])
     |> validate_inclusion(:reason_non_core, [nil, "exallc_priority", "correlated", "other"])
