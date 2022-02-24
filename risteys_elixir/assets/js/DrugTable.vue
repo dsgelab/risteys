@@ -70,7 +70,11 @@
                 aria-labelledby="drug-help-label"
                 aria-modal="true"
             >
-                <h2 id="drug-help-label" class="dialog-label">Drug Score </h2>
+            	<div class="dialog-header">
+	                <h2 id="drug-help-label" class="dialog-label">Drug Score </h2>
+	            	<button class="button-faded" onclick="closeDialog('drug-help')">Close</button>
+            	</div>
+
                 <article>
 					<p>
 						Probability of getting the drug after <i>{{ phenocode }}</i> conditional on not having this drug before <i>{{ phenocode }}</i>.
@@ -79,8 +83,6 @@
 						See <i>Drug Statistics</i> on the <a href="/documentation#drug-stats">Documentation page</a> for more information.
 					</p>
                 </article>
-
-                <div class="bottom"><button class="button-faded" onclick="closeDialog('drug-help')">Close</button></div>
             </div>
          </div>
 	</div>

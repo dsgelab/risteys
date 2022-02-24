@@ -272,7 +272,10 @@
                 aria-labelledby="surv-help-label"
                 aria-modal="true"
             >
-                <h2 id="surv-help-label" class="dialog-label">Comparable box plot </h2>
+            	<div class="dialog-header">
+	                <h2 id="surv-help-label" class="dialog-label">Comparable box plot </h2>
+	            	<button class="button-faded" onclick="closeDialog('surv-help')">Close</button>
+            	</div>
                 <article>
 					<p>
 						This plot allows to compare the hazard ratio (HR) for a single survival analysis with the distribution of HRs across all the survival analyses for the same disease endpoint.
@@ -292,8 +295,6 @@
 						If our endpoint of interest is A and we are interested in the survival analysis of A → B (solid dot), we compute the distribution of HRs of type * → B. If the HR for A → B lies inside the distribution of HRs for * → B , this indicates a not too unsurprising association.
 					</p>
                 </article>
-
-                <div class="bottom"><button class="button-faded" onclick="closeDialog('surv-help')">Close</button></div>
             </div>
          </div>
 
