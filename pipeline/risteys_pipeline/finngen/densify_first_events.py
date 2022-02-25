@@ -25,9 +25,9 @@ Input file
 
 Output
 ------
-Ouputs to stdout by default, use redirection to put the result in a file.
+Outputs a Feather file in narrow format with all control information discarded.
 - Dense first events
-  CSV format
+  Feather v2 format
   . columns: individual FinnGen ID, endpoint, age, year, number of events
   . rows: one row per event, so an individual's events span multiple rows
 
@@ -35,6 +35,9 @@ Ouputs to stdout by default, use redirection to put the result in a file.
 
 import argparse
 from pathlib import Path
+
+import pyarrow
+import pyarrow.feather as feather
 
 
 # How the controls, cases, and excluded controls are coded in the input file
@@ -65,7 +68,7 @@ def cli_parser():
     )
     parser.add_argument(
         "-o", "--output",
-        help="path to output 'densified' file (CSV)",
+        help="path to output 'densified' file (Feather v2)",
         required=True,
         type=Path
     )
@@ -98,9 +101,13 @@ def main():
         lambda c: c + "_AGE" in in_header and c + "_YEAR" in in_header and c + "_NEVT" in in_header,
         in_header))
 
-
-    # Add headers to output file
-    print(OUT_HEADER, file=out_file)
+    # Initialize arrays that will be used to make the Feather output file
+    fgid_values = []
+    endpoint_values = []
+    kind_values = []
+    age_values = []
+    year_values = []
+    nevt_values = []
 
     # Get the endpoint data for each individual
     for row in in_file:
@@ -134,7 +141,19 @@ def main():
                 )
 
     in_file.close()
-    out_file.close()
+
+    out_table = pyarrow.table(
+        [
+            fgid_values,
+            endpoint_values,
+            kind_values,
+            age_values,
+            year_values,
+            nevt_values,
+        ],
+        names=OUT_HEADER
+    )
+    feather.write_feather(out_table, args.output, version=2)
 
 
 if __name__ == "__main__":
