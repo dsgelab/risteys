@@ -93,7 +93,7 @@ def cli_parser():
     parser = argparse.ArgumentParser()
     parser.add_argument(
         '-d', '--dense-first-events',
-        help="path to 'densified' first-events phenotype file (Parquet)",
+        help="path to 'densified' first-events phenotype file (Feather v2)",
         required=True,
         type=Path
     )
@@ -121,7 +121,7 @@ def cli_parser():
 
 def load_filter_data(first_events, filter_individuals, minimum_phenotypes):
     """Load, filter and merge data into single dataframe."""
-    df_fevents = pd.read_parquet(first_events)
+    df_fevents = pd.read_feather(first_events)
 
     # Filter individuals
     df_filter_indivs = pd.read_csv(filter_individuals, usecols=["FINNGENID"])
