@@ -121,7 +121,7 @@ def load_data(path_definitions, path_dense_fevents, path_info):
     endpoints = pd.read_csv(path_definitions, usecols=["NAME", "SEX", "CORE_ENDPOINTS"])
 
     # Get first events
-    df_events = pd.read_parquet(path_dense_fevents)
+    df_events = pd.read_feather(path_dense_fevents)
 
     # Keep only core endpoints
     endpoints = endpoints.loc[endpoints.CORE_ENDPOINTS == "yes", :]

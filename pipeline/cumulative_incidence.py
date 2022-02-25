@@ -34,7 +34,7 @@ def cli_parser():
     )
     parser.add_argument(
         "-d", "--dense-events",
-        help="path to the dense events file (Parquet)",
+        help="path to the dense events file (Feather)",
         required=True,
         type=Path
     )
@@ -71,7 +71,7 @@ def load_endpoints(file_path):
 
 def load_data(dense_events, info, core_endpoints):
     logger.info("Loading data")
-    df_events = pd.read_parquet(
+    df_events = pd.read_feather(
         dense_events,
         columns=[
             "FINNGENID",
