@@ -15,7 +15,7 @@ from risteys_pipeline.finregistry.survival_analysis import (
 )
 
 
-def compute_key_figures(first_events, minimal_phenotype):
+def compute_key_figures(first_events, minimal_phenotype, index_persons=False):
     """
     Compute the following key figures for each endpoint:
         - number of individuals
@@ -27,6 +27,7 @@ def compute_key_figures(first_events, minimal_phenotype):
     Args:
         first_events (DataFrame): first events dataframe
         minimal_phenotype(DataFrame): minimal phenotype dataframe
+        index_persons (bool): compute key figures for index persons only (True) or everyone (False)
 
     Returns:
         kf (DataFrame): key figures dataframe with the following columns:
@@ -35,21 +36,29 @@ def compute_key_figures(first_events, minimal_phenotype):
         mean_age_female, mean_age_male, mean_age_all,
         prevalence_female, prevalence_male, prevalence_all
     """
-    logger.info("Computing key figures")
+    logger.info(
+        "Computing key figures" + (" for index persons" if index_persons else "")
+    )
+
+    mp = minimal_phenotype.copy()
+    fe = first_events.copy()
+
+    # Only include index_persons if specified
+    if index_persons:
+        mp = mp.loc[mp["index_person"] == True].reset_index(drop=True)
+        fe = fe.loc[fe["index_person"] == True].reset_index(drop=True)
 
     # Calculate the total number of individuals
     # Note: individuals for sex="unknown" is based on first events
     n_total = {
-        "female": sum(minimal_phenotype["female"] == True),
-        "male": sum(minimal_phenotype["female"] == False),
-        "unknown": len(
-            first_events.loc[first_events["sex"] == "unknown", "finregistryid"].unique()
-        ),
+        "female": sum(mp["female"] == True),
+        "male": sum(mp["female"] == False),
+        "unknown": len(fe.loc[fe["sex"] == "unknown", "finregistryid"].unique()),
     }
 
     # Calculate key figures by endpoint and sex
     kf = (
-        first_events.groupby(["endpoint", "sex"])
+        fe.groupby(["endpoint", "sex"])
         .agg({"finregistryid": "count", "age": "mean"})
         .rename(columns={"finregistryid": "nindivs_", "age": "mean_age_"})
         .fillna({"nindivs_": 0})
