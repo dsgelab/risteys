@@ -26,9 +26,10 @@ def pipeline():
     all_cases = prep_all_cases(first_events, cohort)
 
     # Run key figures and write to a file
-    # TODO: run for index persons only
-    kf = compute_key_figures(first_events, minimal_phenotype)
-    kf.to_csv(output_path + "/key_figures.csv", index=False)
+    kf_all = compute_key_figures(first_events, minimal_phenotype, index_persons=False)
+    kf_all.to_csv(output_path + "/key_figures_all.csv", index=False)
+    kf_index_persons = compute_key_figures(first_events, minimal_phenotype, index_persons=True)
+    kf_index_persons.to_csv(output_path + "/key_figures_index_persons.csv", index=False)
 
     # Run cumulative incidence and write to a file
     ci = cumulative_incidence(cohort, all_cases, endpoints)
