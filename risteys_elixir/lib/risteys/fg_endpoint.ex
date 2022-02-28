@@ -22,6 +22,22 @@ defmodule Risteys.FGEndpoint do
     end)
   end
 
+  def set_status!(endpoint_name, field, status) when is_binary(endpoint_name) do
+    Repo.get_by!(Phenocode, name: endpoint_name)
+    |> set_status!(field, status)
+  end
+
+  def set_status!(%Phenocode{} = endpoint, field, status) do
+    attrs =
+      case field do
+        :upset_plot -> %{status_upset_plot: status}
+        :upset_table -> %{status_upset_table: status}
+      end
+
+    Phenocode.changeset(endpoint, attrs)
+    |> Repo.update!()
+  end
+
   def get_core_endpoints() do
     Repo.all(from pp in Phenocode, where: pp.is_core, select: pp.name)
     |> Enum.into(MapSet.new())
@@ -180,11 +196,11 @@ defmodule Risteys.FGEndpoint do
       end
 
     multi =
-    if Enum.empty?(filters) do
-      multi
-    else
-      Map.put(multi, :filter_registries, filters)
-    end
+      if Enum.empty?(filters) do
+        multi
+      else
+        Map.put(multi, :filter_registries, filters)
+      end
 
     multi
   end
