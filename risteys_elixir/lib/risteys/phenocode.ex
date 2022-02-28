@@ -77,6 +77,10 @@ defmodule Risteys.Phenocode do
     # Genome-wide significant hits
     field :gws_hits, :integer
 
+    # Upset plot and table info
+    field :status_upset_plot, :string
+    field :status_upset_table, :string
+
     many_to_many :icd10s, Risteys.Icd10,
       join_through: Risteys.PhenocodeIcd10,
       # Delete ICD-10s not included in the update
@@ -92,6 +96,16 @@ defmodule Risteys.Phenocode do
 
   @doc false
   def changeset(phenocode, attrs) do
+    valid_upset_status = [
+      "ok",
+      "not run",
+      "omit",
+      "not enough data",
+      "no data",
+      "pending unroll",
+      "unknown"
+    ]
+
     phenocode
     |> cast(attrs, [
       :name,
@@ -147,7 +161,9 @@ defmodule Risteys.Phenocode do
       :category,
       :ontology,
       :description,
-      :gws_hits
+      :gws_hits,
+      :status_upset_plot,
+      :status_upset_table
     ])
     |> validate_required([:name])
     |> validate_inclusion(:reason_non_core, [nil, "exallc_priority", "correlated", "other"])
@@ -175,6 +191,8 @@ defmodule Risteys.Phenocode do
       end
     end)
     |> validate_number(:gws_hits, greater_than_or_equal_to: 0)
+    |> validate_inclusion(:status_upset_plot, valid_upset_status)
+    |> validate_inclusion(:status_upset_table, valid_upset_status)
     |> unique_constraint(:name)
   end
 
