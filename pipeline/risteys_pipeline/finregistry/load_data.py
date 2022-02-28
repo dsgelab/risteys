@@ -18,9 +18,10 @@ def load_minimal_phenotype_data(data_path=FINREGISTRY_MINIMAL_PHENOTYPE_DATA_PAT
     - drop rows with no FinRegistry ID
     - drop duplicated rows
     - add birth and death year
+    - drop redundant columns (date_of_birth, death_date)
+    - set `index_person` to boolean
     - add `female`
     - replace numeric `sex` with strings
-    - drop redundant columns (date_of_birth, death_date)
     
     Args:
         data_path (str, optional): file path of the minimal phenotype csv file
@@ -28,14 +29,21 @@ def load_minimal_phenotype_data(data_path=FINREGISTRY_MINIMAL_PHENOTYPE_DATA_PAT
     Returns: 
         df (DataFrame): minimal phenotype dataframe
     """
-    cols = ["FINREGISTRYID", "date_of_birth", "death_date", "sex"]
+    cols = ["FINREGISTRYID", "date_of_birth", "death_date", "sex", "index_person"]
     df = pd.read_feather(data_path, columns=cols)
     logger.info(f"{df.shape[0]} rows loaded")
+
     df.columns = df.columns.str.lower()
+   
     df = df.loc[~df["finregistryid"].isna()]
     df = df.drop_duplicates(subset=["finregistryid"]).reset_index(drop=True)
+    
     df["birth_year"] = to_decimal_year(df["date_of_birth"])
     df["death_year"] = to_decimal_year(df["death_date"])
+    df = df.drop(columns=["date_of_birth", "death_date"])
+    
+    df["index_person"] = df["index_person"].astype(bool)
+    
     df["female"] = pd.NA
     df.loc[df["sex"] == SEX_FEMALE_MINIMAL_PHENOTYPE, "female"] = True
     df.loc[df["sex"] == SEX_MALE_MINIMAL_PHENOTYPE, "female"] = False
@@ -46,8 +54,9 @@ def load_minimal_phenotype_data(data_path=FINREGISTRY_MINIMAL_PHENOTYPE_DATA_PAT
             np.nan: "unknown",
         }
     )
-    df = df.drop(columns=["date_of_birth", "death_date"])
+    
     logger.info(f"{df.shape[0]} rows after data pre-processing")
+    
     return df
 
 
