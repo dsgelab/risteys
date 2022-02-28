@@ -34,16 +34,16 @@ def load_minimal_phenotype_data(data_path=FINREGISTRY_MINIMAL_PHENOTYPE_DATA_PAT
     logger.info(f"{df.shape[0]} rows loaded")
 
     df.columns = df.columns.str.lower()
-   
+
     df = df.loc[~df["finregistryid"].isna()]
     df = df.drop_duplicates(subset=["finregistryid"]).reset_index(drop=True)
-    
+
     df["birth_year"] = to_decimal_year(df["date_of_birth"])
     df["death_year"] = to_decimal_year(df["death_date"])
     df = df.drop(columns=["date_of_birth", "death_date"])
-    
+
     df["index_person"] = df["index_person"].astype(bool)
-    
+
     df["female"] = pd.NA
     df.loc[df["sex"] == SEX_FEMALE_MINIMAL_PHENOTYPE, "female"] = True
     df.loc[df["sex"] == SEX_MALE_MINIMAL_PHENOTYPE, "female"] = False
@@ -54,9 +54,9 @@ def load_minimal_phenotype_data(data_path=FINREGISTRY_MINIMAL_PHENOTYPE_DATA_PAT
             np.nan: "unknown",
         }
     )
-    
+
     logger.info(f"{df.shape[0]} rows after data pre-processing")
-    
+
     return df
 
 
@@ -74,7 +74,7 @@ def load_endpoints_data(data_path=FINREGISTRY_ENDPOINTS_DATA_PATH):
         df (DataFrame): FinnGen endpoints dataframe
     """
     cols = ["NAME", "SEX", "OMIT"]
-    df = pd.read_csv(data_path, sep=";", usecols=cols, header=0, skiprows=[1])
+    df = pd.read_csv(data_path, sep=";", usecols=cols, skiprows=[1], encoding="latin1")
     logger.info(f"{df.shape[0]} rows loaded")
     df = df.rename(columns={"NAME": "endpoint", "SEX": "sex", "OMIT": "omit"})
     df = df.loc[df["omit"].isnull()].reset_index(drop=True)
