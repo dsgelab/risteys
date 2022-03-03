@@ -9,6 +9,7 @@ defmodule Risteys.FGEndpoint do
   alias Risteys.Icd10
   alias Risteys.StatsSex
   alias Risteys.Genomics
+  alias Risteys.DrugStats
 
   alias Risteys.FGEndpoint.Correlation
   alias Risteys.FGEndpoint.ExplainerStep
@@ -581,5 +582,17 @@ defmodule Risteys.FGEndpoint do
       data_point = %{age: age, value: value * 100}
       [data_point | acc]
     end)
+  end
+
+  # --- Drug statistics
+  def has_drug_stats?(endpoint) do
+    stat_count =
+      Repo.one(
+        from dstats in DrugStats,
+          where: dstats.phenocode_id == ^endpoint.id,
+          select: count()
+      )
+
+    stat_count > 0
   end
 end
