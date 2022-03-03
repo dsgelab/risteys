@@ -206,7 +206,7 @@ if (path.startsWith("/phenocode/")) {  // Load only on phenocode pages
         });
     });
 
-    /* SURVIVAL CURVES */
+    /* CUMMULATIVE INCIDENCE */
     stats_data_channel.push("get_cumulative_incidence", {endpoint: phenocode});  // request plot data
     stats_data_channel.on("data_cumulative_incidence", payload => {
         const color_female = "#9f0065";
@@ -237,14 +237,14 @@ if (path.startsWith("/phenocode/")) {  // Load only on phenocode pages
     });
 
 
-    /* ASSOC DATA */
+    /* SURVIVAL ANALYSIS DATA */
     fetch('/api/phenocode/' + phenocode + '/assocs.json', {
         cache: 'default',
         mode: 'same-origin'
     }).then((response) => {
         return response.json();
     }).then((assoc_data) => {
-        /* ASSOC PLOT */
+        /* SURVIVAL ANALYSIS PLOT */
         new Vue({
             el: '#assoc-plot',
             data: {
@@ -253,7 +253,7 @@ if (path.startsWith("/phenocode/")) {  // Load only on phenocode pages
             components: { AssocPlot },
         });
 
-        /* ASSOC TABLE */
+        /* SURVIVAL ANALYSIS TABLE */
         new Vue({
             el: '#assoc-table',
             data: {

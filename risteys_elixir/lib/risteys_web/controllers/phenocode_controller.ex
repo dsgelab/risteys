@@ -178,6 +178,7 @@ defmodule RisteysWeb.PhenocodeController do
     |> assign(:description, description)
     |> assign(:mortality, mortality_stats)
     |> assign(:data_assocs, data_assocs(phenocode))
+    |> assign(:has_drug_stats, FGEndpoint.has_drug_stats?(phenocode))
     |> assign(:authz_list_variants?, authz_list_variants?)
     |> assign(:variants_by_corr, variants_by_corr)
     |> render("show.html")
