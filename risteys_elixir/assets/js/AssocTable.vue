@@ -1,6 +1,6 @@
 <template>
 	<div role="table" class="assoc-scrolling">
-		<div role="rowgroup" id="grid-assoc-header">
+		<div role="rowgroup">
 			<div role="row" class="grid-assoc-header-top">
 				<div role="columnheader">
 					<p>Endpoint</p>
@@ -93,7 +93,7 @@
 				v-bind:class="bg_even(idx) + ' grid-assoc-body'"
 			>
 				<!-- ENDPOINT NAME -->
-				<div role="cell"> <!--v-bind:class="bg_even(idx)" ?? -->
+				<div role="cell">
 					<img src="/images/explag.svg" v-on:click="toggle_fold(pheno.name)" alt="expand data" class="cursor-pointer mini-button">
 					<a :href="'/phenocode/' + pheno.name" :title="pheno.name">{{ pheno.longname }}</a>
 				</div>
@@ -460,10 +460,7 @@ export default {
 }
 
 /* Grid table layout */
-#grid-assoc-header {
-	display: grid;
-	grid-template-columns: 1fr;
-
+[role="rowgroup"]:nth-child(1) {
 	position: sticky;
 	top: 0;
 	background-color: #fafafa;
