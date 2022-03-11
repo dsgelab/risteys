@@ -15,7 +15,11 @@
 					</p>
 				</div>
 				<div role="columnheader">
-					<p><HelpDrugScore v-bind:phenocode="this.phenocode" /> Score</p>
+					<p>
+						<p><a class="help-button" href="#dialog-drug-help" onclick="openDialog('drug-help')">?</a></p>
+						Score
+					</p>
+
 					<p class="end-align">
 						<input type="radio" id="score_asc" value="score_asc" v-model="sorter" v-on:change="refresh_table()" checked><label for="score_asc" class="radio-left">▲</label><input type="radio" id="score_desc" value="score_desc" v-model="sorter" v-on:change="refresh_table()"><label for="score_desc" class="radio-right">▼</label>
 					</p>
@@ -59,12 +63,31 @@
 		<template v-if="drug_table.length == 0">
 			<p>No data.</p>
 		</template>
+
+		<!-- this need to be the last child of the parent <div> element to make the help box always appear -->
+        <div id="drug-help" class="dialog-backdrop hidden" tabindex="0">
+            <div role="dialog"
+                aria-labelledby="drug-help-label"
+                aria-modal="true"
+            >
+                <h2 id="drug-help-label" class="dialog-label">Drug Score </h2>
+                <article>
+					<p>
+						Probability of getting the drug after <i>{{ phenocode }}</i> conditional on not having this drug before <i>{{ phenocode }}</i>.
+					</p>
+					<p>
+						See <i>Drug Statistics</i> on the <a href="/documentation#drug-stats">Documentation page</a> for more information.
+					</p>
+                </article>
+
+                <div class="bottom"><button class="button-faded" onclick="closeDialog('drug-help')">Close</button></div>
+            </div>
+         </div>
 	</div>
 </template>
 
 <script>
 import { filter, reverse, sortBy } from 'lodash-es';
-import HelpDrugScore from './HelpDrugScore.vue';
 
 
 let compute_table = (data, drug_filter, sorter) => {
@@ -148,9 +171,6 @@ export default {
 		// The current view is kept in drug_table.
 		// We do this because using only drug_table would lead to information loss when filtering out by drugs.
 		this.drug_table = this.drug_data;
-	},
-	components: {
-		HelpDrugScore
 	}
 }
 </script>
