@@ -185,7 +185,15 @@ defmodule RisteysWeb.PhenocodeView do
       |> Enum.reject(&is_nil/1)
       |> Enum.max()
 
-    count / max * 100
+    if max != 0 do
+      count / max * 100
+
+    else
+      # If there is no data then max will be 0 but we can't divide by 0.
+      # So we handle this corner case by returning 0, which will
+      # effectively set the bar width to 0 in the endpoint explainer flow.
+      0
+    end
   end
 
   # -- Ontology --
