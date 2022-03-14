@@ -1,4 +1,4 @@
-defmodule RisteysWeb.PhenocodeController do
+defmodule RisteysWeb.FGEndpointController do
   use RisteysWeb, :controller
 
   alias Risteys.{
@@ -8,14 +8,19 @@ defmodule RisteysWeb.PhenocodeController do
     DrugStats,
     FGEndpoint,
     MortalityStats,
-    Phenocode,
     StatsSex
   }
 
   import Ecto.Query
 
+  def redirect_phenocode(conn, %{"name" => name}) do
+    conn
+    |> put_status(:moved_permanently)
+    |> redirect(to: Routes.fg_endpoint_path(conn, :show, name))
+  end
+
   def show(conn, %{"name" => name}) do
-    case Repo.get_by(Phenocode, name: name) do
+    case Repo.get_by(FGEndpoint.Definition, name: name) do
       nil ->
         conn
         |> assign(:page_title, "404 Not Found: #{name}")
@@ -24,8 +29,8 @@ defmodule RisteysWeb.PhenocodeController do
         |> put_view(RisteysWeb.ErrorView)
         |> render("404.html")
 
-      phenocode ->
-        show_phenocode(conn, phenocode)
+      endpoint ->
+        show_endpoint(conn, endpoint)
     end
   end
 
@@ -41,19 +46,19 @@ defmodule RisteysWeb.PhenocodeController do
     # Set filename to have the endpoint name, for clarity to the users once the file is downloaded
     conn = set_filename(conn, name <> "_survival-analyses.csv")
 
-    phenocode = Repo.get_by(Phenocode, name: name)
-    assocs = data_assocs(phenocode)
+    endpoint = Repo.get_by(FGEndpoint.Definition, name: name)
+    assocs = data_assocs(endpoint)
 
     conn =
       conn
-      |> assign(:phenocode, phenocode)
+      |> assign(:endpoint, endpoint)
       |> assign(:assocs, assocs)
 
     case format do
       :json ->
         # These are only needed on the JSON API
-        prior_distribs = hr_prior_distribs(phenocode)
-        outcome_distribs = hr_outcome_distribs(phenocode)
+        prior_distribs = hr_prior_distribs(endpoint)
+        outcome_distribs = hr_outcome_distribs(endpoint)
 
         conn
         |> assign(:hr_prior_distribs, prior_distribs)
@@ -75,14 +80,14 @@ defmodule RisteysWeb.PhenocodeController do
 
   defp get_drugs(conn, %{"name" => name}, format) do
     conn = set_filename(conn, name <> "_drugs.csv")
-    phenocode = Repo.get_by(Phenocode, name: name)
+    endpoint = Repo.get_by(FGEndpoint.Definition, name: name)
 
     drug_stats =
       Repo.all(
         from dstats in DrugStats,
           join: drug in ATCDrug,
           on: drug.id == dstats.atc_id,
-          where: dstats.phenocode_id == ^phenocode.id,
+          where: dstats.fg_endpoint_id == ^endpoint.id,
           order_by: [desc: :score],
           select: %{
             description: drug.description,
@@ -102,23 +107,23 @@ defmodule RisteysWeb.PhenocodeController do
     end
   end
 
-  defp show_phenocode(conn, phenocode) do
+  defp show_endpoint(conn, endpoint) do
     description =
-      if not is_nil(phenocode.description) do
-        phenocode.description
+      if not is_nil(endpoint.description) do
+        endpoint.description
       else
         "No definition available."
       end
 
     ontology =
-      if not is_nil(phenocode.ontology) do
-        phenocode.ontology
+      if not is_nil(endpoint.ontology) do
+        endpoint.ontology
       else
         %{}
       end
 
     # Get stats
-    stats = get_stats(phenocode)
+    stats = get_stats(endpoint)
     %{all: %{distrib_year: distrib_year, distrib_age: distrib_age}} = stats
 
     # Unwrap histograms
@@ -147,7 +152,7 @@ defmodule RisteysWeb.PhenocodeController do
       end
 
     # Mortality stats
-    mortality_stats = get_mortality_stats(phenocode)
+    mortality_stats = get_mortality_stats(endpoint)
 
     # Variants in correlations
     authz_list_variants? =
@@ -159,33 +164,33 @@ defmodule RisteysWeb.PhenocodeController do
 
     variants_by_corr =
       if authz_list_variants? do
-        FGEndpoint.list_variants_by_correlation(phenocode)
+        FGEndpoint.list_variants_by_correlation(endpoint)
       else
         []
       end
 
     conn
-    |> assign(:endpoint, phenocode)
-    |> assign(:page_title, phenocode.name)
-    |> assign(:replacements, FGEndpoint.find_replacement_endpoints(phenocode))
-    |> assign(:explainer_steps, FGEndpoint.get_explainer_steps(phenocode))
+    |> assign(:endpoint, endpoint)
+    |> assign(:page_title, endpoint.name)
+    |> assign(:replacements, FGEndpoint.find_replacement_endpoints(endpoint))
+    |> assign(:explainer_steps, FGEndpoint.get_explainer_steps(endpoint))
     |> assign(:ontology, ontology)
-    |> assign(:broader_endpoints, FGEndpoint.broader_endpoints(phenocode))
-    |> assign(:narrower_endpoints, FGEndpoint.narrower_endpoints(phenocode))
+    |> assign(:broader_endpoints, FGEndpoint.broader_endpoints(endpoint))
+    |> assign(:narrower_endpoints, FGEndpoint.narrower_endpoints(endpoint))
     |> assign(:stats, stats)
     |> assign(:distrib_year, distrib_year)
     |> assign(:distrib_age, distrib_age)
     |> assign(:description, description)
     |> assign(:mortality, mortality_stats)
-    |> assign(:data_assocs, data_assocs(phenocode))
-    |> assign(:has_drug_stats, FGEndpoint.has_drug_stats?(phenocode))
+    |> assign(:data_assocs, data_assocs(endpoint))
+    |> assign(:has_drug_stats, FGEndpoint.has_drug_stats?(endpoint))
     |> assign(:authz_list_variants?, authz_list_variants?)
     |> assign(:variants_by_corr, variants_by_corr)
     |> render("show.html")
   end
 
-  defp get_stats(phenocode) do
-    stats = Repo.all(from ss in StatsSex, where: ss.phenocode_id == ^phenocode.id)
+  defp get_stats(endpoint) do
+    stats = Repo.all(from ss in StatsSex, where: ss.fg_endpoint_id == ^endpoint.id)
 
     no_stats = %{
       n_individuals: "-",
@@ -220,18 +225,18 @@ defmodule RisteysWeb.PhenocodeController do
     }
   end
 
-  defp get_mortality_stats(phenocode) do
-    Repo.all(from ms in MortalityStats, where: ms.phenocode_id == ^phenocode.id)
+  defp get_mortality_stats(endpoint) do
+    Repo.all(from ms in MortalityStats, where: ms.fg_endpoint_id == ^endpoint.id)
   end
 
-  defp data_assocs(phenocode) do
+  defp data_assocs(endpoint) do
     query =
       from assoc in CoxHR,
-        join: prior in Phenocode,
+        join: prior in FGEndpoint.Definition,
         on: assoc.prior_id == prior.id,
-        join: outcome in Phenocode,
+        join: outcome in FGEndpoint.Definition,
         on: assoc.outcome_id == outcome.id,
-        where: assoc.prior_id == ^phenocode.id or assoc.outcome_id == ^phenocode.id,
+        where: assoc.prior_id == ^endpoint.id or assoc.outcome_id == ^endpoint.id,
         order_by: [desc: assoc.hr],
         select: %{
           prior_id: prior.id,
@@ -253,7 +258,7 @@ defmodule RisteysWeb.PhenocodeController do
     Repo.all(query)
   end
 
-  defp hr_prior_distribs(phenocode) do
+  defp hr_prior_distribs(endpoint) do
     # at least that amount for a meaningful distribution
     min_count = 30
 
@@ -281,18 +286,18 @@ defmodule RisteysWeb.PhenocodeController do
         }
 
     Repo.all(
-      from p in subquery(percs),
+      from endpoint in subquery(percs),
         join: cnt in subquery(counts),
-        on: p.prior_id == cnt.prior_id,
-        where: p.outcome_id == ^phenocode.id and cnt.count > ^min_count,
+        on: endpoint.prior_id == cnt.prior_id,
+        where: endpoint.outcome_id == ^endpoint.id and cnt.count > ^min_count,
         select: %{
-          pheno_id: p.prior_id,
-          percent_rank: p.percent_rank
+          endpoint_id: endpoint.prior_id,
+          percent_rank: endpoint.percent_rank
         }
     )
   end
 
-  defp hr_outcome_distribs(phenocode) do
+  defp hr_outcome_distribs(endpoint) do
     # at least that amount for a meaningful distribution
     min_count = 30
 
@@ -320,13 +325,13 @@ defmodule RisteysWeb.PhenocodeController do
         }
 
     Repo.all(
-      from p in subquery(percs),
+      from endpoint in subquery(percs),
         join: cnt in subquery(counts),
-        on: p.outcome_id == cnt.outcome_id,
-        where: p.prior_id == ^phenocode.id and cnt.count > ^min_count,
+        on: endpoint.outcome_id == cnt.outcome_id,
+        where: endpoint.prior_id == ^endpoint.id and cnt.count > ^min_count,
         select: %{
-          pheno_id: p.outcome_id,
-          percent_rank: p.percent_rank
+          endpoint_id: endpoint.outcome_id,
+          percent_rank: endpoint.percent_rank
         }
     )
   end

@@ -1,8 +1,8 @@
-defmodule Risteys.Phenocode do
+defmodule Risteys.FGEndpoint.Definition do
   use Ecto.Schema
   import Ecto.Changeset
 
-  schema "phenocodes" do
+  schema "fg_endpoint_definitions" do
     field :name, :string
 
     field :tags, :string
@@ -82,12 +82,12 @@ defmodule Risteys.Phenocode do
     field :status_upset_table, :string
 
     many_to_many :icd10s, Risteys.Icd10,
-      join_through: Risteys.PhenocodeIcd10,
+      join_through: Risteys.FGEndpoint.DefinitionICD10,
       # Delete ICD-10s not included in the update
       on_replace: :delete
 
     many_to_many :icd9s, Risteys.Icd9,
-      join_through: Risteys.PhenocodeIcd9,
+      join_through: Risteys.FGEndpoint.DefinitionICD9,
       # Delete ICD-9s not included in the update
       on_replace: :delete
 
@@ -95,7 +95,7 @@ defmodule Risteys.Phenocode do
   end
 
   @doc false
-  def changeset(phenocode, attrs) do
+  def changeset(endpoint, attrs) do
     valid_upset_status = [
       "ok",
       "not run",
@@ -106,7 +106,7 @@ defmodule Risteys.Phenocode do
       "unknown"
     ]
 
-    phenocode
+    endpoint
     |> cast(attrs, [
       :name,
       :tags,

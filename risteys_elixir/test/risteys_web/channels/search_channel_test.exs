@@ -11,28 +11,28 @@ defmodule RisteysWeb.SearchChannelTest do
     {:ok, socket: socket}
   end
 
-  test "search for a phenocode by longname", %{socket: socket} do
+  test "search for a endpoint by longname", %{socket: socket} do
     push(socket, "query", %{"body" => "XYZ00"})
 
     assert_push "results", %{
       body: %{
         results: [
           [
-            "Phenocode long name",
+            "Endpoint long name",
             [
               %{
                 content: _,
-                phenocode: _,
+                endpoint: _,
                 url: _
               }
             ]
           ],
 	  [
-	    "Phenocode name",
+	    "Endpoint name",
 	    [
 	      %{
 		content: _,
-		phenocode: _,
+		endpoint: _,
 		url: _,
 	      }
 	    ]

@@ -1,5 +1,4 @@
 alias Risteys.FGEndpoint
-alias Risteys.Phenocode
 alias Risteys.Repo
 
 require Logger
@@ -8,7 +7,7 @@ Logger.configure(level: :info)
 [pheno_geno_corr_filepath, geno_variants_filepath | _] = System.argv()
 
 endpoints =
-  Repo.all(Phenocode)
+  Repo.all(FGEndpoint.Definition)
   |> Enum.reduce(%{}, fn endpoint, acc ->
   Map.put_new(acc, endpoint.name, endpoint)
 end)
@@ -126,7 +125,7 @@ end)
 
       upsert =
         endpoint_a
-        |> Phenocode.changeset(%{gws_hits: gws_hits_a})
+        |> FGEndpoint.Definition.changeset(%{gws_hits: gws_hits_a})
         |> Repo.insert_or_update()
 
       case upsert do
@@ -144,8 +143,8 @@ end)
       # Split same vs. opposite direction-of-effect variants
       upsert =
         FGEndpoint.upsert_correlation(%{
-          phenocode_a_id: endpoint_a.id,
-          phenocode_b_id: endpoint_b.id,
+          fg_endpoint_a_id: endpoint_a.id,
+          fg_endpoint_b_id: endpoint_b.id,
           case_overlap: case_overlap,
           shared_of_a: shared_of_a,
           shared_of_b: shared_of_b,

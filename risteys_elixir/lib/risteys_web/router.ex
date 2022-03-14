@@ -19,7 +19,10 @@ defmodule RisteysWeb.Router do
     get "/", HomeController, :index
     get "/documentation", DocumentationController, :index
     get "/changelog", ChangelogController, :index
-    get "/phenocode/:name", PhenocodeController, :show
+    get "/endpoint/:name", FGEndpointController, :show
+
+    # Redirect legacy URL to keep shared and published links working
+    get "/phenocode/:name", FGEndpointController, :redirect_phenocode
   end
 
   scope "/auth", RisteysWeb do
@@ -33,9 +36,9 @@ defmodule RisteysWeb.Router do
   scope "/api", RisteysWeb do
     pipe_through :api
 
-    get "/phenocode/:name/assocs.json", PhenocodeController, :get_assocs_json
-    get "/phenocode/:name/assocs.csv", PhenocodeController, :get_assocs_csv
-    get "/phenocode/:name/drugs.json", PhenocodeController, :get_drugs_json
-    get "/phenocode/:name/drugs.csv", PhenocodeController, :get_drugs_csv
+    get "/endpoint/:name/assocs.json", FGEndpointController, :get_assocs_json
+    get "/endpoint/:name/assocs.csv", FGEndpointController, :get_assocs_csv
+    get "/endpoint/:name/drugs.json", FGEndpointController, :get_drugs_json
+    get "/endpoint/:name/drugs.csv", FGEndpointController, :get_drugs_csv
   end
 end
