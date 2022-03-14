@@ -1,5 +1,5 @@
 require Logger
-alias Risteys.{Repo, Phenocode, ATCDrug, DrugStats}
+alias Risteys.{FGEndpoint, Repo, ATCDrug, DrugStats}
 
 Logger.configure(level: :info)
 [drug_descs_path, drug_scores_path | _] = System.argv()
@@ -66,13 +66,13 @@ end)
                   "n_indivs" => n_indivs
                 } ->
   Logger.debug("Data for #{endpoint} / #{atc}")
-  pheno = Repo.get_by(Phenocode, name: endpoint)
+  endpoint = Repo.get_by(FGEndpoint.Definition, name: endpoint)
   atc_drug = Repo.get_by(ATCDrug, atc: atc)
 
-  if not is_nil(pheno) and not is_nil(atc_drug) do
+  if not is_nil(endpoint) and not is_nil(atc_drug) do
     drug_stats =
       case Repo.get_by(DrugStats,
-             phenocode_id: pheno.id,
+             fg_endpoint_id: endpoint.id,
              atc_id: atc_drug.id
            ) do
         nil -> %DrugStats{}
@@ -82,7 +82,7 @@ end)
     drug_stats =
       drug_stats
       |> DrugStats.changeset(%{
-        phenocode_id: pheno.id,
+        fg_endpoint_id: endpoint.id,
         atc_id: atc_drug.id,
         score: score |> String.to_float(),
         stderr: stderr |> String.to_float(),

@@ -4,7 +4,7 @@ defmodule Risteys.StatsSex do
 
   schema "stats_sex" do
     field :sex, :integer
-    field :phenocode_id, :id
+    field :fg_endpoint_id, :id
 
     field :mean_age, :float
     field :n_individuals, :integer
@@ -24,11 +24,11 @@ defmodule Risteys.StatsSex do
       :n_individuals,
       :prevalence,
       :mean_age,
-      :phenocode_id,
+      :fg_endpoint_id,
       :distrib_year,
       :distrib_age
     ])
-    |> validate_required([:sex, :phenocode_id])
+    |> validate_required([:sex, :fg_endpoint_id])
     # 0: all, 1: male, 2: female
     |> validate_inclusion(:sex, [0, 1, 2])
     # keep only non-individual level data
@@ -40,7 +40,7 @@ defmodule Risteys.StatsSex do
       check_distrib(hist)
     end)
     |> validate_change(:distrib_age, fn :distrib_age, %{hist: hist} -> check_distrib(hist) end)
-    |> unique_constraint(:sex, name: :sex_phenocode_id)
+    |> unique_constraint(:sex, name: :sex_fg_endpoint_id)
   end
 
   defp check_distrib(hist) do

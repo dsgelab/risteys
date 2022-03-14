@@ -7,11 +7,11 @@
 				</div>
 
 				<div role="columnheader" aria-colspan="4">
-					<p>Before {{ phenocode }}</p>
+					<p>Before {{ endpoint }}</p>
 				</div>
 
 				<div role="columnheader" aria-colspan="4">
-					<p>After {{ phenocode }}</p>
+					<p>After {{ endpoint }}</p>
 				</div>
 			</div>
 
@@ -22,7 +22,7 @@
 								type="text"
 								placeholder="filter by name"
 								v-on:keyup.stop="refresh_table()"
-								v-model="pheno_filter"
+								v-model="endpoint_filter"
 								class="mt-2">
 						</p>
 				</div>
@@ -87,7 +87,7 @@
 			</div>
 		</div>
 
-		<div v-for="(pheno, idx) in assoc_table" role="rowgroup">
+		<div v-for="(endpoint, idx) in assoc_table" role="rowgroup">
 			<!-- LAG: no lag -->
 			<div
 				role="row"
@@ -95,48 +95,48 @@
 			>
 				<!-- ENDPOINT NAME -->
 				<div role="cell">
-					<img src="/images/explag.svg" v-on:click="toggle_fold(pheno.name)" alt="expand data" class="cursor-pointer mini-button">
-					<a :href="'/phenocode/' + pheno.name" :title="pheno.name">{{ pheno.longname }}</a>
+					<img src="/images/explag.svg" v-on:click="toggle_fold(endpoint.name)" alt="expand data" class="cursor-pointer mini-button">
+					<a :href="'/endpoint/' + endpoint.name" :title="endpoint.name">{{ endpoint.longname }}</a>
 				</div>
 
 				<!-- (before) HR -->
-				<div role="cell" v-if="pheno.all.before.hr === null">-</div>
-				<div role="cell" v-else-if="pheno.all.before.hr >100">&gt;&nbsp;100</div>
-				<div role="cell" v-else>{{ pheno.all.before.hr_str }} [{{ pheno.all.before.ci_min }},&nbsp;{{ pheno.all.before.ci_max }}]</div>
+				<div role="cell" v-if="endpoint.all.before.hr === null">-</div>
+				<div role="cell" v-else-if="endpoint.all.before.hr >100">&gt;&nbsp;100</div>
+				<div role="cell" v-else>{{ endpoint.all.before.hr_str }} [{{ endpoint.all.before.ci_min }},&nbsp;{{ endpoint.all.before.ci_max }}]</div>
 
 				<!-- (before) P-VALUE -->
-				<div role="cell" v-if="pheno.all.before.pvalue === null">-</div>
-				<div role="cell" v-else>{{ pheno.all.before.pvalue_str }}</div>
+				<div role="cell" v-if="endpoint.all.before.pvalue === null">-</div>
+				<div role="cell" v-else>{{ endpoint.all.before.pvalue_str }}</div>
 
 				<!-- (before) N-INDIVS -->
-				<div role="cell" v-if="pheno.all.before.nindivs === null">-</div>
-				<div role="cell" v-else>{{ pheno.all.before.nindivs }}</div>
+				<div role="cell" v-if="endpoint.all.before.nindivs === null">-</div>
+				<div role="cell" v-else>{{ endpoint.all.before.nindivs }}</div>
 
 				<!-- (before) COMPBOX -->
-				<div role="cell" v-if="pheno.all.before.hr_binned === null">-</div>
+				<div role="cell" v-if="endpoint.all.before.hr_binned === null">-</div>
  				<div role="cell" v-else
- 					v-html="compBox(pheno.all.before.hr_binned)"
- 					v-bind:title="textPercentile(Math.trunc(pheno.all.before.hr_binned * 100)) + ' percentile'">
+ 					v-html="compBox(endpoint.all.before.hr_binned)"
+ 					v-bind:title="textPercentile(Math.trunc(endpoint.all.before.hr_binned * 100)) + ' percentile'">
 				</div>
 
 				<!-- (after) HR -->
-				<div role="cell" v-if="pheno.all.after.hr === null">-</div>
-				<div role="cell" v-else-if="pheno.all.after.hr > 100">&gt;&nbsp;100</div>
-				<div role="cell" v-else>{{ pheno.all.after.hr_str }} [{{ pheno.all.after.ci_min }},&nbsp;{{ pheno.all.after.ci_max }}]</div>
+				<div role="cell" v-if="endpoint.all.after.hr === null">-</div>
+				<div role="cell" v-else-if="endpoint.all.after.hr > 100">&gt;&nbsp;100</div>
+				<div role="cell" v-else>{{ endpoint.all.after.hr_str }} [{{ endpoint.all.after.ci_min }},&nbsp;{{ endpoint.all.after.ci_max }}]</div>
 
 				<!-- (after) P-VALUE -->
-				<div role="cell" v-if="pheno.all.after.pvalue === null">-</div>
-				<div role="cell" v-else>{{ pheno.all.after.pvalue_str }}</div>
+				<div role="cell" v-if="endpoint.all.after.pvalue === null">-</div>
+				<div role="cell" v-else>{{ endpoint.all.after.pvalue_str }}</div>
 
 				<!-- (after) N-INDIVS -->
-				<div role="cell" v-if="pheno.all.after.nindivs === null">-</div>
-				<div role="cell" v-else>{{ pheno.all.after.nindivs }}</div>
+				<div role="cell" v-if="endpoint.all.after.nindivs === null">-</div>
+				<div role="cell" v-else>{{ endpoint.all.after.nindivs }}</div>
 
 				<!-- (after) COMPBOX -->
-				<div role="cell" v-if="pheno.all.after.hr_binned === null">-</div>
+				<div role="cell" v-if="endpoint.all.after.hr_binned === null">-</div>
 				<div role="cell" v-else
-					v-html="compBox(pheno.all.after.hr_binned)"
-					v-bind:title="textPercentile(Math.trunc(pheno.all.after.hr_binned * 100)) + ' percentile'"
+					v-html="compBox(endpoint.all.after.hr_binned)"
+					v-bind:title="textPercentile(Math.trunc(endpoint.all.after.hr_binned * 100)) + ' percentile'"
 					>
 				</div>
 			</div>
@@ -144,40 +144,40 @@
 			<!-- LAG: 1 YEAR -->
 			<div
 				role="row"
-				v-bind:class="bg_even(idx) + ' grid-assoc-body'" v-if="unfolded.has(pheno.name)"
+				v-bind:class="bg_even(idx) + ' grid-assoc-body'" v-if="unfolded.has(endpoint.name)"
 			>
 
 				<!-- LAG -->
 				<div role="cell" v-bind:class="bg_even(idx)">&lt;1 year follow-up</div>
 
 				<!-- (before) HR -->
-				<div role="cell" v-if="pheno.lagged_1y.before.hr === null">-</div>
-				<div role="cell" v-else-if="pheno.lagged_1y.before.hr > 100">&gt;&nbsp;100</div>
-				<div role="cell" v-else>{{ pheno.lagged_1y.before.hr_str }} [{{ pheno.lagged_1y.before.ci_min }},&nbsp;{{ pheno.lagged_1y.before.ci_max }}]</div>
+				<div role="cell" v-if="endpoint.lagged_1y.before.hr === null">-</div>
+				<div role="cell" v-else-if="endpoint.lagged_1y.before.hr > 100">&gt;&nbsp;100</div>
+				<div role="cell" v-else>{{ endpoint.lagged_1y.before.hr_str }} [{{ endpoint.lagged_1y.before.ci_min }},&nbsp;{{ endpoint.lagged_1y.before.ci_max }}]</div>
 
 				<!-- (before) P-VALUE -->
-				<div role="cell" v-if="pheno.lagged_1y.before.pvalue === null">-</div>
-				<div role="cell" v-else>{{ pheno.lagged_1y.before.pvalue_str }}</div>
+				<div role="cell" v-if="endpoint.lagged_1y.before.pvalue === null">-</div>
+				<div role="cell" v-else>{{ endpoint.lagged_1y.before.pvalue_str }}</div>
 
 				<!-- (before) N-INDIVS -->
-				<div role="cell" v-if="pheno.lagged_1y.before.nindivs === null">-</div>
-				<div role="cell" v-else>{{ pheno.lagged_1y.before.nindivs }}</div>
+				<div role="cell" v-if="endpoint.lagged_1y.before.nindivs === null">-</div>
+				<div role="cell" v-else>{{ endpoint.lagged_1y.before.nindivs }}</div>
 
 				<!-- (before) COMPBOX -->
 				<div role="cell">-</div>
 
 				<!-- (after) HR -->
-				<div role="cell" v-if="pheno.lagged_1y.after.hr === null">-</div>
-				<div role="cell" v-else-if="pheno.lagged_1y.after.hr > 100">&gt;&nbsp;100</div>
-				<div role="cell" v-else>{{ pheno.lagged_1y.after.hr_str }} [{{ pheno.lagged_1y.after.ci_min }},&nbsp;{{ pheno.lagged_1y.after.ci_max }}]</div>
+				<div role="cell" v-if="endpoint.lagged_1y.after.hr === null">-</div>
+				<div role="cell" v-else-if="endpoint.lagged_1y.after.hr > 100">&gt;&nbsp;100</div>
+				<div role="cell" v-else>{{ endpoint.lagged_1y.after.hr_str }} [{{ endpoint.lagged_1y.after.ci_min }},&nbsp;{{ endpoint.lagged_1y.after.ci_max }}]</div>
 
 				<!-- (after) P-VALUE -->
-				<div role="cell" v-if="pheno.lagged_1y.after.pvalue === null">-</div>
-				<div role="cell" v-else>{{ pheno.lagged_1y.after.pvalue_str }}</div>
+				<div role="cell" v-if="endpoint.lagged_1y.after.pvalue === null">-</div>
+				<div role="cell" v-else>{{ endpoint.lagged_1y.after.pvalue_str }}</div>
 
 				<!-- (after) N-INDIVS -->
-				<div role="cell" v-if="pheno.lagged_1y.after.nindivs === null">-</div>
-				<div role="cell" v-else>{{ pheno.lagged_1y.after.nindivs }}</div>
+				<div role="cell" v-if="endpoint.lagged_1y.after.nindivs === null">-</div>
+				<div role="cell" v-else>{{ endpoint.lagged_1y.after.nindivs }}</div>
 
 				<!-- (after) COMPBOX -->
 				<div role="cell">-</div>
@@ -186,39 +186,39 @@
 			<!-- LAG: 5 YEARS -->
 			<div
 				role="row"
-				v-bind:class="bg_even(idx) + ' grid-assoc-body'" v-if="unfolded.has(pheno.name)"
+				v-bind:class="bg_even(idx) + ' grid-assoc-body'" v-if="unfolded.has(endpoint.name)"
 			>
 				<!-- LAG -->
 				<div role="cell" v-bind:class="bg_even(idx)">&lt;1-5 year follow-up</div>
 
 				<!-- (before) HR -->
-				<div role="cell" v-if="pheno.lagged_5y.before.hr === null">-</div>
-				<div role="cell" v-else-if="pheno.lagged_5y.before.hr > 100">&gt;&nbsp;100</div>
-				<div role="cell" v-else>{{ pheno.lagged_5y.before.hr_str }} [{{ pheno.lagged_5y.before.ci_min }},&nbsp;{{ pheno.lagged_5y.before.ci_max }}]</div>
+				<div role="cell" v-if="endpoint.lagged_5y.before.hr === null">-</div>
+				<div role="cell" v-else-if="endpoint.lagged_5y.before.hr > 100">&gt;&nbsp;100</div>
+				<div role="cell" v-else>{{ endpoint.lagged_5y.before.hr_str }} [{{ endpoint.lagged_5y.before.ci_min }},&nbsp;{{ endpoint.lagged_5y.before.ci_max }}]</div>
 
 				<!-- (before) P-VALUE -->
-				<div role="cell" v-if="pheno.lagged_5y.before.pvalue === null">-</div>
-				<div role="cell" v-else>{{ pheno.lagged_5y.before.pvalue_str }}</div>
+				<div role="cell" v-if="endpoint.lagged_5y.before.pvalue === null">-</div>
+				<div role="cell" v-else>{{ endpoint.lagged_5y.before.pvalue_str }}</div>
 
 				<!-- (before) N-INDIVS -->
-				<div role="cell" v-if="pheno.lagged_5y.before.nindivs === null">-</div>
-				<div role="cell" v-else>{{ pheno.lagged_5y.before.nindivs }}</div>
+				<div role="cell" v-if="endpoint.lagged_5y.before.nindivs === null">-</div>
+				<div role="cell" v-else>{{ endpoint.lagged_5y.before.nindivs }}</div>
 
 				<!-- (before) COMPBOX -->
 				<div role="cell">-</div>
 
 				<!-- (after) HR -->
-				<div role="cell" v-if="pheno.lagged_5y.after.hr === null">-</div>
-				<div role="cell" v-else-if="pheno.lagged_5y.after.hr > 100">&gt;&nbsp;100</div>
-				<div role="cell" v-else>{{ pheno.lagged_5y.after.hr_str }} [{{ pheno.lagged_5y.after.ci_min }},&nbsp;{{ pheno.lagged_5y.after.ci_max }}]</div>
+				<div role="cell" v-if="endpoint.lagged_5y.after.hr === null">-</div>
+				<div role="cell" v-else-if="endpoint.lagged_5y.after.hr > 100">&gt;&nbsp;100</div>
+				<div role="cell" v-else>{{ endpoint.lagged_5y.after.hr_str }} [{{ endpoint.lagged_5y.after.ci_min }},&nbsp;{{ endpoint.lagged_5y.after.ci_max }}]</div>
 
 				<!-- (after) P-VALUE -->
-				<div role="cell" v-if="pheno.lagged_5y.after.pvalue === null">-</div>
-				<div role="cell" v-else>{{ pheno.lagged_5y.after.pvalue_str }}</div>
+				<div role="cell" v-if="endpoint.lagged_5y.after.pvalue === null">-</div>
+				<div role="cell" v-else>{{ endpoint.lagged_5y.after.pvalue_str }}</div>
 
 				<!-- (after) N-INDIVS -->
-				<div role="cell" v-if="pheno.lagged_5y.after.nindivs === null">-</div>
-				<div role="cell" v-else>{{ pheno.lagged_5y.after.nindivs }}</div>
+				<div role="cell" v-if="endpoint.lagged_5y.after.nindivs === null">-</div>
+				<div role="cell" v-else>{{ endpoint.lagged_5y.after.nindivs }}</div>
 
 				<!-- (after) COMPBOX -->
 				<div role="cell">-</div>
@@ -227,39 +227,39 @@
 			<!-- LAG: 15 YEARS -->
 			<div
 				role="row"
-				v-bind:class="bg_even(idx) + ' grid-assoc-body'" v-if="unfolded.has(pheno.name)"
+				v-bind:class="bg_even(idx) + ' grid-assoc-body'" v-if="unfolded.has(endpoint.name)"
 			>
 				<!-- LAG -->
 				<div role="cell" v-bind:class="bg_even(idx)">&lt;5-15 year follow-up</div>
 
 				<!-- (before) HR -->
-				<div role="cell" v-if="pheno.lagged_15y.before.hr === null">-</div>
-				<div role="cell" v-else-if="pheno.lagged_15y.before.hr > 100">&gt;&nbsp;100</div>
-				<div role="cell" v-else>{{ pheno.lagged_15y.before.hr_str }} [{{ pheno.lagged_15y.before.ci_min }},&nbsp;{{ pheno.lagged_15y.before.ci_max }}]</div>
+				<div role="cell" v-if="endpoint.lagged_15y.before.hr === null">-</div>
+				<div role="cell" v-else-if="endpoint.lagged_15y.before.hr > 100">&gt;&nbsp;100</div>
+				<div role="cell" v-else>{{ endpoint.lagged_15y.before.hr_str }} [{{ endpoint.lagged_15y.before.ci_min }},&nbsp;{{ endpoint.lagged_15y.before.ci_max }}]</div>
 
 				<!-- (before) P-VALUE -->
-				<div role="cell" v-if="pheno.lagged_15y.before.pvalue === null">-</div>
-				<div role="cell" v-else>{{ pheno.lagged_15y.before.pvalue_str }}</div>
+				<div role="cell" v-if="endpoint.lagged_15y.before.pvalue === null">-</div>
+				<div role="cell" v-else>{{ endpoint.lagged_15y.before.pvalue_str }}</div>
 
 				<!-- (before) N-INDIVS -->
-				<div role="cell" v-if="pheno.lagged_15y.before.nindivs === null">-</div>
-				<div role="cell" v-else>{{ pheno.lagged_15y.before.nindivs }}</div>
+				<div role="cell" v-if="endpoint.lagged_15y.before.nindivs === null">-</div>
+				<div role="cell" v-else>{{ endpoint.lagged_15y.before.nindivs }}</div>
 
 				<!-- (before) COMPBOX -->
 				<div role="cell">-</div>
 
 				<!-- (after) HR -->
-				<div role="cell" v-if="pheno.lagged_15y.after.hr === null">-</div>
-				<div role="cell" v-else-if="pheno.lagged_15y.after.hr > 100">&gt;&nbsp;100</div>
-				<div role="cell" v-else>{{ pheno.lagged_15y.after.hr_str }} [{{ pheno.lagged_15y.after.ci_min }},&nbsp;{{ pheno.lagged_15y.after.ci_max }}]</div>
+				<div role="cell" v-if="endpoint.lagged_15y.after.hr === null">-</div>
+				<div role="cell" v-else-if="endpoint.lagged_15y.after.hr > 100">&gt;&nbsp;100</div>
+				<div role="cell" v-else>{{ endpoint.lagged_15y.after.hr_str }} [{{ endpoint.lagged_15y.after.ci_min }},&nbsp;{{ endpoint.lagged_15y.after.ci_max }}]</div>
 
 				<!-- (after) P-VALUE -->
-				<div role="cell" v-if="pheno.lagged_15y.after.pvalue === null">-</div>
-				<div role="cell" v-else>{{ pheno.lagged_15y.after.pvalue_str }}</div>
+				<div role="cell" v-if="endpoint.lagged_15y.after.pvalue === null">-</div>
+				<div role="cell" v-else>{{ endpoint.lagged_15y.after.pvalue_str }}</div>
 
 				<!-- (after) N-INDIVS -->
-				<div role="cell" v-if="pheno.lagged_15y.after.nindivs === null">-</div>
-				<div role="cell" v-else>{{ pheno.lagged_15y.after.nindivs }}</div>
+				<div role="cell" v-if="endpoint.lagged_15y.after.nindivs === null">-</div>
+				<div role="cell" v-else>{{ endpoint.lagged_15y.after.nindivs }}</div>
 
 				<!-- (after) COMPBOX -->
 				<div role="cell">-</div>
@@ -315,9 +315,9 @@ let compute_table = (col_filter, sorter, table) => {
 	} else {
 		result = filter(
 			table,
-			(pheno) => {
-				let match_name = pheno.name.toLowerCase().includes(col_filter.toLowerCase())
-				|| pheno.longname.toLowerCase().includes(col_filter.toLowerCase());
+			(endpoint) => {
+				let match_name = endpoint.name.toLowerCase().includes(col_filter.toLowerCase())
+				|| endpoint.longname.toLowerCase().includes(col_filter.toLowerCase());
 
 				return match_name;
 			}
@@ -327,52 +327,52 @@ let compute_table = (col_filter, sorter, table) => {
 	// Sort rows
 	switch (sorter) {
 		case "hr_before_desc":
-			result = sortByNull(result, (pheno) => pheno.all.before.hr, "desc");
+			result = sortByNull(result, (endpoint) => endpoint.all.before.hr, "desc");
 			break;
 		case "hr_before_asc":
-			result = sortByNull(result, (pheno) => pheno.all.before.hr, "asc");
+			result = sortByNull(result, (endpoint) => endpoint.all.before.hr, "asc");
 			break;
 		case "pvalue_before_desc":
-			result = sortByNull(result, (pheno) => pheno.all.before.pvalue, "desc");
+			result = sortByNull(result, (endpoint) => endpoint.all.before.pvalue, "desc");
 			break;
 		case "pvalue_before_asc":
-			result = sortByNull(result, (pheno) => pheno.all.before.pvalue, "asc");
+			result = sortByNull(result, (endpoint) => endpoint.all.before.pvalue, "asc");
 			break;
 		case "nindivs_before_desc":
-			result = sortByNull(result, (pheno) => pheno.all.before.nindivs, "desc");
+			result = sortByNull(result, (endpoint) => endpoint.all.before.nindivs, "desc");
 			break;
 		case "nindivs_before_asc":
-			result = sortByNull(result, (pheno) => pheno.all.before.nindivs, "asc");
+			result = sortByNull(result, (endpoint) => endpoint.all.before.nindivs, "asc");
 			break;
 		case "compbox_before_desc":
-			result = sortByNull(result, (pheno) => pheno.all.before.hr_binned, "desc");
+			result = sortByNull(result, (endpoint) => endpoint.all.before.hr_binned, "desc");
 			break;
 		case "compbox_before_asc":
-			result = sortByNull(result, (pheno) => pheno.all.before.hr_binned, "asc");
+			result = sortByNull(result, (endpoint) => endpoint.all.before.hr_binned, "asc");
 			break;
 		case "hr_after_desc":
-			result = sortByNull(result, (pheno) => pheno.all.after.hr, "desc");
+			result = sortByNull(result, (endpoint) => endpoint.all.after.hr, "desc");
 			break;
 		case "hr_after_asc":
-			result = sortByNull(result, (pheno) => pheno.all.after.hr, "asc");
+			result = sortByNull(result, (endpoint) => endpoint.all.after.hr, "asc");
 			break;
 		case "pvalue_after_desc":
-			result = sortByNull(result, (pheno) => pheno.all.after.pvalue, "desc");
+			result = sortByNull(result, (endpoint) => endpoint.all.after.pvalue, "desc");
 			break;
 		case "pvalue_after_asc":
-			result = sortByNull(result, (pheno) => pheno.all.after.pvalue, "asc");
+			result = sortByNull(result, (endpoint) => endpoint.all.after.pvalue, "asc");
 			break;
 		case "nindivs_after_desc":
-			result = sortByNull(result, (pheno) => pheno.all.after.nindivs, "desc");
+			result = sortByNull(result, (endpoint) => endpoint.all.after.nindivs, "desc");
 			break;
 		case "nindivs_after_asc":
-			result = sortByNull(result, (pheno) => pheno.all.after.nindivs, "asc");
+			result = sortByNull(result, (endpoint) => endpoint.all.after.nindivs, "asc");
 			break;
 		case "compbox_after_desc":
-			result = sortByNull(result, (pheno) => pheno.all.after.hr_binned, "desc");
+			result = sortByNull(result, (endpoint) => endpoint.all.after.hr_binned, "desc");
 			break;
 		case "compbox_after_asc":
-			result = sortByNull(result, (pheno) => pheno.all.after.hr_binned, "asc");
+			result = sortByNull(result, (endpoint) => endpoint.all.after.hr_binned, "asc");
 			break;
 		default:
 			console.log("Unrecognized sorter:", sorter);
@@ -401,14 +401,14 @@ export default {
 		return {
 			full_table: [],  // keep a copy of the original
 			assoc_table: [],
-			pheno_filter: "",
+			endpoint_filter: "",
 			sorter: "hr_before_desc",
 			unfolded: new Set(),
 		}
 	},
 	props: {
 		table: Array,
-		phenocode: String,
+		endpoint: String,
 	},
 	methods: {
 		compBox(hr_binned) {
@@ -416,18 +416,18 @@ export default {
 		},
 		refresh_table() {
 			this.assoc_table = compute_table(
-				this.pheno_filter,
+				this.endpoint_filter,
 				this.sorter,
 				this.full_table
 			)
 		},
-		toggle_fold(phenocode) {
+		toggle_fold(endpoint) {
 			// Create a copy of the set otherwise VueJS doesn't update the HTML
 			let ss = new Set(this.unfolded.values());
-			if (ss.has(phenocode)) {
-				ss.delete(phenocode);
+			if (ss.has(endpoint)) {
+				ss.delete(endpoint);
 			} else {
-				ss.add(phenocode);
+				ss.add(endpoint);
 			}
 			this.unfolded = ss;
 		},

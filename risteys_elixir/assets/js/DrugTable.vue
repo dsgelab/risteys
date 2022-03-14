@@ -77,7 +77,7 @@
 
                 <article>
 					<p>
-						Probability of getting the drug after <i>{{ phenocode }}</i> conditional on not having this drug before <i>{{ phenocode }}</i>.
+						Probability of getting the drug after <i>{{ endpoint }}</i> conditional on not having this drug before <i>{{ endpoint }}</i>.
 					</p>
 					<p>
 						See <i>Drug Statistics</i> on the <a href="/documentation#drug-stats">Documentation page</a> for more information.
@@ -153,7 +153,7 @@ export default {
 	},
 	props: {
 		drug_data: Array,
-		phenocode: String
+		endpoint: String
 	},
 	methods: {
 		bg_class(idx) {

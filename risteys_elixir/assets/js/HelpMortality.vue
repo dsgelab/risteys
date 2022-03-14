@@ -29,9 +29,6 @@ export default {
 	data () {
 		return {};
 	},
-	props: {
-		phenocode: String,
-	},
 	components: {
 		HelpButton
 	}

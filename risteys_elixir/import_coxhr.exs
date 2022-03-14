@@ -14,32 +14,32 @@
 # - prior_ci_upper
 # - prior_pval
 
-alias Risteys.{Repo, CoxHR, Phenocode}
+alias Risteys.{FGEndpoint, Repo, CoxHR}
 import Ecto.Query
 require Logger
 
 Logger.configure(level: :info)
 [coxhr_filepath | _] = System.argv()
 
-phenos = Repo.all(from p in Phenocode, select: p.name) |> MapSet.new()
+endpoints = Repo.all(from endpoint in FGEndpoint.Definition, select: endpoint.name) |> MapSet.new()
 
 coxhr_filepath
 |> File.stream!()
 |> CSV.decode!(headers: true)
 |> Stream.filter(fn %{"prior" => prior, "outcome" => outcome} ->
-  prior_in_phenos = MapSet.member?(phenos, prior)
+  prior_in_endpoints = MapSet.member?(endpoints, prior)
 
-  if not prior_in_phenos do
-    Logger.warn("Prior #{prior} not found in phenos")
+  if not prior_in_endpoints do
+    Logger.warn("Prior #{prior} not found in endpoints")
   end
 
-  outcome_in_phenos = MapSet.member?(phenos, outcome)
+  outcome_in_endpoints = MapSet.member?(endpoints, outcome)
 
-  if not outcome_in_phenos do
-    Logger.warn("Outcome #{outcome} not found in phenos")
+  if not outcome_in_endpoints do
+    Logger.warn("Outcome #{outcome} not found in endpoints")
   end
 
-  prior_in_phenos and outcome_in_phenos
+  prior_in_endpoints and outcome_in_endpoints
 end)
 |> Stream.with_index()
 |> Enum.each(fn {%{
@@ -74,9 +74,9 @@ end)
       Logger.warn("∞ HR, can't import: #{prior} -> #{outcome}")
 
     true ->
-      # Get the phenocode IDs for prior and outcome
-      prior = Repo.get_by!(Phenocode, name: prior)
-      outcome = Repo.get_by!(Phenocode, name: outcome)
+      # Get the endpoint IDs for prior and outcome
+      prior = Repo.get_by!(FGEndpoint.Definition, name: prior)
+      outcome = Repo.get_by!(FGEndpoint.Definition, name: outcome)
 
       coxhr =
         case Repo.get_by(CoxHR,

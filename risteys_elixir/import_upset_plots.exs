@@ -6,7 +6,6 @@
 import Ecto.Query
 require Logger
 alias Risteys.FGEndpoint
-alias Risteys.Phenocode
 alias Risteys.Repo
 alias Risteys.StatsSex
 
@@ -122,9 +121,9 @@ registries = %{
 
 db_endpoints =
   Repo.all(
-    from endp in Phenocode,
+    from endp in FGEndpoint.Definition,
       join: stats in StatsSex,
-      on: endp.id == stats.phenocode_id,
+      on: endp.id == stats.fg_endpoint_id,
       where: endp.name in ^Map.keys(tables),
       select: {{endp.name, stats.sex}, stats.n_individuals}
   )
@@ -184,7 +183,7 @@ end)
 
 # --- Handle endpoints without upset data
 Logger.info("Setting status for endpoints in DB without upset plot or table")
-all_db_endpoints = Repo.all(Phenocode)
+all_db_endpoints = Repo.all(FGEndpoint.Definition)
 
 for endpoint <- all_db_endpoints,
     endpoint.status_upset_plot != "ok" or endpoint.status_upset_table != "ok" do

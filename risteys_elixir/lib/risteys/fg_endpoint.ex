@@ -5,42 +5,42 @@ defmodule Risteys.FGEndpoint do
 
   import Ecto.Query, warn: false
   alias Risteys.Repo
-  alias Risteys.Phenocode
   alias Risteys.Icd10
   alias Risteys.StatsSex
   alias Risteys.Genomics
   alias Risteys.DrugStats
 
   alias Risteys.FGEndpoint.Correlation
+  alias Risteys.FGEndpoint.Definition
   alias Risteys.FGEndpoint.ExplainerStep
   alias Risteys.FGEndpoint.StatsCumulativeIncidence
 
-  # -- Phenocode/Endpoint --
+  # -- Endpoint --
   def list_endpoints_ids() do
-    Repo.all(from pp in Phenocode, select: {pp.id, pp.name})
+    Repo.all(from endpoint in Definition, select: {endpoint.id, endpoint.name})
     |> Enum.reduce(%{}, fn {id, name}, acc ->
       Map.put_new(acc, name, id)
     end)
   end
 
   def set_status!(endpoint_name, field, status) when is_binary(endpoint_name) do
-    Repo.get_by!(Phenocode, name: endpoint_name)
+    Repo.get_by!(Definition, name: endpoint_name)
     |> set_status!(field, status)
   end
 
-  def set_status!(%Phenocode{} = endpoint, field, status) do
+  def set_status!(%Definition{} = endpoint, field, status) do
     attrs =
       case field do
         :upset_plot -> %{status_upset_plot: status}
         :upset_table -> %{status_upset_table: status}
       end
 
-    Phenocode.changeset(endpoint, attrs)
+    Definition.changeset(endpoint, attrs)
     |> Repo.update!()
   end
 
   def get_core_endpoints() do
-    Repo.all(from pp in Phenocode, where: pp.is_core, select: pp.name)
+    Repo.all(from endpoint in Definition, where: endpoint.is_core, select: endpoint.name)
     |> Enum.into(MapSet.new())
   end
 
@@ -50,7 +50,7 @@ defmodule Risteys.FGEndpoint do
         {:is_core, nil}
 
       not is_nil(endpoint.selected_core_id) ->
-        {:selected_core, Repo.get!(Phenocode, endpoint.selected_core_id)}
+        {:selected_core, Repo.get!(Definition, endpoint.selected_core_id)}
 
       endpoint.reason_non_core == "exallc_priority" ->
         {:exallc_priority, find_exallc_replacement(endpoint)}
@@ -63,7 +63,7 @@ defmodule Risteys.FGEndpoint do
   defp find_exallc_replacement(endpoint) do
     map_exallc =
       Repo.all(
-        from endp in Phenocode,
+        from endp in Definition,
           where: like(endp.name, "%_EXALLC"),
           select: {endp.name, endp}
       )
@@ -81,11 +81,11 @@ defmodule Risteys.FGEndpoint do
     list_correlated =
       Repo.all(
         from corr in Correlation,
-          join: endp in Phenocode,
-          on: corr.phenocode_b_id == endp.id,
+          join: endp in Definition,
+          on: corr.fg_endpoint_b_id == endp.id,
           where:
-            corr.phenocode_a_id == ^endpoint.id and
-              corr.phenocode_b_id != ^endpoint.id and
+            corr.fg_endpoint_a_id == ^endpoint.id and
+              corr.fg_endpoint_b_id != ^endpoint.id and
               corr.case_overlap >= ^overlap_threshold and
               endp.is_core,
           select: %{name: endp.name},
@@ -267,15 +267,15 @@ defmodule Risteys.FGEndpoint do
   end
 
   defp list_expanded_icd10s(endpoint) do
-    # Return list of Icd10 if the rule was expanded in import step, otherwise an empty list.
+    # Return list of ICD10 if the rule was expanded in import step, otherwise an empty list.
     expanded =
       Repo.all(
-        from assoc in Risteys.PhenocodeIcd10,
-          join: endpoint in Phenocode,
-          on: assoc.phenocode_id == endpoint.id,
+        from assoc in Risteys.FGEndpoint.DefinitionICD10,
+          join: endpoint in Definition,
+          on: assoc.fg_endpoint_id == endpoint.id,
           join: icd10 in Icd10,
           on: assoc.icd10_id == icd10.id,
-          where: assoc.phenocode_id == ^endpoint.id,
+          where: assoc.fg_endpoint_id == ^endpoint.id,
           select: %{registry: assoc.registry, icd10: icd10}
       )
       |> Enum.group_by(
@@ -341,7 +341,7 @@ defmodule Risteys.FGEndpoint do
   end
 
   def upsert_explainer_step(attrs) do
-    case Repo.get_by(ExplainerStep, phenocode_id: attrs.phenocode_id, step: attrs.step) do
+    case Repo.get_by(ExplainerStep, fg_endpoint_id: attrs.fg_endpoint_id, step: attrs.step) do
       nil -> %ExplainerStep{}
       existing -> existing
     end
@@ -352,7 +352,7 @@ defmodule Risteys.FGEndpoint do
   defp get_explainer_step_counts(endpoint) do
     Repo.all(
       from ee in ExplainerStep,
-        where: ee.phenocode_id == ^endpoint.id,
+        where: ee.fg_endpoint_id == ^endpoint.id,
         select: %{step: ee.step, nindivs: ee.nindivs}
     )
     |> Enum.reduce(%{}, fn %{nindivs: count, step: step_name}, acc ->
@@ -382,7 +382,7 @@ defmodule Risteys.FGEndpoint do
 
   # -- Histograms --
   defp get_histograms(endpoint_name) do
-    endpoint = Repo.get_by!(Phenocode, name: endpoint_name)
+    endpoint = Repo.get_by!(Definition, name: endpoint_name)
     sex_all = 0
 
     %{
@@ -392,7 +392,7 @@ defmodule Risteys.FGEndpoint do
       Repo.one(
         from ss in StatsSex,
           where:
-            ss.phenocode_id == ^endpoint.id and
+            ss.fg_endpoint_id == ^endpoint.id and
               ss.sex == ^sex_all
       )
 
@@ -412,8 +412,8 @@ defmodule Risteys.FGEndpoint do
   # -- Correlation --
   def upsert_correlation(attrs) do
     case Repo.get_by(Correlation,
-           phenocode_a_id: attrs.phenocode_a_id,
-           phenocode_b_id: attrs.phenocode_b_id
+           fg_endpoint_a_id: attrs.fg_endpoint_a_id,
+           fg_endpoint_b_id: attrs.fg_endpoint_b_id
          ) do
       nil -> %Correlation{}
       existing -> existing
@@ -422,21 +422,21 @@ defmodule Risteys.FGEndpoint do
     |> Repo.insert_or_update()
   end
 
-  def list_correlations(phenocode_name) do
-    phenocode = Repo.get_by!(Phenocode, name: phenocode_name)
+  def list_correlations(endpoint_name) do
+    endpoint = Repo.get_by!(Definition, name: endpoint_name)
 
     Repo.all(
       from corr in Correlation,
-        join: pp in Phenocode,
-        on: corr.phenocode_b_id == pp.id,
+        join: endpoint in Definition,
+        on: corr.fg_endpoint_b_id == endpoint.id,
         where:
-          corr.phenocode_a_id == ^phenocode.id and
-            corr.phenocode_a_id != corr.phenocode_b_id,
+          corr.fg_endpoint_a_id == ^endpoint.id and
+            corr.fg_endpoint_a_id != corr.fg_endpoint_b_id,
         select: %{
-          name: pp.name,
-          longname: pp.longname,
+          name: endpoint.name,
+          longname: endpoint.longname,
           case_overlap: corr.case_overlap,
-          gws_hits: pp.gws_hits,
+          gws_hits: endpoint.gws_hits,
           coloc_gws_hits_same_dir: corr.coloc_gws_hits_same_dir,
           coloc_gws_hits_opp_dir: corr.coloc_gws_hits_opp_dir
         }
@@ -461,45 +461,45 @@ defmodule Risteys.FGEndpoint do
     end)
   end
 
-  def broader_endpoints(phenocode, limit \\ 5) do
+  def broader_endpoints(endpoint, limit \\ 5) do
     Repo.all(
       from corr in Correlation,
-        join: pp in Phenocode,
-        on: corr.phenocode_b_id == pp.id,
+        join: endpoint in Definition,
+        on: corr.fg_endpoint_b_id == endpoint.id,
         where:
-          corr.phenocode_a_id == ^phenocode.id and
-            corr.phenocode_a_id != corr.phenocode_b_id and
+          corr.fg_endpoint_a_id == ^endpoint.id and
+            corr.fg_endpoint_a_id != corr.fg_endpoint_b_id and
             corr.shared_of_a == 1.0,
         order_by: [desc: corr.shared_of_b],
         limit: ^limit,
-        select: pp
+        select: endpoint
     )
   end
 
-  def narrower_endpoints(phenocode, limit \\ 5) do
+  def narrower_endpoints(endpoint, limit \\ 5) do
     Repo.all(
       from corr in Correlation,
-        join: pp in Phenocode,
-        on: corr.phenocode_b_id == pp.id,
+        join: endpoint in Definition,
+        on: corr.fg_endpoint_b_id == endpoint.id,
         where:
-          corr.phenocode_a_id == ^phenocode.id and
-            corr.phenocode_a_id != corr.phenocode_b_id and
+          corr.fg_endpoint_a_id == ^endpoint.id and
+            corr.fg_endpoint_a_id != corr.fg_endpoint_b_id and
             corr.shared_of_b == 1.0,
         order_by: [desc: corr.shared_of_a],
         limit: ^limit,
-        select: pp
+        select: endpoint
     )
   end
 
-  def list_variants_by_correlation(phenocode) do
+  def list_variants_by_correlation(endpoint) do
     by_corr =
       Repo.all(
         from corr in Correlation,
-          join: pp in Phenocode,
-          on: corr.phenocode_b_id == pp.id,
-          where: corr.phenocode_a_id == ^phenocode.id,
+          join: endpoint in Definition,
+          on: corr.fg_endpoint_b_id == endpoint.id,
+          where: corr.fg_endpoint_a_id == ^endpoint.id,
           select: %{
-            corr_endpoint: pp.name,
+            corr_endpoint: endpoint.name,
             variants_same_dir: corr.variants_same_dir,
             variants_opp_dir: corr.variants_opp_dir,
             beta_same_dir: corr.rel_beta_same_dir,
@@ -546,12 +546,12 @@ defmodule Risteys.FGEndpoint do
   def delete_cumulative_incidence(endpoint_ids) do
     Repo.delete_all(
       from cumul_inc in StatsCumulativeIncidence,
-        where: cumul_inc.phenocode_id in ^endpoint_ids
+        where: cumul_inc.fg_endpoint_id in ^endpoint_ids
     )
   end
 
   def get_cumulative_incidence_plot_data(endpoint_name) do
-    %{id: endpoint_id} = Repo.get_by(Phenocode, name: endpoint_name)
+    %{id: endpoint_id} = Repo.get_by(Definition, name: endpoint_name)
 
     # Values will be converted from [0, 1] to [0, 100]
     females = get_cumulinc_sex(endpoint_id, "female")
@@ -567,7 +567,7 @@ defmodule Risteys.FGEndpoint do
     Repo.all(
       from stats in StatsCumulativeIncidence,
         where:
-          stats.phenocode_id == ^endpoint_id and
+          stats.fg_endpoint_id == ^endpoint_id and
             stats.sex == ^sex,
         # The following will be reversed when we build the list by prepending values
         order_by: [desc: stats.age]
@@ -589,7 +589,7 @@ defmodule Risteys.FGEndpoint do
     stat_count =
       Repo.one(
         from dstats in DrugStats,
-          where: dstats.phenocode_id == ^endpoint.id,
+          where: dstats.fg_endpoint_id == ^endpoint.id,
           select: count()
       )
 

@@ -41,12 +41,12 @@
 				v-bind:class="bg_class(idx) + ' grid-corr-body'"
 			>
 				<div role="cell">
-					<a :href="'/phenocode/' + corr.name" :title="corr.name">
+					<a :href="'/endpoint/' + corr.name" :title="corr.name">
 						{{ corr.name }}
 					</a>
 				</div>
 				<div role="cell">
-					<a :href="'/phenocode/' + corr.name" :title="corr.name">
+					<a :href="'/endpoint/' + corr.name" :title="corr.name">
 						{{ corr.longname }}
 					</a>
 				</div>
