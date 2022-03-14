@@ -13,16 +13,7 @@
     position: relative;
     display: inline-block;
 }
-.help-button {
-    @apply border-2;
-    @apply border-blue-dark;
-    @apply rounded-full;
-    @apply px-2;
-    @apply bg-white;
-    font-weight: bold;
-    text-align: center;
-    cursor: pointer;
-}
+
 .help-content {
     /* positioning */
     position: absolute;

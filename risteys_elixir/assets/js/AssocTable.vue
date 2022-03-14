@@ -49,7 +49,8 @@
 				</div>
 
 				<div role="columnheader">
-					<p><HelpCompBox /></p>
+					<p><a class="help-button" href="#dialog-surv-help" onclick="openDialog('surv-help')">?</a></p>
+
 					<p>
 						<input type="radio" id="compbox_before_asc" value="compbox_before_asc" v-model="sorter" v-on:change="refresh_table()" checked><label for="compbox_before_asc" class="radio-left">▲</label><input type="radio" id="compbox_before_desc" value="compbox_before_desc" v-model="sorter" v-on:change="refresh_table()"><label for="compbox_before_desc" class="radio-right">▼</label>
 					</p>
@@ -77,7 +78,7 @@
 				</div>
 
 				<div role="columnheader">
-					<p><HelpCompBox /></p>
+					<p><a class="help-button" href="#dialog-surv-help" onclick="openDialog('surv-help')">?</a></p>
 					<p>
 						<input type="radio" id="compbox_after_asc" value="compbox_after_asc" v-model="sorter" v-on:change="refresh_table()" checked><label for="compbox_after_asc" class="radio-left">▲</label><input type="radio" id="compbox_after_desc" value="compbox_after_desc" v-model="sorter" v-on:change="refresh_table()"><label for="compbox_after_desc" class="radio-right">▼</label>
 					</p>
@@ -264,13 +265,44 @@
 				<div role="cell">-</div>
 			</div>
 		</div>
+
+		<!-- this need to be the last child of the parent <div> element to make the help box always appear -->
+        <div id="surv-help" class="dialog-backdrop hidden" tabindex="0">
+            <div role="dialog"
+                aria-labelledby="surv-help-label"
+                aria-modal="true"
+            >
+                <h2 id="surv-help-label" class="dialog-label">Comparable box plot </h2>
+                <article>
+					<p>
+						This plot allows to compare the hazard ratio (HR) for a single survival analysis with the distribution of HRs across all the survival analyses for the same disease endpoint.
+					</p>
+					<img src="/images/compbox.svg">
+					<p>
+						This plot shows the distribution of binned HRs:
+					</p>
+					<ul>
+						<li>X axis: percentile distribution of HRs, from 0 to 1.</li>
+						<li>light-grey zone: 95% of all HRs are within this interval</li>
+						<li>grey zone: 50% of all HRs are within this interval</li>
+						<li>dark vertical line: median of HRs</li>
+						<li>black dot: HR for a specific survival analysis</li>
+					</ul>
+					<p>
+						If our endpoint of interest is A and we are interested in the survival analysis of A → B (solid dot), we compute the distribution of HRs of type * → B. If the HR for A → B lies inside the distribution of HRs for * → B , this indicates a not too unsurprising association.
+					</p>
+                </article>
+
+                <div class="bottom"><button class="button-faded" onclick="closeDialog('surv-help')">Close</button></div>
+            </div>
+         </div>
+
 	</div>
 </template>
 
 <script>
 import { concat, filter, partition, reverse, sortBy } from 'lodash-es';
 import { drawCompBox } from './CompBox.js';
-import HelpCompBox from './HelpCompBox.vue';
 
 
 let compute_table = (col_filter, sorter, table) => {
@@ -373,9 +405,6 @@ export default {
 			unfolded: new Set(),
 		}
 	},
-	components: {
-		HelpCompBox,
-	},
 	props: {
 		table: Array,
 		phenocode: String,
@@ -441,7 +470,6 @@ export default {
 </script>
 
 <style type="text/css" scoped>
-
 .assoc-scrolling {
 	max-height: 500px;
 	overflow-y: scroll;
@@ -496,5 +524,4 @@ export default {
 [role="cell"]:nth-child(1) {
 	overflow: hidden;
 }
-
 </style>
