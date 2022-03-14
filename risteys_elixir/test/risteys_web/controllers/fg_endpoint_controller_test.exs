@@ -1,8 +1,8 @@
-defmodule RisteysWeb.PhenocodeControllerTest do
+defmodule RisteysWeb.FGEnpointControllerTest do
   use RisteysWeb.ConnCase
 
+  alias Risteys.FGEndpoint
   alias Risteys.Repo
-  alias Risteys.Phenocode
   alias Risteys.CoxHR
 
   describe "JSON API" do
@@ -10,8 +10,8 @@ defmodule RisteysWeb.PhenocodeControllerTest do
       # Make a fake association for testing purpose
       Risteys.DataCase.data_fixture("A1")
       Risteys.DataCase.data_fixture("A2")
-      a1 = Repo.get_by(Phenocode, name: "A1")
-      a2 = Repo.get_by(Phenocode, name: "A2")
+      a1 = Repo.get_by(FGEndpoint.Definition, name: "A1")
+      a2 = Repo.get_by(FGEndpoint.Definition, name: "A2")
 
       CoxHR.changeset(%CoxHR{}, %{
         prior_id: a1.id,
@@ -27,7 +27,7 @@ defmodule RisteysWeb.PhenocodeControllerTest do
 
       # Making the JSON API request
       conn = Plug.Test.init_test_session(conn, user_is_authenticated: true)
-      conn = get(conn, Routes.phenocode_path(conn, :get_assocs_json, "A1"))
+      conn = get(conn, Routes.fg_endpoint_path(conn, :get_assocs_json, "A1"))
       response = json_response(conn, 200)
 
       # Testing both:

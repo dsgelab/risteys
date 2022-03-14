@@ -1,18 +1,18 @@
-defmodule RisteysWeb.PhenocodeView do
+defmodule RisteysWeb.FGEndpointView do
   use RisteysWeb, :view
   require Integer
 
   alias Risteys.FGEndpoint
 
   def render("assocs.json", %{
-        phenocode: phenocode,
+        endpoint: endpoint,
         assocs: assocs,
         hr_prior_distribs: hr_prior_distribs,
         hr_outcome_distribs: hr_outcome_distribs
       }) do
     %{
-      "plot" => data_assocs_plot(phenocode, assocs),
-      "table" => data_assocs_table(phenocode.id, assocs, hr_prior_distribs, hr_outcome_distribs)
+      "plot" => data_assocs_plot(endpoint, assocs),
+      "table" => data_assocs_table(endpoint.id, assocs, hr_prior_distribs, hr_outcome_distribs)
     }
   end
 
@@ -272,25 +272,25 @@ defmodule RisteysWeb.PhenocodeView do
     end
   end
 
-  defp data_assocs_plot(phenocode, assocs) do
+  defp data_assocs_plot(endpoint, assocs) do
     assocs
     |> Enum.filter(fn %{lagged_hr_cut_year: cut} ->
       # keep only non-lagged HR on plot
       cut == 0
     end)
     |> Enum.map(fn assoc ->
-      # Find direction given phenocode of interest
-      {other_pheno_name, other_pheno_longname, other_pheno_category, direction} =
-        if phenocode.name == assoc.prior_name do
+      # Find direction given endpoint of interest
+      {other_endpoint_name, other_endpoint_longname, other_endpoint_category, direction} =
+        if endpoint.name == assoc.prior_name do
           {assoc.outcome_name, assoc.outcome_longname, assoc.outcome_category, "after"}
         else
           {assoc.prior_name, assoc.prior_longname, assoc.prior_category, "before"}
         end
 
       %{
-        "name" => other_pheno_name,
-        "longname" => other_pheno_longname,
-        "category" => other_pheno_category,
+        "name" => other_endpoint_name,
+        "longname" => other_endpoint_longname,
+        "category" => other_endpoint_category,
         "direction" => direction,
         "hr" => assoc.hr,
         "hr_str" => round(assoc.hr, 2),
@@ -303,19 +303,19 @@ defmodule RisteysWeb.PhenocodeView do
     end)
   end
 
-  defp data_assocs_table(pheno_id, assocs, hr_prior_distribs, hr_outcome_distribs) do
+  defp data_assocs_table(endpoint_id, assocs, hr_prior_distribs, hr_outcome_distribs) do
     # Merge binned HR distrib in assocs table
     binned_prior_hrs =
-      for bin <- hr_prior_distribs, into: %{}, do: {bin.pheno_id, bin.percent_rank}
+      for bin <- hr_prior_distribs, into: %{}, do: {bin.endpoint_id, bin.percent_rank}
 
     binned_outcome_hrs =
-      for bin <- hr_outcome_distribs, into: %{}, do: {bin.pheno_id, bin.percent_rank}
+      for bin <- hr_outcome_distribs, into: %{}, do: {bin.endpoint_id, bin.percent_rank}
 
     assocs =
       Enum.map(
         assocs,
         fn assoc ->
-          if assoc.outcome_id == pheno_id do
+          if assoc.outcome_id == endpoint_id do
             hr_binned = Map.get(binned_prior_hrs, assoc.prior_id)
             Map.put(assoc, :hr_binned, hr_binned)
           else
@@ -327,7 +327,7 @@ defmodule RisteysWeb.PhenocodeView do
 
     # Takes the associations from the database and transform them to
     # values for the assocation table, such that each table row has
-    # "before" and "after" associations with the given pheno_id.
+    # "before" and "after" associations with the given endpoint_id.
     no_stats = %{
       "hr" => nil,
       "hr_str" => nil,
@@ -342,7 +342,7 @@ defmodule RisteysWeb.PhenocodeView do
 
     rows =
       Enum.reduce(assocs, %{}, fn assoc, acc ->
-        to_record(acc, assoc, pheno_id)
+        to_record(acc, assoc, endpoint_id)
       end)
 
     Enum.map(rows, fn {other_id, lag_data} ->
@@ -442,11 +442,11 @@ defmodule RisteysWeb.PhenocodeView do
     end)
   end
 
-  defp to_record(res, assoc, pheno_id) do
+  defp to_record(res, assoc, endpoint_id) do
     # Takes an association and transform it to a suitable value for a
     # row in the association table.
-    [dir, other_pheno] =
-      if pheno_id == assoc.prior_id do
+    [dir, other_endpoint] =
+      if endpoint_id == assoc.prior_id do
         [
           "after",
           %{
@@ -479,26 +479,26 @@ defmodule RisteysWeb.PhenocodeView do
       "hr_binned" => assoc.hr_binned
     }
 
-    # Create pheno mapping if not existing
+    # Create endpoint mapping if not existing
     res =
-      if is_nil(Map.get(res, other_pheno.id)) do
-        Map.put(res, other_pheno.id, %{})
+      if is_nil(Map.get(res, other_endpoint.id)) do
+        Map.put(res, other_endpoint.id, %{})
       else
         res
       end
 
     # Create inner lag mapping if not existing
     res =
-      if is_nil(get_in(res, [other_pheno.id, lag])) do
-        put_in(res, [other_pheno.id, lag], %{})
+      if is_nil(get_in(res, [other_endpoint.id, lag])) do
+        put_in(res, [other_endpoint.id, lag], %{})
       else
         res
       end
 
     res
-    |> put_in([other_pheno.id, lag, dir], new_stats)
-    |> put_in([other_pheno.id, "name"], other_pheno.name)
-    |> put_in([other_pheno.id, "longname"], other_pheno.longname)
+    |> put_in([other_endpoint.id, lag, dir], new_stats)
+    |> put_in([other_endpoint.id, "name"], other_endpoint.name)
+    |> put_in([other_endpoint.id, "longname"], other_endpoint.longname)
   end
 
   defp sort_variants(variants) do

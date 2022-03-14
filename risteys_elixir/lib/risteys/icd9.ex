@@ -6,7 +6,7 @@ defmodule Risteys.Icd9 do
     field :code, :string
     field :description, :string
 
-    many_to_many :phenocodes, Risteys.Phenocode, join_through: Risteys.PhenocodeIcd9
+    many_to_many :fg_endpoint_definitions, Risteys.FGEndpoint.Definition, join_through: Risteys.FGEndpoint.DefinitionICD9
 
     timestamps()
   end

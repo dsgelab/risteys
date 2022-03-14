@@ -3,7 +3,7 @@ defmodule Risteys.FGEndpoint.StatsCumulativeIncidence do
   import Ecto.Changeset
 
   schema "stats_cumulative_incidence" do
-    field :phenocode_id, :id
+    field :fg_endpoint_id, :id
 
     field :age, :float
     field :sex, :string
@@ -15,12 +15,12 @@ defmodule Risteys.FGEndpoint.StatsCumulativeIncidence do
   @doc false
   def changeset(stats_cumulative_incidence, attrs) do
     stats_cumulative_incidence
-    |> cast(attrs, [:phenocode_id, :age, :sex, :value])
-    |> validate_required([:phenocode_id, :age, :sex, :value])
+    |> cast(attrs, [:fg_endpoint_id, :age, :sex, :value])
+    |> validate_required([:fg_endpoint_id, :age, :sex, :value])
     |> validate_number(:age, greater_than_or_equal_to: 0.0)
     |> validate_change(:value, &check_incidence/2)
     |> validate_inclusion(:sex, ["male", "female"])
-    |> unique_constraint(:phenocode_id, name: :cumulinc)  # unique on (phenocode, sex, age)
+    |> unique_constraint(:fg_endpoint_id, name: :cumulinc)  # unique on (fg_endpoint, sex, age)
   end
 
   # Incidence must have a limited precision (to have xx.xx%) and be in [0, 1]

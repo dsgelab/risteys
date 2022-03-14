@@ -1,4 +1,4 @@
-# Import endpoint (aka Phenocode) information.
+# Import endpoint information.
 #
 # Usage
 # -----
@@ -35,7 +35,7 @@
 #   CSV file with mapping of selected endpoint to correlated endpoints.
 #   Exported as CSV from the Excel document "core and non-core endpoints" from FinnGen
 
-alias Risteys.{Repo, FGEndpoint, Phenocode, PhenocodeIcd10, Icd10}
+alias Risteys.{Repo, FGEndpoint, Icd10}
 require Logger
 import Ecto.Query
 
@@ -54,11 +54,11 @@ Logger.info("Loading ICD-10 from files")
 
 # HELPERS
 defmodule AssocICDs do
-  def insert_or_update(registry, 10, phenocode, icds) do
-    # Delete all previous associations of (Phenocode, Registry) -> ICD-10
+  def insert_or_update(registry, 10, endpoint, icds) do
+    # Delete all previous associations of (FGEndpoint.Definition, Registry) -> ICD-10
     Repo.delete_all(
-      from link in PhenocodeIcd10,
-        where: link.phenocode_id == ^phenocode.id and link.registry == ^registry
+      from link in FGEndpoint.DefinitionICD10,
+        where: link.fg_endpoint_id == ^endpoint.id and link.registry == ^registry
     )
 
     # Add new associations
@@ -67,17 +67,17 @@ defmodule AssocICDs do
       icd_db = Repo.get_by!(Icd10, code: icd)
 
       case Repo.get_by(
-             PhenocodeIcd10,
+             FGEndpoint.DefinitionICD10,
              registry: registry,
-             phenocode_id: phenocode.id,
+             fg_endpoint_id: endpoint.id,
              icd10_id: icd_db.id
            ) do
-        nil -> %PhenocodeIcd10{}
+        nil -> %FGEndpoint.DefinitionICD10{}
         existing -> existing
       end
-      |> PhenocodeIcd10.changeset(%{
+      |> FGEndpoint.DefinitionICD10.changeset(%{
         registry: registry,
-        phenocode_id: phenocode.id,
+        fg_endpoint_id: endpoint.id,
         icd10_id: icd_db.id
       })
       |> Repo.insert_or_update!()
@@ -424,12 +424,12 @@ end)
 |> Enum.each(fn row ->
   Logger.info("Inserting/updating: #{row.name}")
 
-  phenocode =
-    case Repo.get_by(Phenocode, name: row.name) do
-      nil -> %Phenocode{}
+  endpoint =
+    case Repo.get_by(FGEndpoint.Definition, name: row.name) do
+      nil -> %FGEndpoint.Definition{}
       existing -> existing
     end
-    |> Phenocode.changeset(%{
+    |> FGEndpoint.Definition.changeset(%{
       name: row.name,
       tags: row.tags,
       level: row.level,
@@ -486,12 +486,12 @@ end)
     })
     |> Repo.insert_or_update!()
 
-  AssocICDs.insert_or_update("OUTPAT", 10, phenocode, row.outpat_icd10s_exp)
-  AssocICDs.insert_or_update("HD", 10, phenocode, row.hd_icd10s_exp)
-  AssocICDs.insert_or_update("HD_EXCL", 10, phenocode, row.hd_icd10s_excl_exp)
-  AssocICDs.insert_or_update("COD", 10, phenocode, row.cod_icd10s_exp)
-  AssocICDs.insert_or_update("COD_EXCL", 10, phenocode, row.cod_icd10s_excl_exp)
-  AssocICDs.insert_or_update("KELA", 10, phenocode, row.kela_icd10s_exp)
+  AssocICDs.insert_or_update("OUTPAT", 10, endpoint, row.outpat_icd10s_exp)
+  AssocICDs.insert_or_update("HD", 10, endpoint, row.hd_icd10s_exp)
+  AssocICDs.insert_or_update("HD_EXCL", 10, endpoint, row.hd_icd10s_excl_exp)
+  AssocICDs.insert_or_update("COD", 10, endpoint, row.cod_icd10s_exp)
+  AssocICDs.insert_or_update("COD_EXCL", 10, endpoint, row.cod_icd10s_excl_exp)
+  AssocICDs.insert_or_update("KELA", 10, endpoint, row.kela_icd10s_exp)
 end)
 
 # Set the selected core endpoint for correlated endpoints
@@ -515,12 +515,12 @@ map_corr_selected
 |> Enum.filter(fn {_correlated, selected} -> selected in Map.keys(core_endpoints) end)
 
 |> Enum.each(fn {correlated, selected} ->
-  endp_correlated = Repo.get_by!(Phenocode, name: correlated)
+  endp_correlated = Repo.get_by!(FGEndpoint.Definition, name: correlated)
 
   case Map.fetch(endpoints_ids, selected) do
     {:ok, id_selected} ->
       endp_correlated
-      |> Phenocode.changeset(%{selected_core_id: id_selected})
+      |> FGEndpoint.Definition.changeset(%{selected_core_id: id_selected})
       |> Repo.insert_or_update!()
 
     :error ->

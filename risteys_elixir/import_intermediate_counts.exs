@@ -101,7 +101,7 @@ end)
     # Check for individual-level data is done there
     upsert =
       FGEndpoint.upsert_explainer_step(%{
-        phenocode_id: endpoint_id,
+        fg_endpoint_id: endpoint_id,
         step: step,
         nindivs: count
       })

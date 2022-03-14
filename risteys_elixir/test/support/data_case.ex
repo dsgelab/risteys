@@ -12,7 +12,7 @@ defmodule Risteys.DataCase do
   of the test unless the test case is marked as async.
   """
 
-  alias Risteys.Phenocode
+  alias Risteys.FGEndpoint
   alias Risteys.Repo
   alias Risteys.StatsSex
 
@@ -59,14 +59,14 @@ defmodule Risteys.DataCase do
   A helper that puts the minimum required data in database for Risteys to run.
   """
   def data_fixture(name) do
-    phenocode =
-      Phenocode.changeset(%Phenocode{}, %{name: name, longname: "Longname for #{name}"})
+    endpoint =
+      FGEndpoint.Definition.changeset(%FGEndpoint.Definition{}, %{name: name, longname: "Longname for #{name}"})
 
-    {:ok, phenocode} = Repo.insert(phenocode)
+    {:ok, endpoint} = Repo.insert(endpoint)
 
     stats_all =
       StatsSex.changeset(%StatsSex{}, %{
-        phenocode_id: phenocode.id,
+        fg_endpoint_id: endpoint.id,
         sex: 0,
         case_fatality: 0.2,
         mean_age: 40.0,

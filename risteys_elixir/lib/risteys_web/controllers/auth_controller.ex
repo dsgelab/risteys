@@ -24,8 +24,8 @@ defmodule RisteysWeb.AuthController do
 
       # Redirect the user to the endpoint they were on before logging in
       %{fg_endpoint: fg_endpoint} = get_session(conn, :redir_state)
-      pheno = Routes.phenocode_path(conn, :show, fg_endpoint)
-      Phoenix.Controller.redirect(conn, to: pheno)
+      endpoint = Routes.fg_endpoint_path(conn, :show, fg_endpoint)
+      Phoenix.Controller.redirect(conn, to: endpoint)
     else
       # Authorization failed
       put_session(conn, :user_is_authz, false)

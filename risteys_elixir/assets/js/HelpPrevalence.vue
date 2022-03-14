@@ -6,7 +6,7 @@
 			<thead>
 				<tr>
 					<th>ID</th>
-					<th>phenocode</th>
+					<th>endpoint</th>
 					<th>age</th>
 				</tr>
 			</thead>
