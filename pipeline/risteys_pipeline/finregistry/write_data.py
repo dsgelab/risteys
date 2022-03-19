@@ -3,6 +3,7 @@
 import json
 import numpy as np
 from collections import defaultdict
+from risteys_pipeline.log import logger
 
 
 def distribution_to_dict(dist):
@@ -67,3 +68,17 @@ def summary_stats_to_json(key_figures, dist_age, dist_year):
 
     return res
 
+def write_json_to_file(json_string, filepath):
+    """
+    Write JSON to a file
+
+    Args:
+        json_string (str): dataset in JSON format
+        filepath (str): where to write the data 
+
+    Returns:
+        None
+    """
+    logger.info(f"Writing to file {filepath}")
+    with open(filepath, "w") as f:
+        f.write(json_string)

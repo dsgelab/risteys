@@ -1,5 +1,5 @@
 import pandas as pd
-from risteys_pipeline.finregistry.summary_stats import green_distribution
+from risteys_pipeline.finregistry.distributions import green_distribution
 
 
 def test_green_distribution_early_onset():

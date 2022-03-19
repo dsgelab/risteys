@@ -2,45 +2,10 @@
 
 import numpy as np
 from risteys_pipeline.log import logger
-from risteys_pipeline.config import FOLLOWUP_START, FOLLOWUP_END
+from risteys_pipeline.config import FOLLOWUP_START
 
 
-def get_cohort(minimal_phenotype):
-    """
-    Get cohort dataset with the following eligibility criteria:
-        - born before the end of the follow-up
-        - either not dead or died after the start of the follow-up
-        - sex information is not missing
-
-    Args:
-        minimal_phenotype (DataFrame): minimal phenotype dataset
-
-    Returns:
-        cohort (DataFrame): cohort dataset with the following columns:
-        finregistryid, birth_year, female, start, stop, outcome
-
-    TODO: move to survival analysis
-    """
-    logger.info("Building the cohort")
-    cols = ["finregistryid", "birth_year", "death_year", "female"]
-    cohort = minimal_phenotype[cols]
-
-    born_before_fu_end = cohort["birth_year"] <= FOLLOWUP_END
-    not_dead = minimal_phenotype["death_year"].isna()
-    died_after_fu_start = minimal_phenotype["death_year"] >= FOLLOWUP_START
-    inside_timeframe = born_before_fu_end & (not_dead | died_after_fu_start)
-    cohort = cohort.loc[inside_timeframe]
-    cohort = cohort.loc[~cohort["female"].isna()]
-
-    cohort["start"] = np.maximum(cohort["birth_year"], FOLLOWUP_START)
-    cohort["stop"] = np.minimum(cohort["death_year"].fillna(np.Inf), FOLLOWUP_END)
-    cohort["outcome"] = 0
-    cohort = cohort.drop(columns=["death_year"])
-
-    return cohort
-
-
-def get_controls(cohort, n_controls):
+def sample_controls(cohort, n_controls):
     """
     Sample controls from the cohort
     
@@ -59,9 +24,17 @@ def get_controls(cohort, n_controls):
     return controls
 
 
-def get_cases(all_cases, endpoint, n_cases=250_000):
+def sample_cases(all_cases, endpoint, n_cases=250_000):
     """
-    Sample cases
+    Sample cases from all_cases
+
+    Args:
+        all_cases (DataFrame): dataset with cases for all endpoints
+        endpoint (str): name of the endpoint
+        n_cases (int): number of cases to sample
+
+    Returns:
+        cases (DataFrame): dataset with all cases with `endpoint`
     """
     cols = ["finregistryid", "birth_year", "death_year", "female", "age"]
     cases = all_cases.loc[all_cases["endpoint"] == endpoint, cols]
@@ -74,24 +47,6 @@ def get_cases(all_cases, endpoint, n_cases=250_000):
     cases = cases.drop(columns=["age"])
     logger.info(f"{cases.shape[0]} cases sampled")
     return cases
-
-
-def get_exposed(first_events, exposure, cases):
-    """Get exposed subjects. Exposures after outcome are excluded."""
-    logger.info("Finding exposed subjects")
-    cols = ["finregistryid", "birth_year", "age"]
-    exposed = first_events.loc[first_events["endpoint"] == exposure, cols]
-
-    exposed = exposed.rename({"age": "exposure_age"})
-    outcome_age = cases[["finregistryid", "age"]].rename({"age": "outcome_age"})
-    exposed = exposed.merge(outcome_age, how="left", on="finregistryid")
-    exposed = exposed.loc[exposed["age"] > exposed["exposure_age"]]
-
-    exposed["duration"] = exposed["birth_year"] + exposed["age"]
-    exposed["exposure"] = 1
-    exposed = exposed[["finregistryid", "duration", "exposure"]]
-
-    return exposed
 
 
 def calculate_case_cohort_weights(
