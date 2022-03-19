@@ -243,7 +243,7 @@ b
             bch["age"] = round(bch["age"] / 10) * 10
             bch = bch.groupby("age").mean()
             bch = bch.merge(counts, on="age", how="left")
-            bch = bch.loc[bch["n_events"] > MIN_SUBJECTS_PERSONAL_DATA]
+            bch = bch.loc[bch["n_events"] >= MIN_SUBJECTS_PERSONAL_DATA]
             bch = bch.drop(columns=["n_events"])
             bch = bch.set_index("age").to_dict()
 
