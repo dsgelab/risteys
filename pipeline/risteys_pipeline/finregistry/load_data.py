@@ -72,12 +72,16 @@ def load_endpoints_data(data_path=FINREGISTRY_ENDPOINTS_DATA_PATH):
 
     Returns:
         df (DataFrame): FinnGen endpoints dataframe
+
+
+    TODO: rename to endpoint_definitions
     """
     cols = ["NAME", "SEX", "OMIT"]
     df = pd.read_csv(data_path, sep=";", usecols=cols, skiprows=[1], encoding="latin1")
     logger.info(f"{df.shape[0]} rows loaded")
     df = df.rename(columns={"NAME": "endpoint", "SEX": "sex", "OMIT": "omit"})
-    df = df.loc[df["omit"].isnull()].reset_index(drop=True)
+    df = df.loc[(df["omit"].isnull()) | (df["endpoint"] == "DEATH")]
+    df = df.reset_index(drop=True)
     df["female"] = pd.NA
     df.loc[df["sex"] == SEX_FEMALE_ENDPOINTS, "female"] = True
     df.loc[df["sex"] == SEX_MALE_ENDPOINTS, "female"] = False
@@ -101,6 +105,8 @@ def load_first_events_data(
 
     Returns:
         df (DataFrame): first events dataframe
+
+    TODO: compute the DEATH endpoint from death_year
     """
     cols = ["FINREGISTRYID", "ENDPOINT", "AGE"]
     df = pd.read_feather(data_path, columns=cols)
