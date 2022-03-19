@@ -1,6 +1,7 @@
 """Functions for survival analysis"""
 
 import pandas as pd
+import numpy as np
 from lifelines import CoxPHFitter
 from lifelines.utils import add_covariate_to_timeline
 from risteys_pipeline.log import logger
@@ -10,15 +11,47 @@ from risteys_pipeline.config import (
     MIN_SUBJECTS_PERSONAL_DATA,
 )
 from risteys_pipeline.finregistry.sample import (
-    get_cases,
-    get_controls,
-    get_exposed,
+    sample_cases,
+    sample_controls,
     calculate_case_cohort_weights,
 )
 
 N_CASES = 25_000
 CONTROLS_PER_CASE = 4
 MIN_SUBJECTS_SURVIVAL_ANALYSIS = 100
+
+
+def get_cohort(minimal_phenotype):
+    """
+    Get cohort dataset with the following eligibility criteria:
+        - born before the end of the follow-up
+        - either not dead or died after the start of the follow-up
+        - sex information is not missing
+
+    Args:
+        minimal_phenotype (DataFrame): minimal phenotype dataset
+
+    Returns:
+        cohort (DataFrame): cohort dataset with the following columns:
+        finregistryid, birth_year, female, start, stop, outcome
+    """
+    logger.info("Building the cohort")
+    cols = ["finregistryid", "birth_year", "death_year", "female"]
+    cohort = minimal_phenotype[cols]
+
+    born_before_fu_end = cohort["birth_year"] <= FOLLOWUP_END
+    not_dead = minimal_phenotype["death_year"].isna()
+    died_after_fu_start = minimal_phenotype["death_year"] >= FOLLOWUP_START
+    inside_timeframe = born_before_fu_end & (not_dead | died_after_fu_start)
+    cohort = cohort.loc[inside_timeframe]
+    cohort = cohort.loc[~cohort["female"].isna()]
+
+    cohort["start"] = np.maximum(cohort["birth_year"], FOLLOWUP_START)
+    cohort["stop"] = np.minimum(cohort["death_year"].fillna(np.Inf), FOLLOWUP_END)
+    cohort["outcome"] = 0
+    cohort = cohort.drop(columns=["death_year"])
+
+    return cohort
 
 
 def prep_all_cases(first_events, cohort):
@@ -32,7 +65,9 @@ def prep_all_cases(first_events, cohort):
         cohort (DataFrame): cohort dataset, output of get_cohort()
 
     Returns:
-        all_cases (DataFrame)
+        all_cases (DataFrame): dataset with cases for all endpoints
+
+    TODO: exclude subjects with missing sex
     """
     logger.info("Prepping all cases")
     all_cases = first_events.copy()
@@ -47,6 +82,35 @@ def prep_all_cases(first_events, cohort):
     all_cases = all_cases.reset_index(drop=True)
 
     return all_cases
+
+
+def get_exposed(first_events, exposure, cases):
+    """
+    Get exposed subjects. Exposures after outcome are excluded.
+    
+    Args:
+        first_events (DataFrame): first events dataset
+        exposure (str): name of the exposure 
+        cases (DataFrame): cases dataset
+
+    Returns:
+        exposed (DataFrame): dataset of exposed subjects
+    """
+    logger.info("Finding exposed subjects")
+    cols = ["finregistryid", "birth_year", "year"]
+    exposed = first_events.loc[first_events["endpoint"] == exposure, cols]
+
+    exposed = exposed.rename(columns={"year": "exposure_year"})
+    outcome_year = cases[["finregistryid", "stop"]]
+    outcome_year = outcome_year.rename(columns={"stop": "outcome_year"})
+    exposed = exposed.merge(outcome_year, how="left", on="finregistryid")
+    exposed = exposed.loc[exposed["outcome_year"] > exposed["exposure_year"]]
+
+    exposed["duration"] = exposed["exposure_year"]
+    exposed["exposure"] = 1
+    exposed = exposed[["finregistryid", "duration", "exposure"]]
+
+    return exposed
 
 
 def build_cph_dataset(outcome, exposure, cohort, all_cases):
@@ -64,13 +128,14 @@ def build_cph_dataset(outcome, exposure, cohort, all_cases):
         df_cph (DataFrame): dataset with the following columns:
         finregistryid, start (year), stop (year), exposure, outcome, birth_year, female, weight
     """
-    cases = get_cases(all_cases, outcome, n_cases=N_CASES)
+    cases = sample_cases(all_cases, outcome, n_cases=N_CASES)
     n_cases = cases.shape[0]
 
     df_cph = None
 
     if n_cases > 0:
-        controls = get_controls(cohort, CONTROLS_PER_CASE * n_cases)
+
+        controls = sample_controls(cohort, CONTROLS_PER_CASE * n_cases)
 
         weight_cases, weight_controls = calculate_case_cohort_weights(
             cases["finregistryid"],
@@ -102,7 +167,12 @@ def build_cph_dataset(outcome, exposure, cohort, all_cases):
                 event_col="outcome",
             )
             df_cph = df_cph.reset_index(drop=True)
+            df_cph["exposure"] = df_cph["exposure"].fillna(0)
+            df_cph = df_cph.drop(columns=["finregistryid"]).rename(
+                columns={"finregistryid_unique": "finregistryid"}
+            )
 
+        df_cph["outcome"] = df_cph["outcome"].astype(int)
         df_cph["female"] = df_cph["female"].astype(int)
         df_cph = df_cph.drop(columns=["death_year"])
         df_cph = df_cph.loc[df_cph["start"] < df_cph["stop"]]
@@ -172,7 +242,9 @@ def survival_analysis(
                 df_timescale = df_timescale.drop(columns=["start"])
                 entry_col = None
             elif timescale == "age":
-                df_timescale["start"] = df_timescale["start"] - df_timescale["birth_year"]
+                df_timescale["start"] = (
+                    df_timescale["start"] - df_timescale["birth_year"]
+                )
                 df_timescale["stop"] = df_timescale["stop"] - df_timescale["birth_year"]
                 entry_col = "start"
 
