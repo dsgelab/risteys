@@ -128,7 +128,7 @@ def build_cph_dataset(outcome, exposure, cohort, all_cases):
         df_cph (DataFrame): dataset with the following columns:
         finregistryid, start (year), stop (year), exposure, outcome, birth_year, female, weight
     """
-    cases = sample_cases(all_cases, outcome, n_cases=N_CASES)
+    cases, caseids_total = sample_cases(all_cases, outcome, n_cases=N_CASES)
     n_cases = cases.shape[0]
 
     df_cph = None
@@ -140,7 +140,7 @@ def build_cph_dataset(outcome, exposure, cohort, all_cases):
         weight_cases, weight_controls = calculate_case_cohort_weights(
             cases["finregistryid"],
             controls["finregistryid"],
-            cases["finregistryid"],
+            caseids_total,
             cohort["finregistryid"],
         )
         cases["weight"] = weight_cases
