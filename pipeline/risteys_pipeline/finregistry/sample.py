@@ -35,18 +35,23 @@ def sample_cases(all_cases, endpoint, n_cases=250_000):
 
     Returns:
         cases (DataFrame): dataset with all cases with `endpoint`
+        caseids_total (int): FinRegistry IDs for all cases with `endpoint`
     """
     cols = ["finregistryid", "birth_year", "death_year", "female", "age"]
     cases = all_cases.loc[all_cases["endpoint"] == endpoint, cols]
     cases = cases.reset_index(drop=True)
-    if n_cases < cases.shape[0]:
+
+    caseids_total = cases["finregistryid"]
+    if n_cases < len(caseids_total):
         cases = cases.sample(n_cases).reset_index(drop=True)
+    
     cases["start"] = np.maximum(cases["birth_year"], FOLLOWUP_START)
     cases["stop"] = cases["birth_year"] + cases["age"]
     cases["outcome"] = 1
     cases = cases.drop(columns=["age"])
     logger.info(f"{cases.shape[0]} cases sampled")
-    return cases
+    
+    return (cases, caseids_total)
 
 
 def calculate_case_cohort_weights(
