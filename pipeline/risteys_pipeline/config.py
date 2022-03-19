@@ -8,8 +8,8 @@ FINREGISTRY_MINIMAL_PHENOTYPE_DATA_PATH = (
     ROOT_DIR / "minimal_phenotype" / "minimal_phenotype_2022-02-17.feather"
 )
 
-FINREGISTRY_LONG_FIRST_EVENTS_DATA_PATH = (
-    ROOT_DIR / "endpointer" / "wide_first_events_endpoints_2021-09-04_all_densified.feather"
+FINREGISTRY_DENSIFIED_FIRST_EVENTS_DATA_PATH = (
+    ROOT_DIR / "endpointer" / "densified_first_events_DF8_no_omits_2022-03-17.feather"
 )
 
 FINREGISTRY_ENDPOINTS_DATA_PATH = (
