@@ -34,9 +34,10 @@ def load_minimal_phenotype_data(data_path=FINREGISTRY_MINIMAL_PHENOTYPE_DATA_PAT
     logger.info(f"{df.shape[0]} rows loaded")
 
     df.columns = df.columns.str.lower()
+    df = df.rename(columns={"finregistryid": "personid"})
 
-    df = df.loc[~df["finregistryid"].isna()]
-    df = df.drop_duplicates(subset=["finregistryid"]).reset_index(drop=True)
+    df = df.loc[~df["personid"].isna()]
+    df = df.drop_duplicates(subset=["personid"]).reset_index(drop=True)
 
     df["birth_year"] = to_decimal_year(df["date_of_birth"])
     df["death_year"] = to_decimal_year(df["death_date"])
@@ -110,11 +111,11 @@ def load_first_events_data(
     """
     cols = ["FINREGISTRYID", "ENDPOINT", "AGE"]
     df = pd.read_feather(data_path, columns=cols)
-    df.columns = ["finregistryid", "endpoint", "age"]
+    df.columns = ["personid", "endpoint", "age"]
     logger.info(f"{df.shape[0]} rows loaded")
 
     df = df.loc[df["endpoint"].isin(endpoints["endpoint"])].reset_index(drop=True)
-    df = df.merge(minimal_phenotype, how="left", on="finregistryid")
+    df = df.merge(minimal_phenotype, how="left", on="personid")
     df = df.fillna({"sex": "unknown"})
     df["year"] = df["birth_year"] + df["age"]
     logger.info(f"{df.shape[0]} rows after data pre-processing")

@@ -35,13 +35,13 @@ def sample_cases(all_cases, endpoint, n_cases=250_000):
 
     Returns:
         cases (DataFrame): dataset with all cases with `endpoint`
-        caseids_total (int): FinRegistry IDs for all cases with `endpoint`
+        caseids_total (int): person IDs for all cases with `endpoint`
     """
-    cols = ["finregistryid", "birth_year", "death_year", "female", "age"]
+    cols = ["personid", "birth_year", "death_year", "female", "age"]
     cases = all_cases.loc[all_cases["endpoint"] == endpoint, cols]
     cases = cases.reset_index(drop=True)
 
-    caseids_total = cases["finregistryid"]
+    caseids_total = cases["personid"]
     if n_cases < len(caseids_total):
         cases = cases.sample(n_cases).reset_index(drop=True)
     
@@ -61,10 +61,10 @@ def calculate_case_cohort_weights(
     Calculate case-cohort weights for cases and controls.
 
     Args:
-        caseids (list): finregistryids for cases
-        controlids (list): finregistryids for controls
-        sample_of_caseids (list): finregistryids for cases included in the sample
-        sample_of_controlids (list): finregistryids for controls included in the sample
+        caseids (list): person IDs for cases
+        controlids (list): person IDs for controls
+        sample_of_caseids (list): person IDs for cases included in the sample
+        sample_of_controlids (list): person IDs for controls included in the sample
 
     Returns: 
         weight_cases (float): case-cohort weight for cases
