@@ -43,14 +43,14 @@ def compute_key_figures(first_events, minimal_phenotype, index_persons=False):
     n_total = {
         "female": sum(mp["female"] == True),
         "male": sum(mp["female"] == False),
-        "unknown": len(fe.loc[fe["sex"] == "unknown", "finregistryid"].unique()),
+        "unknown": len(fe.loc[fe["sex"] == "unknown", "personid"].unique()),
     }
 
     # Calculate key figures by endpoint and sex
     kf = (
         fe.groupby(["endpoint", "sex"])
-        .agg({"finregistryid": "count", "age": "mean"})
-        .rename(columns={"finregistryid": "nindivs_", "age": "mean_age_"})
+        .agg({"personid": "count", "age": "mean"})
+        .rename(columns={"personid": "nindivs_", "age": "mean_age_"})
         .fillna({"nindivs_": 0})
         .reset_index()
     )
