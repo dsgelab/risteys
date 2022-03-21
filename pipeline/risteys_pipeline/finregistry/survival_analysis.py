@@ -33,10 +33,10 @@ def get_cohort(minimal_phenotype):
 
     Returns:
         cohort (DataFrame): cohort dataset with the following columns:
-        finregistryid, birth_year, female, start, stop, outcome
+        personid, birth_year, female, start, stop, outcome
     """
     logger.info("Building the cohort")
-    cols = ["finregistryid", "birth_year", "death_year", "female"]
+    cols = ["personid", "birth_year", "death_year", "female"]
     cohort = minimal_phenotype[cols]
 
     born_before_fu_end = cohort["birth_year"] <= FOLLOWUP_END
@@ -77,8 +77,8 @@ def prep_all_cases(first_events, cohort):
     )
     all_cases = all_cases.loc[inside_timeframe].reset_index(drop=True)
 
-    cohortids = cohort["finregistryid"]
-    all_cases = all_cases.merge(cohortids, how="right", on="finregistryid")
+    cohortids = cohort["personid"]
+    all_cases = all_cases.merge(cohortids, how="right", on="personid")
     all_cases = all_cases.reset_index(drop=True)
 
     return all_cases
@@ -97,18 +97,18 @@ def get_exposed(first_events, exposure, cases):
         exposed (DataFrame): dataset of exposed subjects
     """
     logger.info("Finding exposed subjects")
-    cols = ["finregistryid", "birth_year", "year"]
+    cols = ["personid", "birth_year", "year"]
     exposed = first_events.loc[first_events["endpoint"] == exposure, cols]
 
     exposed = exposed.rename(columns={"year": "exposure_year"})
-    outcome_year = cases[["finregistryid", "stop"]]
+    outcome_year = cases[["personid", "stop"]]
     outcome_year = outcome_year.rename(columns={"stop": "outcome_year"})
-    exposed = exposed.merge(outcome_year, how="left", on="finregistryid")
+    exposed = exposed.merge(outcome_year, how="left", on="personid")
     exposed = exposed.loc[exposed["outcome_year"] > exposed["exposure_year"]]
 
     exposed["duration"] = exposed["exposure_year"]
     exposed["exposure"] = 1
-    exposed = exposed[["finregistryid", "duration", "exposure"]]
+    exposed = exposed[["personid", "duration", "exposure"]]
 
     return exposed
 
@@ -126,7 +126,7 @@ def build_cph_dataset(outcome, exposure, cohort, all_cases):
 
     Returns:
         df_cph (DataFrame): dataset with the following columns:
-        finregistryid, start (year), stop (year), exposure, outcome, birth_year, female, weight
+        personid, start (year), stop (year), exposure, outcome, birth_year, female, weight
     """
     cases, caseids_total = sample_cases(all_cases, outcome, n_cases=N_CASES)
     n_cases = cases.shape[0]
@@ -138,10 +138,10 @@ def build_cph_dataset(outcome, exposure, cohort, all_cases):
         controls = sample_controls(cohort, CONTROLS_PER_CASE * n_cases)
 
         weight_cases, weight_controls = calculate_case_cohort_weights(
-            cases["finregistryid"],
-            controls["finregistryid"],
+            cases["personid"],
+            controls["personid"],
             caseids_total,
-            cohort["finregistryid"],
+            cohort["personid"],
         )
         cases["weight"] = weight_cases
         controls["weight"] = weight_controls
@@ -150,26 +150,26 @@ def build_cph_dataset(outcome, exposure, cohort, all_cases):
         df_cph = df_cph.reset_index(drop=True)
 
         if exposure:
-            df_cph["finregistryid_unique"] = (
-                df_cph["finregistryid"] + "_" + df_cph["outcome"].map(str)
+            df_cph["personid_unique"] = (
+                df_cph["personid"] + "_" + df_cph["outcome"].map(str)
             )
             exposed = get_exposed(all_cases, exposure, cases)
             exposed = exposed.merge(
-                df_cph[["finregistryid", "finregistryid_unique"]],
+                df_cph[["personid", "personid_unique"]],
                 how="left",
-                on="finregistryid",
+                on="personid",
             )
             df_cph = add_covariate_to_timeline(
-                df_cph.drop(columns=["finregistryid"]),
+                df_cph.drop(columns=["personid"]),
                 exposed,
-                id_col="finregistryid_unique",
+                id_col="personid_unique",
                 duration_col="duration",
                 event_col="outcome",
             )
             df_cph = df_cph.reset_index(drop=True)
             df_cph["exposure"] = df_cph["exposure"].fillna(0)
-            df_cph = df_cph.drop(columns=["finregistryid"]).rename(
-                columns={"finregistryid_unique": "finregistryid"}
+            df_cph = df_cph.drop(columns=["personid"]).rename(
+                columns={"personid_unique": "personid"}
             )
 
         df_cph["outcome"] = df_cph["outcome"].astype(int)
@@ -198,11 +198,11 @@ def check_min_number_of_subjects(df_cph):
         tbl = pd.crosstab(
             df_cph["outcome"],
             df_cph["exposure"],
-            values=df_cph["finregistryid"],
+            values=df_cph["personid"],
             aggfunc=pd.Series.nunique,
         )
     else:
-        tbl = df_cph.groupby("outcome")["finregistryid"].nunique()
+        tbl = df_cph.groupby("outcome")["personid"].nunique()
     check = tbl.values.min() > min_subjects
     return check
 
@@ -255,8 +255,8 @@ def survival_analysis(
             # Set strata if specified
             strata = ["female"] if stratify_by_sex == True else None
 
-            # Drop FinRegistry IDs
-            df_timescale = df_timescale.drop(columns=["finregistryid"])
+            # Drop personid
+            df_timescale = df_timescale.drop(columns=["personid"])
 
             # Fit the model
             logger.info("Fitting the Cox PH model")
