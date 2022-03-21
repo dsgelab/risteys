@@ -53,6 +53,11 @@
 			</ul>
 			So the mean age at first event is Mean(45, 30) = 37.5.
 		</p>
+		<p class= "mt-6">
+			<span class = "italic font-bold"> Only index persons </span> refer to a subpopulation of the FinRegistry data
+			that includes only FinRegistry index persons, who are all individuals
+			who were alive and had a hometown in Finland in 1.1.2010.
+		</p>
 	</HelpButton>
 </template>
 

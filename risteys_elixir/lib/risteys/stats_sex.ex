@@ -43,7 +43,7 @@ defmodule Risteys.StatsSex do
     end)
     |> validate_change(:distrib_age, fn :distrib_age, %{hist: hist} -> check_distrib(hist) end)
     |> unique_constraint(:sex, name: :sex_dataset_phenocode_id)
-    |> validate_inclusion(:dataset, ["FG", "FR"])
+    |> validate_inclusion(:dataset, ["FG", "FR", "FR_index"])
   end
 
   defp check_distrib(hist) do

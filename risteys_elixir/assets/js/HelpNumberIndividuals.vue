@@ -44,6 +44,11 @@
 			</tbody>
 		</table>
 		<p>In this example the <b>number of individuals is 2</b>, since only 2 unique individuals (FG1 and FG2) have EXAMPLE_ENDPOINT events.</p>
+		<p class= "mt-6">
+			<span class = "italic font-bold"> Only index persons </span> refer to a subpopulation of the FinRegistry data
+			that includes only FinRegistry index persons, who are all individuals
+			who were alive and had a hometown in Finland in 1.1.2010.
+		</p>
 	</HelpButton>
 </template>
 
