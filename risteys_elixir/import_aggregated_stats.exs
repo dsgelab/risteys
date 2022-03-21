@@ -29,6 +29,11 @@
 # and dataset is a string indicating which project the reults belong to,
 # either "FG" for FinnGen or "FR" for FinRegistry
 
+# Alternatively, for having key figures of FinRegistry index-persons sub-population,
+# the input file can be a JSON file with only the stats part
+# (same data format as in the values of "stats" key --> endpoints as keys, no distributions data)
+# In those cases, dataset argument need to be "FR_index"
+
 alias Risteys.{FGEndpoint, Repo, StatsSex}
 require Logger
 
@@ -36,7 +41,7 @@ Logger.configure(level: :info)
 [stats_filepath, dataset | _] = System.argv()
 
 # raise an error if correct dataset info is not provided
-if dataset != "FG" and dataset != "FR" do
+if dataset != "FG" and dataset != "FR" and dataset != "FR_index" do
   raise ArgumentError, message: "Dataset need to be given as a second argument, either FG or FR."
 end
 
@@ -84,16 +89,27 @@ defmodule Risteys.ImportAgg do
 end
 
 # Parse the data
+# for "key figures -only" data, the data need to be set to the same format as
+# the "full" aggregate stats by setting empty maps to distrib_year and distrib_age
 %{
   "stats" => stats,
   "distrib_year" => distrib_year,
   "distrib_age" => distrib_age
 } =
-  stats_filepath
-  # Returns a binary with the contents of the given filename, or raises a File.Error exception if an error occurs.
-  # "{\"stats\": {\"AB1TUBERCU_MILIARY\":{\"nindivs_all\":33.0,\"nindivs_female\":8.0,\"nindivs_male\":25.0,\"prevalence_all\":0.000102942,\"prevalence_female\":0.0000443698,\"prevalence_male\":0.0001782328,\"mean_age_all\":63.1203030303,\"mean_age_female\":51.95625,\"mean_age_male\":66.6928},\"AB1_ACTINOMYCOSIS\":{\"nindivs_all\":77.0, ...
-  |> File.read!() # asking OS to open the file to access the file reading content
-  |> Jason.decode!() # Parses a JSON value from input iodata. read the file as JSON and convert values to values that can be used in Elixir
+  if dataset == "FG" or dataset == "FR" do
+    stats_filepath
+    # Returns a binary with the contents of the given filename, or raises a File.Error exception if an error occurs.
+    # "{\"stats\": {\"AB1TUBERCU_MILIARY\":{\"nindivs_all\":33.0,\"nindivs_female\":8.0,\"nindivs_male\":25.0,\"prevalence_all\":0.000102942,\"prevalence_female\":0.0000443698,\"prevalence_male\":0.0001782328,\"mean_age_all\":63.1203030303,\"mean_age_female\":51.95625,\"mean_age_male\":66.6928},\"AB1_ACTINOMYCOSIS\":{\"nindivs_all\":77.0, ...
+    |> File.read!() # asking OS to open the file to access the file reading content
+    |> Jason.decode!() # Parses a JSON value from input iodata. read the file as JSON and convert values to values that can be used in Elixir
+  else
+    stats =
+    stats_filepath
+    |> File.read!()
+    |> Jason.decode!()
+
+    %{"stats" => stats, "distrib_year" => %{}, "distrib_age" => %{}}
+  end
 
 # Add stats to DB
 stats
