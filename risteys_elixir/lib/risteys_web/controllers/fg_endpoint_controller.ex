@@ -125,6 +125,7 @@ defmodule RisteysWeb.FGEndpointController do
     # Get stats
     stats_FG = get_stats(endpoint, "FG")
     stats_FR = get_stats(endpoint, "FR")
+    stats_FR_index = get_stats(endpoint, "FR_index")
     %{all: %{distrib_year: distrib_year_FG, distrib_age: distrib_age_FG}} = stats_FG
     %{all: %{distrib_year: distrib_year_FR, distrib_age: distrib_age_FR}} = stats_FR
 
@@ -206,6 +207,7 @@ defmodule RisteysWeb.FGEndpointController do
     |> assign(:narrower_endpoints, FGEndpoint.narrower_endpoints(endpoint))
     |> assign(:stats_FG, stats_FG)
     |> assign(:stats_FR, stats_FR)
+    |> assign(:stats_FR_index, stats_FR_index)
     |> assign(:distrib_year_FG, distrib_year_FG)
     |> assign(:distrib_year_FR, distrib_year_FR)
     |> assign(:distrib_age_FG, distrib_age_FG)
