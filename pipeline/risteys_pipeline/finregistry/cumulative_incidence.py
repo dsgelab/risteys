@@ -37,11 +37,13 @@ b
         logger.info(f"Outcome {i+1}/{n_endpoints}: {outcome}")
         if pd.isnull(female):
             df_cph = build_cph_dataset(outcome, None, cohort, all_cases)
+            df_cph = df_cph.drop(columns=["birth_year"])
             cph = survival_analysis(df_cph, "age", stratify_by_sex=True)
         else:
             subcohort = cohort.loc[cohort["female"] == female]
             subcohort = subcohort.reset_index(drop=True)
             df_cph = build_cph_dataset(outcome, None, subcohort, all_cases)
+            df_cph = df_cph.drop(columns=["birth_year"])
             cph = survival_analysis(df_cph, "age", drop_sex=True)
 
         bch = np.nan
