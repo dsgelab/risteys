@@ -39,16 +39,18 @@ def compute_key_figures(first_events, minimal_phenotype, index_persons=False):
         fe = fe.loc[fe["index_person"] == True].reset_index(drop=True)
 
     # Calculate the total number of individuals
-    # Note: individuals for sex="unknown" is based on first events
+    # Note: the number of individuals with no sex information is based on first events
     n_total = {
         "female": sum(mp["female"] == True),
         "male": sum(mp["female"] == False),
-        "unknown": len(fe.loc[fe["sex"] == "unknown", "personid"].unique()),
+        "unknown": len(fe.loc[fe["female"].isnull(), "personid"].unique()),
     }
 
     # Calculate key figures by endpoint and sex
     kf = (
-        fe.groupby(["endpoint", "sex"])
+        fe
+        .assign(sex=fe["female"].replace({True: "female", False: "male", np.nan: "unknown"}))
+        .groupby(["endpoint", "sex"])
         .agg({"personid": "count", "age": "mean"})
         .rename(columns={"personid": "nindivs_", "age": "mean_age_"})
         .fillna({"nindivs_": 0})

@@ -20,8 +20,7 @@ def load_minimal_phenotype_data(data_path=FINREGISTRY_MINIMAL_PHENOTYPE_DATA_PAT
     - add birth and death year
     - drop redundant columns (date_of_birth, death_date)
     - set `index_person` to boolean
-    - add `female`
-    - replace numeric `sex` with strings
+    - add `female` and drop `sex`
     
     Args:
         data_path (str, optional): file path of the minimal phenotype csv file
@@ -48,13 +47,7 @@ def load_minimal_phenotype_data(data_path=FINREGISTRY_MINIMAL_PHENOTYPE_DATA_PAT
     df["female"] = pd.NA
     df.loc[df["sex"] == SEX_FEMALE_MINIMAL_PHENOTYPE, "female"] = True
     df.loc[df["sex"] == SEX_MALE_MINIMAL_PHENOTYPE, "female"] = False
-    df["sex"] = df["sex"].replace(
-        {
-            SEX_FEMALE_MINIMAL_PHENOTYPE: "female",
-            SEX_MALE_MINIMAL_PHENOTYPE: "male",
-            np.nan: "unknown",
-        }
-    )
+    df = df.drop(columns={"sex"})
 
     logger.info(f"{df.shape[0]} rows after data pre-processing")
 
