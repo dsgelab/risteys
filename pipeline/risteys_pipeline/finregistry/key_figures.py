@@ -5,6 +5,7 @@ import pandas as pd
 from risteys_pipeline.log import logger
 from risteys_pipeline.config import MIN_SUBJECTS_PERSONAL_DATA
 
+
 def compute_key_figures(first_events, minimal_phenotype, index_persons=False):
     """
     Compute the following key figures for each endpoint:
@@ -48,8 +49,9 @@ def compute_key_figures(first_events, minimal_phenotype, index_persons=False):
 
     # Calculate key figures by endpoint and sex
     kf = (
-        fe
-        .assign(sex=fe["female"].replace({True: "female", False: "male", np.nan: "unknown"}))
+        fe.assign(
+            sex=fe["female"].replace({True: "female", False: "male", np.nan: "unknown"})
+        )
         .groupby(["endpoint", "sex"])
         .agg({"personid": "count", "age": "mean"})
         .rename(columns={"personid": "nindivs_", "age": "mean_age_"})
@@ -92,3 +94,18 @@ def compute_key_figures(first_events, minimal_phenotype, index_persons=False):
     kf.columns = ["".join(col).strip() for col in kf.columns.values]
 
     return kf
+
+
+if __name__ == "__main__":
+    from risteys_pipeline.finregistry.load_data import load_data
+    from risteys_pipeline.finregistry.write_data import get_output_filepath
+
+    endpoints, minimal_phenotype, first_events = load_data()
+
+    kf_all = compute_key_figures(first_events, minimal_phenotype, index_persons=False)
+    kf_index_persons = compute_key_figures(
+        first_events, minimal_phenotype, index_persons=True
+    )
+
+    kf_all.to_csv(get_output_filepath("key_figures_all", "csv"))
+    kf_index_persons.to_csv(get_output_filepath("key_figures_index", "csv"))

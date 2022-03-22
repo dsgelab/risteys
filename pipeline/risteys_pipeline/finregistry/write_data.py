@@ -2,8 +2,31 @@
 
 import json
 import numpy as np
+import pandas as pd
+from datetime import datetime
 from collections import defaultdict
 from risteys_pipeline.log import logger
+from risteys_pipeline.config import FINREGISTRY_OUTPUT_DIR
+
+
+def get_output_filepath(filename, extension, output_dir=FINREGISTRY_OUTPUT_DIR):
+    """
+    Get output filepath. The filepath will have the following structure:
+    <output_dir>/<filename>_<yyyy-mm-dd>.<extension>
+
+    Args:
+        filename (str): name of the file without the file extension
+        extension (str): file extension, e.g. "csv"
+        output_dir (Path, optional): output directory
+
+    Returns:
+        filepath (str): output file path
+    """
+    today = datetime.today().strftime("%Y-%m-%d")
+    filename = filename + "_" + today + "." + extension
+    filepath = output_dir / filename
+
+    return filepath
 
 
 def distribution_to_dict(dist):
@@ -67,6 +90,7 @@ def summary_stats_to_json(key_figures, dist_age, dist_year):
     res = f'{{"stats": {key_figures}, "distrib_age": {dist_age}, "distrib_year": {dist_year}}}'
 
     return res
+
 
 def write_json_to_file(json_string, filepath):
     """
