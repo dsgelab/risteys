@@ -1,7 +1,6 @@
 """Functions for loading the FinRegistry datasets"""
 
 import pandas as pd
-import numpy as np
 from risteys_pipeline.config import *
 from risteys_pipeline.log import logger
 from risteys_pipeline.utils import to_decimal_year
@@ -10,6 +9,25 @@ SEX_FEMALE_ENDPOINTS = 2.0
 SEX_MALE_ENDPOINTS = 1.0
 SEX_FEMALE_MINIMAL_PHENOTYPE = 1.0
 SEX_MALE_MINIMAL_PHENOTYPE = 0.0
+
+
+def load_data():
+    """
+    Loads the following datasets using the data paths on config:
+    - endpoint definitions
+    - minimal phenotype 
+    - first events 
+
+    Args:
+        None
+
+    Returns
+        (endpoints, minimal_phenotype, first_events) (tuple)
+    """
+    endpoints = load_endpoints_data()
+    minimal_phenotype = load_minimal_phenotype_data()
+    first_events = load_first_events_data(endpoints, minimal_phenotype)
+    return (endpoints, minimal_phenotype, first_events)
 
 
 def load_minimal_phenotype_data(data_path=FINREGISTRY_MINIMAL_PHENOTYPE_DATA_PATH):
