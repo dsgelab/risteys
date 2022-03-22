@@ -138,10 +138,7 @@ def build_cph_dataset(outcome, exposure, cohort, all_cases):
         controls = sample_controls(cohort, CONTROLS_PER_CASE * n_cases)
 
         weight_cases, weight_controls = calculate_case_cohort_weights(
-            cases["personid"],
-            controls["personid"],
-            caseids_total,
-            cohort["personid"],
+            caseids_total, cohort["personid"], cases["personid"], controls["personid"],
         )
         cases["weight"] = weight_cases
         controls["weight"] = weight_controls
@@ -155,9 +152,7 @@ def build_cph_dataset(outcome, exposure, cohort, all_cases):
             )
             exposed = get_exposed(all_cases, exposure, cases)
             exposed = exposed.merge(
-                df_cph[["personid", "personid_unique"]],
-                how="left",
-                on="personid",
+                df_cph[["personid", "personid_unique"]], how="left", on="personid",
             )
             df_cph = add_covariate_to_timeline(
                 df_cph.drop(columns=["personid"]),
