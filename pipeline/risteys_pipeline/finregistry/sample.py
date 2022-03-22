@@ -44,13 +44,13 @@ def sample_cases(all_cases, endpoint, n_cases=250_000):
     caseids_total = cases["personid"]
     if n_cases < len(caseids_total):
         cases = cases.sample(n_cases).reset_index(drop=True)
-    
+
     cases["start"] = np.maximum(cases["birth_year"], FOLLOWUP_START)
     cases["stop"] = cases["birth_year"] + cases["age"]
     cases["outcome"] = 1
     cases = cases.drop(columns=["age"])
     logger.info(f"{cases.shape[0]} cases sampled")
-    
+
     return (cases, caseids_total)
 
 
@@ -74,7 +74,7 @@ def calculate_case_cohort_weights(
         ZeroDivisionError: if there are no non-cases among controls
     """
     non_cases = set(controlids) - set(caseids)
-    non_cases_in_sample = set(sample_of_controlids) - set(sample_of_caseids)
+    non_cases_in_sample = set(sample_of_controlids) - set(caseids)
 
     try:
         weight_cases = 1 / (len(sample_of_caseids) / len(caseids))
