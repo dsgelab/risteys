@@ -16,6 +16,10 @@ FINREGISTRY_ENDPOINTS_DATA_PATH = (
     ROOT_DIR / "endpoint_metadata" / "finngen_endpoints_2021-09-02.csv"
 )
 
+# Output directory
+
+FINREGISTRY_OUTPUT_DIR = Path("/data") / "projects" / "risteys"
+
 # Constants
 
 FOLLOWUP_START = 1998.0

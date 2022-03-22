@@ -5,6 +5,7 @@ import pandas as pd
 from risteys_pipeline.log import logger
 from risteys_pipeline.config import MIN_SUBJECTS_PERSONAL_DATA
 
+
 def green_distribution(dist):
     """
     Aggregate bins to have no individual-level data based on `MIN_SUBJECTS_PERSONAL_DATA`.
@@ -93,3 +94,16 @@ def compute_distribution(first_events, column):
     res = pd.DataFrame(res, columns=["endpoint", "sex", "left", "right", "count"])
 
     return res
+
+
+if __name__ == "__main__":
+    from risteys_pipeline.finregistry.load_data import load_data
+    from risteys_pipeline.finregistry.write_data import get_output_filepath
+
+    endpoints, minimal_phenotype, first_events = load_data()
+
+    dist_age = compute_distribution(first_events, "age")
+    dist_year = compute_distribution(first_events, "year")
+
+    dist_age.to_csv(get_output_filepath("distribution_age", "csv"))
+    dist_year.to_csv(get_output_filepath("distribution_year", "csv"))
