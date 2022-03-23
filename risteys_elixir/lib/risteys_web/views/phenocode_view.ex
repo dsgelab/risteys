@@ -169,6 +169,13 @@ defmodule RisteysWeb.PhenocodeView do
   end
 
   defp relative_count(steps, count) do
+    # In some cases it is impossible to compute a relative count:
+    # - 0 case for this endpoint
+    # - endpoint was no intermediate case count
+    # We handle these cases by returning 0, which will effectively
+    # set the bar width to 0 in the endpoint explainer flow.
+    no_count = 0
+
     # Compute the percentage of the given count across meaningful steps
     check_steps =
       MapSet.new([
@@ -178,21 +185,21 @@ defmodule RisteysWeb.PhenocodeView do
         :includes
       ])
 
-    max =
+    step_counts =
       steps
       |> Enum.filter(fn %{name: name} -> name in check_steps end)
       |> Enum.map(fn %{nindivs_post_step: ncases} -> ncases end)
       |> Enum.reject(&is_nil/1)
-      |> Enum.max()
 
-    if max != 0 do
-      count / max * 100
+    cond do
+      Enum.empty?(step_counts) ->
+        no_count
 
-    else
-      # If there is no data then max will be 0 but we can't divide by 0.
-      # So we handle this corner case by returning 0, which will
-      # effectively set the bar width to 0 in the endpoint explainer flow.
-      0
+      Enum.max(step_counts) == 0 ->
+        no_count
+
+      true ->
+        count / Enum.max(step_counts) * 100
     end
   end
 
