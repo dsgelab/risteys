@@ -203,7 +203,7 @@ def check_min_number_of_subjects(df_cph):
 
 
 def survival_analysis(
-    df_cph, timescale="time-on-study", drop_sex=False, stratify_by_sex=False
+    df_cph, timescale="time-on-study", drop=None, stratify_by_sex=False
 ):
     """
     Fit a Cox PH model to the data. 
@@ -212,8 +212,8 @@ def survival_analysis(
     Args: 
         df_cph (DataFrame): output of build_cph_dataset()
         timescale (str): "time-on-study" (default) or "age"
-        drop_sex (bool): should sex be dropped from covariates
-        stratify_by_age (bool): should the analysis be stratified by sex
+        drop (list of str, optional): covariates to drop
+        stratify_by_age (bool, optional): should the analysis be stratified by sex
 
     Returns: 
         cph (CoxPHFitter): fitted Cox PH model. None if there's not enough subjects.
@@ -243,9 +243,9 @@ def survival_analysis(
                 df_timescale["stop"] = df_timescale["stop"] - df_timescale["birth_year"]
                 entry_col = "start"
 
-            # Drop sex if specified
-            if drop_sex:
-                df_timescale = df_timescale.drop(columns=["female"])
+            # Drop covariates if specified
+            if drop:
+                df_timescale = df_timescale.drop(columns=drop)
 
             # Set strata if specified
             strata = ["female"] if stratify_by_sex == True else None
