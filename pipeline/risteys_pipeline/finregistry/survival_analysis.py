@@ -84,26 +84,24 @@ def prep_all_cases(first_events, cohort):
     return all_cases
 
 
-def get_exposed(first_events, exposure, cases):
+def get_exposed(all_cases, exposure, outcome_years):
     """
     Get exposed subjects. Exposures after outcome are excluded.
     
     Args:
-        first_events (DataFrame): first events dataset
+        all_cases (DataFrame): first events dataset
         exposure (str): name of the exposure 
-        cases (DataFrame): cases dataset
+        outcome_years (DataFrame): outcome years for cases, used to filter out exposures after outcome
 
     Returns:
         exposed (DataFrame): dataset of exposed subjects
     """
     logger.info("Finding exposed subjects")
     cols = ["personid", "birth_year", "year"]
-    exposed = first_events.loc[first_events["endpoint"] == exposure, cols]
+    exposed = all_cases.loc[all_cases["endpoint"] == exposure, cols]
 
     exposed = exposed.rename(columns={"year": "exposure_year"})
-    outcome_year = cases[["personid", "stop"]]
-    outcome_year = outcome_year.rename(columns={"stop": "outcome_year"})
-    exposed = exposed.merge(outcome_year, how="left", on="personid")
+    exposed = exposed.merge(outcome_years, how="left", on="personid")
     exposed = exposed.loc[exposed["outcome_year"] > exposed["exposure_year"]]
 
     exposed["duration"] = exposed["exposure_year"]
@@ -113,7 +111,53 @@ def get_exposed(first_events, exposure, cases):
     return exposed
 
 
-def build_cph_dataset(outcome, exposure, cohort, all_cases):
+def add_exposure(exposure, df_cph, all_cases):
+    """
+    Add exposure to the df_cph dataset.
+
+    Args:
+        exposure (str): name of the exposure or None
+        df_cph (DataFrame): survival dataset
+        all_cases (DataFrame): dataset with cases of all endpoints
+
+    Returns:
+        df_cph (DataFrame): survival dataset with column `exposure` added.
+    """
+
+    if exposure:
+
+        # Get exposed persons
+        outcome_years = df_cph.loc[df_cph["outcome"] == 1, ["personid", "stop"]]
+        outcome_years = outcome_years.rename(columns={"stop": "outcome_year"})
+        exposed = get_exposed(all_cases, exposure, outcome_years)
+
+        # Add unique person IDs
+        # Due to case-cohort sampling, the same person may appear twice in the dataset
+        df_cph["personid_unique"] = (
+            df_cph["personid"] + "_" + df_cph["outcome"].map(str)
+        )
+        exposed = exposed.merge(
+            df_cph[["personid", "personid_unique"]], how="left", on="personid",
+        )
+        df_cph = df_cph.drop(columns={"personid"})
+        exposed = exposed.drop(columns={"personid"})
+
+        # Add exposure to the dataset
+        df_cph = add_covariate_to_timeline(
+            df_cph,
+            exposed,
+            id_col="personid_unique",
+            duration_col="duration",
+            event_col="outcome",
+        ).fillna({"exposure": 0})
+
+        # Rename unique personid to personid
+        df_cph = df_cph.rename(columns={"personid_unique": "personid"})
+
+    return df_cph
+
+
+def build_cph_dataset(outcome, exposure, cohort, all_cases, competing_events=False):
     """
     Build a dataset for fitting a Cox PH model.
     Exposure is included as a time-varying covariate if present.
@@ -122,7 +166,8 @@ def build_cph_dataset(outcome, exposure, cohort, all_cases):
         outcome (str): outcome endpoint 
         exposure (str): exposure endpoint (None if there's no exposure)
         cohort (DataFrame): cohort for sampling controls 
-        first_events (DataFrame): first events dataset
+        all_cases (DataFrame): first events dataset
+        competing_events (bool): is death treated as a competing event
 
     Returns:
         df_cph (DataFrame): dataset with the following columns:
@@ -146,26 +191,7 @@ def build_cph_dataset(outcome, exposure, cohort, all_cases):
         df_cph = pd.concat([cases, controls])
         df_cph = df_cph.reset_index(drop=True)
 
-        if exposure:
-            df_cph["personid_unique"] = (
-                df_cph["personid"] + "_" + df_cph["outcome"].map(str)
-            )
-            exposed = get_exposed(all_cases, exposure, cases)
-            exposed = exposed.merge(
-                df_cph[["personid", "personid_unique"]], how="left", on="personid",
-            )
-            df_cph = add_covariate_to_timeline(
-                df_cph.drop(columns=["personid"]),
-                exposed,
-                id_col="personid_unique",
-                duration_col="duration",
-                event_col="outcome",
-            )
-            df_cph = df_cph.reset_index(drop=True)
-            df_cph["exposure"] = df_cph["exposure"].fillna(0)
-            df_cph = df_cph.drop(columns=["personid"]).rename(
-                columns={"personid_unique": "personid"}
-            )
+        df_cph = add_exposure(exposure, df_cph, all_cases)
 
         df_cph["outcome"] = df_cph["outcome"].astype(int)
         df_cph["female"] = df_cph["female"].astype(int)
