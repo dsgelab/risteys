@@ -2,7 +2,7 @@
 
 import pandas as pd
 import numpy as np
-from lifelines import CoxPHFitter
+from lifelines import CoxPHFitter, AalenJohansenFitter
 from lifelines.utils import add_covariate_to_timeline
 from risteys_pipeline.log import logger
 from risteys_pipeline.config import (
@@ -111,40 +111,42 @@ def get_exposed(all_cases, exposure, outcome_years):
     return exposed
 
 
-def add_exposure(exposure, df_cph, all_cases):
+def add_exposure(exposure, df_survival, all_cases):
     """
-    Add exposure to the df_cph dataset.
+    Add exposure to the df_survival dataset.
 
     Args:
         exposure (str): name of the exposure or None
-        df_cph (DataFrame): survival dataset
+        df_survival (DataFrame): survival dataset
         all_cases (DataFrame): dataset with cases of all endpoints
 
     Returns:
-        df_cph (DataFrame): survival dataset with column `exposure` added.
+        df_survival (DataFrame): survival dataset with column `exposure` added.
     """
 
     if exposure:
 
         # Get exposed persons
-        outcome_years = df_cph.loc[df_cph["outcome"] == 1, ["personid", "stop"]]
+        outcome_years = df_survival.loc[
+            df_survival["outcome"] == 1, ["personid", "stop"]
+        ]
         outcome_years = outcome_years.rename(columns={"stop": "outcome_year"})
         exposed = get_exposed(all_cases, exposure, outcome_years)
 
         # Add unique person IDs
         # Due to case-cohort sampling, the same person may appear twice in the dataset
-        df_cph["personid_unique"] = (
-            df_cph["personid"] + "_" + df_cph["outcome"].map(str)
+        df_survival["personid_unique"] = (
+            df_survival["personid"] + "_" + df_survival["outcome"].map(str)
         )
         exposed = exposed.merge(
-            df_cph[["personid", "personid_unique"]], how="left", on="personid",
+            df_survival[["personid", "personid_unique"]], how="left", on="personid",
         )
-        df_cph = df_cph.drop(columns={"personid"})
+        df_survival = df_survival.drop(columns={"personid"})
         exposed = exposed.drop(columns={"personid"})
 
         # Add exposure to the dataset
-        df_cph = add_covariate_to_timeline(
-            df_cph,
+        df_survival = add_covariate_to_timeline(
+            df_survival,
             exposed,
             id_col="personid_unique",
             duration_col="duration",
@@ -152,12 +154,29 @@ def add_exposure(exposure, df_cph, all_cases):
         ).fillna({"exposure": 0})
 
         # Rename unique personid to personid
-        df_cph = df_cph.rename(columns={"personid_unique": "personid"})
+        df_survival = df_survival.rename(columns={"personid_unique": "personid"})
 
-    return df_cph
+    return df_survival
+
+def add_competing_events(df_survival):
+    """
+    Add death as a competing event to the dataset.
+    Competing events are denoted with value 2 in the `outcome` column.
+
+    Args: 
+        df_survival (DataFrame): survival dataset
+
+    Returns:
+        df_survival (DataFrame): input dataset with competing events added
+    """
+    df_survival.loc[
+        (df_survival["stop"] < FOLLOWUP_END) & 
+        (df_survival["outcome"] == 0), "outcome"] = 2 
+
+    return df_survival
 
 
-def build_cph_dataset(outcome, exposure, cohort, all_cases, competing_events=False):
+def build_survival_dataset(outcome, exposure, cohort, all_cases, competing_events=False):
     """
     Build a dataset for fitting a Cox PH model.
     Exposure is included as a time-varying covariate if present.
@@ -170,13 +189,13 @@ def build_cph_dataset(outcome, exposure, cohort, all_cases, competing_events=Fal
         competing_events (bool): is death treated as a competing event
 
     Returns:
-        df_cph (DataFrame): dataset with the following columns:
+        df_survival (DataFrame): dataset with the following columns:
         personid, start (year), stop (year), exposure, outcome, birth_year, female, weight
     """
     cases, caseids_total = sample_cases(all_cases, outcome, n_cases=N_CASES)
     n_cases = cases.shape[0]
 
-    df_cph = None
+    df_survival = None
 
     if n_cases > 0:
 
@@ -188,74 +207,83 @@ def build_cph_dataset(outcome, exposure, cohort, all_cases, competing_events=Fal
         cases["weight"] = weight_cases
         controls["weight"] = weight_controls
 
-        df_cph = pd.concat([cases, controls])
-        df_cph = df_cph.reset_index(drop=True)
+        df_survival = pd.concat([cases, controls])
+        df_survival = df_survival.reset_index(drop=True)
 
-        df_cph = add_exposure(exposure, df_cph, all_cases)
+        if exposure is not None:
+            df_survival = add_exposure(exposure, df_survival, all_cases)
+        
+        if competing_events:
+            df_survival = add_competing_events(df_survival)
 
-        df_cph["outcome"] = df_cph["outcome"].astype(int)
-        df_cph["female"] = df_cph["female"].astype(int)
-        df_cph = df_cph.drop(columns=["death_year"])
-        df_cph = df_cph.loc[df_cph["start"] < df_cph["stop"]]
-        df_cph = df_cph.reset_index(drop=True)
+        df_survival["outcome"] = df_survival["outcome"].astype(int)
+        df_survival["female"] = df_survival["female"].astype(int)
+        df_survival = df_survival.drop(columns=["death_year"])
+        df_survival = df_survival.loc[df_survival["start"] < df_survival["stop"]]
+        df_survival = df_survival.reset_index(drop=True)
 
-    return df_cph
+    return df_survival
 
 
-def check_min_number_of_subjects(df_cph):
+def check_min_number_of_subjects(df_survival):
     """
     Check that the requirement for the minimum number of subjects is met.
     The minimum number of subjects for the survival analysis cannot bypass the 
     minimum person requirement of personal data usage.
 
     Args:
-        df_cph (DataFrame): output of build_cph_dataset
+        df_survival (DataFrame): output of build_survival_dataset
 
     Returns:
         check (bool): True if there's enough subjects, otherwise False
     """
     min_subjects = max(MIN_SUBJECTS_SURVIVAL_ANALYSIS, MIN_SUBJECTS_PERSONAL_DATA)
-    if "exposure" in df_cph.columns:
+    if "exposure" in df_survival.columns:
         tbl = pd.crosstab(
-            df_cph["outcome"],
-            df_cph["exposure"],
-            values=df_cph["personid"],
+            df_survival["outcome"],
+            df_survival["exposure"],
+            values=df_survival["personid"],
             aggfunc=pd.Series.nunique,
         )
     else:
-        tbl = df_cph.groupby("outcome")["personid"].nunique()
+        tbl = df_survival.groupby("outcome")["personid"].nunique()
     check = tbl.values.min() > min_subjects
     return check
 
 
 def survival_analysis(
-    df_cph, timescale="time-on-study", drop=None, stratify_by_sex=False
+    df_survival,
+    timescale="time-on-study",
+    drop=None,
+    stratify_by_sex=False,
+    competing_events=False,
 ):
     """
-    Fit a Cox PH model to the data. 
+    Fit a survival model (CoxPH or Aalen-Johanssen) to the data. 
     The model is only fitted if the requirement for the minimum number of participants is met.
 
     Args: 
-        df_cph (DataFrame): output of build_cph_dataset()
+        df_survival (DataFrame): output of build_survival_dataset()
         timescale (str): "time-on-study" (default) or "age"
         drop (list of str, optional): covariates to drop
         stratify_by_age (bool, optional): should the analysis be stratified by sex
+        competing_events (bool, optional): should a competing events model be used
 
     Returns: 
-        cph (CoxPHFitter): fitted Cox PH model. None if there's not enough subjects.
+        model (object): fitted survival model. None if there's not enough subjects.
     """
 
-    cph = None
+    model = None
 
-    if df_cph is not None:
+    if df_survival is not None:
 
-        check = check_min_number_of_subjects(df_cph)
+        check = check_min_number_of_subjects(df_survival)
 
         if not check:
-            logger.info("Not enough subjects")
-            cph = None
+            logger.debug("Not enough subjects")
+            model = None
         else:
-            df_timescale = df_cph.copy()
+            df_timescale = df_survival.copy()
 
             # Set timescale
             if timescale == "time-on-study":
@@ -280,16 +308,28 @@ def survival_analysis(
             df_timescale = df_timescale.drop(columns=["personid"])
 
             # Fit the model
-            logger.info("Fitting the Cox PH model")
-            cph = CoxPHFitter()
-            cph.fit(
-                df_timescale,
-                entry_col=entry_col,
-                duration_col="stop",
-                event_col="outcome",
-                strata=strata,
-                weights_col="weight",
-                robust=True,
-            )
+            if competing_events:
+                logger.debug("Fitting the Aalen-Johansen model")
+                model = AalenJohansenFitter(calculate_variance=False)
+                entry = df_timescale[entry_col] if entry_col else None
+                model.fit(
+                    durations=df_timescale["stop"],
+                    event_observed=df_timescale["outcome"],
+                    event_of_interest=1,
+                    entry=entry,
+                    weights=df_timescale["weight"],
+                )
+            else:
+                logger.debug("Fitting the Cox PH model")
+                model = CoxPHFitter()
+                model.fit(
+                    df_timescale,
+                    entry_col=entry_col,
+                    duration_col="stop",
+                    event_col="outcome",
+                    strata=strata,
+                    weights_col="weight",
+                    robust=True,
+                )
 
-    return cph
+    return model
