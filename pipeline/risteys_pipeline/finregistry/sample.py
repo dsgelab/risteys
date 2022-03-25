@@ -20,7 +20,7 @@ def sample_controls(cohort, n_controls):
         controls = cohort.sample(n=n_controls).reset_index(drop=True)
     else:
         controls = cohort
-    logger.info(f"{controls.shape[0]} controls sampled")
+    logger.debug(f"{controls.shape[0]} controls sampled")
     return controls
 
 
@@ -49,7 +49,7 @@ def sample_cases(all_cases, endpoint, n_cases=250_000):
     cases["stop"] = cases["birth_year"] + cases["age"]
     cases["outcome"] = 1
     cases = cases.drop(columns=["age"])
-    logger.info(f"{cases.shape[0]} cases sampled")
+    logger.debug(f"{cases.shape[0]} cases sampled")
 
     return (cases, caseids_total)
 
