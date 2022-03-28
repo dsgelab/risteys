@@ -140,13 +140,13 @@ function drawPlot(selector, data) {
       .attr("transform", `rotate(-90) translate(${ylabel.x}, ${ylabel.y})`)
       .style("text-anchor", "middle")
       .text(ylabel.text);
-  
+
   // Tooltip elements, drawn in order
   const tooltips = svg.append("g")
     .attr("display", "none")
     .style("font", "0.8rem sans-serif")
   ;
-  
+
   const vertline = tooltips.append("path")
     .attr("fill", "none")
     .attr("stroke", "hsl(10deg, 0%, 58%)")
@@ -178,16 +178,16 @@ function drawPlot(selector, data) {
   svg.on("touchstart mouseenter", () => {
     tooltips.attr("display", null);
   });
-  
+
   svg.on("touchend mouseleave", () => {
     tooltips.attr("display", "none");
   });
-  
+
   svg.on("touchmove mousemove", (event) => {
     const mouseX = d3.pointer(event, this)[0];
     const xDomainVal = x.invert(mouseX);
     const xRangeVal = x(xDomainVal);  // pass it in x() to clamp the value
-    
+
     // These can be null if cursor falls outside of curve domain
     const yFemaleDomainVal = lerp(xDomainVal, data[female_serie].cumulinc);
     const yMaleDomainVal = lerp(xDomainVal, data[male_serie].cumulinc);
@@ -206,7 +206,7 @@ function drawPlot(selector, data) {
 
     const yFemaleRangeVal = y(yFemaleDomainVal);
     const yMaleRangeVal = y(yMaleDomainVal);
-    
+
     // Vertline
     vertline
     .datum([
@@ -218,15 +218,15 @@ function drawPlot(selector, data) {
     ])
       .attr("d", d3.line().x(d => d.x).y(d => d.y))
     ;
-    
+
     // Position dots
     tooltipFemale.attr("transform", `translate(${xRangeVal}, ${yFemaleRangeVal})`);
     tooltipMale.attr("transform", `translate(${xRangeVal}, ${yMaleRangeVal})`);
-    
+
     // Set and position texts
     textFemale.text(`Female: ${Math.floor(yFemaleDomainVal)}%`);
     textMale.text(`Male: ${Math.floor(yMaleDomainVal)}%`);
-    
+
     // Reposition textMale if we are close to the right-side
     const percToLeft = xRangeVal / width;
     if (percToLeft > 0.9) {
@@ -235,10 +235,10 @@ function drawPlot(selector, data) {
          .attr("x", -4)
     } else {
        textMale
-         .attr("text-anchor", "start") 
+         .attr("text-anchor", "start")
          .attr("x", 4)
     }
-    
+
   });
 }
 
