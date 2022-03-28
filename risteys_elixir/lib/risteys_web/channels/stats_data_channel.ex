@@ -21,9 +21,10 @@ defmodule RisteysWeb.StatsDataChannel do
     {:noreply, socket}
   end
 
-  def handle_in("get_cumulative_incidence", %{"endpoint" => endpoint_name}, socket) do
-    payload = FGEndpoint.get_cumulative_incidence_plot_data(endpoint_name)
-    :ok = push(socket, "data_cumulative_incidence", payload)
+  def handle_in("get_cumulative_incidence", %{"endpoint" => endpoint_name, "dataset" => dataset}, socket) do
+    payload = FGEndpoint.get_cumulative_incidence_plot_data(endpoint_name, dataset)
+    data_cumulative_incidence = "data_cumulative_incidence_" <> dataset
+    :ok = push(socket, data_cumulative_incidence, payload)
     {:noreply, socket}
   end
 

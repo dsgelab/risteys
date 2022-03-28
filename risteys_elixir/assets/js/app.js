@@ -173,8 +173,11 @@ if (path.startsWith("/endpoint/")) {  // Load only on endpoint pages
     });
 
     /* set colors for plots */
-    const color_blue = "#1c3d5a"
-    const color_green = "#0b592f"
+    /* from Tailwind color palettes (v0.7.4 (FG) & v3.0.23 (FR)) */
+    const color_black = "#22292F"
+    const color_blue_dark = "#2779BD"
+    const color_teal_700 = "#0f766e"
+    const color_teal_500 = "#14b8a6"
 
     /* FinnGen results*/
     /* AGE HISTOGRAM FG */
@@ -184,7 +187,7 @@ if (path.startsWith("/endpoint/")) {  // Load only on endpoint pages
         const xAxisLabel = "age";
         const yAxisLabel = "individuals";
         const data = payload.data;
-        const plot_color = color_blue;
+        const plot_color = color_black;
         varBinPlot(elementSelector, data, xAxisLabel, yAxisLabel, plot_color);
     });
 
@@ -195,8 +198,36 @@ if (path.startsWith("/endpoint/")) {  // Load only on endpoint pages
         const xAxisLabel = "year";
         const yAxisLabel = "individuals";
         const data = payload.data;
-        const plot_color = color_blue;
+        const plot_color = color_black;
         varBinPlot(elementSelector, data, xAxisLabel, yAxisLabel, plot_color);
+    });
+
+    /* CUMMULATIVE INCIDENCE FG */
+    stats_data_channel.push("get_cumulative_incidence", {endpoint: endpoint, dataset: "FG"});  // request plot data
+    stats_data_channel.on("data_cumulative_incidence_FG", payload => {
+        const pattern_female = "1 0";
+        const pattern_male = "9 1";
+        const data = [
+            {
+                name: "female",
+                color: color_blue_dark,
+                dasharray: pattern_female,
+                cumulinc: payload.females
+            },
+            {
+                name: "male",
+                color: color_black,
+                dasharray: pattern_male,
+                cumulinc: payload.males
+            }
+        ];
+
+        if (data[0].cumulinc.length === 0 && data[1].cumulinc.length === 0) {
+            const node = document.getElementById("cumulinc-plot-FG");
+            node.innerText = "No data";
+        } else {
+            drawPlotCumulInc("#cumulinc-plot-FG", data);
+        }
     });
 
     /* CORRELATION TABLE */
@@ -225,7 +256,7 @@ if (path.startsWith("/endpoint/")) {  // Load only on endpoint pages
                 const xAxisLabel = "age";
                 const yAxisLabel = "individuals";
                 const data = payload.data;
-                const plot_color = color_green;
+                const plot_color = color_teal_700;
                 varBinPlot(elementSelector, data, xAxisLabel, yAxisLabel, plot_color);
             });
 
@@ -236,38 +267,36 @@ if (path.startsWith("/endpoint/")) {  // Load only on endpoint pages
                 const xAxisLabel = "year";
                 const yAxisLabel = "individuals";
                 const data = payload.data;
-                const plot_color = color_green;
+                const plot_color = color_teal_700;
                 varBinPlot(elementSelector, data, xAxisLabel, yAxisLabel, plot_color);
             });
 
 
-            /* CUMMULATIVE INCIDENCE */
-            stats_data_channel.push("get_cumulative_incidence", {endpoint: endpoint});  // request plot data
-            stats_data_channel.on("data_cumulative_incidence", payload => {
-                const color_female = "#9f0065";
-                const color_male = "#2779bd";
+            /* CUMMULATIVE INCIDENCE FR */
+            stats_data_channel.push("get_cumulative_incidence", {endpoint: endpoint, dataset: "FR"});  // request plot data
+            stats_data_channel.on("data_cumulative_incidence_FR", payload => {
                 const pattern_female = "1 0";
                 const pattern_male = "9 1";
                 const data = [
                     {
                         name: "female",
-                        color: color_female,
+                        color: color_teal_500,
                         dasharray: pattern_female,
                         cumulinc: payload.females
                     },
                     {
                         name: "male",
-                        color: color_male,
+                        color: color_teal_700,
                         dasharray: pattern_male,
                         cumulinc: payload.males
                     }
                 ];
 
                 if (data[0].cumulinc.length === 0 && data[1].cumulinc.length === 0) {
-                    const node = document.getElementById("cumulinc-plot");
+                    const node = document.getElementById("cumulinc-plot-FR");
                     node.innerText = "No data";
                 } else {
-                    drawPlotCumulInc("#cumulinc-plot", data);
+                    drawPlotCumulInc("#cumulinc-plot-FR", data);
                 }
             });
 

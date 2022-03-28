@@ -614,19 +614,19 @@ defmodule Risteys.FGEndpoint do
     |> Repo.insert()
   end
 
-  def delete_cumulative_incidence(endpoint_ids) do
+  def delete_cumulative_incidence(endpoint_ids, dataset) do
     Repo.delete_all(
       from cumul_inc in StatsCumulativeIncidence,
-        where: cumul_inc.fg_endpoint_id in ^endpoint_ids
+        where: cumul_inc.fg_endpoint_id in ^endpoint_ids and cumul_inc.dataset == ^dataset
     )
   end
 
-  def get_cumulative_incidence_plot_data(endpoint_name) do
+  def get_cumulative_incidence_plot_data(endpoint_name, dataset) do
     %{id: endpoint_id} = Repo.get_by(Definition, name: endpoint_name)
 
     # Values will be converted from [0, 1] to [0, 100]
-    females = get_cumulinc_sex(endpoint_id, "female")
-    males = get_cumulinc_sex(endpoint_id, "male")
+    females = get_cumulinc_sex(endpoint_id, "female", dataset)
+    males = get_cumulinc_sex(endpoint_id, "male", dataset)
 
     %{
       females: females,
@@ -634,12 +634,13 @@ defmodule Risteys.FGEndpoint do
     }
   end
 
-  defp get_cumulinc_sex(endpoint_id, sex) do
+  defp get_cumulinc_sex(endpoint_id, sex, dataset) do
     Repo.all(
       from stats in StatsCumulativeIncidence,
         where:
           stats.fg_endpoint_id == ^endpoint_id and
-            stats.sex == ^sex,
+            stats.sex == ^sex and
+            stats.dataset == ^dataset,
         # The following will be reversed when we build the list by prepending values
         order_by: [desc: stats.age]
     )
