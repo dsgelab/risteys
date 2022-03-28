@@ -8,6 +8,7 @@ defmodule Risteys.FGEndpoint.StatsCumulativeIncidence do
     field :age, :float
     field :sex, :string
     field :value, :float
+    field :dataset, :string
 
     timestamps()
   end
@@ -15,12 +16,13 @@ defmodule Risteys.FGEndpoint.StatsCumulativeIncidence do
   @doc false
   def changeset(stats_cumulative_incidence, attrs) do
     stats_cumulative_incidence
-    |> cast(attrs, [:fg_endpoint_id, :age, :sex, :value])
-    |> validate_required([:fg_endpoint_id, :age, :sex, :value])
+    |> cast(attrs, [:fg_endpoint_id, :age, :sex, :value, :dataset])
+    |> validate_required([:fg_endpoint_id, :age, :sex, :value, :dataset])
     |> validate_number(:age, greater_than_or_equal_to: 0.0)
     |> validate_change(:value, &check_incidence/2)
     |> validate_inclusion(:sex, ["male", "female"])
-    |> unique_constraint(:fg_endpoint_id, name: :cumulinc)  # unique on (fg_endpoint, sex, age)
+    |> validate_inclusion(:dataset, ["FR", "FG"])
+    |> unique_constraint(:fg_endpoint_id, name: :cumulinc)  # unique on (fg_endpoint_id, sex, age, dataset)
   end
 
   # Incidence must have a limited precision (to have xx.xx%) and be in [0, 1]
