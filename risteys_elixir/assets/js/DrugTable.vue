@@ -97,7 +97,6 @@ let compute_table = (data, drug_filter, sorter) => {
 
 	// Filter rows
 	if (drug_filter !== "") {
-		console.log("filtering:", drug_filter);
 		res = filter(
 			data,
 			(drug) => {
