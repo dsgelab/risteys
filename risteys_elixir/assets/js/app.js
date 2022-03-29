@@ -72,9 +72,7 @@ forEach(helps, (elem) => elem.addEventListener("click", () => showHelpContent(el
 
 let hideHelpContent = (closeButton) => {
     let content = closeButton.parentElement;
-    console.log(content);
     content.style.display = "none";
-    console.log(content);
 }
 /* Attach listener to close help windows */
 let closeButtons = document.querySelectorAll(".help-close");
