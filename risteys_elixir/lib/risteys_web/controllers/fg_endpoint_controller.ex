@@ -241,7 +241,7 @@ defmodule RisteysWeb.FGEndpointController do
     no_stats = %{
       n_individuals: "-",
       prevalence: "-",
-      mean_age: "-",
+      median_age: "-",
       distrib_year: [],
       distrib_age: []
     }
