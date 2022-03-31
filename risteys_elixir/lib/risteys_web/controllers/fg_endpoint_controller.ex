@@ -7,7 +7,6 @@ defmodule RisteysWeb.FGEndpointController do
     CoxHR,
     DrugStats,
     FGEndpoint,
-    MortalityStats,
     StatsSex
   }
 
@@ -178,9 +177,6 @@ defmodule RisteysWeb.FGEndpointController do
           distrib_age_FR
       end
 
-    # Mortality stats
-    mortality_stats = get_mortality_stats(endpoint)
-
     # Variants in correlations
     authz_list_variants? =
       case get_session(conn, :user_is_authz) do
@@ -213,7 +209,6 @@ defmodule RisteysWeb.FGEndpointController do
     |> assign(:distrib_age_FG, distrib_age_FG)
     |> assign(:distrib_age_FR, distrib_age_FR)
     |> assign(:description, description)
-    |> assign(:mortality, mortality_stats)
     |> assign(:data_assocs, data_assocs(endpoint))
     |> assign(:has_drug_stats, FGEndpoint.has_drug_stats?(endpoint))
     |> assign(:authz_list_variants?, authz_list_variants?)
@@ -255,10 +250,6 @@ defmodule RisteysWeb.FGEndpointController do
       female: stats_female,
       male: stats_male
     }
-  end
-
-  defp get_mortality_stats(endpoint) do
-    Repo.all(from ms in MortalityStats, where: ms.fg_endpoint_id == ^endpoint.id)
   end
 
   defp data_assocs(endpoint) do

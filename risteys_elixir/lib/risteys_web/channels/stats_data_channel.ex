@@ -1,3 +1,5 @@
+import IO
+
 defmodule RisteysWeb.StatsDataChannel do
   use RisteysWeb, :channel
 
@@ -57,5 +59,11 @@ defmodule RisteysWeb.StatsDataChannel do
 	"count" => count
        }
     end)
+  end
+
+  def handle_in("get_mortality", %{"endpoint" => endpoint_name}, socket) do
+    payload = FGEndpoint.get_mortality_data(endpoint_name)
+    :ok = push(socket, "data_mortality", %{mortality_data: payload})
+    {:noreply, socket}
   end
 end

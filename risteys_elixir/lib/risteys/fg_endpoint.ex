@@ -2,11 +2,12 @@ defmodule Risteys.FGEndpoint do
   @moduledoc """
   The FGEndpoint context.
   """
-
   import Ecto.Query, warn: false
   alias Risteys.Repo
   alias Risteys.Icd10
   alias Risteys.StatsSex
+  alias Risteys.MortalityParams
+  alias Risteys.MortalityBaseline
   alias Risteys.Genomics
   alias Risteys.DrugStats
 
@@ -654,6 +655,54 @@ defmodule Risteys.FGEndpoint do
       data_point = %{age: age, value: value * 100}
       [data_point | acc]
     end)
+  end
+
+  # -- Interactive Mortality --
+  def get_mortality_data(endpoint_name) do
+    endpoint = Repo.get_by!(Definition, name: endpoint_name)
+    mortality_data = %{name: endpoint.name, longname: endpoint.longname}
+
+    bch =
+      Repo.all(
+        from baseline in MortalityBaseline,
+        where: baseline.fg_endpoint_id == ^endpoint.id,
+        select: {
+          baseline.age,
+          baseline.baseline_cumulative_hazard
+        }
+      )
+      |> Enum.reduce(%{}, fn {age, baseline_cumulative_hazard}, acc ->
+        Map.put_new(acc, age, baseline_cumulative_hazard)
+      end)
+
+    mortality_data = Map.put_new(mortality_data, :bch, bch)
+
+    Enum.reduce ["exposure", "sex", "birth_year"], mortality_data, fn covariate_name, acc ->
+
+      covariate_data =
+        Repo.one(
+          from params in MortalityParams,
+            where: params.fg_endpoint_id == ^endpoint.id and
+            params.covariate == ^covariate_name,
+            select: %{
+              coef: params.coef,
+              ci95_lower: params.ci95_lower,
+              ci95_upper: params.ci95_upper,
+              p_value: params.p_value,
+              mean: params.mean
+            }
+        )
+        |> Enum.into(%{})
+
+      case covariate_name do
+        "exposure" ->
+          Map.put(acc, :exposure, covariate_data)
+        "sex" ->
+          Map.put(acc, :sex, covariate_data)
+        "birth_year" ->
+          Map.put(acc, :birth_year, covariate_data)
+      end
+    end
   end
 
   # --- Drug statistics

@@ -302,42 +302,6 @@ defmodule RisteysWeb.FGEndpointView do
   end
 
   # -- Stats --
-  defp mortality_table(stats) do
-    lags = [
-      {0, "1998–2019"},
-      {15, "15 years"},
-      {5, "5 years"},
-      {1, "1 year"}
-    ]
-
-    no_data = %{
-      absolute_risk: "-",
-      hr: "-",
-      pvalue: "-",
-      n_individuals: "-"
-    }
-
-    for {lag, title} <- lags do
-      data = Enum.find(stats, fn %{lagged_hr_cut_year: lag_hr} -> lag_hr == lag end)
-
-      stat =
-        if not is_nil(data) do
-          hr =
-            "#{data.hr |> round(2)} [#{data.hr_ci_min |> round(2)}, #{data.hr_ci_max |> round(2)}]"
-
-          %{
-            absolute_risk: data.absolute_risk |> round(2),
-            hr: hr,
-            pvalue: data.pvalue |> pvalue_str(),
-            n_individuals: data.n_individuals
-          }
-        else
-          no_data
-        end
-
-      {title, stat}
-    end
-  end
 
   defp data_assocs_plot(endpoint, assocs) do
     assocs
