@@ -6,7 +6,7 @@ defmodule Risteys.StatsSex do
     field :sex, :integer
     field :fg_endpoint_id, :id
 
-    field :mean_age, :float
+    field :median_age, :float
     field :n_individuals, :integer
     field :prevalence, :float
     # can't specify more than ':map' since composite types
@@ -24,7 +24,7 @@ defmodule Risteys.StatsSex do
       :sex,
       :n_individuals,
       :prevalence,
-      :mean_age,
+      :median_age,
       :fg_endpoint_id,
       :distrib_year,
       :distrib_age,
@@ -37,7 +37,7 @@ defmodule Risteys.StatsSex do
     |> validate_number(:n_individuals, greater_than_or_equal_to: 0)
     |> validate_exclusion(:n_individuals, 1..4)
     |> validate_number(:prevalence, greater_than_or_equal_to: 0.0, less_than_or_equal_to: 1.0)
-    |> validate_number(:mean_age, greater_than_or_equal_to: 0.0)
+    |> validate_number(:median_age, greater_than_or_equal_to: 0.0)
     |> validate_change(:distrib_year, fn :distrib_year, %{hist: hist} ->
       check_distrib(hist)
     end)

@@ -49,7 +49,7 @@ defmodule Risteys.ImportAgg do
   def stats(
         endpoint,
         sex,
-        mean_age,
+        median_age,
         n_individuals,
         prevalence,
         distrib_year,
@@ -69,7 +69,7 @@ defmodule Risteys.ImportAgg do
       |> StatsSex.changeset(%{
         fg_endpoint_id: endpoint.id,
         sex: sex,
-        mean_age: mean_age,
+        median_age: median_age,
         n_individuals: n_individuals,
         prevalence: prevalence,
         distrib_year: distrib_year,
@@ -99,7 +99,6 @@ end
   if dataset == "FG" or dataset == "FR" do
     stats_filepath
     # Returns a binary with the contents of the given filename, or raises a File.Error exception if an error occurs.
-    # "{\"stats\": {\"AB1TUBERCU_MILIARY\":{\"nindivs_all\":33.0,\"nindivs_female\":8.0,\"nindivs_male\":25.0,\"prevalence_all\":0.000102942,\"prevalence_female\":0.0000443698,\"prevalence_male\":0.0001782328,\"mean_age_all\":63.1203030303,\"mean_age_female\":51.95625,\"mean_age_male\":66.6928},\"AB1_ACTINOMYCOSIS\":{\"nindivs_all\":77.0, ...
     |> File.read!() # asking OS to open the file to access the file reading content
     |> Jason.decode!() # Parses a JSON value from input iodata. read the file as JSON and convert values to values that can be used in Elixir
   else
@@ -128,9 +127,9 @@ stats
         "nindivs_all" => nindivs_all,
         "nindivs_female" => nindivs_female,
         "nindivs_male" => nindivs_male,
-        "mean_age_all" => mean_age_all,
-        "mean_age_female" => mean_age_female,
-        "mean_age_male" => mean_age_male,
+        "median_age_all" => median_age_all,
+        "median_age_female" => median_age_female,
+        "median_age_male" => median_age_male,
         "prevalence_all" => prevalence_all,
         "prevalence_female" => prevalence_female,
         "prevalence_male" => prevalence_male
@@ -167,7 +166,7 @@ stats
         Risteys.ImportAgg.stats(
           endpoint,
           0,
-          mean_age_all,
+          median_age_all,
           nindivs_all,
           prevalence_all,
           distrib_year_all,
@@ -183,7 +182,7 @@ stats
         Risteys.ImportAgg.stats(
           endpoint,
           1,
-          mean_age_male,
+          median_age_male,
           nindivs_male,
           prevalence_male,
           distrib_year_male,
@@ -199,7 +198,7 @@ stats
         Risteys.ImportAgg.stats(
           endpoint,
           2,
-          mean_age_female,
+          median_age_female,
           nindivs_female,
           prevalence_female,
           distrib_year_female,
