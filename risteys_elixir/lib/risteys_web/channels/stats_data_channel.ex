@@ -1,3 +1,5 @@
+import IO
+
 defmodule RisteysWeb.StatsDataChannel do
   use RisteysWeb, :channel
 

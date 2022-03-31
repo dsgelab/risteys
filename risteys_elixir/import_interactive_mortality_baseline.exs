@@ -6,7 +6,10 @@
 # - age
 # - baseline_cumulative_hazard
 # - endpoint
+<<<<<<< HEAD
 # - sex
+=======
+>>>>>>> a0a2888d (Add interactive mortality section (using FR data))
 
 alias Risteys.{Repo, FGEndpoint.Definition, MortalityBaseline}
 require Logger
