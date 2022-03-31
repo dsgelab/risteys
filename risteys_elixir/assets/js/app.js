@@ -175,8 +175,7 @@ if (path.startsWith("/endpoint/")) {  // Load only on endpoint pages
     /* set colors for plots */
     /* from Tailwind color palettes (v0.7.4 (FG) & v3.0.23 (FR)) */
     const color_black = "#22292F"
-    const color_blue_dark = "#2779BD"
-    const color_teal_700 = "#0f766e"
+    const color_blue_base = "#3490DC"
     const color_teal_500 = "#14b8a6"
 
     /* FinnGen results*/
@@ -210,7 +209,7 @@ if (path.startsWith("/endpoint/")) {  // Load only on endpoint pages
         const data = [
             {
                 name: "female",
-                color: color_blue_dark,
+                color: color_blue_base,
                 dasharray: pattern_female,
                 cumulinc: payload.females
             },
@@ -256,7 +255,7 @@ if (path.startsWith("/endpoint/")) {  // Load only on endpoint pages
                 const xAxisLabel = "age";
                 const yAxisLabel = "individuals";
                 const data = payload.data;
-                const plot_color = color_teal_700;
+                const plot_color = color_teal_500;
                 varBinPlot(elementSelector, data, xAxisLabel, yAxisLabel, plot_color);
             });
 
@@ -267,7 +266,7 @@ if (path.startsWith("/endpoint/")) {  // Load only on endpoint pages
                 const xAxisLabel = "year";
                 const yAxisLabel = "individuals";
                 const data = payload.data;
-                const plot_color = color_teal_700;
+                const plot_color = color_teal_500;
                 varBinPlot(elementSelector, data, xAxisLabel, yAxisLabel, plot_color);
             });
 
@@ -286,7 +285,7 @@ if (path.startsWith("/endpoint/")) {  // Load only on endpoint pages
                     },
                     {
                         name: "male",
-                        color: color_teal_700,
+                        color: color_black,
                         dasharray: pattern_male,
                         cumulinc: payload.males
                     }
