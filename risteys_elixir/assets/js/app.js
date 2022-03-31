@@ -21,6 +21,7 @@ import {search_channel, stats_data_channel} from "./socket";
 import {plot as varBinPlot} from "./varBinPlot";
 import {drawPlot as drawPlotCumulInc} from "./cumulincPlot";
 import {forEach} from "lodash-es";
+import InteractiveMortality from './InteractiveMortality.vue';
 import CorrTable from './CorrTable.vue';
 import AssocPlot from './AssocPlot.vue';
 import AssocTable from './AssocTable.vue';
@@ -299,6 +300,17 @@ if (path.startsWith("/endpoints/")) {  // Load only on endpoint pages
                 }
             });
 
+            /* INTERACTIVE MORTALITY*/
+            stats_data_channel.push("get_mortality", {endpoint: endpoint});
+            stats_data_channel.on("data_mortality", payload => {
+                new Vue({
+                    el: '#vue-interactive-mortality',
+                    data: {
+                        mortality_data: payload.mortality_data
+                    },
+                    components: { InteractiveMortality }
+                });
+            });
 
             /* SURVIVAL ANALYSIS DATA */
             fetch('/api/endpoint/' + endpoint + '/assocs.json', {
