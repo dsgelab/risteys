@@ -11,7 +11,7 @@ def compute_key_figures(first_events, minimal_phenotype, index_persons=False):
     Compute the following key figures for each endpoint:
         - number of individuals
         - unadjusted prevalence (%)
-        - mean age at first event (years)
+        - median age at first event (years)
 
     The numbers are calculated for males, females, and all.
 
@@ -24,7 +24,7 @@ def compute_key_figures(first_events, minimal_phenotype, index_persons=False):
         kf (DataFrame): key figures dataframe with the following columns:
         endpoint, 
         nindivs_female, nindivs_male, nindivs_all, 
-        mean_age_female, mean_age_male, mean_age_all,
+        median_age_male, median_age_all,
         prevalence_female, prevalence_male, prevalence_all
     """
     logger.info(
@@ -40,11 +40,10 @@ def compute_key_figures(first_events, minimal_phenotype, index_persons=False):
         fe = fe.loc[fe["index_person"] == True].reset_index(drop=True)
 
     # Calculate the total number of individuals
-    # Note: the number of individuals with no sex information is based on first events
     n_total = {
         "female": sum(mp["female"] == True),
         "male": sum(mp["female"] == False),
-        "unknown": len(fe.loc[fe["female"].isnull(), "personid"].unique()),
+        "unknown": sum(mp["female"].isnull()),
     }
 
     # Calculate key figures by endpoint and sex
@@ -53,8 +52,8 @@ def compute_key_figures(first_events, minimal_phenotype, index_persons=False):
             sex=fe["female"].replace({True: "female", False: "male", np.nan: "unknown"})
         )
         .groupby(["endpoint", "sex"])
-        .agg({"personid": "count", "age": "mean"})
-        .rename(columns={"personid": "nindivs_", "age": "mean_age_"})
+        .agg({"personid": "count", "age": "median"})
+        .rename(columns={"personid": "nindivs_", "age": "median_age_"})
         .fillna({"nindivs_": 0})
         .reset_index()
     )
@@ -68,7 +67,7 @@ def compute_key_figures(first_events, minimal_phenotype, index_persons=False):
         .agg(
             {
                 "nindivs_": "sum",
-                "mean_age_": lambda x: np.average(x, weights=kf.loc[x.index, "w"]),
+                "median_age_": lambda x: np.average(x, weights=kf.loc[x.index, "w"]),
                 "prevalence_": lambda x: np.average(x, weights=kf.loc[x.index, "w"]),
             }
         )
@@ -86,7 +85,7 @@ def compute_key_figures(first_events, minimal_phenotype, index_persons=False):
     kf = kf.drop(columns=["w", "n_endpoint"])
 
     # Remove personal data
-    cols = ["nindivs_", "mean_age_", "prevalence_"]
+    cols = ["nindivs_", "median_age_", "prevalence_"]
     kf.loc[kf["nindivs_"] < MIN_SUBJECTS_PERSONAL_DATA, cols,] = np.nan
 
     # Pivot and flatten hierarchical columns
