@@ -174,6 +174,7 @@ defmodule RisteysWeb.FGEndpointController do
     |> assign(:page_title, endpoint.name)
     |> assign(:replacements, FGEndpoint.find_replacement_endpoints(endpoint))
     |> assign(:explainer_steps, FGEndpoint.get_explainer_steps(endpoint))
+    |> assign(:count_registries, FGEndpoint.get_count_registries(endpoint))
     |> assign(:ontology, ontology)
     |> assign(:broader_endpoints, FGEndpoint.broader_endpoints(endpoint))
     |> assign(:narrower_endpoints, FGEndpoint.narrower_endpoints(endpoint))

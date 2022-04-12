@@ -203,6 +203,73 @@ defmodule RisteysWeb.FGEndpointView do
     end
   end
 
+  defp rows_original_rules(endpoint) do
+    rows = [
+      %{title: "NAME", value: endpoint.name},
+      %{title: "CONTROL_EXCLUDE", value: endpoint.control_exclude},
+      %{title: "CONTROL_PRECONDITIONS", value: endpoint.control_preconditions},
+      %{title: "CONTROL_CONDITIONS", value: endpoint.control_conditions},
+      %{title: "SEX", value: endpoint.sex},
+      %{title: "INCLUDE", value: endpoint.include},
+      %{title: "PRE_CONDITIONS", value: endpoint.pre_conditions},
+      %{title: "CONDITIONS", value: endpoint.conditions},
+      %{title: "OUTPAT_ICD", value: endpoint.outpat_icd},
+      %{title: "OUTPAT_OPER", value: endpoint.outpat_oper},
+      %{title: "HD_MAINONLY", value: endpoint.hd_mainonly},
+      %{title: "HD_ICD_10_ATC", value: endpoint.hd_icd_10_atc},
+      %{title: "HD_ICD_10", value: endpoint.hd_icd_10},
+      %{title: "HD_ICD_9", value: endpoint.hd_icd_9},
+      %{title: "HD_ICD_8", value: endpoint.hd_icd_8},
+      %{title: "HD_ICD_10_EXCL", value: endpoint.hd_icd_10_excl},
+      %{title: "HD_ICD_9_EXCL", value: endpoint.hd_icd_9_excl},
+      %{title: "HD_ICD_8_EXCL", value: endpoint.hd_icd_8_excl},
+      %{title: "COD_MAINONLY", value: endpoint.cod_mainonly},
+      %{title: "COD_ICD_10", value: endpoint.cod_icd_10},
+      %{title: "COD_ICD_9", value: endpoint.cod_icd_9},
+      %{title: "COD_ICD_8", value: endpoint.cod_icd_8},
+      %{title: "COD_ICD_10_EXCL", value: endpoint.cod_icd_10_excl},
+      %{title: "COD_ICD_9_EXCL", value: endpoint.cod_icd_9_excl},
+      %{title: "COD_ICD_8_EXCL", value: endpoint.cod_icd_8_excl},
+      %{title: "OPER_NOM", value: endpoint.oper_nom},
+      %{title: "OPER_HL", value: endpoint.oper_hl},
+      %{title: "OPER_HP1", value: endpoint.oper_hp1},
+      %{title: "OPER_HP2", value: endpoint.oper_hp2},
+      %{title: "KELA_REIMB", value: endpoint.kela_reimb},
+      %{title: "KELA_REIMB_ICD", value: endpoint.kela_reimb_icd},
+      %{title: "KELA_ATC_NEEDOTHER", value: endpoint.kela_atc_needother},
+      %{title: "KELA_ATC", value: endpoint.kela_atc},
+      %{title: "KELA_VNRO_NEEDOTHER", value: endpoint.kela_vnro_needother},
+      %{title: "KELA_VNRO", value: endpoint.kela_vnro},
+      %{title: "CANC_TOPO", value: endpoint.canc_topo},
+      %{title: "CANC_TOPO_EXCL", value: endpoint.canc_topo_excl},
+      %{title: "CANC_MORPH", value: endpoint.canc_morph},
+      %{title: "CANC_MORPH_EXCL", value: endpoint.canc_morph_excl},
+      %{title: "CANC_BEHAV", value: endpoint.canc_behav}
+    ]
+
+    rows =
+      for rr <- rows do
+        comment =
+          case rr.value do
+            "$!$" ->
+              "The FinnGen clinical team has checked and no code can be used for this rule."
+
+            _ ->
+              ""
+          end
+
+        Map.put_new(rr, :comment, comment)
+      end
+
+    for rr <- rows do
+      th = content_tag(:th, rr.title)
+      td_value = content_tag(:td, rr.value)
+      td_comment = content_tag(:td, rr.comment)
+
+      content_tag(:tr, [th, td_value, td_comment])
+    end
+  end
+
   # -- Ontology --
   defp ontology_links(ontology) do
     # Helper function to link to external resources
