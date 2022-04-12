@@ -221,6 +221,7 @@ defmodule Risteys.FGEndpoint do
     registries = [
       :outpat_icd,
       :outpat_icd_exp,
+      :outpat_oper,
       :hd_icd_10_atc,
       :hd_icd_10,
       :hd_icd_10_exp,
