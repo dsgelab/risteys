@@ -27,6 +27,7 @@ defmodule Risteys.FGEndpoint.Definition do
 
     # raw, unprocessed Outpat ICD_10
     field :outpat_icd, :string
+    field :outpat_oper, :string
     field :hd_mainonly, :string
     field :hd_icd_10_atc, :string
     # raw, unprocessed HD_ICD_10
@@ -124,6 +125,7 @@ defmodule Risteys.FGEndpoint.Definition do
       :control_preconditions,
       :control_conditions,
       :outpat_icd,
+      :outpat_oper,
       :hd_mainonly,
       :hd_icd_10_atc,
       :hd_icd_10,
