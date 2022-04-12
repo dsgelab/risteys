@@ -256,13 +256,14 @@ defmodule Risteys.FGEndpoint do
 
     icd10s_exp = list_expanded_icd10s(endpoint)
 
+    mark_no_suitable_code = "$!$"
+
     endpoint
     |> Map.take(registries)
     |> Map.merge(icd10s_exp)
     |> Enum.reject(fn {_registry, values} ->
-      # for data coming from the database when ICD expansion lead to empty list
-      is_nil(values) or
-        values == []
+      # For data coming from the database when ICD expansion lead to empty list
+      is_nil(values) or values == [] or values == mark_no_suitable_code
     end)
     |> Enum.into(%{})
   end
@@ -339,6 +340,66 @@ defmodule Risteys.FGEndpoint do
 
   defp parse_delim_endpoints(endpoints) do
     String.split(endpoints, "|")
+  end
+
+  def get_count_registries(endpoint) do
+    groups = %{
+      outpat_icd: :prim_out,
+      outpat_icd_exp: :prim_out,
+      outpat_oper: :prim_out,
+      hd_icd_10_atc: :inpat_outpat,
+      hd_icd_10: :inpat_outpat,
+      hd_icd_10_exp: :inpat_outpat,
+      hd_icd_9: :inpat_outpat,
+      hd_icd_8: :inpat_outpat,
+      hd_icd_10_excl: :inpat_outpat,
+      hd_icd_9_excl: :inpat_outpat,
+      hd_icd_8_excl: :inpat_outpat,
+      cod_icd_10: :cod,
+      cod_icd_10_exp: :cod,
+      cod_icd_9: :cod,
+      cod_icd_8: :cod,
+      cod_icd_10_excl: :cod,
+      cod_icd_10_excl_exp: :cod,
+      cod_icd_9_excl: :cod,
+      cod_icd_8_excl: :cod,
+      oper_nom: :oper,
+      oper_hl: :oper,
+      oper_hp1: :oper,
+      oper_hp2: :oper,
+      kela_reimb: :reimb,
+      kela_reimb_icd: :reimb,
+      kela_reimb_icd_exp: :reimb,
+      kela_atc: :purch,
+      kela_vnro: :purch,
+      canc_topo: :canc,
+      canc_topo_excl: :canc,
+      canc_morph: :canc,
+      canc_morph_excl: :canc,
+      canc_behav: :canc
+    }
+    steps = get_explainer_steps(endpoint)
+
+    filters =
+      steps
+      |> Enum.find(fn %{name: name} -> name == :multi end)
+      |> Map.fetch!(:data)
+      |> Map.get(:filter_registries, %{})
+
+    used =
+      for filter <- Map.keys(filters) do
+        Map.fetch!(groups, filter)
+      end
+      |> Enum.uniq()
+      |> Enum.count()
+
+    total =
+      groups
+      |> Map.values()
+      |> Enum.uniq()
+      |> Enum.count()
+
+    %{total: total, used: used}
   end
 
   def upsert_explainer_step(attrs) do
