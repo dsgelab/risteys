@@ -66,6 +66,7 @@ def load_minimal_phenotype_data(data_path=FINREGISTRY_MINIMAL_PHENOTYPE_DATA_PAT
     df.loc[df["sex"] == SEX_FEMALE_MINIMAL_PHENOTYPE, "female"] = True
     df.loc[df["sex"] == SEX_MALE_MINIMAL_PHENOTYPE, "female"] = False
     df = df.drop(columns={"sex"})
+    df = df.astype({"personid": "string[pyarrow]"})
 
     logger.info(f"{df.shape[0]} rows after data pre-processing")
 
@@ -91,6 +92,7 @@ def load_endpoints_data(data_path=FINREGISTRY_ENDPOINTS_DATA_PATH):
     cols = ["NAME", "SEX", "OMIT"]
     df = pd.read_csv(data_path, sep=";", usecols=cols, skiprows=[1], encoding="latin1")
     logger.info(f"{df.shape[0]} rows loaded")
+
     df = df.rename(columns={"NAME": "endpoint", "SEX": "sex", "OMIT": "omit"})
     df = df.loc[(df["omit"].isnull()) | (df["endpoint"] == "DEATH")]
     df = df.reset_index(drop=True)
@@ -99,6 +101,7 @@ def load_endpoints_data(data_path=FINREGISTRY_ENDPOINTS_DATA_PATH):
     df.loc[df["sex"] == SEX_MALE_ENDPOINTS, "female"] = False
     df = df.drop(columns=["omit", "sex"])
     logger.info(f"{df.shape[0]} rows after data pre-processing")
+
     return df
 
 
@@ -123,12 +126,14 @@ def load_first_events_data(
     cols = ["FINREGISTRYID", "ENDPOINT", "AGE"]
     df = pd.read_feather(data_path, columns=cols)
     df.columns = ["personid", "endpoint", "age"]
+
     logger.info(f"{df.shape[0]} rows loaded")
 
     df = df.loc[df["endpoint"].isin(endpoints["endpoint"])].reset_index(drop=True)
     df = df.merge(minimal_phenotype, how="left", on="personid")
-    df = df.fillna({"sex": "unknown"})
     df["year"] = df["birth_year"] + df["age"]
+    df = df.astype({"personid": "string[pyarrow]", "endpoint": "category"})
+
     logger.info(f"{df.shape[0]} rows after data pre-processing")
 
     return df
