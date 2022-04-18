@@ -48,7 +48,7 @@ def load_minimal_phenotype_data(data_path=FINREGISTRY_MINIMAL_PHENOTYPE_DATA_PAT
     """
     cols = ["FINREGISTRYID", "date_of_birth", "death_date", "sex", "index_person"]
     df = pd.read_feather(data_path, columns=cols)
-    logger.info(f"{df.shape[0]} rows loaded")
+    logger.debug(f"{df.shape[0]:,} rows loaded")
 
     df.columns = df.columns.str.lower()
     df = df.rename(columns={"finregistryid": "personid"})
@@ -68,7 +68,7 @@ def load_minimal_phenotype_data(data_path=FINREGISTRY_MINIMAL_PHENOTYPE_DATA_PAT
     df = df.drop(columns={"sex"})
     df = df.astype({"personid": "string[pyarrow]"})
 
-    logger.info(f"{df.shape[0]} rows after data pre-processing")
+    logger.info(f"{df.shape[0]:,} rows in minimal phenotype")
 
     return df
 
@@ -91,16 +91,16 @@ def load_endpoints_data(data_path=FINREGISTRY_ENDPOINTS_DATA_PATH):
     """
     cols = ["NAME", "SEX", "OMIT"]
     df = pd.read_csv(data_path, sep=";", usecols=cols, skiprows=[1], encoding="latin1")
-    logger.info(f"{df.shape[0]} rows loaded")
+    logger.debug(f"{df.shape[0]:,} rows loaded")
 
     df = df.rename(columns={"NAME": "endpoint", "SEX": "sex", "OMIT": "omit"})
-    df = df.loc[(df["omit"].isnull()) | (df["endpoint"] == "DEATH")]
+    df = df.loc[df["omit"].isnull()]
     df = df.reset_index(drop=True)
     df["female"] = pd.NA
     df.loc[df["sex"] == SEX_FEMALE_ENDPOINTS, "female"] = True
     df.loc[df["sex"] == SEX_MALE_ENDPOINTS, "female"] = False
     df = df.drop(columns=["omit", "sex"])
-    logger.info(f"{df.shape[0]} rows after data pre-processing")
+    logger.info(f"{df.shape[0]:,} rows in endpoint definitions")
 
     return df
 
@@ -120,20 +120,18 @@ def load_first_events_data(
 
     Returns:
         df (DataFrame): first events dataframe
-
-    TODO: compute the DEATH endpoint from death_year
     """
     cols = ["FINREGISTRYID", "ENDPOINT", "AGE"]
     df = pd.read_feather(data_path, columns=cols)
     df.columns = ["personid", "endpoint", "age"]
 
-    logger.info(f"{df.shape[0]} rows loaded")
+    logger.debug(f"{df.shape[0]:,} rows loaded")
 
     df = df.loc[df["endpoint"].isin(endpoints["endpoint"])].reset_index(drop=True)
     df = df.merge(minimal_phenotype, how="left", on="personid")
     df["year"] = df["birth_year"] + df["age"]
     df = df.astype({"personid": "string[pyarrow]", "endpoint": "category"})
 
-    logger.info(f"{df.shape[0]} rows after data pre-processing")
+    logger.info(f"{df.shape[0]:,} rows in first events")
 
     return df
