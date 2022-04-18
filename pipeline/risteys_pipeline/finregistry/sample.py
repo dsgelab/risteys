@@ -2,56 +2,112 @@
 
 import numpy as np
 from risteys_pipeline.log import logger
-from risteys_pipeline.config import FOLLOWUP_START
+
+CONTROLS_PER_CASE = 2
+MIN_CONTROLS = 500
 
 
-def sample_controls(cohort, n_controls):
+def sample_controls(cohort, n_controls, sex=None):
     """
     Sample controls from the cohort
     
     Args: 
         cohort (DataFrame): cohort dataset, output of get_cohort()
         n_controls (num): number of controls to sample
+        sex (str, default None): should controls be sampled of a specific sex 
 
     Returns:
         controls (DataFrame): controls sampled from the cohort
     """
-    if n_controls < cohort.shape[0]:
-        controls = cohort.sample(n=n_controls).reset_index(drop=True)
+
+    if sex is None:
+        cohort_ = cohort
+    elif sex == "female":
+        cohort_ = cohort.loc[cohort["female"] == 1]
+    elif sex == "male":
+        cohort_ = cohort.loc[cohort["female"] == 0]
     else:
-        controls = cohort
+        raise ValueError("sex not 'both', 'female' or 'male'")
+
+    if n_controls < cohort_.shape[0]:
+        controls = cohort_.sample(n=n_controls)
+    else:
+        controls = cohort_
+
     logger.debug(f"{controls.shape[0]} controls sampled")
+
     return controls
 
 
-def sample_cases(all_cases, endpoint, n_cases=250_000):
+def sample_cases(cases, n_cases):
     """
     Sample cases from all_cases
 
     Args:
-        all_cases (DataFrame): dataset with cases for all endpoints
-        endpoint (str): name of the endpoint
+        cases (DataFrame): cases dataset (persons with endpoint)
         n_cases (int): number of cases to sample
 
     Returns:
-        cases (DataFrame): dataset with all cases with `endpoint`
-        caseids_total (int): person IDs for all cases with `endpoint`
+        cases_sample (DataFrame): sample of cases
     """
-    cols = ["personid", "birth_year", "death_year", "female", "age"]
-    cases = all_cases.loc[all_cases["endpoint"] == endpoint, cols]
-    cases = cases.reset_index(drop=True)
 
-    caseids_total = cases["personid"]
-    if n_cases < len(caseids_total):
-        cases = cases.sample(n_cases).reset_index(drop=True)
+    if n_cases < cases.shape[0]:
+        cases_sample = cases.sample(n=n_cases)
+    else:
+        cases_sample = cases
 
-    cases["start"] = np.maximum(cases["birth_year"], FOLLOWUP_START)
-    cases["stop"] = cases["birth_year"] + cases["age"]
-    cases["outcome"] = 1
-    cases = cases.drop(columns=["age"])
-    logger.debug(f"{cases.shape[0]} cases sampled")
+    logger.debug(f"{cases_sample.shape[0]} cases sampled")
 
-    return (cases, caseids_total)
+    return cases_sample
+
+
+def get_sampling_counts(cases, cohort, exposed=None, limit=10_000):
+    """
+    Get the number of cases and controls.
+
+    The method is adapted from Groenwold & van Smeden (2017):
+    https://journals.lww.com/epidem/Abstract/2017/11000/Efficient_Sampling_in_Unmatched_Case_Control.11.aspx
+
+    The upper limit of cases + controls is fixed due to computational constraints.
+
+    p1: exposure prevalence in cases
+    p0: exposure prevalence in cohort
+    R: optimal proportion of cases among all subjects
+
+    Args:
+        cases (DataFrame): dataset with all cases (persons with outcome)
+        cohort (DataFrame): dataset with all cohort members
+        exposed (DataFrame): dataset with all exposed persons (persons with exposure)
+        limit (int): upper limit for cases + controls
+    """
+
+    if exposed is not None:
+
+        exposed_cases = exposed.merge(cases, how="inner").shape[0]
+        exposed_cohort = exposed.merge(cohort, how="inner").shape[0]
+
+        p1 = exposed_cases / cases.shape[0]
+        p0 = exposed_cohort / cohort.shape[0]
+
+        q1 = 1 - p1
+        q0 = 1 - p0
+
+        R = (-1 * p0 * q0 + np.sqrt(p1 * q1 * p0 * q0)) / (p1 * q1 - p0 * q0)
+
+        n_cases = np.minimum(R * limit, cases.shape[0])
+        n_controls = (1 - R) / R * n_cases
+
+        logger.debug(f"Sampling ratio: 1:{(1-R)/R:.2f}")
+
+    else:
+
+        n_cases = min(cases.shape[0], limit / (CONTROLS_PER_CASE + 1))
+        n_controls = max(n_cases * CONTROLS_PER_CASE, MIN_CONTROLS)
+
+    n_cases = round(n_cases)
+    n_controls = round(n_controls)
+
+    return n_cases, n_controls
 
 
 def calculate_case_cohort_weights(

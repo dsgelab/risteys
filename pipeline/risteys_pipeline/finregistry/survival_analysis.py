@@ -1,402 +1,377 @@
-"""Functions for survival analysis"""
-
-import pandas as pd
 import numpy as np
+import pandas as pd
+
 from lifelines import CoxPHFitter, AalenJohansenFitter
 from lifelines.utils import ConvergenceError
-from lifelines.utils import add_covariate_to_timeline
+
 from risteys_pipeline.log import logger
 from risteys_pipeline.config import (
-    FOLLOWUP_END,
     FOLLOWUP_START,
+    FOLLOWUP_END,
     MIN_SUBJECTS_PERSONAL_DATA,
 )
 from risteys_pipeline.finregistry.sample import (
+    get_sampling_counts,
+    calculate_case_cohort_weights,
     sample_cases,
     sample_controls,
-    calculate_case_cohort_weights,
 )
 
-N_CASES = 25_000
-CONTROLS_PER_CASE = 1.5
-MIN_SUBJECTS_SURVIVAL_ANALYSIS = 50
 DAYS_IN_YEAR = 365.25
+OUTCOME_COMPETING_EVENT = 2
+MIN_SUBJECTS_SURVIVAL_ANALYSIS = 50
 
 
 def get_cohort(minimal_phenotype):
     """
-    Get cohort dataset with the following eligibility criteria:
-        - born before the end of the follow-up
-        - either not dead or died after the start of the follow-up
-        - sex information is not missing
+    Get cohort dataset for survival analysis.
+
+    Eligibility criteria: 
+    - born before the end of the follow-up
+    - either not dead or died after the start of the follow-up
+    - sex information is not missing
 
     Args:
         minimal_phenotype (DataFrame): minimal phenotype dataset
 
-    Returns:
-        cohort (DataFrame): cohort dataset with the following columns:
-        personid, birth_year, female, start, stop, outcome
+    Returns
+        cohort (DataFrame): cohort dataset with personid as an index
     """
-    logger.info("Building the cohort")
+    logger.debug("Building the cohort")
+
     cols = ["personid", "birth_year", "death_year", "female"]
     cohort = minimal_phenotype[cols]
 
-    born_before_fu_end = cohort["birth_year"] <= FOLLOWUP_END
-    not_dead = minimal_phenotype["death_year"].isna()
-    died_after_fu_start = minimal_phenotype["death_year"] >= FOLLOWUP_START
-    inside_timeframe = born_before_fu_end & (not_dead | died_after_fu_start)
-    cohort = cohort.loc[inside_timeframe]
+    cohort = cohort.loc[
+        (cohort["birth_year"].values <= FOLLOWUP_END)
+        & (
+            (cohort["death_year"].isnull())
+            | (cohort["death_year"].values >= FOLLOWUP_START)
+        )
+        & (~cohort["female"].isnull())
+    ]
+    cohort = cohort.reset_index(drop=True)
 
-    cohort = cohort.loc[~cohort["female"].isna()]
-
+    cohort["outcome"] = 0
     cohort["start"] = np.maximum(cohort["birth_year"], FOLLOWUP_START)
     cohort["stop"] = np.minimum(cohort["death_year"].fillna(np.Inf), FOLLOWUP_END)
 
-    cohort["outcome"] = 0
+    cohort = cohort.set_index("personid")
 
-    cohort = cohort.drop(columns=["death_year"])
-
-    return cohort
+    return cohort[["start", "stop", "outcome", "birth_year", "female"]]
 
 
-def prep_all_cases(first_events, cohort):
+def get_cases(outcome, first_events, cohort):
     """
-    Prep all cases for survival analysis
-    - drop endpoints outside study timeframe
-    - drop IDs not included in the cohort
-    
+    Get cases for survival analysis.
+
+    Eligibility criteria: 
+    - event during the follow-up period
+    - case is a member of the cohort
+
     Args:
+        outcome (str): outcome endpoint
+        first_events (DataFrame): first events dataset 
+        cohort (DataFrame): cohort dataset
+
+    Returns: 
+        cases (DataFrame): dataset with all persons with `endpoint`
+    """
+    if (outcome == "death") | (outcome == "DEATH"):
+        # stop < FOLLOWUP_END only if the person dies before FOLLOWUP_END
+        # Note: should be re-implemented if censoring can occur for different reasons than death, e.g. immigration
+        cases = cohort.loc[cohort["stop"] < FOLLOWUP_END].copy()
+    else:
+        cases = (
+            first_events.loc[
+                (first_events["endpoint"].values == outcome)
+                & (first_events["year"].values > FOLLOWUP_START)
+                & (first_events["year"].values < FOLLOWUP_END)
+            ]
+            .filter(["personid", "year"])
+            .set_index("personid")
+            .join(cohort, how="inner")
+        )
+        cases["stop"] = cases["year"]
+
+    cases["outcome"] = 1
+
+    return cases[["start", "stop", "outcome", "birth_year", "female"]]
+
+
+def get_exposed(exposure, first_events, cohort):
+    """
+    Get exposed persons for survival analysis 
+
+    Eligibility criteria: 
+    - exposure during the follow-up period
+    - exposed person is a member of the cohort
+
+    Args:
+        exposure (str): exposure endpoint
         first_events (DataFrame): first events dataset
-        cohort (DataFrame): cohort dataset, output of get_cohort()
+        cohort (DataFrame): cohort dataset
 
     Returns:
-        all_cases (DataFrame): dataset with cases for all endpoints
+        exposed (DataFrame): dataset with all exposed persons
     """
-    logger.info("Prepping all cases")
-    all_cases = first_events.copy()
+    exposed = get_cases(exposure, first_events, cohort)
+    exposed = exposed.rename(columns={"outcome": "exposure", "stop": "exposure_year"})
 
-    inside_timeframe = (all_cases["birth_year"] + all_cases["age"]).between(
-        FOLLOWUP_START, FOLLOWUP_END
-    )
-    all_cases = all_cases.loc[inside_timeframe].reset_index(drop=True)
-
-    cohortids = cohort["personid"]
-    all_cases = all_cases.merge(cohortids, how="right", on="personid")
-    all_cases = all_cases.reset_index(drop=True)
-
-    return all_cases
-
-
-def get_exposed(exposure, all_cases, df_survival):
-    """
-    Get exposed subjects within `df_survival`. Exposures after outcome are excluded.
-    
-    Args:
-        exposure (str): name of the exposure 
-        all_cases (DataFrame): cases for all endpoints
-        df_survival (DataFrame): survival dataset
-
-    Returns:
-        exposed (DataFrame): dataset of exposed persons
-    """
-    # Get exposed persons
-    cols = ["personid", "birth_year", "year"]
-    exposed = all_cases.loc[all_cases["endpoint"] == exposure, cols]
-    exposed = exposed.reset_index(drop=True)
-
-    # Only include persons in df_survival (right join) & add column `stop` for the next step
-    cols = ["personid", "stop"]
-    exposed = exposed.merge(df_survival[cols], how="right", on="personid")
-
-    # Exclude exposures after outcome
-    # year: exposure year
-    # stop: min(outcome year, death year, end of followup)
-    exposed = exposed.loc[exposed["stop"] > exposed["year"]]
-    exposed = exposed.reset_index(drop=True)
-
-    # The dataset only includes exposed persons
-    exposed["exposure"] = 1
-
-    exposed = exposed.rename(columns={"year": "duration"})
-    exposed = exposed[["personid", "duration", "exposure"]]
-
-    logger.debug(f"{exposure}: {exposed.shape[0]} exposed persons found")
-
-    return exposed
+    return exposed[["exposure_year", "exposure"]]
 
 
 def add_exposure(exposed, df_survival, buffer=30):
     """
-    Add exposure to the df_survival dataset.
-    Persons exposed within the buffer time are excluded from the dataset.
+    Add exposure as a time-varying covariate to the `df_survival` dataset.
+
+    Two rows are added for each exposed person: start -> exposure and exposure -> stop.
+    Persons with exposure within the buffer are excluded.
 
     Args:
-        exposed (DataFrame): exposed persons
-        df_survival (DataFrame): survival dataset
-        buffer (int): number of days required between exposure and outcome
+        exposed (DataFrame): exposed dataset
+        df_survival (DataFrame): dataset for survival analysis
+        buffer (int, default 30): number of days required between exposure and outcome
 
     Returns:
-        df_survival (DataFrame): survival dataset with column `exposure` added.
+        df_survival (DataFrame): dataset for survival analysis with `exposure` column
     """
-    # Add unique person IDs
-    # Due to case-cohort sampling, the same person may appear twice in the dataset
-    df_survival["personid_unique"] = (
-        df_survival["personid"] + "_" + df_survival["outcome"].map(str)
-    )
-    exposed = exposed.merge(
-        df_survival[["personid", "personid_unique"]], how="left", on="personid",
-    )
-    df_survival = df_survival.drop(columns={"personid"})
-    exposed = exposed.drop(columns={"personid"})
+    logger.debug("Adding exposure")
 
-    # Add exposure to the dataset
-    # df_survival = add_covariate_to_timeline(
-    #     df_survival,
-    #     exposed,
-    #     id_col="personid_unique",
-    #     duration_col="duration",
-    #     event_col="outcome",
-    # ).fillna({"exposure": 0})
+    df_survival = df_survival.merge(exposed.reset_index(), how="left", on="personid")
+    df_survival = df_survival.fillna({"exposure": 0})
 
-    # Add exposure to the dataset
-    df_survival = df_survival.merge(exposed, how="left", on="personid_unique")
-    df_survival = df_survival.fillna(value={"exposure": 0})
-    indx_exposed = df_survival["exposure"] == 1
+    exposed_rows = df_survival["exposure"] == 1
 
-    # Get rows for the latter part of the exposure
-    temp = df_survival[indx_exposed].reset_index(drop=True)
-    temp["start"] = temp["duration"]
+    # Second part of exposure (exposure -> stop)
+    temp = df_survival[exposed_rows].reset_index(drop=True)
     temp["exposure"] = 1
+    temp["start"] = temp["exposure_year"]
 
-    # Rows for the first part of the exposure
-    df_survival.loc[indx_exposed, "stop"] = df_survival.loc[indx_exposed, "duration"]
-    df_survival.loc[indx_exposed, "exposure"] = 0
-    df_survival.loc[indx_exposed, "outcome"] = 0
+    # First part of exposure (start -> exposure)
+    df_survival.loc[exposed_rows, "exposure"] = 0
+    df_survival.loc[exposed_rows, "outcome"] = 0
+    df_survival.loc[exposed_rows, "stop"] = df_survival.loc[exposed_rows, "exposure_year"]
 
-    # Combine the data
+    # Combine the two parts (start -> exposure -> stop)
     df_survival = pd.concat([df_survival, temp], axis=0, ignore_index=True)
+
+    df_survival = df_survival.loc[df_survival["start"] < df_survival["stop"]]
     df_survival = df_survival.reset_index(drop=True)
 
-    # Remote duration columns
-    df_survival = df_survival.drop(columns=["duration"])
-
-    # Rename unique personid to personid
-    df_survival = df_survival.rename(columns={"personid_unique": "personid"})
-
-    # Fix outcome data type
-    df_survival["outcome"] = df_survival["outcome"].astype(int)
-
-    # Drop persons exposed during buffer
-    exposed_during_buffer = np.where(
+    person_within_buffer = df_survival.loc[
         (df_survival["exposure"] == 1)
         & (df_survival["outcome"] == 1)
-        & ((df_survival["stop"] - df_survival["start"]) <= (buffer / DAYS_IN_YEAR))
-    )
-    persons_to_exclude = df_survival.loc[exposed_during_buffer, "personid"].unique()
-    df_survival = df_survival.loc[~df_survival["personid"].isin(persons_to_exclude)]
+        & (df_survival["stop"] - df_survival["start"] <= (buffer / DAYS_IN_YEAR)),
+        "personid",
+    ]
+    df_survival = df_survival.loc[~df_survival["personid"].isin(person_within_buffer)]
+    df_survival = df_survival.reset_index(drop=True)
 
-    # Exclude rows where start == stop
+    df_survival = df_survival.drop(columns=["exposure_year"])
+
+    return df_survival
+
+
+def add_death_as_competing_event(df_survival):
+    """
+    Add death as a competing event to the dataset.
+
+    Competing events are denoted with value `OUTCOME_COMPETING_EVENT` in the `outcome` column.
+    Periods that don't end in either the event, exposure or the end of study must end in a competing event.
+
+    Args:  
+        df_survival (DataFrame): survival dataset
+
+    Returns:
+        df_survival (DataFrame): survival dataset with competing evens added
+    """
+    if "exposure" in df_survival.columns:
+        # `followup_outcome`/`followup_exposure`: person's outcome/exposure during the full follow-up
+        followup_outcome = df_survival.groupby("personid")["outcome"].transform("sum")
+        followup_exposure = df_survival.groupby("personid")["exposure"].transform("sum")
+        indx = (
+            (df_survival["stop"] < FOLLOWUP_END)
+            & (followup_outcome == 0)
+            & (followup_exposure - df_survival["exposure"] == 0)
+        )
+    else:
+        indx = (df_survival["stop"] < FOLLOWUP_END) & (df_survival["outcome"] == 0)
+
+    df_survival.loc[indx, "outcome"] = OUTCOME_COMPETING_EVENT
+
+    return df_survival
+
+
+def build_survival_dataset(cases, cohort, exposed=None, buffer=30):
+    """
+    Build survival dataset.
+
+    Exposure is included as a time-varying covariate, if present.
+    Controls are sampled from the cohort.
+
+    Args:
+        cases (DataFrame): cases dataset
+        cohort (DataFrame): cohort dataset, possibly filtered to a specific sex
+        exposed (DataFrame, default None): exposure dataset
+        buffer (int, default 30): number of days required between exposure and outcome
+
+    Returns:
+        df_survival (DataFrame): survival dataset
+    """
+    logger.debug("Building the survival dataset")
+
+    n_cases, n_controls = get_sampling_counts(cases, cohort, exposed)
+
+    cases_sample = sample_cases(cases, n_cases)
+    controls_sample = sample_controls(cohort, n_controls)
+
+    cases_sample = cases_sample.reset_index()
+    controls_sample = controls_sample.reset_index()
+
+    weight_cases, weight_controls = calculate_case_cohort_weights(
+        cases.index, cohort.index, cases_sample.index, controls_sample.index,
+    )
+    cases_sample["weight"] = weight_cases
+    controls_sample["weight"] = weight_controls
+
+    df_survival = pd.concat([cases_sample, controls_sample], ignore_index=True)
+
+    if exposed is not None:
+        df_survival = add_exposure(exposed, df_survival, buffer=buffer)
+
     df_survival = df_survival.loc[df_survival["start"] < df_survival["stop"]]
     df_survival = df_survival.reset_index(drop=True)
 
     return df_survival
 
 
-def add_competing_events(df_survival):
-    """
-    Add death as a competing event to the dataset.
-    Competing events are denoted with value 2 in the `outcome` column.
-
-    Args: 
-        df_survival (DataFrame): survival dataset
-
-    Returns:
-        df_survival (DataFrame): input dataset with competing events added
-    """
-    df_survival.loc[
-        (df_survival["stop"] < FOLLOWUP_END) & (df_survival["outcome"] == 0), "outcome"
-    ] = 2
-
-    return df_survival
-
-
-def build_survival_dataset(
-    outcome, exposure, cohort, all_cases, competing_events=False
-):
-    """
-    Build a dataset for fitting a Cox PH model.
-    Exposure is included as a time-varying covariate if present.
-
-    Args:
-        outcome (str): outcome endpoint 
-        exposure (str): exposure endpoint (None if there's no exposure)
-        cohort (DataFrame): cohort for sampling controls 
-        all_cases (DataFrame): cases for all endpoints
-        competing_events (bool): is death treated as a competing event
-
-    Returns:
-        df_survival (DataFrame): dataset with the following columns:
-        personid, start (year), stop (year), exposure, outcome, birth_year, female, weight
-    """
-
-    cases, caseids_total = sample_cases(all_cases, outcome, n_cases=N_CASES)
-    n_cases = cases.shape[0]
-
-    n_exposed = np.Inf
-    if exposure is not None:
-        outcome_years = cases[["personid", "stop"]].rename(
-            columns={"stop": "outcome_year"}
-        )
-        exposed = get_exposed(all_cases, exposure, outcome_years)
-        n_exposed = exposed.shape[0]
-
-    df_survival = None
-
-    if (n_cases > MIN_SUBJECTS_PERSONAL_DATA) & (
-        n_exposed > MIN_SUBJECTS_PERSONAL_DATA
-    ):
-
-        controls = sample_controls(cohort, round(CONTROLS_PER_CASE * n_cases))
-
-        weight_cases, weight_controls = calculate_case_cohort_weights(
-            caseids_total, cohort["personid"], cases["personid"], controls["personid"],
-        )
-        cases["weight"] = weight_cases
-        controls["weight"] = weight_controls
-
-        df_survival = pd.concat([cases, controls])
-        df_survival = df_survival.reset_index(drop=True)
-
-        if competing_events:
-            df_survival = add_competing_events(df_survival)
-
-        if exposure is not None:
-            df_survival = add_exposure(exposed, df_survival)
-
-        # TODO: probably not a good place for these
-        df_survival["outcome"] = df_survival["outcome"].astype(int)
-        df_survival["female"] = df_survival["female"].astype(int)
-
-        # TODO: probably not needed
-        df_survival = df_survival.drop(columns=["death_year"])
-
-        df_survival = df_survival.loc[df_survival["start"] < df_survival["stop"]]
-        df_survival = df_survival.reset_index(drop=True)
-
-    return df_survival
-
-
-def check_min_number_of_subjects(df_survival):
+def check_min_subjects(df):
     """
     Check that the requirement for the minimum number of subjects is met.
-    The minimum number of subjects for the survival analysis cannot bypass the 
-    minimum person requirement of personal data usage.
+
+    The minimum number of subjects for the survival analysis (`MIN_SUBJECTS_SURVIVAL_ANALYSIS`)
+    cannot bypass the requirement for personal data (`MIN_SUBJECTS_PERSONAL_DATA`)
+
+    If exposure is included, the requirement applies to each of the following:
+    - exposed cases
+    - non-exposed cases
+    - exposed controls
+    - non-exposed controls
 
     Args:
-        df_survival (DataFrame): output of build_survival_dataset
+        df (DataFrame): dataset with the following columns:
+            `personid`, `outcome`, `exposure` (optional)
 
-    Returns:
+    Returns: 
         check (bool): True if there's enough subjects, otherwise False
     """
-    min_subjects = max(MIN_SUBJECTS_SURVIVAL_ANALYSIS, MIN_SUBJECTS_PERSONAL_DATA)
-    if "exposure" in df_survival.columns:
+    min_persons = max(MIN_SUBJECTS_PERSONAL_DATA, MIN_SUBJECTS_SURVIVAL_ANALYSIS)
+
+    if "exposure" in df.columns:
         tbl = pd.crosstab(
-            df_survival["outcome"],
-            df_survival["exposure"],
-            values=df_survival["personid"],
+            df["outcome"],
+            df["exposure"],
+            values=df["personid"],
             aggfunc=pd.Series.nunique,
         )
     else:
-        tbl = df_survival.groupby("outcome")["personid"].nunique()
-    check = tbl.values.min() > min_subjects
+        tbl = df.groupby("outcome")["personid"].nunique()
+
+    check = tbl.values.min() > min_persons
+
+    logger.debug(f"Min subjects test passed: {check}")
+
     return check
 
 
-def survival_analysis(
-    df_survival,
-    timescale="time-on-study",
-    drop=None,
-    stratify_by_sex=False,
-    competing_events=False,
-):
+def set_timescale(df_survival, timescale="age"):
     """
-    Fit a survival model (CoxPH or Aalen-Johanssen) to the data. 
-    The model is only fitted if the requirement for the minimum number of participants is met.
+    Set timescale for the survival dataset as either age or time-on-study.
+
+    If "age":
+    - `start` is the age at birth or the start of follow-up (or exposure), whichever occurs first
+    - `stop` is the age at outcome, death or end of follow-up (or exposure), whichever occurs first
+
+    If "time-on-study":
+    - `start` is removed from the dataset
+    - `stop` is the follow-up time between `start` and `stop`, as defined above
 
     Args: 
-        df_survival (DataFrame): output of build_survival_dataset()
-        timescale (str): "time-on-study" (default) or "age"
-        drop (list of str, optional): covariates to drop
-        stratify_by_age (bool, optional): should the analysis be stratified by sex
-        competing_events (bool, optional): should a competing events model be used
+        df_survival (DataFrame): survival dataset
+        timescale (str, default "age"): timescale, either "age" or "time-on-study"
+
+    Returns:
+        df_survival (DataFrame): survival dataset with timescale set
+    """
+    logger.debug("Setting timescale")
+    if timescale == "age":
+        df_survival["start"] = df_survival["start"] - df_survival["birth_year"]
+        df_survival["stop"] = df_survival["stop"] - df_survival["birth_year"]
+    elif timescale == "time-on-study":
+        df_survival["stop"] = df_survival["stop"] - df_survival["start"]
+        df_survival = df_survival.drop(columns=["start"])
+    else:
+        raise ValueError("Timescale must be 'age' or 'time-on-study'")
+
+    return df_survival
+
+
+def survival_analysis(df_survival, model_type="cox"):
+    """
+    Fit a survival model to the data and return the model object.
+    
+    This function handles the following: 
+    - check that the requirement for the minimum number of persons is satisfied
+    - handle different timescales 
+    - fit the model
+    - catch convergence errors
+
+    Args:
+        df_survival (DataFrame): survival dataset
+        model_type (str, default "cox"): model to fit, "cox" for Cox PH model or "aalen-johansen" for Aalen-Johansen estimator
 
     Returns: 
-        model (object): fitted survival model. None if there's not enough subjects.
+        model (object): fitted survival model or None
     """
 
     model = None
 
-    if df_survival is not None:
+    if (df_survival is not None) & (check_min_subjects(df_survival)):
 
-        check = check_min_number_of_subjects(df_survival)
+        df_survival = df_survival.drop(columns="personid")
+        entry_col = "start" if "start" in df_survival.columns else None
 
-        if not check:
-            logger.debug("Not enough subjects")
-            model = None
-        else:
-            df_timescale = df_survival.copy()
-
-            # Set timescale
-            if timescale == "time-on-study":
-                df_timescale["stop"] = df_timescale["stop"] - df_timescale["start"]
-                df_timescale = df_timescale.drop(columns=["start"])
-                entry_col = None
-            elif timescale == "age":
-                df_timescale["start"] = (
-                    df_timescale["start"] - df_timescale["birth_year"]
+        if model_type == "cox":
+            logger.debug("Fitting the Cox PH model")
+            model = CoxPHFitter()
+            try:
+                model.fit(
+                    df_survival,
+                    entry_col=entry_col,
+                    duration_col="stop",
+                    event_col="outcome",
+                    weights_col="weight",
+                    robust=True,
                 )
-                df_timescale["stop"] = df_timescale["stop"] - df_timescale["birth_year"]
-                entry_col = "start"
+            except ConvergenceError:
+                model = None
 
-            # Drop covariates if specified
-            if drop:
-                df_timescale = df_timescale.drop(columns=drop)
+        elif model_type == "aalen-johansen":
+            logger.debug("Fitting the Aalen-Johansen model")
+            model = AalenJohansenFitter(calculate_variance=False)
+            try:
+                model.fit(
+                    durations=df_survival["stop"],
+                    event_observed=df_survival["outcome"],
+                    event_of_interest=1,
+                    entry=df_survival["start"] if entry_col is not None else None,
+                    weights=df_survival["weight"],
+                )
+            except ConvergenceError:
+                model = None
 
-            # Set strata if specified
-            strata = ["female"] if stratify_by_sex == True else None
-
-            # Drop personid
-            df_timescale = df_timescale.drop(columns=["personid"])
-
-            # Fit the model
-            if competing_events:
-                logger.debug("Fitting the Aalen-Johansen model")
-                model = AalenJohansenFitter(calculate_variance=False)
-                entry = df_timescale[entry_col] if entry_col else None
-                try:
-                    model.fit(
-                        durations=df_timescale["stop"],
-                        event_observed=df_timescale["outcome"],
-                        event_of_interest=1,
-                        entry=entry,
-                        weights=df_timescale["weight"],
-                    )
-                except ConvergenceError:
-                    model = None
-            else:
-                logger.debug("Fitting the Cox PH model")
-                model = CoxPHFitter()
-                try:
-                    model.fit(
-                        df_timescale,
-                        entry_col=entry_col,
-                        duration_col="stop",
-                        event_col="outcome",
-                        strata=strata,
-                        weights_col="weight",
-                        robust=True,
-                    )
-                except ConvergenceError:
-                    model = None
+        else:
+            raise ValueError("Model must be 'cox' or 'aalen-johansen'")
 
     return model

@@ -1,127 +1,126 @@
 """Functions for computing cumulative incidence"""
 
 import pandas as pd
+import numpy as np
 from risteys_pipeline.log import logger
 from risteys_pipeline.config import MIN_SUBJECTS_PERSONAL_DATA
 from risteys_pipeline.finregistry.survival_analysis import (
+    MIN_SUBJECTS_SURVIVAL_ANALYSIS,
+    add_death_as_competing_event,
+    get_cases,
     build_survival_dataset,
+    set_timescale,
     survival_analysis,
 )
 
 N_DIGITS = 4
 
 
-def cumulative_incidence(endpoint, all_cases, cohort):
+def cumulative_incidence_function(endpoint, cases, cohort):
     """
-    Cumulative incidence with age as timescale and death as a competing event.
-    It is assumed that sex-specific endpoints have no cases of the opposite sex.
+    Compute the cumulative incidence function for `endpoint`
+    - Johansen-Aalen estimator
+    - age as timescale
+    - death as a competing event
+    - stratified by sex
 
     Args:
-        endpoint (string): name of the endpoint
-        all_cases (DataFrame): dataset cases for all endpoints
-        cohort (DataFrame): cohort dataset 
+        endpoint (str): name of the endpoint
+        cases (DataFrame): cases dataset (persons with endpoint)
+        cohort (DataFrame): cohort for sampling controls
 
-    Returns: 
-        CIF (DataFrame): dataset with the following columns:
+    Returns:
+        CIF (DataFrame): cumulative incidence function dataset with the following columns:
             endpoint: the name of the endpoint
-            sex: sex (female/male)
+            sex: female/male
             age: age bin
             cumulinc: cumulative incidence function
-
-    TODO: Catch statistical warning
-    TODO: Sample for sexes independently
     """
+    logger.debug(f"{endpoint}")
 
-    CIF = None
+    CIF = []
 
-    df_survival = build_survival_dataset(
-        endpoint, None, cohort, all_cases, competing_events=True
-    )
+    sexes = cases["female"].unique()
 
-    if df_survival is not None:
+    for sex in sexes:
 
-        CIF = []
-        sexes = df_survival["female"].unique()
-        ages = range(0, 101, 1)
+        cases_ = cases.loc[cases["female"] == sex]
 
-        for sex in sexes:
+        if cases_.shape[0] > MIN_SUBJECTS_SURVIVAL_ANALYSIS:
 
-            # Fit the model
-            df_survival_ = df_survival.loc[df_survival["female"] == sex]
-            df_survival_ = df_survival_.reset_index(drop=True)
-            model = survival_analysis(df_survival_, "age", competing_events=True)
+            cohort_ = cohort.loc[cohort["female"] == sex]
+            df_survival = build_survival_dataset(cases_, cohort_)
+            df_survival = add_death_as_competing_event(df_survival)
+            df_survival = set_timescale(df_survival, "age")
+            df_survival = df_survival.drop(columns=["female"])
+
+            model = survival_analysis(df_survival, "aalen-johansen")
 
             if model is not None:
-                # Compute the cumulative incidence function
-                CIF_ = model.predict(ages).reset_index()
-                CIF_ = CIF_.rename(columns={"index": "age", "CIF_1": "cumulinc"})
-                CIF_["sex"] = {True: "female", False: "male"}[sex]
-                CIF_["endpoint"] = endpoint
-                CIF_["cumulinc"] = CIF_["cumulinc"].round(N_DIGITS)
 
-                # Count cases per age
-                counts = (
-                    df_survival.loc[
-                        (df_survival["female"] == sex) & (df_survival["outcome"] == 1)
-                    ]
-                    .reset_index(drop=True)
-                    .assign(age=lambda x: round(x["stop"] - x["birth_year"]))
-                    .groupby("age")["outcome"]
-                    .sum()
-                    .reset_index()
-                    .rename(columns={"outcome": "n_cases"})
+                # Get ages with enough data
+                age_counts = (
+                    df_survival.loc[df_survival["outcome"].values == 1]["stop"]
+                    .round()
+                    .value_counts()
+                    .sort_index()
                 )
+                ages = age_counts[age_counts >= MIN_SUBJECTS_PERSONAL_DATA].index
 
-                # Remove personal data
-                CIF_ = CIF_.merge(counts, how="left", on=["age"]).fillna(0)
-                CIF_ = CIF_.loc[CIF_["n_cases"] >= MIN_SUBJECTS_PERSONAL_DATA]
-                CIF_ = CIF_.reset_index(drop=True)
+                if len(ages) > 0:
 
-                CIF.append(CIF_[["endpoint", "age", "sex", "cumulinc"]])
+                    # Duplicate ages of length 1 to keep the same output format
+                    # The duplicate is later dropped
+                    if len(ages == 1):
+                        ages = np.repeat(ages, 2)
 
-        if CIF:
-            CIF = pd.concat(CIF, axis=0)
+                    CIF_ = model.predict(ages).drop_duplicates()
+
+                    # Format output
+                    CIF_ = CIF_.reset_index()
+                    CIF_ = CIF_.rename(columns={"index": "age", "CIF_1": "cumulinc"})
+                    CIF_["cumulinc"] = CIF_["cumulinc"].round(N_DIGITS)
+                    CIF_["sex"] = {True: "female", False: "male"}[sex]
+
+                    CIF.append(CIF_[["age", "sex", "cumulinc"]])
+
+    if CIF:
+        CIF = pd.concat(CIF, axis=0)
+        CIF["endpoint"] = endpoint
 
     return CIF
 
 
 if __name__ == "__main__":
     from risteys_pipeline.finregistry.load_data import load_data
-    from risteys_pipeline.finregistry.survival_analysis import (
-        get_cohort,
-        prep_all_cases,
-    )
+    from risteys_pipeline.finregistry.survival_analysis import get_cohort
     from risteys_pipeline.finregistry.write_data import get_output_filepath
-    from multiprocessing import Pool
-    from functools import partial
+    from multiprocessing import get_context
     from tqdm import tqdm
 
-    endpoints, minimal_phenotype, first_events = load_data()
+    N_PROCESSES = 40
 
-    endpoints = endpoints.loc[endpoints["endpoint"] != "DEATH"].reset_index(drop=True)
+    endpoints, minimal_phenotype, first_events = load_data()
     n_endpoints = endpoints.shape[0]
 
     cohort = get_cohort(minimal_phenotype)
-    all_cases = prep_all_cases(first_events, cohort)
 
     logger.info("Start multiprocessing")
 
-    partial_ci = partial(cumulative_incidence, all_cases=all_cases, cohort=cohort)
-    args_iter = iter(endpoints["endpoint"])
-
-    N_PROCESSES = 10
-    with Pool(processes=N_PROCESSES) as pool:
-        result = list(
-            tqdm(
-                pool.imap_unordered(
-                    partial_ci, args_iter, chunksize=n_endpoints // N_PROCESSES
-                ),
-                total=n_endpoints,
+    with get_context("spawn").Pool(processes=N_PROCESSES) as pool, tqdm(
+        total=n_endpoints, desc="Computing CIF"
+    ) as pbar:
+        result = [
+            pool.apply_async(
+                cumulative_incidence_function,
+                args=(endpoint, get_cases(endpoint, first_events, cohort), cohort),
+                callback=lambda _: pbar.update(),
             )
-        )
+            for endpoint in endpoints["endpoint"]
+        ]
+        result = [r.get() for r in result]
 
-    result = [x for x in result if x is not None] # remove Nones
-    result = [x for x in result if len(x) > 0] # remove empty lists
+    result = [x for x in result if len(x) > 0]
     result = pd.concat(result, axis=0, ignore_index=True)
 
     logger.info("Writing output to file")

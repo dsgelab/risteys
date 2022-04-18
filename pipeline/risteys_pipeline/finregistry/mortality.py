@@ -2,178 +2,190 @@
 
 import pandas as pd
 
-from risteys_pipeline.config import MIN_SUBJECTS_PERSONAL_DATA
 from risteys_pipeline.log import logger
-from risteys_pipeline.finregistry.survival_analysis import (
+from risteys_pipeline.config import (
+    MIN_SUBJECTS_PERSONAL_DATA,
     MIN_SUBJECTS_SURVIVAL_ANALYSIS,
-    add_exposure,
+)
+from risteys_pipeline.finregistry.survival_analysis import (
+    get_cases,
     build_survival_dataset,
     get_exposed,
+    set_timescale,
     survival_analysis,
 )
 
 N_DIGITS = 4
 
 
-def mortality_analysis(endpoint, df_mortality, all_cases):
+def mortality_analysis(endpoint, cases, exposed, cohort):
     """
-    Mortality analysis
-
-    Args:
+    Mortality analysis for `endpoint`
+    - Cox PH model 
+    - age as timescale 
+    - endpoint is a time-varying covariate, birth_year is a covariate
+    - stratified by sex (parameters are estimated by sex)
+    - buffer of 30 days between exposure and outcome
+    
+    Args: 
         endpoint (str): name of the endpoint
-        all_cases (DataFrame): dataset with cases for all endpoints
+        cases (DataFrame): cases dataset (persons who died)
+        exposed (DataFrame): exposed dataset (persons with exposure endpoint)
         cohort (DataFrame): cohort for sampling controls
 
-    Returns:
-        TBD
+    Returns: 
+        (params, cumulative_baseline_hazard) (tuple of DataFrames): 
+        parameters and cumulative baseline hazard by age
     """
-    logger.debug(endpoint)
+    logger.debug(f"{endpoint}")
 
-    params = None
-    bch = None
+    params = []
+    cumulative_baseline_hazard = []
+    counts = []
 
-    exposed = get_exposed(endpoint, all_cases, df_mortality)
-    n_exposed = exposed.shape[0]
+    exposed_cases = cases.join(exposed, how="inner")
+    sexes = exposed_cases["female"].unique()
 
-    # Check that the dataset can include enough exposed cases and non-cases
-    if n_exposed > 2 * MIN_SUBJECTS_SURVIVAL_ANALYSIS:
+    for sex in sexes:
 
-        df_mortality_ = df_mortality.copy()
-        df_mortality_ = add_exposure(exposed, df_mortality_)
+        exposed_cases_ = exposed_cases.loc[exposed_cases["female"] == sex]
 
-        # Check if endpoint is sex-specific
-        # TODO: this does not work, the weights are not correct!
-        mean_sex = df_mortality_.loc[df_mortality_["exposure"] == 1, "female"].mean()
-        sex_male = mean_sex < 0.1
-        sex_female = mean_sex > 0.9
+        if exposed_cases_.shape[0] >= MIN_SUBJECTS_SURVIVAL_ANALYSIS:
 
-        if sex_male | sex_female:
-            df_mortality_ = df_mortality_.loc[
-                df_mortality_["female"] == round(mean_sex)
-            ]
-            model = survival_analysis(df_mortality_, "age", drop=["female"])
-        else:
-            model = survival_analysis(df_mortality_, "age")
+            cases_ = cases.loc[cases["female"] == sex]
+            cohort_ = cohort.loc[cohort["female"] == sex]
 
-        if model is not None:
-            # Calculate baseline cumulative hazard by age group
-            bch = model.baseline_cumulative_hazard_
-            bch = bch.rename(
-                columns={"baseline cumulative hazard": "baseline_cumulative_hazard"}
-            )
-            bch = bch.reset_index().rename(columns={"index": "age"})
-            bch["age"] = round(bch["age"])
-            bch = bch.groupby("age").mean()
+            df_survival = build_survival_dataset(cases_, cohort_, exposed)
+            df_survival = set_timescale(df_survival, "age")
+            df_survival = df_survival.drop(columns=["female"])
 
-            # Calculate number of events by age group
-            counts = df_mortality.loc[df_mortality["outcome"] == 1].reset_index(
-                drop=True
-            )
-            counts["age"] = round(counts["stop"] - counts["birth_year"])
-            counts = counts.groupby("age")["outcome"].sum().reset_index()
-            counts = counts.rename(columns={"outcome": "n_events"})
+            model = survival_analysis(df_survival, "cox")
 
-            # Filter out personal data
-            bch = bch.merge(counts, on="age", how="left")
-            bch = bch.loc[bch["n_events"] >= MIN_SUBJECTS_PERSONAL_DATA]
-            bch = bch.drop(columns=["n_events"])
-            bch = bch.round(N_DIGITS)
-            bch["endpoint"] = endpoint
+            if model is not None:
 
-            # Get means
-            means = df_mortality_[["birth_year", "female", "exposure"]].mean()
+                logger.debug("Removing personal data")
 
-            # Extract parameters
-            params = model.summary[["coef", "coef lower 95%", "coef upper 95%", "p"]]
-            params = params.reset_index()
-            params["endpoint"] = endpoint
-            params = params.merge(
-                means.rename("mean"), left_on="covariate", right_index=True
-            )
-            params = params.rename(
-                columns={
-                    "coef lower 95%": "ci95_lower",
-                    "coef upper 95%": "ci95_upper",
-                    "p": "p_value",
+                # Get cumulative baseline hazard by age
+                cbh_ = model.baseline_cumulative_hazard_.rename(
+                    columns={"index": "age"}
+                )
+                cbh_ = cbh_.reset_index().rename(columns={"index": "age"})
+                cbh_["age"] = cbh_["age"].round(0)
+                cbh_ = cbh_.groupby("age").mean().reset_index()
+
+                # Get ages with enough data
+                age_counts = (
+                    df_survival.loc[df_survival["outcome"] == 1]["stop"]
+                    .round()
+                    .value_counts()
+                    .sort_index()
+                )
+                ages = age_counts[age_counts >= MIN_SUBJECTS_PERSONAL_DATA]
+
+                if len(ages) > 0:
+
+                    # Remove personal data
+                    cbh_ = cbh_.loc[cbh_["age"].isin(ages.index)].reset_index(drop=True)
+
+                    cbh_["sex"] = {True: "female", False: "male"}[sex]
+                    cbh_["endpoint"] = endpoint
+
+                    cumulative_baseline_hazard.append(cbh_)
+
+                cols = ["coef", "coef lower 95%", "coef upper 95%", "p"]
+                params_ = model.summary[cols]
+                params_ = params_.rename(
+                    columns={
+                        "coef lower 95%": "ci95_lower",
+                        "coef upper 95%": "ci95_upper",
+                        "p": "p_value",
+                    }
+                )
+
+                means = df_survival[["birth_year", "exposure"]].mean()
+                params_ = params_.join(means.rename("mean"))
+
+                params_ = params_.round(N_DIGITS)
+                params_["sex"] = {True: "female", False: "male"}[sex]
+                params_["endpoint"] = endpoint
+                params_ = params_.reset_index()
+
+                params.append(params_)
+
+                exposed_ = exposed.join(cohort["female"], how="inner")
+                counts_ = {
+                    "exposed": exposed_.loc[exposed_["female"] == sex].shape[0],
+                    "exposed_cases": exposed_cases_.shape[0],
+                    "sex": {True: "female", False: "male"}[sex],
                 }
-            )
-            cols = ["coef", "ci95_lower", "ci95_upper", "p_value", "mean"]
-            params[cols] = params[cols].round(4)
+                counts_ = pd.DataFrame(counts_, index=[endpoint])
+                counts_ = counts_.reset_index().rename(columns={"index": "endpoint"})
+                counts.append(counts_)
 
+    if cumulative_baseline_hazard:
+        cumulative_baseline_hazard = pd.concat(cumulative_baseline_hazard, axis=0)
 
-    return (params, bch)
+    if params:
+        params = pd.concat(params, axis=0)
+
+    if counts:
+        counts = pd.concat(counts, axis=0)
+
+    return (params, cumulative_baseline_hazard, counts)
 
 
 if __name__ == "__main__":
     import pandas as pd
     from risteys_pipeline.finregistry.load_data import load_data
-    from risteys_pipeline.finregistry.survival_analysis import (
-        get_cohort,
-        prep_all_cases,
-    )
+    from risteys_pipeline.finregistry.survival_analysis import get_cohort
     from risteys_pipeline.finregistry.write_data import get_output_filepath
-    from multiprocessing import Pool, get_context
+    from multiprocessing import get_context
     from functools import partial
     from tqdm import tqdm
 
-    N_PROCESSES = 35
+    import logging
+
+    logger.setLevel(logging.DEBUG)
+
+    N_PROCESSES = 20
 
     endpoints, minimal_phenotype, first_events = load_data()
+    n_endpoints = endpoints.shape[0]
 
     cohort = get_cohort(minimal_phenotype)
-    all_cases = prep_all_cases(first_events, cohort)
-
-    df_mortality = build_survival_dataset("DEATH", None, cohort, all_cases)
-
-    # Exclude persons not in the sampled data
-    all_cases_ = all_cases.loc[
-        all_cases["personid"].isin(df_mortality["personid"].unique())
-    ]
-    all_cases_ = all_cases_.reset_index(drop=True)
-
-    # Exclude endpoints with too little persons
-    endpoints_ = (
-        all_cases_.groupby("endpoint")
-        .filter(lambda x: x["personid"].nunique() > MIN_SUBJECTS_SURVIVAL_ANALYSIS * 2)[
-            "endpoint"
-        ]
-        .unique()
+    mortality_cases = get_cases("death", first_events, cohort)
+    get_exposed_ = partial(
+        get_exposed, first_events=first_events, cohort=cohort, cases=mortality_cases
     )
 
-    # For testing
-    #endpoints_ = endpoints_[:20]
+    logger.info("Start multiprocessing")
 
-    endpoints_ = endpoints_[endpoints_ != "DEATH"]
-    all_cases_ = all_cases_.loc[all_cases_["endpoint"].isin(endpoints_)]
-    all_cases_ = all_cases_.reset_index(drop=True)
-
-    n_endpoints = len(endpoints_)
-    args_iter = iter(endpoints_)
-    partial_mortality = partial(
-        mortality_analysis, df_mortality=df_mortality, all_cases=all_cases_
-    )
-
-    with get_context("spawn").Pool(processes=N_PROCESSES) as pool:
-        result = list(
-            tqdm(
-                pool.imap_unordered(
-                    partial_mortality, args_iter
-                ),
-                total=n_endpoints,
+    with get_context("spawn").Pool(processes=N_PROCESSES) as pool, tqdm(
+        total=n_endpoints, desc="Mortality"
+    ) as pbar:
+        result = [
+            pool.apply_async(
+                mortality_analysis,
+                args=(endpoint, mortality_cases, get_exposed_(endpoint), cohort,),
+                callback=lambda _: pbar.update(),
             )
-        )
+            for endpoint in endpoints["endpoint"]
+        ]
+        result = [r.get() for r in result]
 
-    params = [x[0] for x in result if x[0] is not None]
-    bch = [x[1] for x in result if x[1] is not None]
+    params = [x[0] for x in result if len(x[0]) > 0]
+    bch = [x[1] for x in result if len(x[1]) > 0]
+    counts = [x[2] for x in result if len(x[2]) > 0]
 
     params = pd.concat(params, axis=0, ignore_index=True)
     bch = pd.concat(bch, axis=0, ignore_index=True)
+    counts = pd.concat(counts, axis=0, ignore_index=True)
 
     logger.info("Writing output to file")
-
     params_output_file = get_output_filepath("mortality_params", "csv")
     bch_output_file = get_output_filepath("mortality_baseline_cumulative_hazard", "csv")
-
+    counts_output_file = get_output_filepath("mortality_counts", "csv")
     params.to_csv(params_output_file, index=False)
     bch.to_csv(bch_output_file, index=False)
+    counts.to_csv(counts_output_file, index=False)
 
