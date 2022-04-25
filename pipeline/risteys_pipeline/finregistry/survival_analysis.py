@@ -9,6 +9,7 @@ from risteys_pipeline.config import (
     FOLLOWUP_START,
     FOLLOWUP_END,
     MIN_SUBJECTS_PERSONAL_DATA,
+    MIN_SUBJECTS_SURVIVAL_ANALYSIS
 )
 from risteys_pipeline.finregistry.sample import (
     get_sampling_counts,
@@ -19,7 +20,6 @@ from risteys_pipeline.finregistry.sample import (
 
 DAYS_IN_YEAR = 365.25
 OUTCOME_COMPETING_EVENT = 2
-MIN_SUBJECTS_SURVIVAL_ANALYSIS = 50
 
 
 def get_cohort(minimal_phenotype):

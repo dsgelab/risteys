@@ -24,4 +24,7 @@ FINREGISTRY_OUTPUT_DIR = Path("/data") / "projects" / "risteys"
 
 FOLLOWUP_START = 1998.0
 FOLLOWUP_END = 2019.99
+
+# Minimum number of subjects
 MIN_SUBJECTS_PERSONAL_DATA = 5
+MIN_SUBJECTS_SURVIVAL_ANALYSIS = 50
