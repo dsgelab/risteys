@@ -9,17 +9,14 @@ from risteys_pipeline.config import (
     FOLLOWUP_START,
     FOLLOWUP_END,
     MIN_SUBJECTS_PERSONAL_DATA,
-    MIN_SUBJECTS_SURVIVAL_ANALYSIS
+    MIN_SUBJECTS_SURVIVAL_ANALYSIS,
 )
-from risteys_pipeline.finregistry.sample import (
-    get_sampling_counts,
-    calculate_case_cohort_weights,
-    sample_cases,
-    sample_controls,
-)
+from risteys_pipeline.finregistry.sample import sample_cases, sample_controls
 
 DAYS_IN_YEAR = 365.25
 OUTCOME_COMPETING_EVENT = 2
+N_CASES = 10_000
+CONTROLS_PER_CASE = 1.5
 
 
 def get_cohort(minimal_phenotype):
@@ -99,39 +96,44 @@ def get_cases(outcome, first_events, cohort):
     return cases[["start", "stop", "outcome", "birth_year", "female"]]
 
 
-def get_exposed(exposure, first_events, cohort):
+def get_exposed(exposure, first_events, cohort, cases, buffer=30):
     """
-    Get exposed persons for survival analysis 
+    Get exposed persons for survival analysis. 
 
     Eligibility criteria: 
     - exposure during the follow-up period
     - exposed person is a member of the cohort
+    - exposure at least `buffer` days before the outcome
 
     Args:
         exposure (str): exposure endpoint
         first_events (DataFrame): first events dataset
         cohort (DataFrame): cohort dataset
+        cases (DataFrame): cases dataset
+        buffer (int): number of days required between exposure and outcome
 
     Returns:
         exposed (DataFrame): dataset with all exposed persons
     """
     exposed = get_cases(exposure, first_events, cohort)
     exposed = exposed.rename(columns={"outcome": "exposure", "stop": "exposure_year"})
+    exposed = exposed[["exposure_year", "exposure"]]
+    exposed = exposed.join(cases, how="left").fillna({"stop": np.Inf})
+    exposed = exposed.loc[
+        (exposed["stop"] - exposed["exposure_year"]) > (buffer / DAYS_IN_YEAR)
+    ]
 
     return exposed[["exposure_year", "exposure"]]
 
 
-def add_exposure(exposed, df_survival, buffer=30):
+def add_exposure(exposed, df_survival):
     """
     Add exposure as a time-varying covariate to the `df_survival` dataset.
-
     Two rows are added for each exposed person: start -> exposure and exposure -> stop.
-    Persons with exposure within the buffer are excluded.
 
     Args:
         exposed (DataFrame): exposed dataset
         df_survival (DataFrame): dataset for survival analysis
-        buffer (int, default 30): number of days required between exposure and outcome
 
     Returns:
         df_survival (DataFrame): dataset for survival analysis with `exposure` column
@@ -151,22 +153,12 @@ def add_exposure(exposed, df_survival, buffer=30):
     # First part of exposure (start -> exposure)
     df_survival.loc[exposed_rows, "exposure"] = 0
     df_survival.loc[exposed_rows, "outcome"] = 0
-    df_survival.loc[exposed_rows, "stop"] = df_survival.loc[exposed_rows, "exposure_year"]
+    df_survival.loc[exposed_rows, "stop"] = df_survival.loc[
+        exposed_rows, "exposure_year"
+    ]
 
     # Combine the two parts (start -> exposure -> stop)
     df_survival = pd.concat([df_survival, temp], axis=0, ignore_index=True)
-
-    df_survival = df_survival.loc[df_survival["start"] < df_survival["stop"]]
-    df_survival = df_survival.reset_index(drop=True)
-
-    person_within_buffer = df_survival.loc[
-        (df_survival["exposure"] == 1)
-        & (df_survival["outcome"] == 1)
-        & (df_survival["stop"] - df_survival["start"] <= (buffer / DAYS_IN_YEAR)),
-        "personid",
-    ]
-    df_survival = df_survival.loc[~df_survival["personid"].isin(person_within_buffer)]
-    df_survival = df_survival.reset_index(drop=True)
 
     df_survival = df_survival.drop(columns=["exposure_year"])
 
@@ -203,7 +195,9 @@ def add_death_as_competing_event(df_survival):
     return df_survival
 
 
-def build_survival_dataset(cases, cohort, exposed=None, buffer=30):
+def build_survival_dataset(
+    cases, cohort, exposed=None, n_cases=N_CASES, controls_per_case=CONTROLS_PER_CASE
+):
     """
     Build survival dataset.
 
@@ -214,31 +208,20 @@ def build_survival_dataset(cases, cohort, exposed=None, buffer=30):
         cases (DataFrame): cases dataset
         cohort (DataFrame): cohort dataset, possibly filtered to a specific sex
         exposed (DataFrame, default None): exposure dataset
-        buffer (int, default 30): number of days required between exposure and outcome
 
     Returns:
         df_survival (DataFrame): survival dataset
     """
     logger.debug("Building the survival dataset")
 
-    n_cases, n_controls = get_sampling_counts(cases, cohort, exposed)
-
-    cases_sample = sample_cases(cases, n_cases)
-    controls_sample = sample_controls(cohort, n_controls)
-
-    cases_sample = cases_sample.reset_index()
-    controls_sample = controls_sample.reset_index()
-
-    weight_cases, weight_controls = calculate_case_cohort_weights(
-        cases.index, cohort.index, cases_sample.index, controls_sample.index,
-    )
-    cases_sample["weight"] = weight_cases
-    controls_sample["weight"] = weight_controls
+    cases_sample = sample_cases(cases, n_cases, exposed).reset_index()
+    n_controls = round(cases_sample.shape[0] * controls_per_case)
+    controls_sample = sample_controls(cohort, n_controls, cases, exposed).reset_index()
 
     df_survival = pd.concat([cases_sample, controls_sample], ignore_index=True)
 
     if exposed is not None:
-        df_survival = add_exposure(exposed, df_survival, buffer=buffer)
+        df_survival = add_exposure(exposed, df_survival)
 
     df_survival = df_survival.loc[df_survival["start"] < df_survival["stop"]]
     df_survival = df_survival.reset_index(drop=True)
@@ -260,8 +243,7 @@ def check_min_subjects(df):
     - non-exposed controls
 
     Args:
-        df (DataFrame): dataset with the following columns:
-            `personid`, `outcome`, `exposure` (optional)
+        df (DataFrame): dataset with the following columns: `personid`, `outcome`, `exposure` (optional)
 
     Returns: 
         check (bool): True if there's enough subjects, otherwise False
