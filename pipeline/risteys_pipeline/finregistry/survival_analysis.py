@@ -43,10 +43,10 @@ def get_cohort(minimal_phenotype):
     cohort = minimal_phenotype[cols]
 
     cohort = cohort.loc[
-        (cohort["birth_year"].values <= FOLLOWUP_END)
+        (cohort["birth_year"].values < FOLLOWUP_END)
         & (
             (cohort["death_year"].isnull())
-            | (cohort["death_year"].values >= FOLLOWUP_START)
+            | (cohort["death_year"].values > FOLLOWUP_START)
         )
         & (~cohort["female"].isnull())
     ]
