@@ -1,143 +1,127 @@
 """Functions for sampling the data"""
 
-import numpy as np
+import pandas as pd
 from risteys_pipeline.log import logger
 
-CONTROLS_PER_CASE = 2
-MIN_CONTROLS = 500
+DAYS_IN_YEAR = 365.25
 
 
-def sample_controls(cohort, n_controls, sex=None):
+def calculate_sampling_weight(sample_ids, total_ids):
     """
-    Sample controls from the cohort
+    Calculate sampling weights. 
+    Sampling weights are used to account for the (stratified) case-control sampling.
+
+    Args:
+        sample_ids (list): person IDs in the sample
+        total_ids (list): all person IDs used for sampling
+
+    Returns: 
+        weight (float): sampling weight
+    """
+    weight = 1 / (len(sample_ids) / len(total_ids))
+
+    return weight
+
+
+def sample_persons(df, n_persons):
+    """
+    Helper function for sampling persons from a dataframe.
+
+    Args:
+        df (DataFrame): sampling dataframe
+        n_persons (int): number of persons to sample
+
+    Returns:
+        df_sample (DataFrame): sample of `df` with sampling weight
+    """
+    n_persons = min(n_persons, df.shape[0])
+    df_sample = df.sample(n=round(n_persons))
+    df_sample["weight"] = calculate_sampling_weight(df_sample.index, df.index)
+
+    return df_sample
+
+
+def sample_controls(cohort, n_controls, cases, exposed=None):
+    """
+    Sample controls, i.e. the subcohort, from the full cohort
+
+    Sampling is stratified by exposure, if present.
+    Cases are excluded from the subcohort.
     
     Args: 
         cohort (DataFrame): cohort dataset, output of get_cohort()
         n_controls (num): number of controls to sample
-        sex (str, default None): should controls be sampled of a specific sex 
+        cases (DataFrame): cases dataset (persons with outcome endpoint)
+        exposed (DataFrame): exposed dataset (persons with exposure endpoint)
 
     Returns:
-        controls (DataFrame): controls sampled from the cohort
+        controls (DataFrame): controls sampled from the cohort with sampling weight
+    
     """
 
-    if sex is None:
-        cohort_ = cohort
-    elif sex == "female":
-        cohort_ = cohort.loc[cohort["female"] == 1]
-    elif sex == "male":
-        cohort_ = cohort.loc[cohort["female"] == 0]
-    else:
-        raise ValueError("sex not 'both', 'female' or 'male'")
+    # Exclude cases
+    subcohort = cohort.loc[~cohort.index.isin(cases.index)]
 
-    if n_controls < cohort_.shape[0]:
-        controls = cohort_.sample(n=n_controls)
+    if exposed is not None:
+
+        subcohort = subcohort.join(exposed["exposure"], how="left").fillna({"exposure": 0})
+
+        subcohort_exposed = subcohort.loc[subcohort["exposure"] == 1]
+        subcohort_exposed = subcohort_exposed.drop(columns=["exposure"])
+
+        subcohort_unexposed = subcohort.loc[subcohort["exposure"] == 0]
+        subcohort_unexposed = subcohort_unexposed.drop(columns=["exposure"])
+
+        n_per_strata = round(n_controls / 2)
+        subcohort_exposed_sample = sample_persons(subcohort_exposed, n_per_strata)
+        subcohort_unexposed_sample = sample_persons(subcohort_unexposed, n_per_strata)
+
+        controls = pd.concat([subcohort_exposed_sample, subcohort_unexposed_sample])
+
     else:
-        controls = cohort_
+
+        controls = sample_persons(subcohort, n_controls)
 
     logger.debug(f"{controls.shape[0]} controls sampled")
 
     return controls
 
 
-def sample_cases(cases, n_cases):
+def sample_cases(cases, n_cases, exposed=None):
     """
-    Sample cases from all_cases
+    Sample cases.
+
+    Sampling is stratified by exposure, if present.
 
     Args:
-        cases (DataFrame): cases dataset (persons with endpoint)
+        cases (DataFrame): cases dataset (persons with outcome endpoint)
         n_cases (int): number of cases to sample
+        exposed (DataFrame): exposed dataset (persons with exposure endpoint)
 
     Returns:
-        cases_sample (DataFrame): sample of cases
+        cases_sample (DataFrame): sample of cases with sampling weight
     """
 
-    if n_cases < cases.shape[0]:
-        cases_sample = cases.sample(n=n_cases)
+    if exposed is not None:
+
+        cases = cases.join(exposed["exposure"], how="left").fillna({"exposure": 0})
+        
+        cases_exposed = cases.loc[cases["exposure"] == 1]
+        cases_exposed = cases_exposed.drop(columns=["exposure"])
+        cases_unexposed = cases.loc[cases["exposure"] == 0]
+        cases_unexposed = cases_unexposed.drop(columns=["exposure"])
+
+
+        n_per_strata = round(n_cases / 2)
+        cases_exposed_sample = sample_persons(cases_exposed, n_per_strata)
+        cases_unexposed_sample = sample_persons(cases_unexposed, n_per_strata)
+
+        cases_sample = pd.concat([cases_exposed_sample, cases_unexposed_sample])
+
     else:
-        cases_sample = cases
+        cases_sample = sample_persons(cases, n_cases)
 
     logger.debug(f"{cases_sample.shape[0]} cases sampled")
 
     return cases_sample
 
-
-def get_sampling_counts(cases, cohort, exposed=None, limit=10_000):
-    """
-    Get the number of cases and controls.
-
-    The method is adapted from Groenwold & van Smeden (2017):
-    https://journals.lww.com/epidem/Abstract/2017/11000/Efficient_Sampling_in_Unmatched_Case_Control.11.aspx
-
-    The upper limit of cases + controls is fixed due to computational constraints.
-
-    p1: exposure prevalence in cases
-    p0: exposure prevalence in cohort
-    R: optimal proportion of cases among all subjects
-
-    Args:
-        cases (DataFrame): dataset with all cases (persons with outcome)
-        cohort (DataFrame): dataset with all cohort members
-        exposed (DataFrame): dataset with all exposed persons (persons with exposure)
-        limit (int): upper limit for cases + controls
-    """
-
-    if exposed is not None:
-
-        exposed_cases = exposed.merge(cases, how="inner").shape[0]
-        exposed_cohort = exposed.merge(cohort, how="inner").shape[0]
-
-        p1 = exposed_cases / cases.shape[0]
-        p0 = exposed_cohort / cohort.shape[0]
-
-        q1 = 1 - p1
-        q0 = 1 - p0
-
-        R = (-1 * p0 * q0 + np.sqrt(p1 * q1 * p0 * q0)) / (p1 * q1 - p0 * q0)
-
-        n_cases = np.minimum(R * limit, cases.shape[0])
-        n_controls = (1 - R) / R * n_cases
-
-        logger.debug(f"Sampling ratio: 1:{(1-R)/R:.2f}")
-
-    else:
-
-        n_cases = min(cases.shape[0], limit / (CONTROLS_PER_CASE + 1))
-        n_controls = max(n_cases * CONTROLS_PER_CASE, MIN_CONTROLS)
-
-    n_cases = round(n_cases)
-    n_controls = round(n_controls)
-
-    return n_cases, n_controls
-
-
-def calculate_case_cohort_weights(
-    caseids, controlids, sample_of_caseids, sample_of_controlids
-):
-    """
-    Calculate case-cohort weights for cases and controls.
-
-    Args:
-        caseids (list): person IDs for cases
-        controlids (list): person IDs for controls
-        sample_of_caseids (list): person IDs for cases included in the sample
-        sample_of_controlids (list): person IDs for controls included in the sample
-
-    Returns: 
-        weight_cases (float): case-cohort weight for cases
-        weight_controls (float): case-cohort weight for controls
-
-    Raises: 
-        ZeroDivisionError: if there are no non-cases among controls
-    """
-    non_cases = len(controlids) - len(caseids)
-    non_cases_in_sample = len(set(sample_of_controlids.values) - set(caseids.values))
-
-    try:
-        weight_cases = 1 / (len(sample_of_caseids.values) / len(caseids.values))
-        weight_controls = 1 / (non_cases_in_sample / non_cases)
-    except ZeroDivisionError as err:
-        logger.warning(f"{err}: No non-cases among controls")
-        weight_cases = np.nan
-        weight_controls = np.nan
-
-    return (weight_cases, weight_controls)
