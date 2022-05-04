@@ -1,0 +1,566 @@
+<article class="w-full endpoint-explainer">
+
+<div class="minidiag">
+	<div class="minidiag-source">
+		<span>FinnGen phenotype data</span>
+		<p class="minidiag-step-ncases all-cases">
+			 <span class="bg-white"><%= get_explainer_step(@steps, :all).nindivs_post_step %> individuals</span>
+		</p>
+		<img src="/images/minidiag_triangle.svg"  alt="diagram downward connector">
+	</div>
+
+	<div class="steps">
+	<%= case get_explainer_step(@steps, :sex_rule) do %>
+		<% %{data: nil, nindivs_post_step: ncases} -> %>
+		<div class="minidiag-step empty">
+			<p>
+				<span class="minidiag-step-name">Apply sex-specific rule</span> <span class="minidiag-step-none">None</span>
+			</p>
+			<p class="minidiag-step-ncases">
+				<span class="bg-white"><%= ncases %></span>
+			</p>
+			<img src="/images/minidiag_triangle.svg"  alt="diagram downward connector" class="minidiag-triangle">
+		</div>
+		<% %{data: sex_rule, nindivs_post_step: ncases} -> %>
+		<div class="minidiag-step">
+			<img src="/images/minidiag_bullet.svg"  alt="diagram bullet" class="minidiag-bullet">
+			<p>
+				<span class="minidiag-step-name">Apply sex-specific rule</span>
+			</p>
+			<div role="table">
+				<div role="row">
+					<span role="rowheader">Sex</span>
+					<span role="cell">
+						<%= case sex_rule do %>
+							<% "1" -> %>only males
+							<% "2" -> %>only females
+						<% end %>
+					</span>
+				</div>
+			</div>
+			<p class="minidiag-step-ncases">
+				<%= ncases %>
+			</p>
+			<img src="/images/minidiag_triangle.svg"  alt="diagram downward connector" class="minidiag-triangle">
+		</div>
+	<% end %>
+
+	<%= case get_explainer_step(@steps, :conditions) do %>
+		<% %{data: [], nindivs_post_step: ncases} -> %>
+		<div class="minidiag-step empty">
+			<p>
+				<span class="minidiag-step-name">Check conditions</span> <span class="minidiag-step-none">None</span>
+			</p>
+			<p class="minidiag-step-ncases">
+				<span class="bg-white"><%= ncases %></span>
+			</p>
+			<img src="/images/minidiag_triangle.svg"  alt="diagram downward connector" class="minidiag-triangle">
+		</div>
+		<% %{data: conditions, nindivs_post_step: ncases} -> %>
+		<div class="minidiag-step">
+			<img src="/images/minidiag_bullet.svg"  alt="diagram bullet" class="minidiag-bullet">
+			<p>
+				<span class="minidiag-step-name">Check conditions</span>
+			</p>
+			<div role="table">
+				<%= for condition <- readable_conditions(conditions) do %>
+				<div role="row">
+					<span role="cell"><%= condition %></span>
+				</div>
+				<% end %>
+			</div>
+			<p class="minidiag-step-ncases">
+				<span class="bg-white"><%= ncases %></span>
+			</p>
+			<img src="/images/minidiag_triangle.svg"  alt="diagram downward connector" class="minidiag-triangle">
+		</div>
+	<% end %>
+
+	<%= case get_explainer_step(@steps, :filter_registries) do %>
+		<% %{data: filters, nindivs_post_step: ncases} when filters == %{} -> %>  <%# we need the "when" guard here as '%{data: %{}}' would match any map, not only the empty map %>
+		<div class="minidiag-step empty">
+			<p>
+				<span class="minidiag-step-name">Filter registries</span> <span class="minidiag-step-none">None</span>
+			</p>
+			<div class="minidiag-step-ncases">
+				<p class="block-number"><%= if is_nil(ncases), do: "-", else: ncases %></p>
+				<%= if not is_nil(ncases) do %>
+				<div class="minidiag-step-hist">
+					<div class="fill" style={"width: #{relative_count(@steps, ncases)}"}></div>
+				</div>
+				<% end %>
+			</div>
+			<img src="/images/minidiag_triangle.svg"  alt="diagram downward connector" class="minidiag-triangle">
+		</div>
+		<% %{data: filters, nindivs_post_step: ncases} -> %>
+		<div class="minidiag-step">
+			<img src="/images/minidiag_bullet.svg"  alt="diagram bullet" class="minidiag-bullet">
+			<p>
+				<span class="minidiag-step-name">Filter registries</span>
+			</p>
+			<div role="table">
+				<%# OUTPAT ICD %>
+				<%= if Map.has_key?(filters, :outpat_icd) do %>
+				<div role="row">
+					<span role="rowheader"><b>Primary healthcare outpatient</b> ICD-10:</span>
+					<span role="cell"><%= cell_icd10(filters, :outpat_icd, :outpat_icd_exp) %></span>
+				</div>
+				<% end %>
+
+				<%# HD %>
+				<%# -- HD ATC %>
+				<%= if Map.has_key?(filters, :hd_icd_10_atc) do %>
+				<div role="row">
+					<span role="rowheader"><b>Hospital discharge:</b> ATC codes for adverse effects of drugs</span>
+					<span role="cell"><%= filters.hd_icd_10_atc %></span>
+				</div>
+				<% end %>
+				<%# -- HD ICD-10 %>
+				<%= if Map.has_key?(filters, :hd_icd_10) do %>
+				<div role="row">
+					<span role="rowheader">
+						<b>Hospital Discharge:</b> ICD-10
+					</span>
+					<span role="cell"><%= cell_icd10(filters, :hd_icd_10, :hd_icd_10_exp) %></span>
+				</div>
+				<% end %>
+				<%# -- HD ICD-9 %>
+				<%= if Map.has_key?(filters, :hd_icd_9) do %>
+				<div role="row">
+					<span role="rowheader">
+						<b>Hospital discharge:</b> ICD-9
+					</span>
+					<span role="cell"><%= filters.hd_icd_9 %></span>
+				</div>
+				<% end %>
+				<%# -- HD ICD-8 %>
+				<%= if Map.has_key?(filters, :hd_icd_8) do %>
+				<div role="row">
+					<span role="rowheader">
+						<b>Hospital discharge:</b> ICD-8
+					</span>
+					<span role="cell"><%= filters.hd_icd_8 %></span>
+				</div>
+				<% end %>
+				<%# -- HD ICD-10 excl %>
+				<%= if Map.has_key?(filters, :hd_icd_10_excl) do %>
+				<div role="row">
+					<span role="rowheader"><b>Hospital discharge:</b> excluded ICD-10</span>
+					<span role="cell"><%= cell_icd10(filters, :hd_icd_10_excl, :hd_icd_10_excl_exp) %></span>
+				</div>
+				<% end %>
+				<%# -- HD ICD-9 excl %>
+				<%= if Map.has_key?(filters, :hd_icd_9_excl) do %>
+				<div role="row">
+					<span role="rowheader"><b>Hospital discharge:</b> excluded ICD-9</span>
+					<span role="cell"><%= filters.hd_icd_9_excl %></span>
+				</div>
+				<% end %>
+				<%# -- HD ICD-8 excl %>
+				<%= if Map.has_key?(filters, :hd_icd_8_excl) do %>
+				<div role="row">
+					<span role="rowheader"><b>Hospital discharge:</b> excluded ICD-8</span>
+					<span role="cell"><%= filters.hd_icd_8_excl %></span>
+				</div>
+				<% end %>
+
+				<%# COD %>
+				<%# -- COD ICD-10 %>
+				<%= if Map.has_key?(filters, :cod_icd_10) do %>
+				<div role="row">
+					<span role="rowheader">
+						<b>Cause of death:</b> ICD-10
+					</span>
+					<span role="cell"><%= cell_icd10(filters, :cod_icd_10, :cod_icd_10_exp) %></span>
+				</div>
+				<% end %>
+				<%# -- COD ICD-9 %>
+				<%= if Map.has_key?(filters, :cod_icd_9) do %>
+				<div role="row">
+					<span role="rowheader">
+						<b>Cause of death:</b> ICD-9
+					</span>
+					<span role="cell"><%= filters.cod_icd_9 %></span>
+				</div>
+				<% end %>
+				<%# -- COD ICD-8 %>
+				<%= if Map.has_key?(filters, :cod_icd_8) do %>
+				<div role="row">
+					<span role="rowheader">
+						<b>Cause of death:</b> ICD-8
+					</span>
+					<span role="cell"><%= filters.cod_icd_8 %></span>
+				</div>
+				<% end %>
+				<%# -- COD ICD-10 excl %>
+				<%= if Map.has_key?(filters, :cod_icd_10_excl) do %>
+				<div role="row">
+					<span role="rowheader"><b>Cause of death:</b> excluded ICD-10</span>
+					<span role="cell"><%= cell_icd10(filters, :cod_icd_10_excl, :cod_icd_10_excl_exp) %></span>
+				</div>
+				<% end %>
+				<%# -- COD ICD-9 excl %>
+				<%= if Map.has_key?(filters, :cod_icd_9_excl) do %>
+				<div role="row">
+					<span role="rowheader"><b>Cause of death:</b> excluded ICD-9</span>
+					<span role="cell"><%= filters.cod_icd_9_excl %></span>
+				</div>
+				<% end %>
+				<%# -- COD ICD-8 excl %>
+				<%= if Map.has_key?(filters, :cod_icd_8_excl) do %>
+				<div role="row">
+					<span role="rowheader"><b>Cause of death:</b> excluded ICD-8</span>
+					<span role="cell"><%= filters.cod_icd_8_excl %></span>
+				</div>
+				<% end %>
+
+				<%# OPER %>
+				<%# -- OPER NOM %>
+				<%= if Map.has_key?(filters, :oper_nom) do %>
+				<div role="row">
+					<span role="rowheader"><b>Operations:</b> <abbr data-title="Nordic Medico-Statistical Committee">NOMESCO</abbr> codes</span>
+					<span role="cell"><%= filters.oper_nom %></span>
+				</div>
+				<% end %>
+				<%# -- OPER HL %>
+				<%= if Map.has_key?(filters, :oper_hl) do %>
+				<div role="row">
+					<span role="rowheader"><b>Operations:</b> Finnish Hospital League codes</span>
+					<span role="cell"><%= filters.oper_hl %></span>
+				</div>
+				<% end %>
+				<%# -- OPER HP1 %>
+				<%= if Map.has_key?(filters, :oper_hp1) do %>
+				<div role="row">
+					<span role="rowheader"><b>Operations:</b> Heart Patient codes v1</span>
+					<span role="cell"><%= filters.oper_hp1 %></span>
+				</div>
+				<% end %>
+				<%# -- OPER HP2 %>
+				<%= if Map.has_key?(filters, :oper_hp2) do %>
+				<div role="row">
+					<span role="rowheader"><b>Operations:</b> Heart Patient codes v2</span>
+					<span role="cell"><%= filters.oper_hp2 %></span>
+				</div>
+				<% end %>
+
+				<%# REIMB %>
+				<%# -- REIMB KELA %>
+				<%= if Map.has_key?(filters, :kela_reimb) do %>
+				<div role="row">
+					<span role="rowheader"><b><abbr data-title="Finnish Social Insurance Institution">KELA</abbr> reimbursements:</b> KELA codes</span>
+					<span role="cell"><%= filters.kela_reimb %></span>
+				</div>
+				<% end %>
+				<%# -- REIMB ICD %>
+				<%= if Map.has_key?(filters, :kela_reimb_icd) do %>
+				<div role="row">
+					<span role="rowheader"><b><abbr data-title="Finnish Social Insurance Institution">KELA</abbr> reimbursements:</b> ICD-10</span>
+					<span role="cell"><%= cell_icd10(filters, :kela_reimb_icd, :kela_reimb_icd_exp) %></span>
+				</div>
+				<% end %>
+
+				<%# MED PURCH %>
+				<%# -- ATC %>
+				<%= if Map.has_key?(filters, :kela_atc) do %>
+				<div role="row">
+					<span role="rowheader"><b>Medicine purchases:</b> ATC</span>
+					<span role="cell"><%= filters.kela_atc %></span>
+				</div>
+				<% end %>
+				<%# -- VNRO %>
+				<%= if Map.has_key?(filters, :kela_vnro) do %>
+				<div role="row">
+					<span role="rowheader"><b>Medicine purchases:</b> VNRO</span>
+					<span role="cell"><%= filters.kela_vnro %></span>
+				</div>
+				<% end %>
+
+				<%# CANCER %>
+				<%# -- TOPO %>
+				<%= if Map.has_key?(filters, :canc_topo) do %>
+				<div role="row">
+					<span role="rowheader"><b>Cancer registry:</b> Topography ICD-O-3</span>
+					<span role="cell"><%= filters.canc_topo %></span>
+				</div>
+				<% end %>
+				<%# -- TOPO excl %>
+				<%= if Map.has_key?(filters, :canc_topo_excl) do %>
+				<div role="row">
+					<span role="rowheader"><b>Cancer registry:</b> excluded Topography ICD-O-3</span>
+					<span role="cell"><%= filters.canc_topo_excl %></span>
+				</div>
+				<% end %>
+				<%# -- MORPH %>
+				<%= if Map.has_key?(filters, :canc_morph) do %>
+				<div role="row">
+					<span role="rowheader"><b>Cancer registry:</b> Morphology ICD-O-3</span>
+					<span role="cell"><%= filters.canc_morph %></span>
+				</div>
+				<% end %>
+				<%# -- MORPH excl %>
+				<%= if Map.has_key?(filters, :canc_morph_excl) do %>
+				<div role="row">
+					<span role="rowheader"><b>Cancer registry:</b> excluded Morphology ICD-O-3</span>
+					<span role="cell"><%= filters.canc_morph_excl %></span>
+				</div>
+				<% end %>
+				<%# -- BEHAV %>
+				<%= if Map.has_key?(filters, :canc_behav) do %>
+				<div role="row">
+					<span role="rowheader"><b>Cancer registry:</b> Behaviour codes</span>
+					<span role="cell"><%= filters.canc_behav %></span>
+				</div>
+				<% end %>
+			</div>
+			<div class="minidiag-step-ncases">
+				<p class="block-number"><%= if is_nil(ncases), do: "-", else: ncases %></p>
+				<%= if not is_nil(ncases) do %>
+				<div class="minidiag-step-hist">
+					<div class="fill" style={"width: #{relative_count(@steps, ncases)}"}></div>
+				</div>
+				<% end %>
+			</div>
+			<img src="/images/minidiag_triangle.svg"  alt="diagram downward connector" class="minidiag-triangle">
+		</div>
+	<% end %>
+
+
+	<%= case get_explainer_step(@steps, :multi) do %>
+		<% %{data: data, nindivs_post_step: ncases} when data == %{} -> %>
+		<div class="minidiag-step empty">
+			<p>
+				<span class="minidiag-step-name">Check pre-conditions, main-only, mode, ICD version</span> <span class="minidiag-step-none">None</span>
+			</p>
+			<div class="minidiag-step-ncases">
+				<p class="block-number"><%= if is_nil(ncases), do: "-", else: ncases %></p>
+				<%= if not is_nil(ncases) do %>
+				<div class="minidiag-step-hist">
+					<div class="fill" style={"width: #{relative_count(@steps, ncases)}"}></div>
+				</div>
+				<% end %>
+			</div>
+			<img src="/images/minidiag_triangle.svg"  alt="diagram downward connector" class="minidiag-triangle">
+		</div>
+		<% %{data: data, nindivs_post_step: ncases} -> %>
+		<div class="minidiag-step">
+			<img src="/images/minidiag_bullet.svg"  alt="diagram bullet" class="minidiag-bullet">
+			<p>
+				<span class="minidiag-step-name">Check pre-conditions, main-only, mode, ICD version</span>
+			</p>
+			<div role="table">
+				<%= if Map.has_key?(data, :precond) do %>
+				<div role="row">
+					<span role="rowheader">Pre-conditions</span>
+					<span role="cell"><%= data.precond %></span>
+				</div>
+				<% end %>
+				<%= if Map.has_key?(data, :main_only) do %>
+				<div role="row">
+					<span role="rowheader">Check only main diagnosis</span>
+					<span role="cell">Yes, side diagnoses are not checked</span>
+				</div>
+				<% end %>
+				<%= if Map.has_key?(data, :mode) do %>
+				<div role="row">
+					<span role="rowheader">Check <abbr data-title="A case is made only if these codes are the most common among their sibling ICD codes.">mode</abbr> of ICD-10 codes:</span>
+					<span role="cell"><%= Enum.intersperse(data.mode, ", ") %></span>
+				</div>
+				<% end %>
+				<%= if Map.has_key?(data, :only_icdver) do %>
+				<div role="row">
+					<span role="rowheader">Look only at ICD versions</span>
+					<span role="cell">
+						<%= if Map.has_key?(data.only_icdver, :hd) do %>
+						<abbr data-title="Hospital Discharge">H.D:</abbr> <%= readable_icdver(data.only_icdver.hd) %>
+						<% end %>
+						<%= if Map.has_key?(data.only_icdver, :hd) and Map.has_key?(data.only_icdver, :cod) do %>
+						;
+						<% end %>
+						<%= if Map.has_key?(data.only_icdver, :cod) do %>
+						<abbr data-title="Cause Of Death">C.O.D:</abbr> <%= readable_icdver(data.only_icdver.cod) %>
+						<% end %>
+					</span>
+				</div>
+				<% end %>
+			</div>
+			<div class="minidiag-step-ncases">
+				<p class="block-number"><%= if is_nil(ncases), do: "-", else: ncases %></p>
+				<%= if not is_nil(ncases) do %>
+				<div class="minidiag-step-hist">
+					<div class="fill" style={"width: #{relative_count(@steps, ncases)}"}></div>
+				</div>
+				<% end %>
+			</div>
+			<img src="/images/minidiag_triangle.svg"  alt="diagram downward connector" class="minidiag-triangle">
+		</div>
+	<% end %>
+
+
+	<%= case get_explainer_step(@steps, :min_number_events) do %>
+		<% %{data: nil, nindivs_post_step: ncases} -> %>
+		<div class="minidiag-step empty">
+			<p>
+				<span class="minidiag-step-name">Check minimum number of events</span> <span class="minidiag-step-none">None</span>
+			</p>
+			<div class="minidiag-step-ncases">
+				<p class="block-number"><%= if is_nil(ncases), do: "-", else: ncases %></p>
+				<%= if not is_nil(ncases) do %>
+				<div class="minidiag-step-hist">
+					<div class="fill" style={"width: #{relative_count(@steps, ncases)}"}></div>
+				</div>
+				<% end %>
+			</div>
+
+			<img src="/images/minidiag_triangle.svg"  alt="diagram downward connector" class="minidiag-triangle">
+		</div>
+
+		<% %{data: nevents, nindivs_post_step: ncases} -> %>
+		<div class="minidiag-step">
+			<img src="/images/minidiag_bullet.svg"  alt="diagram bullet" class="minidiag-bullet">
+			<p>
+				<span class="minidiag-step-name">Check minimum number of events</span>
+			</p>
+			<div role="table">
+				<div role="row">
+					<span role="rowheader">Min. number of events</span>
+					<%= case nevents do %>
+						<% :and_need_other_rule -> %>
+						<span role="cell">3, and need other rules</span>
+						<% nevents -> %>
+						<span role="cell"><%= nevents %></span>
+					<% end %>
+				</div>
+			</div>
+			<div class="minidiag-step-ncases">
+				<p class="block-number"><%= if is_nil(ncases), do: "-", else: ncases %></p>
+				<%= if not is_nil(ncases) do %>
+				<div class="minidiag-step-hist">
+					<div class="fill" style={"width: #{relative_count(@steps, ncases)}"}></div>
+				</div>
+				<% end %>
+			</div>
+			<img src="/images/minidiag_triangle.svg"  alt="diagram downward connector" class="minidiag-triangle">
+		</div>
+	<% end %>
+
+	<%= case get_explainer_step(@steps, :includes) do %>
+		<% %{data: [], nindivs_post_step: ncases} -> %>
+		<div class="minidiag-step empty">
+			<p>
+				<span class="minidiag-step-name">Include endpoints</span> <span class="minidiag-step-none">None</span>
+			</p>
+			<div class="minidiag-step-ncases">
+				<p class="block-number"><%= if is_nil(ncases), do: "-", else: ncases %></p>
+				<%= if not is_nil(ncases) do %>
+				<div class="minidiag-step-hist">
+					<div class="fill" style={"width: #{relative_count(@steps, ncases)}"}></div>
+				</div>
+				<% end %>
+			</div>
+			<img src="/images/minidiag_triangle.svg"  alt="diagram downward connector" class="minidiag-triangle">
+		</div>
+		<% %{data: includes, nindivs_post_step: ncases} -> %>
+		<div class="minidiag-step">
+			<img src="/images/minidiag_bullet.svg"  alt="diagram bullet" class="minidiag-bullet">
+			<img src="/images/minidiag_triangle.svg"  alt="diagram downward connector" class="minidiag-triangle">
+			<p>
+				<span class="minidiag-step-name">Include endpoints</span>
+			</p>
+			<div role="table">
+				<%= for subendpoint <- includes do %>
+				<div role="row">
+					<span role="cell"><a href={subendpoint}><%= subendpoint %></a></span>
+				</div>
+				<% end %>
+			</div>
+			<div class="minidiag-step-ncases">
+				<p class="block-number"><%= if is_nil(ncases), do: "-", else: ncases %></p>
+				<%= if not is_nil(ncases) do %>
+				<div class="minidiag-step-hist">
+					<div class="fill" style={"width: #{relative_count(@steps, ncases)}"}></div>
+				</div>
+				<% end %>
+			</div>
+			<img src="/images/minidiag_triangle.svg"  alt="diagram downward connector" class="minidiag-triangle">
+		</div>
+	<% end %>
+	</div>
+
+	<div class="minidiag-sink">
+		<span><%= @endpoint.name %></span>
+	</div>
+</div>
+
+<%= case readable_metadata(@endpoint) do %>
+	<% [] -> %>
+	<% metadata -> %>
+	<div class="mt-2">
+		<p>
+			<b>Extra metadata</b>
+		</p>
+		<div role="table">
+			<%= for {col, val} <- metadata do %>
+			<div role="row">
+				<span role="rowheader"><%= col %></span>
+				<span role="cell"><%= val %></span>
+			</div>
+			<% end %>
+		</div>
+	</div>
+<% end %>
+
+
+<%#
+The upset plot needs to be the last child otherwise we cannot interact (e.g. click the <a>) with it:
+- it has a "position: absolute"
+- the other elements would be drawn over it
+- even if they don't make it disappear, they make it uninteractive
+ %>
+<article class="link-upset-plot">
+	<p><a href="#dialog-upset-plot" onclick="openDialog('upset-plot')">
+		<img src="/images/upset_plot.svg" alt="generic upset plot" width="159" height="75">
+	</a></p>
+	<p>
+		<a href="#dialog-upset-plot" onclick="openDialog('upset-plot')">
+			Show upset plot detailing case counts by codes
+		</a>
+	</p>
+
+	<div id="upset-plot" class="dialog-backdrop hidden" tabindex="0">
+		<div role="dialog"
+			aria-labelledby="upset-plot-label"
+			aria-modal="true"
+		>
+			<h2 id="upset-plot-label" class="dialog-label">Upset plot</h2>
+
+			<article>
+				<iframe src={"/upset_plot/interactive_#{@endpoint.name}.html"}></iframe>
+			</article>
+
+			<div class="bottom"><button class="button-faded" onclick="closeDialog('upset-plot')">Close</button></div>
+		</div>
+	</div>
+
+
+
+	<p class="mt-2">Or the <a href="#dialog-table-case-counts" onclick="openDialog('table-case-counts')">full data table</a></p>
+
+	<div id="table-case-counts" class="dialog-backdrop hidden" tabindex="0">
+		<div role="dialog"
+			aria-labelledby="table-case-counts-label"
+			aria-modal="true"
+		>
+			<h2 id="table-case-counts-label" class="dialog-label">Case counts by code for <%= @endpoint.longname %> (<%= @endpoint.name %>)</h2>
+
+			<article>
+				<iframe  src={"/table_case_counts/#{@endpoint.name}.html"}></iframe>
+			</article>
+
+			<div class="bottom"><button class="button-faded" onclick="closeDialog('table-case-counts')">Close</button></div>
+		</div>
+	</div>
+
+</article>
+
+</article>
