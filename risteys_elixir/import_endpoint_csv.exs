@@ -165,16 +165,11 @@ endpoints_path
     "TAGS" => tags,
     "LEVEL" => level,
     "OMIT" => omit,
-    "CORE_ENDPOINTS" => is_core_endpoint,
-    "REASON_FOR_NONCORE" => reason_non_core,
     "LONGNAME" => longname,
     "SEX" => sex,
     "INCLUDE" => include,
     "PRE_CONDITIONS" => pre_conditions,
     "CONDITIONS" => conditions,
-    "CONTROL_EXCLUDE" => control_exclude,
-    "CONTROL_PRECONDITIONS" => control_preconditions,
-    "CONTROL_CONDITIONS" => control_conditions,
     "OUTPAT_ICD" => outpat_icd,
     "OUTPAT_OPER" => outpat_oper,
     "HD_MAINONLY" => hd_mainonly,
@@ -215,21 +210,25 @@ endpoints_path
 
   # Use atoms as map keys.
   # This prevents unexpectedly getting a nil on e.g. row["NAMe"]
+
+  # To make R8 data to work on database and codebase that is based on master branch
+  # for Risteys R9, set default values for columns that are not available in the input data:
+  # "is_core_endpoint", "reason_non_core", "control_exclude", "control_preconditions", and "control_conditions"
   %{
     name: name,
     tags: tags,
     level: level,
     omit: omit,
-    is_core_endpoint: is_core_endpoint,
-    reason_non_core: reason_non_core,
+    is_core_endpoint: "yes",
+    reason_non_core: "",
     longname: longname,
     sex: sex,
     include: include,
     pre_conditions: pre_conditions,
     conditions: conditions,
-    control_exclude: control_exclude,
-    control_preconditions: control_preconditions,
-    control_conditions: control_conditions,
+    control_exclude: nil,
+    control_preconditions: nil,
+    control_conditions: nil,
     outpat_icd: outpat_icd,
     outpat_oper: outpat_oper,
     hd_mainonly: hd_mainonly,
