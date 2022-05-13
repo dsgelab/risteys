@@ -1,9 +1,8 @@
-from argparse import ArgumentParser
-from pathlib import Path
 from sys import stderr
 
 import pandas as pd
 
+from risteys_pipeline import config
 from risteys_pipeline.finngen.load_data import load_data
 from risteys_pipeline.finregistry.cumulative_incidence import cumulative_incidence_function
 from risteys_pipeline.finregistry.distributions import compute_distribution
@@ -17,22 +16,20 @@ from risteys_pipeline.log import logger
 
 
 def pipeline():
-    args = parse_args()
-
     # --- 0. Check input and output paths
-    print_config_paths(args)
-    check_paths(args)
+    print_config_paths(config)
+    check_paths(config)
 
     # --- 1. Densify first-events
     # TODO
 
     # --- 2. Load data
     df_definitions, df_minimal_phenotype, df_first_events = load_data(
-        args.input_endpoint_definitions,
-        args.input_minimal_phenotype,
-        args.input_covariates,
-        args.input_densified_first_events,
-        args.input_detailed_longitudinal
+        config.FINNGEN_ENDPOINT_DEFINITIONS,
+        config.FINNGEN_MINIMAL_PHENOTYPE,
+        config.FINNGEN_COVARIATES,
+        config.FINNGEN_DENSIFIED_FIRST_EVENTS,
+        config.FINNGEN_DETAILED_LONGITUDINAL
     )
 
     # --- 3. Pipeline
@@ -42,7 +39,7 @@ def pipeline():
     kf_all.to_csv(get_output_filepath(
         "key_figures_all",
         "csv",
-        args.output_directory
+        config.FINNGEN_OUTPUT_DIRECTORY
     ), index=False)
 
     # Run age and year distributions
@@ -52,12 +49,12 @@ def pipeline():
     dist_age.to_csv(get_output_filepath(
         "distribution_age",
         "csv",
-        args.output_directory
+        config.FINNGEN_OUTPUT_DIRECTORY
     ), index=False)
     dist_year.to_csv(get_output_filepath(
         "distribution_year",
         "csv",
-        args.output_directory
+        config.FINNGEN_OUTPUT_DIRECTORY
     ), index=False)
 
     # Run cumulative incidence and write to a file
@@ -72,84 +69,41 @@ def pipeline():
             cif.to_csv(get_output_filepath(
                 f"cumulative_incidence__{endpoint}",
                 "csv",
-                args.output_directory
+                config.FINNGEN_OUTPUT_DIRECTORY
             ), index=False)
         else:
             logger.warning(f"Could not run cumulative incidence on {endpoint}")
 
 
-def parse_args():
-    parser = ArgumentParser()
-    parser.add_argument(
-        "-e", "--input-endpoint-definitions",
-        help="definition file for endpoints (with and without control) and core status (TSV)",
-        required=True,
-        type=Path
-    )
-    parser.add_argument(
-        "-m", "--input-minimal-phenotype",
-        help="minimal phenotype file (TSV or gzipped-TSV)",
-        required=True,
-        type=Path
-    )
-    parser.add_argument(
-        "-c", "--input-covariates",
-        help="analysis covariates file (TSV or gzipped-TSV)",
-        required=True,
-        type=Path
-    )
-    parser.add_argument(
-        "-f", "--input-densified-first-events",
-        help="densified version of the endpoint first-events file (Feather)",
-        required=True,
-        type=Path
-    )
-    parser.add_argument(
-        "-d", "--input-detailed-longitudinal",
-        help="detailed longitudinal data file (TSV or gzipped-TSV)",
-        required=True,
-        type=Path
-    )
-    parser.add_argument(
-        "-o", "--output-directory",
-        help="pipeline output directory",
-        required=True,
-        type=Path
-    )
-    args = parser.parse_args()
-
-    return args
-
-
-def check_paths(args):
+def check_paths(config):
     logger.info("Checking input and output paths")
     # Path.is_file() is used to check that the path exists and it is a file
-    assert args.input_endpoint_definitions.is_file()
-    assert args.input_minimal_phenotype.is_file()
-    assert args.input_covariates.is_file()
-    assert args.input_densified_first_events.is_file()
-    assert args.input_detailed_longitudinal.is_file()
+    assert config.FINNGEN_ENDPOINT_DEFINITIONS.is_file()
+    assert config.FINNGEN_MINIMAL_PHENOTYPE.is_file()
+    assert config.FINNGEN_COVARIATES.is_file()
+    assert config.FINNGEN_DENSIFIED_FIRST_EVENTS.is_file()
+    assert config.FINNGEN_DETAILED_LONGITUDINAL.is_file()
 
     # Similarly with Path.is_dir(): checking path existence and type is directory
-    assert args.output_directory.is_dir()
+    assert config.FINNGEN_OUTPUT_DIRECTORY.is_dir()
 
 
-def print_config_paths(args):
+def print_config_paths(config):
     message = ""
 
     inputs = {
-        "endpoint definitions": args.input_endpoint_definitions,
-        "minimal phenotype": args.input_minimal_phenotype,
-        "analysis covariates": args.input_covariates,
-        "densified endpoint first-events": args.input_densified_first_events,
-        "detailed longitudinal": args.input_detailed_longitudinal
+        "endpoint definitions": config.FINNGEN_ENDPOINT_DEFINITIONS,
+        "minimal phenotype": config.FINNGEN_MINIMAL_PHENOTYPE,
+        "analysis covariates": config.FINNGEN_COVARIATES,
+        "densified endpoint first-events": config.FINNGEN_DENSIFIED_FIRST_EVENTS,
+        "detailed longitudinal": config.FINNGEN_DETAILED_LONGITUDINAL
     }
     message += "INPUTS\n"
     for desc, path in inputs.items():
         message += f"\t{desc}:\n\t\t{path}\n"
 
     message += "OUTPUT\n"
-    message += f"\toutput directory:\n\t\t{args.output_directory}"
+    message += f"\toutput directory:\n\t\t{config.FINNGEN_OUTPUT_DIRECTORY}"
 
     print(message, file=stderr)
 

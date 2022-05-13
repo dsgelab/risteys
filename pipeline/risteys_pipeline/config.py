@@ -1,5 +1,7 @@
 from pathlib import Path
 
+
+# --- FinRegistry
 # Input data
 
 ROOT_DIR = Path("/data") / "processed_data"
@@ -20,6 +22,20 @@ FINREGISTRY_ENDPOINT_DEFINITIONS_DATA_PATH = (
 
 FINREGISTRY_OUTPUT_DIR = Path("/data") / "projects" / "risteys"
 
+
+# --- FinnGen
+# Input data
+FINNGEN_DATA_DIR               = Path()
+FINNGEN_ENDPOINT_DEFINITIONS   = FINNGEN_DATA_DIR / Path()
+FINNGEN_MINIMAL_PHENOTYPE      = FINNGEN_DATA_DIR / Path()
+FINNGEN_COVARIATES             = FINNGEN_DATA_DIR / Path()
+FINNGEN_DENSIFIED_FIRST_EVENTS = FINNGEN_DATA_DIR / Path()
+FINNGEN_DETAILED_LONGITUDINAL  = FINNGEN_DATA_DIR / Path()
+
+# Output directory
+FINNGEN_OUTPUT_DIRECTORY = Path()
+
+# --- Common
 # Constants
 
 # Follow-up start and end year for survival analyses
