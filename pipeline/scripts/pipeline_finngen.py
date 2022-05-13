@@ -76,6 +76,7 @@ def pipeline():
 
 
 def check_paths(config):
+    """Validate input and output paths taken from the configuration file"""
     logger.info("Checking input and output paths")
     # Path.is_file() is used to check that the path exists and it is a file
     assert config.FINNGEN_ENDPOINT_DEFINITIONS.is_file()
@@ -89,6 +90,10 @@ def check_paths(config):
 
 
 def print_config_paths(config):
+    """Print out the configuration for input and output files.
+
+    Useful when looking at the logs of previous run to check what files were used.
+    """
     message = ""
 
     inputs = {

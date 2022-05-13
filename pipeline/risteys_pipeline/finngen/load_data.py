@@ -15,6 +15,11 @@ def load_data(
         densified_first_events_path,
         detailed_longitudinal_path
 ):
+    """Load input data from original files to pandas DataFrames.
+
+    The resulting DataFrames are compliant with the format used for
+    the next pipeline steps.
+    """
     df_definitions = load_endpoint_definitions(definitions_path)
     df_fgid_covariates = load_fgid_covariates(covariates_path)
     df_minimal_phenotype = load_minimal_phenotype_data(
@@ -39,6 +44,10 @@ def load_data(
 
 
 def load_endpoint_definitions(definitions_path):
+    """Load and validate the endpoint definition file.
+
+    The input file must have information about core-endpoint status.
+    """
     logger.info("Loading endpoint definitions")
     df = pd.read_csv(
         definitions_path,
@@ -83,6 +92,11 @@ def load_endpoint_definitions(definitions_path):
 
 
 def load_fgid_covariates(covariates_path):
+    """Load and validate the input covariates file.
+
+    This file is the output of the genotype QC analysis and is used to
+    discard some individuals from the pipeline.
+    """
     logger.info("Loading covariates file")
     df_cov = pd.read_csv(
         covariates_path,
@@ -102,6 +116,14 @@ def load_minimal_phenotype_data(
         detailed_longit_path,
         df_fgid_covariates
 ):
+    """Load and validate the minimal phenotype data.
+
+    Multiple input files are needed as not all the information is in
+    the FinnGen minimal phenotype file. In particular the following
+    information is taken elsewhere:
+    - birth year: from the detailed longitudinal data
+    - death age: from the endpoint first-event data
+    """
     logger.info("Loading minimal phenotype data")
 
     # Load the data to get necessary info
@@ -200,6 +222,7 @@ def get_birth_year(detailed_longit_path, df_fgid_covariates):
 
 
 def get_death_age(dense_fevents_path, df_fgid_covariates):
+    """Get the death age of individuals from the DEATH endpoint"""
     logger.debug("Getting death age for all individuals using densified first-events data")
     df = pd.read_feather(dense_fevents_path)
 
@@ -226,6 +249,7 @@ def load_first_events_data(
         df_minimal_phenotype,
         df_fgid_covariates
 ):
+    """Load and validate the densified endpoint first-events file"""
     logger.info("Loading first-events data")
     df_fevents = pd.read_feather(dense_fevents_path)
 
