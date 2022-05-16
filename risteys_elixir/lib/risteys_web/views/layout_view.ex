@@ -18,7 +18,15 @@ defmodule RisteysWeb.LayoutView do
         path
       end
 
-    # url to current page in a selected version
-    "https://r#{version}.risteys.finngen.fi/#{path}"
+    # Endpoint page was /phenocode/<NAME> instead of /endpoint/<NAME> before version 9
+    path =
+      if version < 9 do
+        String.replace_prefix(path, "/endpoint/", "/phenocode/")
+      else
+        path
+      end
+
+    # URL to current page in a selected version
+    "https://r#{version}.risteys.finngen.fi#{path}"
   end
 end
