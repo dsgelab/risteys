@@ -18,7 +18,7 @@ N_DIGITS = 4
 
 def cumulative_incidence_function(endpoint, cases, cohort):
     """
-    Compute the cumulative incidence function for `endpoint`
+    Compute the Cumulative Incidence Function (CIF) for `endpoint`
     - Johansen-Aalen estimator
     - age as timescale
     - death as a competing event
@@ -100,8 +100,8 @@ if __name__ == "__main__":
 
     N_PROCESSES = 40
 
-    endpoints, minimal_phenotype, first_events = load_data()
-    n_endpoints = endpoints.shape[0]
+    endpoint_definitions, minimal_phenotype, first_events = load_data()
+    n_endpoints = endpoint_definitions.shape[0]
 
     cohort = get_cohort(minimal_phenotype)
 
@@ -116,7 +116,7 @@ if __name__ == "__main__":
                 args=(endpoint, get_cases(endpoint, first_events, cohort), cohort),
                 callback=lambda _: pbar.update(),
             )
-            for endpoint in endpoints["endpoint"]
+            for endpoint in endpoint_definitions["endpoint"]
         ]
         result = [r.get() for r in result]
 

@@ -99,7 +99,7 @@ if __name__ == "__main__":
     from risteys_pipeline.finregistry.load_data import load_data
     from risteys_pipeline.utils.write_data import get_output_filepath
 
-    endpoints, minimal_phenotype, first_events = load_data()
+    endpoint_definitions, minimal_phenotype, first_events = load_data()
 
     kf_all = compute_key_figures(first_events, minimal_phenotype, index_persons=False)
     kf_index_persons = compute_key_figures(

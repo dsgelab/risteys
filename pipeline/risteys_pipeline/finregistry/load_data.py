@@ -3,7 +3,11 @@
 import pandas as pd
 import numpy as np
 from csv import excel_tab
-from risteys_pipeline.config import *
+from risteys_pipeline.config import (
+    FINREGISTRY_MINIMAL_PHENOTYPE_DATA_PATH,
+    FINREGISTRY_ENDPOINT_DEFINITIONS_DATA_PATH,
+    FINREGISTRY_DENSIFIED_FIRST_EVENTS_DATA_PATH,
+)
 from risteys_pipeline.utils.log import logger
 from risteys_pipeline.utils.utils import to_decimal_year
 
@@ -24,12 +28,12 @@ def load_data():
         None
 
     Returns
-        (endpoints, minimal_phenotype, first_events) (tuple)
+        (endpoint_definitions, minimal_phenotype, first_events) (tuple)
     """
-    endpoints = load_endpoints_data()
+    endpoint_definitions = load_endpoint_definitions_data()
     minimal_phenotype = load_minimal_phenotype_data()
-    first_events = load_first_events_data(endpoints, minimal_phenotype)
-    return (endpoints, minimal_phenotype, first_events)
+    first_events = load_first_events_data(endpoint_definitions, minimal_phenotype)
+    return (endpoint_definitions, minimal_phenotype, first_events)
 
 
 def load_minimal_phenotype_data(data_path=FINREGISTRY_MINIMAL_PHENOTYPE_DATA_PATH):
@@ -64,7 +68,7 @@ def load_minimal_phenotype_data(data_path=FINREGISTRY_MINIMAL_PHENOTYPE_DATA_PAT
 
     df["index_person"] = df["index_person"].astype(bool)
 
-    df["female"] = pd.NA
+    df["female"] = np.nan
     df.loc[df["sex"] == SEX_FEMALE_MINIMAL_PHENOTYPE, "female"] = True
     df.loc[df["sex"] == SEX_MALE_MINIMAL_PHENOTYPE, "female"] = False
     df = df.drop(columns={"sex"})
@@ -75,30 +79,31 @@ def load_minimal_phenotype_data(data_path=FINREGISTRY_MINIMAL_PHENOTYPE_DATA_PAT
     return df
 
 
-def load_endpoints_data(data_path=FINREGISTRY_ENDPOINTS_DATA_PATH):
+def load_endpoint_definitions_data(
+    data_path=FINREGISTRY_ENDPOINT_DEFINITIONS_DATA_PATH,
+):
     """
-    Loads and applies the following steps to FinnGen endpoints data:
+    Loads and applies the following steps to FinnGen endpoint definitions data:
     - rename columns
     - drop omitted endpoints 
     - replace `sex` with `female`
     
     Args:
-        data_path (str, optional): file path of the FinnGen endpoints csv file
+        data_path (str, optional): file path of the FinnGen endpoint definitions csv file
 
     Returns:
         df (DataFrame): FinnGen endpoints dataframe
-
-
-    TODO: rename to endpoint_definitions
     """
     cols = ["NAME", "SEX", "OMIT"]
-    df = pd.read_csv(data_path, sep=";", usecols=cols, skiprows=[1], encoding="latin1")
+    df = pd.read_csv(
+        data_path, sep=excel_tab, usecols=cols, skiprows=[1], encoding="latin1"
+    )
     logger.debug(f"{df.shape[0]:,} rows loaded")
 
     df = df.rename(columns={"NAME": "endpoint", "SEX": "sex", "OMIT": "omit"})
     df = df.loc[df["omit"].isnull()]
     df = df.reset_index(drop=True)
-    df["female"] = pd.NA
+    df["female"] = np.nan
     df.loc[df["sex"] == SEX_FEMALE_ENDPOINTS, "female"] = True
     df.loc[df["sex"] == SEX_MALE_ENDPOINTS, "female"] = False
     df = df.drop(columns=["omit", "sex"])

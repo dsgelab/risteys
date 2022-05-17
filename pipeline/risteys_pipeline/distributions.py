@@ -70,10 +70,15 @@ def compute_distribution(first_events, column):
 
     # Add brackets
     if column == "age":
-        brackets = list(range(0, 100, 10)) + [np.inf]
+        min_age = 0
+        max_age = 100
+        by_age = 10
+        brackets = list(range(min_age, max_age, by_age)) + [np.inf]
     elif column == "year":
+        min_year = 1970
         max_year = round(first_events["year"].max())
-        brackets = [np.NINF] + list(range(1970, max_year, 5)) + [max_year]
+        by_year = 5
+        brackets = [np.NINF] + list(range(min_year, max_year, by_year)) + [max_year]
 
     # Compute distribution
     dist = (
@@ -100,7 +105,7 @@ if __name__ == "__main__":
     from risteys_pipeline.finregistry.load_data import load_data
     from risteys_pipeline.utils.write_data import get_output_filepath
 
-    endpoints, minimal_phenotype, first_events = load_data()
+    endpoint_definitions, minimal_phenotype, first_events = load_data()
 
     dist_age = compute_distribution(first_events, "age")
     dist_year = compute_distribution(first_events, "year")
