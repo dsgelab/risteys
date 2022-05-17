@@ -4,14 +4,14 @@ import pandas as pd
 from lifelines import CoxPHFitter, AalenJohansenFitter
 from lifelines.utils import ConvergenceError
 
-from risteys_pipeline.log import logger
+from risteys_pipeline.utils.log import logger
 from risteys_pipeline.config import (
     FOLLOWUP_START,
     FOLLOWUP_END,
     MIN_SUBJECTS_PERSONAL_DATA,
     MIN_SUBJECTS_SURVIVAL_ANALYSIS,
 )
-from risteys_pipeline.finregistry.sample import sample_cases, sample_controls
+from risteys_pipeline.sample import sample_cases, sample_controls
 
 DAYS_IN_YEAR = 365.25
 OUTCOME_COMPETING_EVENT = 2

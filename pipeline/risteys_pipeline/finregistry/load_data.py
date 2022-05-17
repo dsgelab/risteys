@@ -1,9 +1,11 @@
 """Functions for loading the FinRegistry datasets"""
 
 import pandas as pd
+import numpy as np
+from csv import excel_tab
 from risteys_pipeline.config import *
-from risteys_pipeline.log import logger
-from risteys_pipeline.utils import to_decimal_year
+from risteys_pipeline.utils.log import logger
+from risteys_pipeline.utils.utils import to_decimal_year
 
 SEX_FEMALE_ENDPOINTS = 2.0
 SEX_MALE_ENDPOINTS = 1.0

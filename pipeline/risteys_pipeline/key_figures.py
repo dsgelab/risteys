@@ -2,7 +2,7 @@
 
 import numpy as np
 import pandas as pd
-from risteys_pipeline.log import logger
+from risteys_pipeline.utils.log import logger
 from risteys_pipeline.config import MIN_SUBJECTS_PERSONAL_DATA
 
 
@@ -97,7 +97,7 @@ def compute_key_figures(first_events, minimal_phenotype, index_persons=False):
 
 if __name__ == "__main__":
     from risteys_pipeline.finregistry.load_data import load_data
-    from risteys_pipeline.finregistry.write_data import get_output_filepath
+    from risteys_pipeline.utils.write_data import get_output_filepath
 
     endpoints, minimal_phenotype, first_events = load_data()
 
