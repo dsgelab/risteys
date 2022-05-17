@@ -12,7 +12,7 @@ FINREGISTRY_DENSIFIED_FIRST_EVENTS_DATA_PATH = (
     ROOT_DIR / "endpointer" / "densified_first_events_DF8_no_omits_2022-03-17.feather"
 )
 
-FINREGISTRY_ENDPOINTS_DATA_PATH = (
+FINREGISTRY_ENDPOINT_DEFINITIONS_DATA_PATH = (
     ROOT_DIR / "endpoint_metadata" / "finngen_endpoints_2021-09-02.csv"
 )
 
@@ -22,6 +22,7 @@ FINREGISTRY_OUTPUT_DIR = Path("/data") / "projects" / "risteys"
 
 # Constants
 
+# Follow-up start and end year for survival analyses
 FOLLOWUP_START = 1998.0
 FOLLOWUP_END = 2019.99
 

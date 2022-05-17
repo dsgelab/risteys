@@ -1,4 +1,4 @@
-"""Functions for sampling the data"""
+"""Functions for sampling the data for survival analyses"""
 
 import pandas as pd
 from risteys_pipeline.utils.log import logger

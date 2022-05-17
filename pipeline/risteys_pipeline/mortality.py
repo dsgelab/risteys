@@ -222,8 +222,8 @@ if __name__ == "__main__":
 
     N_PROCESSES = 20
 
-    endpoints, minimal_phenotype, first_events = load_data()
-    n_endpoints = endpoints.shape[0]
+    endpoint_definitions, minimal_phenotype, first_events = load_data()
+    n_endpoints = endpoint_definitions.shape[0]
 
     cohort = get_cohort(minimal_phenotype)
     mortality_cases = get_cases("death", first_events, cohort)
@@ -242,7 +242,7 @@ if __name__ == "__main__":
                 args=(endpoint, mortality_cases, get_exposed_(endpoint), cohort,),
                 callback=lambda _: pbar.update(),
             )
-            for endpoint in endpoints["endpoint"]
+            for endpoint in endpoint_definitions["endpoint"]
         ]
         result = [r.get() for r in result]
 
