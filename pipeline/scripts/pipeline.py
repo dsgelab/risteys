@@ -6,11 +6,11 @@ from risteys_pipeline.finregistry.load_data import (
     load_minimal_phenotype_data,
     load_first_events_data,
 )
-from risteys_pipeline.finregistry.key_figures import compute_key_figures
-from risteys_pipeline.finregistry.distributions import compute_distribution
-from risteys_pipeline.finregistry.cumulative_incidence import cumulative_incidence
-from risteys_pipeline.finregistry.survival_analysis import get_cohort, prep_all_cases
-from risteys_pipeline.finregistry.write_data import (
+from risteys_pipeline.key_figures import compute_key_figures
+from risteys_pipeline.distributions import compute_distribution
+from risteys_pipeline.cumulative_incidence import cumulative_incidence
+from risteys_pipeline.survival_analysis import get_cohort, prep_all_cases
+from risteys_pipeline.write_data import (
     get_output_filepath,
     summary_stats_to_json,
     write_json_to_file,

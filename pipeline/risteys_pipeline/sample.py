@@ -1,7 +1,7 @@
 """Functions for sampling the data"""
 
 import pandas as pd
-from risteys_pipeline.log import logger
+from risteys_pipeline.utils.log import logger
 
 DAYS_IN_YEAR = 365.25
 

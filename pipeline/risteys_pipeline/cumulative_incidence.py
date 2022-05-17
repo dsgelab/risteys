@@ -2,9 +2,9 @@
 
 import pandas as pd
 import numpy as np
-from risteys_pipeline.log import logger
+from risteys_pipeline.utils.log import logger
 from risteys_pipeline.config import MIN_SUBJECTS_PERSONAL_DATA
-from risteys_pipeline.finregistry.survival_analysis import (
+from risteys_pipeline.survival_analysis import (
     MIN_SUBJECTS_SURVIVAL_ANALYSIS,
     add_death_as_competing_event,
     get_cases,
@@ -93,8 +93,8 @@ def cumulative_incidence_function(endpoint, cases, cohort):
 
 if __name__ == "__main__":
     from risteys_pipeline.finregistry.load_data import load_data
-    from risteys_pipeline.finregistry.survival_analysis import get_cohort
-    from risteys_pipeline.finregistry.write_data import get_output_filepath
+    from risteys_pipeline.survival_analysis import get_cohort
+    from risteys_pipeline.utils.write_data import get_output_filepath
     from multiprocessing import get_context
     from tqdm import tqdm
 

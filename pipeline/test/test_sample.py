@@ -1,6 +1,6 @@
 import numpy as np
 import pandas as pd
-from risteys_pipeline.finregistry.sample import calculate_case_cohort_weights
+from risteys_pipeline.sample import calculate_case_cohort_weights
 
 
 def test_calculate_case_cohort_weights_cases():
