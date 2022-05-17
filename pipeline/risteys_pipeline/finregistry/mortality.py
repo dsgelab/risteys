@@ -1,6 +1,7 @@
 """Mortality analysis"""
 
 import pandas as pd
+import numpy as np
 
 from risteys_pipeline.log import logger
 from risteys_pipeline.config import (
@@ -16,6 +17,80 @@ from risteys_pipeline.finregistry.survival_analysis import (
 )
 
 N_DIGITS = 4
+
+def times_without_personal_data(times):
+    """
+    Get times with at least `MIN_SUBJECTS_PERSONAL_DATA` persons.
+    Event times are rounded to form groups.
+
+    Args: 
+        times (Series): list of distinct event times (e.g. ages or follow-up durations)
+
+    Returns: 
+        times (Series): event times with no personal data
+    """
+    times = times.round().value_counts().sort_index()
+    times = times[times >= MIN_SUBJECTS_PERSONAL_DATA]
+
+    return times.index
+
+
+def exposure_to_death(endpoint, cases, exposed, cohort):
+    """
+    Mortality analysis for `endpoint` with exposure-to-death as a timescale
+    - Kaplan-Meier estimate (Aalen-Johansen with no competing events)
+    - time-on-study (exposure-to-death) as a timescale
+    - only exposed persons are included
+    - stratified by sex 
+    - buffer of 30 days between exposure and outcome
+
+    Args: 
+        endpoint (str): name of the endpoint
+        cases (DataFrame): cases dataset (persons who died)
+        exposed (DataFrame): exposed dataset (persons with exposure endpoint)
+        cohort (DataFrame): cohort for sampling controls
+
+    Returns: 
+        surv (DataFrame): survival function for endpoint
+    """
+    logger.debug(f"{endpoint}")
+
+    surv = None
+
+    cohort = cohort.join(exposed, how="inner")
+    cases = cases.join(exposed, how="inner")
+
+    cohort["start"] = cohort["exposure_year"]
+    cases["start"] = cases["exposure_year"]
+
+    sexes = exposed["female"].unique()
+    for sex in sexes:
+
+        cols = ["start", "stop", "outcome", "birth_year"]
+        cohort_ = cohort.loc[cohort["female"] == sex, cols]
+        cases_ = cases.loc[cases["female"] == sex, cols]
+
+        df_survival = build_survival_dataset(cases_, cohort_)
+        df_survival = set_timescale(df_survival, "time-on-study")
+
+        model = survival_analysis(df_survival, "aalen-johansen")
+
+        if model is not None:
+            
+            logger.debug("Removing personal data")
+
+            times = df_survival.loc[df_survival["outcome"] == 1, "stop"]
+            times = times_without_personal_data(times)
+
+            if len(times) > 0:
+
+                if len(ages == 1):
+                    ages = np.repeat(ages, 2)
+
+                survival = 1 - model.predict(times)
+
+
+    return surv
 
 
 def mortality_analysis(endpoint, cases, exposed, cohort):
@@ -66,9 +141,7 @@ def mortality_analysis(endpoint, cases, exposed, cohort):
                 logger.debug("Removing personal data")
 
                 # Get cumulative baseline hazard by age
-                cbh_ = model.baseline_cumulative_hazard_.rename(
-                    columns={"index": "age"}
-                )
+                cbh_ = model.baseline_cumulative_hazard_
                 cbh_ = cbh_.reset_index().rename(columns={"index": "age"})
                 cbh_["age"] = cbh_["age"].round(0)
                 cbh_ = cbh_.groupby("age").mean().reset_index()
