@@ -29,7 +29,7 @@
 					 v-for="(item, idx_item) in category[idx_items]"
 					 role="row">
 						<span class="font-mono" role="rowcell">
-							<a :href="item.url" v-html="item.phenocode"></a>
+							<a :href="item.url" v-html="item.endpoint"></a>
 						</span>
 						<span v-html="item.content"
 							  class="pr-2 inline-block"

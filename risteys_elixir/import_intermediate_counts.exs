@@ -24,10 +24,9 @@ counts_filepath
     "N(all)" => nall,
     "N(-sex)" => nsex,
     "N(-conditions)" => nconditions,
-    "N(-regex)" => nregex,
-    "N(-pre_conditions/mainonly/mode/icdver)" => nquad,
+    "N(-pre_conditions/mainonly/mode/regex_icdver/reimb_icd)" => nmulti,
     "N(-nevt)" => nevt,
-    "N(-nevt+include_unique)" => nend
+    "N(pass+include_unique)" => nend
   } = row
 
   # Ordering the steps, so we can later check for individual-level data that
@@ -37,8 +36,7 @@ counts_filepath
       {"all", nall},
       {"sex_rule", nsex},
       {"conditions", nconditions},
-      {"filter_registries", nregex},
-      {"precond_main_mode_icdver", nquad},
+      {"multi", nmulti},
       {"min_number_events", nevt},
       {"includes", nend}
     ]
@@ -103,7 +101,7 @@ end)
     # Check for individual-level data is done there
     upsert =
       FGEndpoint.upsert_explainer_step(%{
-        phenocode_id: endpoint_id,
+        fg_endpoint_id: endpoint_id,
         step: step,
         nindivs: count
       })

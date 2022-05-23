@@ -1,4 +1,4 @@
-alias Risteys.{Repo, Phenocode}
+alias Risteys.Repo
 alias Risteys.FGEndpoint
 import Ecto.Query
 require Logger
@@ -9,7 +9,7 @@ Logger.configure(level: :info)
 Logger.info("Getting existing endpoint IDs")
 # Map of endpoint name -> id
 endpoints =
-  Repo.all(from pheno in Phenocode, select: %{name: pheno.name, id: pheno.id})
+  Repo.all(from endpoint in FGEndpoint.Definition, select: %{name: endpoint.name, id: endpoint.id})
   |> Enum.reduce(%{}, fn %{name: name, id: id}, acc ->
     Map.put_new(acc, name, id)
   end)
@@ -25,7 +25,7 @@ to_delete =
   |> Enum.reduce(MapSet.new(), fn %{"endpoint" => name}, acc ->
     case Map.get(endpoints, name) do
       nil -> acc
-      pheno_id -> MapSet.put(acc, pheno_id)
+      endpoint_id -> MapSet.put(acc, endpoint_id)
     end
   end)
   |> MapSet.to_list()
@@ -49,15 +49,15 @@ stats_filepath
 
   Logger.debug("Handling data: #{name} - #{sex} - #{age}")
 
-  pheno_id = Map.get(endpoints, name)
+  endpoint_id = Map.get(endpoints, name)
   age = String.to_float(age)
   value = String.to_float(value)
 
-  if is_nil(pheno_id) do
+  if is_nil(endpoint_id) do
     Logger.warning("Endpoint #{name} not found in DB, skipping.")
   else
     attrs = %{
-      phenocode_id: pheno_id,
+      fg_endpoint_id: endpoint_id,
       age: age,
       value: value,
       sex: sex

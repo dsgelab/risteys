@@ -29,7 +29,7 @@ Outputs a Feather file in narrow format with all control information discarded.
 - Dense first events
   Feather v2 format
   . columns: individual FinnGen ID, endpoint, age, year, number of events
-  . rows: one row per event, so an individual's events span multiple rows
+  . rows: one row per event, so all the events from the same individual span multiple rows
 
 """
 
@@ -46,7 +46,7 @@ CASE         = "1"
 EXCL_CONTROL = "NA"
 
 # Headers of the output file
-OUT_HEADER = ",".join([
+OUT_HEADER = [
     "FINNGENID",
     "ENDPOINT",
     # Input notation:  control=0, case=1, excluded control=NA
@@ -55,7 +55,7 @@ OUT_HEADER = ",".join([
     "AGE",
     "YEAR",
     "NEVT"
-])
+]
 
 
 def cli_parser():
@@ -85,7 +85,6 @@ def cli_parser():
 def main():
     args = cli_parser()
 
-    out_file = open(args.output, "x")
     in_file = open(args.input_first_events)
 
     # Read the header to build a lookup table for column -> column index
@@ -135,10 +134,12 @@ def main():
                 val_year = records[col_year]
                 val_nevt = records[col_nevt]
 
-                print(
-                    f"{val_fgid},{endp},{kind},{val_age},{val_year},{val_nevt}",
-                    file=out_file
-                )
+                fgid_values.append(val_fgid)
+                endpoint_values.append(endp)
+                kind_values.append(int(kind))
+                age_values.append(float(val_age))
+                year_values.append(int(val_year))
+                nevt_values.append(int(val_nevt))
 
     in_file.close()
 

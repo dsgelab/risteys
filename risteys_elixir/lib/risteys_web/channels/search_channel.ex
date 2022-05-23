@@ -1,6 +1,6 @@
 defmodule RisteysWeb.SearchChannel do
   use Phoenix.Channel
-  alias Risteys.{Repo, Phenocode, Icd10, PhenocodeIcd10}
+  alias Risteys.{FGEndpoint, Repo, Icd10}
   alias RisteysWeb.Router.Helpers, as: Routes
   import Ecto.Query
 
@@ -26,14 +26,14 @@ defmodule RisteysWeb.SearchChannel do
     pattern = "%" <> user_query <> "%"
 
     query =
-      from p in Phenocode,
-        join: assoc in PhenocodeIcd10,
-        on: p.id == assoc.phenocode_id,
+      from endpoint in FGEndpoint.Definition,
+        join: assoc in FGEndpoint.DefinitionICD10,
+        on: endpoint.id == assoc.fg_endpoint_id,
         join: icd in Icd10,
         on: assoc.icd10_id == icd.id,
         where: ilike(icd.code, ^pattern),
-        group_by: p.name,
-        select: %{name: p.name, icds: fragment("array_agg(?)", icd.code)},
+        group_by: endpoint.name,
+        select: %{name: endpoint.name, icds: fragment("array_agg(?)", icd.code)},
         limit: ^limit
 
     Repo.all(query)
@@ -48,13 +48,13 @@ defmodule RisteysWeb.SearchChannel do
     }
   end
 
-  defp search_phenocode_longname(user_query, limit) do
+  defp search_endpoint_longname(user_query, limit) do
     pattern = "%" <> user_query <> "%"
 
     Repo.all(
-      from p in Phenocode,
-        where: ilike(p.longname, ^pattern),
-        select: %{name: p.name, longname: p.longname},
+      from endpoint in FGEndpoint.Definition,
+        where: ilike(endpoint.longname, ^pattern),
+        select: %{name: endpoint.name, longname: endpoint.longname},
         limit: ^limit
     )
   end
@@ -63,9 +63,9 @@ defmodule RisteysWeb.SearchChannel do
     pattern = "%" <> user_query <> "%"
 
     query =
-      from p in Phenocode,
-        where: ilike(p.description, ^pattern),
-        select: %{name: p.name, description: p.description},
+      from endpoint in FGEndpoint.Definition,
+        where: ilike(endpoint.description, ^pattern),
+        select: %{name: endpoint.name, description: endpoint.description},
         limit: ^limit
 
     Repo.all(query)
@@ -84,13 +84,13 @@ defmodule RisteysWeb.SearchChannel do
     %{name: name, description: description}
   end
 
-  defp search_phenocode_name(user_query, limit) do
+  defp search_endpoint_name(user_query, limit) do
     pattern = "%" <> user_query <> "%"
 
     query =
-      from p in Phenocode,
-        select: %{name: p.name, longname: p.longname},
-        where: ilike(p.name, ^pattern),
+      from endpoint in FGEndpoint.Definition,
+        select: %{name: endpoint.name, longname: endpoint.longname},
+        where: ilike(endpoint.name, ^pattern),
         limit: ^limit
 
     Repo.all(query)
@@ -99,9 +99,9 @@ defmodule RisteysWeb.SearchChannel do
   defp search(socket, user_query, limit) do
     # 1. Get matches from the database
     icds = search_icd10_code(user_query, limit)
-    phenocode_longnames = search_phenocode_longname(user_query, limit)
+    endpoint_longnames = search_endpoint_longname(user_query, limit)
     descriptions = search_description(user_query, limit)
-    phenocode_names = search_phenocode_name(user_query, limit)
+    endpoint_names = search_endpoint_name(user_query, limit)
 
     # 2. Structure the output to be sent over the channel
     icds = [
@@ -109,16 +109,16 @@ defmodule RisteysWeb.SearchChannel do
       Enum.map(icds, fn %{icds: icds, name: name} ->
         icds = Enum.join(icds, ", ")
         icds = highlight(icds, user_query)
-        %{phenocode: name, content: icds, url: url(socket, name)}
+        %{endpoint: name, content: icds, url: url(socket, name)}
       end)
     ]
 
-    phenocode_longnames = [
-      "Phenocode long name",
-      Enum.map(phenocode_longnames, fn %{name: name, longname: longname} ->
+    endpoint_longnames = [
+      "Endpoint long name",
+      Enum.map(endpoint_longnames, fn %{name: name, longname: longname} ->
         hlname = highlight(name, user_query)
         hllongname = highlight(longname, user_query)
-        %{phenocode: hlname, content: hllongname, url: url(socket, name)}
+        %{endpoint: hlname, content: hllongname, url: url(socket, name)}
       end)
     ]
 
@@ -126,24 +126,24 @@ defmodule RisteysWeb.SearchChannel do
       "Description",
       Enum.map(descriptions, fn %{name: name, description: description} ->
         hldesc = highlight(description, user_query)
-        %{phenocode: name, content: hldesc, url: url(socket, name)}
+        %{endpoint: name, content: hldesc, url: url(socket, name)}
       end)
     ]
 
-    phenocode_names = [
-      "Phenocode name",
-      Enum.map(phenocode_names, fn %{name: name, longname: longname} ->
+    endpoint_names = [
+      "Endpoint name",
+      Enum.map(endpoint_names, fn %{name: name, longname: longname} ->
         hlname = highlight(name, user_query)
-        %{phenocode: hlname, content: longname, url: url(socket, name)}
+        %{endpoint: hlname, content: longname, url: url(socket, name)}
       end)
     ]
 
-    [phenocode_longnames, icds, descriptions, phenocode_names]
+    [endpoint_longnames, icds, descriptions, endpoint_names]
     |> Enum.reject(fn [_category, list] -> Enum.empty?(list) end)
   end
 
   defp url(conn, code) do
-    Routes.phenocode_path(conn, :show, code)
+    Routes.fg_endpoint_path(conn, :show, code)
   end
 
   defp highlight(string, query) do

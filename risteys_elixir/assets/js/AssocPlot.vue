@@ -158,7 +158,7 @@ let getScales = (data, y_axis) => {
 		var yFmt = yScale.tickFormat();  // use the default tick format
 	} else if (y_axis === "hr") {
 		var yScale = d3.scaleLog().domain([yMin, yMax]).range([plotHeight, 0]);
-		var yFmt = yScale.tickFormat(100, "");
+		var yFmt = yScale.tickFormat(10, "");
 	}
 
 	return {
@@ -168,11 +168,11 @@ let getScales = (data, y_axis) => {
 	}
 };
 
-let showTooltip = (tooltip, event, point, other_pheno) => {
+let showTooltip = (tooltip, event, point, other_endpoint) => {
 	let text = `
 	<p>
 		<b>${point.longname}</b> (${point.name})<br>
-		happening <b>${point.direction}</b> ${other_pheno}<br>
+		happening <b>${point.direction}</b> ${other_endpoint}<br>
 	</p>
 	<p>
 		<b>HR:</b>&nbsp;${point.hr_str}&nbsp;[${point.ci_min},&nbsp;${point.ci_max}]<br>
@@ -193,7 +193,7 @@ let hideTooltip = (tooltip) => {
 		.style("display", "none");
 };
 
-let makePlot = (data, y_axis, ticks, categoryNames, other_pheno) => {
+let makePlot = (data, y_axis, ticks, categoryNames, other_endpoint) => {
 	// Remove a previous assoc plot if it existed, for example before we toggled the Y-axis that triggered this method to be re-run.
 	// TODO this could be enhanced by updating data only via D3, instead of destroying everything and re-creating everything.
 	d3.select("#d3-assoc-plot").select("svg").remove();
@@ -273,7 +273,7 @@ let makePlot = (data, y_axis, ticks, categoryNames, other_pheno) => {
 		.attr("fill", (d) => d.color)
 		.attr("r", dot.size)
 		.attr("opacity", dot.opacity)
-		.on("mouseover", (event, d) => showTooltip(tooltip, event, d, other_pheno));
+		.on("mouseover", (event, d) => showTooltip(tooltip, event, d, other_endpoint));
 
 	let afters = filter(data, (d) => d.direction.toLowerCase() === "after");
 	let squares = g.selectAll("points")
@@ -286,7 +286,7 @@ let makePlot = (data, y_axis, ticks, categoryNames, other_pheno) => {
 		.attr("height", square.size)
 		.attr("width", square.size)
 		.attr("opacity", dot.opacity)
-		.on("mouseover", (event, d) => showTooltip(tooltip, event, d, other_pheno));
+		.on("mouseover", (event, d) => showTooltip(tooltip, event, d, other_endpoint));
 
 	// Hide tooltip when mouse leaves the svg
 	svg.on("mouseleave", () => hideTooltip(tooltip));
@@ -296,12 +296,12 @@ let makePlot = (data, y_axis, ticks, categoryNames, other_pheno) => {
 export default {
 	data () {
 		return {
-			y_axis: "pvalue",
+			y_axis: "hr",
 		}
 	},
 	props: {
 		assocs: Array,
-		phenocode: String,
+		endpoint: String,
 	},
 	methods: {
 		set_yaxis(metric) {
@@ -311,7 +311,7 @@ export default {
 		comp() {
 			let dp = dataPlot(this.assocs);
 			let data = toPlotSpace(dp.data, this.y_axis);
-			makePlot(data, this.y_axis, dp.ticks, dp.categoryNames, this.phenocode);
+			makePlot(data, this.y_axis, dp.ticks, dp.categoryNames, this.endpoint);
 		}
 	},
 	mounted() {
