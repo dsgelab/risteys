@@ -5,7 +5,7 @@ import numpy as np
 import pandas as pd
 from datetime import datetime
 from collections import defaultdict
-from risteys_pipeline.log import logger
+from risteys_pipeline.utils.log import logger
 from risteys_pipeline.config import FINREGISTRY_OUTPUT_DIR
 
 

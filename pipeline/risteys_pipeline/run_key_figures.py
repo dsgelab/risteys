@@ -106,5 +106,8 @@ if __name__ == "__main__":
         first_events, minimal_phenotype, index_persons=True
     )
 
-    kf_all.to_csv(get_output_filepath("key_figures_all", "csv"))
-    kf_index_persons.to_csv(get_output_filepath("key_figures_index", "csv"))
+    path_all = get_output_filepath("key_figures_all", "csv")
+    path_index = get_output_filepath("key_figures_index", "csv")
+
+    kf_all.to_csv(path_all, index=False)
+    kf_index_persons.to_csv(path_index, index=False)

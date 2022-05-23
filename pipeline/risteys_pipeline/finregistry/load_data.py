@@ -2,7 +2,6 @@
 
 import pandas as pd
 import numpy as np
-from csv import excel_tab
 from risteys_pipeline.config import (
     FINREGISTRY_MINIMAL_PHENOTYPE_DATA_PATH,
     FINREGISTRY_ENDPOINT_DEFINITIONS_DATA_PATH,
@@ -96,7 +95,7 @@ def load_endpoint_definitions_data(
     """
     cols = ["NAME", "SEX", "OMIT"]
     df = pd.read_csv(
-        data_path, sep=excel_tab, usecols=cols, skiprows=[1], encoding="latin1"
+        data_path, sep=";", usecols=cols, skiprows=[1], encoding="latin1"
     )
     logger.debug(f"{df.shape[0]:,} rows loaded")
 

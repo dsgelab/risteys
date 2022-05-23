@@ -110,5 +110,5 @@ if __name__ == "__main__":
     dist_age = compute_distribution(first_events, "age")
     dist_year = compute_distribution(first_events, "year")
 
-    dist_age.to_csv(get_output_filepath("distribution_age", "csv"))
-    dist_year.to_csv(get_output_filepath("distribution_year", "csv"))
+    dist_age.to_csv(get_output_filepath("distribution_age", "csv"), index=False)
+    dist_year.to_csv(get_output_filepath("distribution_year", "csv"), index=False)
