@@ -25,7 +25,7 @@ from sys import argv
 import pandas as pd
 from pronto import Ontology
 
-from risteys_pipeline.log import logger
+from risteys_pipeline.utils.log import logger
 
 
 def main(input_endpoint_path, input_ontology_path, output_path):

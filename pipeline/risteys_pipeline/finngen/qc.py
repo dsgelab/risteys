@@ -18,7 +18,7 @@ from sys import argv
 
 import pandas as pd
 
-from risteys_pipeline.log import logger
+from risteys_pipeline.utils.log import logger
 
 
 SAMPLE_YEAR_LESS_THAN = 2022
