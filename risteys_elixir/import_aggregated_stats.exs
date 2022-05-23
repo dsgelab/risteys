@@ -25,7 +25,7 @@
 #   ...}
 # }
 
-alias Risteys.{Repo, Phenocode, StatsSex}
+alias Risteys.{FGEndpoint, Repo, StatsSex}
 require Logger
 
 Logger.configure(level: :info)
@@ -33,7 +33,7 @@ Logger.configure(level: :info)
 
 defmodule Risteys.ImportAgg do
   def stats(
-        phenocode,
+        endpoint,
         sex,
         mean_age,
         n_individuals,
@@ -46,12 +46,12 @@ defmodule Risteys.ImportAgg do
     distrib_age = %{hist: distrib_age}
 
     stats =
-      case Repo.get_by(StatsSex, sex: sex, phenocode_id: phenocode.id) do
+      case Repo.get_by(StatsSex, sex: sex, fg_endpoint_id: endpoint.id) do
         nil -> %StatsSex{}
         existing -> existing
       end
       |> StatsSex.changeset(%{
-        phenocode_id: phenocode.id,
+        fg_endpoint_id: endpoint.id,
         sex: sex,
         mean_age: mean_age,
         n_individuals: n_individuals,
@@ -63,7 +63,7 @@ defmodule Risteys.ImportAgg do
 
     case stats do
       {:ok, _} ->
-        Logger.debug("insert ok for #{phenocode.name} - sex: #{sex}")
+        Logger.debug("insert ok for #{endpoint.name} - sex: #{sex}")
 
       {:error, changeset} ->
         Logger.warn(inspect(changeset))
@@ -86,14 +86,14 @@ stats
 |> Enum.each(fn {name, data} ->
   Logger.info("Processing stats for #{name}")
 
-  phenocode = Repo.get_by(Phenocode, name: name)
+  endpoint = Repo.get_by(FGEndpoint.Definition, name: name)
 
-  case phenocode do
+  case endpoint do
     nil ->
       Logger.warn("Skipping stats for #{name}: not in DB")
 
     _ ->
-      # Import stats for this phenocode
+      # Import stats for this endpoint
       %{
         "nindivs_all" => nindivs_all,
         "nindivs_female" => nindivs_female,
@@ -126,11 +126,11 @@ stats
       nindivs_male = if is_nil(nindivs_male), do: nil, else: floor(nindivs_male)
 
       # sex: all
-      # Don't import anything if Nindivs = 0 (really no events with this phenotype) or
+      # Don't import anything if Nindivs = 0 (really no events with this endpoint) or
       # Nindivs = nil (individual-level data).
       if not is_nil(nindivs_all) and floor(nindivs_all) != 0 do
         Risteys.ImportAgg.stats(
-          phenocode,
+          endpoint,
           0,
           mean_age_all,
           nindivs_all,
@@ -139,13 +139,13 @@ stats
           distrib_age_all
         )
       else
-        Logger.warn("Skipping stats for #{phenocode.name} - all : None or 0 individual")
+        Logger.warn("Skipping stats for #{endpoint.name} - all : None or 0 individual")
       end
 
       # sex: male
       if not is_nil(nindivs_male) and floor(nindivs_male) != 0 do
         Risteys.ImportAgg.stats(
-          phenocode,
+          endpoint,
           1,
           mean_age_male,
           nindivs_male,
@@ -154,13 +154,13 @@ stats
           distrib_age_male
         )
       else
-        Logger.warn("Skipping stats for #{phenocode.name} - male : None or 0 individual")
+        Logger.warn("Skipping stats for #{endpoint.name} - male : None or 0 individual")
       end
 
       # sex: female
       if not is_nil(nindivs_female) and floor(nindivs_female) != 0 do
         Risteys.ImportAgg.stats(
-          phenocode,
+          endpoint,
           2,
           mean_age_female,
           nindivs_female,
@@ -169,7 +169,7 @@ stats
           distrib_age_female
         )
       else
-        Logger.warn("Skipping stats for #{phenocode.name} - female : None or 0 individual")
+        Logger.warn("Skipping stats for #{endpoint.name} - female : None or 0 individual")
       end
   end
 end)

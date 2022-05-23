@@ -1,4 +1,4 @@
-use Mix.Config
+import Config
 
 # For production, don't forget to configure the url host
 # to something meaningful, Phoenix uses this information
@@ -69,6 +69,25 @@ config :logger, level: :info
 #
 # Note you can't rely on `System.get_env/1` when using releases.
 # See the releases documentation accordingly.
+
+# Google OAuth authentication
+config :ueberauth, Ueberauth,
+  providers: [
+    google: {
+      Ueberauth.Strategy.Google,
+      [
+	hd: "finngen.fi",  # preselects the @finngen.fi account on Google screen
+	default_scope: "email",  # ask for the minimum needed info
+	callback_url: "https://risteys.finngen.fi/auth/google/callback",  # needed otherwise it will generate the URL with the local IP instead of risteys.finngen.fi
+      ]
+    }
+  ]
+
+# Google OAuth client credentials must NOT be written here.
+# We use environment variables instead.
+config :ueberauth, Ueberauth.Strategy.Google.OAuth,
+  client_id: System.get_env("GOOGLE_CLIENT_ID"),
+  client_secret: System.get_env("GOOGLE_CLIENT_SECRET")
 
 # Finally import the config/prod.secret.exs which should be versioned
 # separately.

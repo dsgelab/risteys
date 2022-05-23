@@ -3,7 +3,7 @@ defmodule Risteys.DrugStats do
   import Ecto.Changeset
 
   schema "drug_stats" do
-    field :phenocode_id, :id
+    field :fg_endpoint_id, :id
     field :atc_id, :id
 
     field :score, :float
@@ -17,7 +17,7 @@ defmodule Risteys.DrugStats do
   @doc false
   def changeset(drug_stats, attrs) do
     drug_stats
-    |> cast(attrs, [:phenocode_id, :atc_id, :score, :pvalue, :stderr, :n_indivs])
+    |> cast(attrs, [:fg_endpoint_id, :atc_id, :score, :pvalue, :stderr, :n_indivs])
     |> validate_required([:score, :pvalue, :stderr, :n_indivs])
     |> validate_number(:score, greater_than_or_equal_to: 0.0, less_than_or_equal_to: 1.0)
     |> validate_number(:stderr, greater_than_or_equal_to: 0.0)

@@ -1,4 +1,4 @@
-use Mix.Config
+import Config
 
 # For development, we disable any cache and enable
 # debugging and code reloading.
@@ -66,6 +66,24 @@ config :phoenix, :stacktrace_depth, 20
 
 # Initialize plugs at runtime for faster development compilation
 config :phoenix, :plug_init_mode, :runtime
+
+# Google OAuth authentication
+config :ueberauth, Ueberauth,
+  providers: [
+    google: {
+      Ueberauth.Strategy.Google,
+      [
+	hd: "finngen.fi",  # preselects the @finngen.fi account on Google screen
+	default_scope: "email",  # ask for the minimum needed info
+      ]
+    }
+  ]
+
+# Google OAuth client credentials must NOT be written here.
+# We use environment variables instead.
+config :ueberauth, Ueberauth.Strategy.Google.OAuth,
+  client_id: System.get_env("GOOGLE_CLIENT_ID"),
+  client_secret: System.get_env("GOOGLE_CLIENT_SECRET")
 
 
 import_config "dev.secret.exs"

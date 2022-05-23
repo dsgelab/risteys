@@ -1,26 +1,26 @@
-alias Risteys.{Repo, MortalityStats, Phenocode}
+alias Risteys.{FGEndpoint, Repo, MortalityStats}
 import Ecto.Query
 require Logger
 
 Logger.configure(level: :info)
 [stats_filepath | _] = System.argv()
 
-phenos = Repo.all(from p in Phenocode, select: p.name) |> MapSet.new()
+endpoints = Repo.all(from endpoint in FGEndpoint.Definition, select: endpoint.name) |> MapSet.new()
 
 stats_filepath
 |> File.stream!()
 |> CSV.decode!(headers: true)
-|> Stream.filter(fn %{"endpoint" => pheno} ->
-  in_pheno = MapSet.member?(phenos, pheno)
+|> Stream.filter(fn %{"endpoint" => endpoint} ->
+  is_in_endpoints = MapSet.member?(endpoints, endpoint)
 
-  if not in_pheno do
-    Logger.warn("Phenocode #{pheno} not found in DB, skipping.")
+  if not is_in_endpoints do
+    Logger.warn("Endpoint #{endpoint} not found in DB, skipping.")
   end
 
-  in_pheno
+  is_in_endpoints
 end)
 |> Enum.each(fn %{
-                  "endpoint" => pheno,
+                  "endpoint" => endpoint,
                   "lag_hr" => lag_hr,
                   "endpoint_hr" => hr,
                   "endpoint_ci_lower" => hr_ci_min,
@@ -36,15 +36,15 @@ end)
       lag_hr |> String.to_integer()
     end
 
-  pheno = Repo.get_by!(Phenocode, name: pheno)
+  endpoint = Repo.get_by!(FGEndpoint.Definition, name: endpoint)
 
   stat =
-    case Repo.get_by(MortalityStats, phenocode_id: pheno.id, lagged_hr_cut_year: lag_hr) do
+    case Repo.get_by(MortalityStats, fg_endpoint_id: endpoint.id, lagged_hr_cut_year: lag_hr) do
       nil -> %MortalityStats{}
       existing -> existing
     end
     |> MortalityStats.changeset(%{
-      phenocode_id: pheno.id,
+      fg_endpoint_id: endpoint.id,
       lagged_hr_cut_year: lag_hr,
       hr: String.to_float(hr),
       hr_ci_min: String.to_float(hr_ci_min),
