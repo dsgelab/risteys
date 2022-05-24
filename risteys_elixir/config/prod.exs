@@ -11,7 +11,7 @@ import Config
 # before starting your production server.
 config :risteys, RisteysWeb.Endpoint,
   http: [:inet6, port: System.get_env("PORT") || 8080],
-  url: [host: "risteys.finngen.fi", port: 80],
+  url: [host: "risteys.finregistry.fi", port: 80],
   cache_static_manifest: "priv/static/cache_manifest.json",
   # Enable gzip compression. Note that phx.digest MUST be run in order
   # to generate the gzip files that will be used.
