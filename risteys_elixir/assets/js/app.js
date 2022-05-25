@@ -32,7 +32,7 @@ import SearchBox from './SearchBox.vue';
 import HelpButton from './HelpButton.vue';
 import HelpNumberIndividuals from './HelpNumberIndividuals.vue';
 import HelpPrevalence from './HelpPrevalence.vue';
-import HelpMeanAge from './HelpMeanAge.vue';
+import HelpMedianAge from './HelpMedianAge.vue';
 import HelpMortality from './HelpMortality.vue';
 
 
@@ -164,8 +164,8 @@ if (path.startsWith("/endpoint/")) {  // Load only on endpoint pages
     });
     var help_button_mean_age = new Vue({
         el: '#help-button-mean-age',
-        template: `<HelpMeanAge/>`,
-        components: { HelpMeanAge },
+        template: `<HelpMedianAge/>`,
+        components: { HelpMedianAge },
     });
     var help_mortality = new Vue({
         el: '#help-mortality',
