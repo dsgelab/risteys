@@ -18,6 +18,7 @@ defmodule Risteys.FGEndpoint do
   alias Risteys.FGEndpoint.ExplainerStep
   alias Risteys.FGEndpoint.StatsCumulativeIncidence
 
+  import IO
   # -- Endpoint --
   def list_endpoint_names() do
     Repo.all(from endpoint in Definition, select: endpoint.name)
