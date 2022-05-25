@@ -4,8 +4,9 @@ defmodule Risteys.MortalityBaseline do
 
   schema "mortality_baseline" do
     field :fg_endpoint_id, :id
-    field :age, :integer
+    field :age, :float
     field :baseline_cumulative_hazard, :float
+    field :sex, :string
 
     timestamps()
   end
@@ -15,13 +16,16 @@ defmodule Risteys.MortalityBaseline do
     |> cast(attrs, [
       :fg_endpoint_id,
       :age,
-      :baseline_cumulative_hazard
+      :baseline_cumulative_hazard,
+      :sex
     ])
     |> validate_required([
       :fg_endpoint_id,
       :age,
-      :baseline_cumulative_hazard
+      :baseline_cumulative_hazard,
+      :sex
     ])
-    |> unique_constraint(:age, name: :age_fg_endpoint_id)
+    |> validate_inclusion(:sex, ["female", "male"])
+    |> unique_constraint(:age, name: :age_fg_endpoint_id_sex)
   end
 end

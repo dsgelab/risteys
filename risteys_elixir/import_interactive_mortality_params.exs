@@ -10,6 +10,7 @@
 # - p_value
 # - endpoint
 # - mean
+# - sex
 
 alias Risteys.{Repo, FGEndpoint.Definition, MortalityParams}
 require Logger
@@ -28,7 +29,8 @@ filepath
     "ci95_lower" => ci95_lower,
     "ci95_upper" => ci95_upper,
     "p_value" => p_value,
-    "mean" => mean
+    "mean" => mean,
+    "sex" => sex
   } = row
 
   Logger.info("Handling data of #{name}")
@@ -41,7 +43,7 @@ filepath
 
     endpoint ->
       params =
-        case Repo.get_by(MortalityParams, fg_endpoint_id: endpoint.id, covariate: covariate) do
+        case Repo.get_by(MortalityParams, fg_endpoint_id: endpoint.id, covariate: covariate, sex: sex) do
           nil -> %MortalityParams{}
           existing -> existing
         end
@@ -53,7 +55,8 @@ filepath
           ci95_lower: String.to_float(ci95_lower),
           ci95_upper: String.to_float(ci95_upper),
           p_value: String.to_float(p_value),
-          mean: String.to_float(mean)
+          mean: String.to_float(mean),
+          sex: sex
         })
         |> Repo.insert_or_update()
 
