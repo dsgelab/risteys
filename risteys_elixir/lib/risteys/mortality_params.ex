@@ -10,6 +10,7 @@ defmodule Risteys.MortalityParams do
     field :ci95_upper, :float
     field :p_value, :float
     field :mean, :float
+    field :sex, :string
 
     timestamps()
   end
@@ -23,7 +24,8 @@ defmodule Risteys.MortalityParams do
       :ci95_lower,
       :ci95_upper,
       :p_value,
-      :mean
+      :mean,
+      :sex
     ])
     |> validate_required([
       :fg_endpoint_id,
@@ -32,8 +34,10 @@ defmodule Risteys.MortalityParams do
       :ci95_lower,
       :ci95_upper,
       :p_value,
-      :mean
+      :mean,
+      :sex
     ])
-    |> unique_constraint(:covariate, name: :covariate_fg_endpoint_id)
+    |> validate_inclusion(:sex, ["female", "male"])
+    |> unique_constraint(:covariate, name: :covariate_fg_endpoint_id_sex)
   end
 end

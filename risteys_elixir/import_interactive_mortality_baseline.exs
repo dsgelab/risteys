@@ -6,6 +6,7 @@
 # - age
 # - baseline_cumulative_hazard
 # - endpoint
+# - sex
 
 alias Risteys.{Repo, FGEndpoint.Definition, MortalityBaseline}
 require Logger
@@ -20,7 +21,8 @@ filepath
   %{
     "endpoint" => name,
     "age" => age,
-    "baseline_cumulative_hazard" => baseline_cumulative_hazard
+    "baseline_cumulative_hazard" => baseline_cumulative_hazard,
+    "sex" => sex
   } = row
 
   Logger.info("Handling data of #{name}")
@@ -33,15 +35,16 @@ filepath
 
     endpoint ->
       baseline =
-        case Repo.get_by(MortalityBaseline, fg_endpoint_id: endpoint.id, age: age) do
+        case Repo.get_by(MortalityBaseline, fg_endpoint_id: endpoint.id, age: age, sex: sex) do
           nil -> %MortalityBaseline{}
           existing -> existing
         end
 
         |> MortalityBaseline.changeset(%{
           fg_endpoint_id: endpoint.id,
-          age: String.to_integer(age),
-          baseline_cumulative_hazard: String.to_float(baseline_cumulative_hazard)
+          age: String.to_float(age),
+          baseline_cumulative_hazard: String.to_float(baseline_cumulative_hazard),
+          sex: sex
         })
         |> Repo.insert_or_update()
 
