@@ -1,8 +1,8 @@
 <template>
 	<HelpButton>
-		<h4>Number of individuals</h4>
-		<p>Number of unique individuals with the endpoint.</p>
-		<p>In the following example, individuals 1 and 2 have EXAMPLE_ENDPOINT so the number of individuals is 2.</p>
+		<h4>Median age at first event</h4>
+        <p>Median age at the first occurrence of the endpoint.</p>
+		<p>In the following example, persons 1 and 2 got EXAMPLE_ENDPOINT at ages 45 and 30, so the median age at first event would be 37.5.</p>
 		<table>
 			<thead>
 				<tr>
@@ -22,12 +22,12 @@
 					<td>ENDPOINT_X</td>
 					<td>46</td>
 				</tr>
-				<tr style="color: grey; border-bottom-width: 1px">
+                <tr style="color: grey; border-bottom-width: 1px">
 					<th>1</th>
 					<td>ENDPOINT_Y</td>
 					<td>46</td>
 				</tr>
-				<tr>
+                <tr>
 					<th>2</th>
 					<td>EXAMPLE_ENDPOINT</td>
 					<td class="help-highlight">30</td>
