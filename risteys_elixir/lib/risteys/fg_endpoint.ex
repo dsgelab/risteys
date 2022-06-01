@@ -353,6 +353,7 @@ defmodule Risteys.FGEndpoint do
       hd_icd_9: :inpat_outpat,
       hd_icd_8: :inpat_outpat,
       hd_icd_10_excl: :inpat_outpat,
+      hd_icd_10_excl_exp: :inpat_outpat,
       hd_icd_9_excl: :inpat_outpat,
       hd_icd_8_excl: :inpat_outpat,
       cod_icd_10: :cod,
