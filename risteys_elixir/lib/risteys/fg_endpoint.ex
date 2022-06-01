@@ -99,6 +99,10 @@ defmodule Risteys.FGEndpoint do
     end
   end
 
+  def get_random_endpoint() do
+    Repo.all(Definition) |> Enum.random()
+  end
+
   # -- Endpoint Explainer --
   def get_explainer_steps(endpoint) do
     steps = [
