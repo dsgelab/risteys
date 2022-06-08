@@ -11,8 +11,8 @@
 
 <main class="fluid-container">
 	<div class="title">
-		<h1><%= @endpoint.longname %></h1>
-		<p class="links">
+		<h1 class="pt-4 pl-6"><%= @endpoint.longname %></h1>
+		<p class="pt-4 pr-4 links">
 			<%= for link <- ontology_links(@ontology) do %>
 			<%= link %>
 			<% end %>
@@ -22,13 +22,14 @@
 			<a href={"https://results.finngen.fi/pheno/#{@endpoint.name}"} target="_blank" rel="noopener noreferrer external" class="button-out">PheWeb</a>
 			<% end %>
 		</p>
-		<p style="padding-top: 0"><%= @endpoint.name %></p>
-		<p class="description"><%= @description %></p>
+		<p class="p-2 pl-6"><%= @endpoint.name %></p>
+		<p class="description p-6"><%= @description %></p>
+
 	</div>
 
 	<div class="endpoint-grid">
 		<article id="endpoint-definition" class="box">
-			<div class="left-right-heading">
+			<div class="left-right-heading p-4 pl-6">
 				<h2>Endpoint definition</h2>
 				<a href="#">↥</a>
 			</div>
@@ -47,7 +48,7 @@
 
 		<div> <%# wrap into a div so the <article> height is independent of the grid cell height %>
 			<article id="similar-endpoints" class="box">
-				<div class="left-right-heading">
+				<div class="p-4 pl-6 left-right-heading">
 					<h2>Similar endpoints</h2>
 					<a href="#">↥</a>
 				</div>
@@ -61,17 +62,100 @@
 	if EXCL_REASON is nil, endpoint is not excluded -> show results, otherwise explanation text -->
 	<% excluded = @endpoint.fr_excl # to make case work, value needs to be saved in a variable%>
 
-	<article id="summary-statistics" class="stats-grid box">
-		<div class="left-right-heading">
+	<article id="summary-statistics" class="box">
+		<div class="p-4 pl-6 left-right-heading">
 			<h2>Summary Statistics</h2>
 			<a href="#">↥</a>
 		</div>
 
-		<article class="sumstats">
-			<h3>-FinRegistry-</h3>
+		<div class="box_content stats-grid">
+			<article class="sumstats">
+				<h3>-FinRegistry-</h3>
+				<%= case excluded do %>
+					<% nil -> %>
+						<%= render("sumstats_key_figures_FR.html", assigns) %>
+					<% "excl_omitted" -> %>
+						<p class = "explanation_text"> This endpoint is excluded from FinRegistry analyses (omitted endpoint). </p>
+
+					<% "excl_diff_def" -> %>
+						<p> This endpoint is excluded (different definition than used in FinnGen).</p>
+
+					<% "excl_both" -> %>
+						<p>This endpoint is excluded (omitted and has different definition than used in FinnGen).</p>
+					<% _ -> %>
+						<p> An issue occured with rendering results for this endpoint.</p>
+				<% end %>
+			</article>
+
+			<article class="sumstats">
+				<h3>-FinnGen-</h3>
+				<%= render(RisteysWeb.FGEndpointView, "sumstats_key_figures.html", stats: @stats_FG) %>
+			</article>
+
+			<article class="sumstats">
+				<%= if is_nil(excluded) do %>
+					<h3 class="narrow_screen_info">-FinRegistry-</h3>
+					<h3>Age distribution of first events</h3>
+					<div id={"bin-plot-age-FR"}></div>
+				<% end %>
+			</article>
+
+			<article class="sumstats">
+				<h3 class="narrow_screen_info">-FinnGen-</h3>
+				<h3>Age distribution of first events</h3>
+				<div id={"bin-plot-age-FG"}></div>
+			</article>
+
+			<article class="sumstats">
+				<%= if is_nil(excluded) do %>
+					<h3 class="narrow_screen_info">-FinRegistry-</h3>
+					<h3>Year distribution of first events</h3>
+					<div id={"bin-plot-year-FR"}></div>
+				<% end %>
+			</article>
+
+			<article class="sumstats">
+				<h3 class="narrow_screen_info">-FinnGen-</h3>
+				<h3>Year distribution of first events</h3>
+				<div id={"bin-plot-year-FG"}></div>
+			</article>
+
+			<article class="sumstats">
+				<%= if is_nil(excluded) do %>
+					<h3 class="narrow_screen_info">-FinRegistry-</h3>
+					<h3>Cumulative Incidence</h3>
+					<div id="cumulinc-plot-FR" class="mt-4"></div>
+				<% end %>
+			</article>
+
+			<article class="sumstats">
+				<h3 class="narrow_screen_info">-FinnGen-</h3>
+				<h3>Cumulative Incidence</h3>
+				<%= #if @endpoint.is_core do %>
+					<div id="cumulinc-plot-FG" class="mt-4"></div>
+				<% #else %>
+					<!-- <p class="no-data">Not a core endpoint, no data to show.</p> -->
+				<% #end %>
+			</article>
+		</div>
+	</article>
+
+	<article class="box">
+		<div class="left-right-heading p-4 pl-6">
+			<h2>Mortality – FinRegistry
+				<span class="ml-2">
+					<span id="help-mortality"> </span>
+				</span>
+			</h2>
+			<a href="#">↥</a>
+		</div>
+
+		<div class="box_content">
 			<%= case excluded do %>
 				<% nil -> %>
-					<%= render("sumstats_key_figures_FR.html", assigns) %>
+					<div id="vue-interactive-mortality">
+						<interactive-mortality v-bind:mortality_data="mortality_data"/>
+					</div>
 				<% "excl_omitted" -> %>
 					<p class = "explanation_text"> This endpoint is excluded from FinRegistry analyses (omitted endpoint). </p>
 
@@ -83,86 +167,7 @@
 				<% _ -> %>
 					<p> An issue occured with rendering results for this endpoint.</p>
 			<% end %>
-		</article>
-
-		<article class="sumstats">
-			<h3>-FinnGen-</h3>
-			<%= render(RisteysWeb.FGEndpointView, "sumstats_key_figures.html", stats: @stats_FG) %>
-		</article>
-
-		<article class="sumstats">
-			<%= if is_nil(excluded) do %>
-				<h3 class="narrow_screen_info">-FinRegistry-</h3>
-				<h3>Age distribution of first events</h3>
-				<div id={"bin-plot-age-FR"}></div>
-			<% end %>
-		</article>
-
-		<article class="sumstats">
-			<h3 class="narrow_screen_info">-FinnGen-</h3>
-			<h3>Age distribution of first events</h3>
-			<div id={"bin-plot-age-FG"}></div>
-		</article>
-
-		<article class="sumstats">
-			<%= if is_nil(excluded) do %>
-				<h3 class="narrow_screen_info">-FinRegistry-</h3>
-				<h3>Year distribution of first events</h3>
-				<div id={"bin-plot-year-FR"}></div>
-			<% end %>
-		</article>
-
-		<article class="sumstats">
-			<h3 class="narrow_screen_info">-FinnGen-</h3>
-			<h3>Year distribution of first events</h3>
-			<div id={"bin-plot-year-FG"}></div>
-		</article>
-
-		<article class="sumstats">
-			<%= if is_nil(excluded) do %>
-				<h3 class="narrow_screen_info">-FinRegistry-</h3>
-				<h3>Cumulative Incidence</h3>
-				<div id="cumulinc-plot-FR" class="mt-4"></div>
-			<% end %>
-		</article>
-
-		<article class="sumstats">
-			<h3 class="narrow_screen_info">-FinnGen-</h3>
-			<h3>Cumulative Incidence</h3>
-			<%= #if @endpoint.is_core do %>
-				<div id="cumulinc-plot-FG" class="mt-4"></div>
-			<% #else %>
-				<!-- <p class="no-data">Not a core endpoint, no data to show.</p> -->
-			<% #end %>
-		</article>
-	</article>
-
-	<article class="box">
-		<div class="left-right-heading">
-			<h2>Mortality – FinRegistry
-				<span class="ml-2">
-					<span id="help-mortality"> </span>
-				</span>
-			</h2>
-			<a href="#">↥</a>
 		</div>
-		<%= case excluded do %>
-			<% nil -> %>
-				<div id="vue-interactive-mortality">
-					<interactive-mortality v-bind:mortality_data="mortality_data"/>
-				</div>
-			<% "excl_omitted" -> %>
-				<p class = "explanation_text"> This endpoint is excluded from FinRegistry analyses (omitted endpoint). </p>
-
-			<% "excl_diff_def" -> %>
-				<p> This endpoint is excluded (different definition than used in FinnGen).</p>
-
-			<% "excl_both" -> %>
-				<p>This endpoint is excluded (omitted and has different definition than used in FinnGen).</p>
-			<% _ -> %>
-				<p> An issue occured with rendering results for this endpoint.</p>
-		<% end %>
-
 	</article>
 
 	<!-- Template code for Correlations, Survival analyses, and Drugs sections is removed
