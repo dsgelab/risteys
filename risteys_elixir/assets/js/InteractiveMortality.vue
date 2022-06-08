@@ -1,58 +1,60 @@
 <template>
-	<div class="grid-1fr-1fr">
+	<div class="grid-2fr-3fr">
 		<div>
-			<p class="pt-6 pb-6"> Association between endpoint <span class="italic"> {{ this.mortality_data.name}} </span> and mortality:</p>
-			<table class="horizontal pb-6">
-				<thead>
-					<tr>
-						<th>Parameter </th>
-						<th>Sex </th>
-						<th>HR [95% CI]</th>
-						<th>p-value</th>
-					</tr>
-				</thead>
-				<tbody>
-					<tr v-for="sex in sexes" class="font-bold">
-						<td> {{ template_mortality_data.name }} </td>
-						<td> {{ sex }} </td>
-						<td>
-							{{ get_HR_and_CIs(
-								template_mortality_data[sex].exposure.coef,
-								template_mortality_data[sex].exposure.ci95_lower,
-								template_mortality_data[sex].exposure.ci95_upper
-								)
-							}}
-						</td>
-						<td>
-							{{ show_p(template_mortality_data[sex].exposure.p_value)}}
-						</td>
-					</tr>
+			<h3 class="pt-3"> Association</h3>
+			<p> Association between endpoint <span class="italic"> {{ this.mortality_data.name}} </span> and mortality:</p>
+			<div v-for="sex in sexes">
+				<h4 class="pt-6 italic">{{ make_sex_title(sex) }}</h4>
+				<table class="horizontal pb-6">
+					<thead>
+						<tr>
+							<th>Parameter </th>
+							<th>HR [95% CI]</th>
+							<th>p-value</th>
+						</tr>
+					</thead>
+					<tbody>
+						<tr class="font-bold">
+							<td> {{ template_mortality_data.name }} </td>
+							<td>
+								{{ get_HR_and_CIs(
+									template_mortality_data[sex].exposure.coef,
+									template_mortality_data[sex].exposure.ci95_lower,
+									template_mortality_data[sex].exposure.ci95_upper
+									)
+								}}
+							</td>
+							<td>
+								{{ show_p(template_mortality_data[sex].exposure.p_value)}}
+							</td>
+						</tr>
 
-					<tr v-for="sex in sexes">
-						<td> Birth Year </td>
-						<td> {{ sex }}</td>
-						<td>
-							{{ get_HR_and_CIs(
-								template_mortality_data[sex].birth_year.coef,
-								template_mortality_data[sex].birth_year.ci95_lower,
-								template_mortality_data[sex].birth_year.ci95_upper
-							 	)
-							}}
-						</td>
-						<td>
-							{{ show_p(template_mortality_data[sex].birth_year.p_value)}}
-						</td>
-					</tr>
-				</tbody>
-			</table>
+						<tr>
+							<td> Birth Year </td>
+							<td>
+								{{ get_HR_and_CIs(
+									template_mortality_data[sex].birth_year.coef,
+									template_mortality_data[sex].birth_year.ci95_lower,
+									template_mortality_data[sex].birth_year.ci95_upper
+									)
+								}}
+							</td>
+							<td>
+								{{ show_p(template_mortality_data[sex].birth_year.p_value)}}
+							</td>
+						</tr>
+					</tbody>
+				</table>
+			</div>
 			<!--<p class="pt-6 pb-6">
 				XXX out of XXX (XXX %) individuals with <span class="italic"> {{ this.mortality_data.name}} </span> died between 1998 and 2019.
 			</p>-->
 		</div>
 		<div>
-			<p class="pt-6 pb-6 leading-loose">
+			<h3 class="pt-3"> Absolute risk</h3>
+			<p class="pb-6 leading-loose">
 				<span id="help-mortality"></span>
-				Compute absolute risk for people of age
+				Absolute risk for people of age
 
 				<select
 					v-model="age"
@@ -62,15 +64,15 @@
 					<option v-for="(item, age) in 101" :value=age> {{ age }} </option>
 				</select>
 
-				years, who has
+				years, who have
 				<span class="italic"> {{ this.mortality_data.longname }} ({{ this.mortality_data.name}})</span>.
 			</p>
 			<table class="horizontal mb-6">
 				<thead>
 					<tr>
 						<th>N-year risk</th>
-						<th>Absolute risk (%), females</th>
-						<th>Absolute risk (%), males</th>
+						<th>Females</th>
+						<th>Males</th>
 					</tr>
 				</thead>
 				<tbody>
@@ -92,7 +94,7 @@ export default {
 		return {
             sexes: ["female", "male"],
 			age: 50,
-			follow_up_times: ["0-1", "0-5", "0-10", "0-15", "0-20"],
+			follow_up_times: [1, 5, 10, 15, 20],
             AR_females: [],
 			AR_males: [],
 			/* this.mortality_data is assigned as data value to access the data from template, otherwise undefined.
@@ -107,6 +109,12 @@ export default {
 	},
 
     methods: {
+		make_sex_title(sex){
+			sex = sex + "s"
+			sex = sex.replace(/^\w/, (c) => c.toUpperCase()); /* capitalize first letter */
+			return sex
+		},
+
 		show_p (value){
 			if(value == null) {
 				return "no data"
@@ -136,11 +144,11 @@ export default {
 				if (isNaN(AR[i])) { // some of the input values is not available
 					AR[i] = "no data";
 				} else if(AR[i] < 0.001) {
-					AR[i] = "<" + String.fromCharCode(160) + "0.001"; // Non-breakable space is char 160
+					AR[i] = "<" + String.fromCharCode(160) + "0.001%"; // Non-breakable space is char 160
 				} else if(AR[i] > 95) {
-					AR[i] = ">" + String.fromCharCode(160) + "95";
+					AR[i] = ">" + String.fromCharCode(160) + "95%";
 				} else {
-					AR[i] = AR[i].toFixed(3);
+					AR[i] = AR[i].toFixed(3) + "%";
 				}
 			}
 			return AR;
