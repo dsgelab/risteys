@@ -40,6 +40,12 @@ defmodule RisteysWeb.StatsDataChannel do
     {:noreply, socket}
   end
 
+  def handle_in("get_mortality", %{"endpoint" => endpoint_name}, socket) do
+    payload = FGEndpoint.get_mortality_data(endpoint_name)
+    :ok = push(socket, "data_mortality", %{mortality_data: payload})
+    {:noreply, socket}
+  end
+
   def handle_in("get_year_histogram", %{"endpoint" => endpoint_name, "dataset" => dataset}, socket) do
     payload =
       FGEndpoint.get_year_histogram(endpoint_name, dataset)
@@ -59,11 +65,5 @@ defmodule RisteysWeb.StatsDataChannel do
 	"count" => count
        }
     end)
-  end
-
-  def handle_in("get_mortality", %{"endpoint" => endpoint_name}, socket) do
-    payload = FGEndpoint.get_mortality_data(endpoint_name)
-    :ok = push(socket, "data_mortality", %{mortality_data: payload})
-    {:noreply, socket}
   end
 end
