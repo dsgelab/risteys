@@ -17,7 +17,7 @@ config.canvas.fontFamily = "sans-serif";
 // Margins
 // Following https://observablehq.com/@d3/margin-convention
 config.margin = {};
-config.margin.left = 55; // px
+config.margin.left = 60; // px
 config.margin.right = 15; // px
 config.margin.top =  15; // px. Give a little headroom to not truncate text
 config.margin.bot =  45; // px
@@ -25,7 +25,7 @@ config.margin.bot =  45; // px
 // X tick labels
 config.xTickLabels = {};
 config.xTickLabels.marginBot = 27; // px. Push the labels above the X axis label
-config.xTickLabels.fontSize = 10;
+config.xTickLabels.fontSize = 13;
 config.xTickLabels.textAnchor = "middle";
 config.xTickLabels.yBaseline = config.canvas.height - config.xTickLabels.marginBot; // px
 
@@ -70,7 +70,7 @@ config.bgbin.fill = "#eee";
 
 // Tooltips with numbers
 config.tooltip = {};
-config.tooltip.fontSize = 12;
+config.tooltip.fontSize = 13;
 config.tooltip.marginTop = 12;  // px. Push the tooltip baseline a bit down so it displays inside the canvas
 config.tooltip.textAnchor = "middle";
 
