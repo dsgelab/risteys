@@ -3,8 +3,8 @@ import * as d3 from "d3";
 const margin = {
 	top: 0,
 	right: 0,
-	bottom: 40,
-	left: 50
+	bottom: 50,
+	left: 55
 };
 const width = 535;
 const height = 260;
@@ -84,10 +84,12 @@ function drawPlot(selector, data) {
   const xAxis = (g) => {
      g.attr("transform", `translate(0,${height - margin.bottom})`)
       .call(d3.axisBottom(x).tickValues(d3.range(0, age.max + 1, 10)).tickSizeOuter(0))
+      .attr("font-size", 12)
   };
   const yAxis = (g) => {
     g.attr("transform", `translate(${margin.left},0)`)
      .call(d3.axisLeft(y))
+     .attr("font-size", 12)
   };
 
 

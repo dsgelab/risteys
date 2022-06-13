@@ -184,8 +184,8 @@ if (path.startsWith("/endpoints/")) {  // Load only on endpoint pages
     stats_data_channel.push("get_age_histogram", {endpoint: endpoint, dataset: "FG"});
     stats_data_channel.on("data_age_histogram_FG", payload => {
         const elementSelector = "#bin-plot-age-FG";
-        const xAxisLabel = "age";
-        const yAxisLabel = "individuals";
+        const xAxisLabel = "Age";
+        const yAxisLabel = "Individuals";
         const data = payload.data;
         const plot_color = color_black;
         varBinPlot(elementSelector, data, xAxisLabel, yAxisLabel, plot_color);
@@ -195,8 +195,8 @@ if (path.startsWith("/endpoints/")) {  // Load only on endpoint pages
     stats_data_channel.push("get_year_histogram", {endpoint: endpoint, dataset: "FG"});
     stats_data_channel.on("data_year_histogram_FG", payload => {
         const elementSelector = "#bin-plot-year-FG";
-        const xAxisLabel = "year";
-        const yAxisLabel = "individuals";
+        const xAxisLabel = "Year";
+        const yAxisLabel = "Individuals";
         const data = payload.data;
         const plot_color = color_black;
         varBinPlot(elementSelector, data, xAxisLabel, yAxisLabel, plot_color);
@@ -253,8 +253,8 @@ if (path.startsWith("/endpoints/")) {  // Load only on endpoint pages
             stats_data_channel.push("get_age_histogram", {endpoint: endpoint, dataset: "FR"});
             stats_data_channel.on("data_age_histogram_FR", payload => {
                 const elementSelector = "#bin-plot-age-FR";
-                const xAxisLabel = "age";
-                const yAxisLabel = "individuals";
+                const xAxisLabel = "Age";
+                const yAxisLabel = "Individuals";
                 const data = payload.data;
                 const plot_color = color_teal_500;
                 varBinPlot(elementSelector, data, xAxisLabel, yAxisLabel, plot_color);
@@ -264,8 +264,8 @@ if (path.startsWith("/endpoints/")) {  // Load only on endpoint pages
             stats_data_channel.push("get_year_histogram", {endpoint: endpoint, dataset: "FR"});
             stats_data_channel.on("data_year_histogram_FR", payload => {
                 const elementSelector = "#bin-plot-year-FR";
-                const xAxisLabel = "year";
-                const yAxisLabel = "individuals";
+                const xAxisLabel = "Year";
+                const yAxisLabel = "Individuals";
                 const data = payload.data;
                 const plot_color = color_teal_500;
                 varBinPlot(elementSelector, data, xAxisLabel, yAxisLabel, plot_color);
