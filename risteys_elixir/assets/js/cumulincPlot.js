@@ -119,7 +119,7 @@ function drawPlot(selector, data) {
 
   // Axis labels
   const xlabel = {
-    text: "age",
+    text: "Age",
     x: 293,
     y: 250
   };
@@ -132,7 +132,7 @@ function drawPlot(selector, data) {
 
   // Y axis label
   const ylabel = {
-    text: "cumulative incidence (%)",
+    text: "Probability of first incidence (%)",
     x: -110,
     y: 15
   };
