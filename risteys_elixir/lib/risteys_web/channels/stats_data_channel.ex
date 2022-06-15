@@ -1,5 +1,3 @@
-import IO
-
 defmodule RisteysWeb.StatsDataChannel do
   use RisteysWeb, :channel
 
@@ -33,7 +31,6 @@ defmodule RisteysWeb.StatsDataChannel do
   def handle_in("get_age_histogram", %{"endpoint" => endpoint_name, "dataset" => dataset}, socket) do
     payload =
       FGEndpoint.get_age_histogram(endpoint_name, dataset)
-      |> to_d3_shape()
 
     age_hist_event = "data_age_histogram_" <> dataset
     :ok = push(socket, age_hist_event, %{data: payload})
@@ -49,21 +46,9 @@ defmodule RisteysWeb.StatsDataChannel do
   def handle_in("get_year_histogram", %{"endpoint" => endpoint_name, "dataset" => dataset}, socket) do
     payload =
       FGEndpoint.get_year_histogram(endpoint_name, dataset)
-      |> to_d3_shape()
 
     year_hist_event = "data_year_histogram_" <> dataset
     :ok = push(socket, year_hist_event, %{data: payload})
     {:noreply, socket}
-  end
-
-  defp to_d3_shape(histogram) do
-    Enum.map(histogram, fn [[left, right], count] ->
-      %{"interval" => %{
-	   "left" => left,
-	   "right" => right
-	 },
-	"count" => count
-       }
-    end)
   end
 end

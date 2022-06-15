@@ -6,6 +6,8 @@ defmodule Risteys.FGEndpoint do
   alias Risteys.Repo
   alias Risteys.Icd10
   alias Risteys.StatsSex
+  alias Risteys.YearDistribution
+  alias Risteys.AgeDistribution
   alias Risteys.MortalityParams
   alias Risteys.MortalityBaseline
   alias Risteys.Genomics
@@ -16,7 +18,6 @@ defmodule Risteys.FGEndpoint do
   alias Risteys.FGEndpoint.ExplainerStep
   alias Risteys.FGEndpoint.StatsCumulativeIncidence
 
-  import IO
   # -- Endpoint --
   def list_endpoint_names() do
     Repo.all(from endpoint in Definition, select: endpoint.name)
@@ -462,33 +463,41 @@ defmodule Risteys.FGEndpoint do
   end
 
   # -- Histograms --
-  defp get_histograms(endpoint_name, dataset) do
-    endpoint = Repo.get_by!(Definition, name: endpoint_name)
-    sex_all = 0
-
-    %{
-      distrib_age: %{"hist" => hist_age},
-      distrib_year: %{"hist" => hist_year}
-    } =
-      Repo.one(
-        from ss in StatsSex,
-          where:
-            ss.fg_endpoint_id == ^endpoint.id and
-            ss.sex == ^sex_all and
-            ss.dataset == ^dataset
-      )
-
-    %{age: hist_age, year: hist_year}
-  end
-
   def get_age_histogram(endpoint_name, dataset) do
-    %{age: hist} = get_histograms(endpoint_name, dataset)
-    hist
+    get_histograms(endpoint_name, dataset, AgeDistribution)
   end
 
   def get_year_histogram(endpoint_name, dataset) do
-    %{year: hist} = get_histograms(endpoint_name, dataset)
-    hist
+    get_histograms(endpoint_name, dataset, YearDistribution)
+  end
+
+  def get_histograms(endpoint_name, dataset, distrib_module) do
+    endpoint = Repo.get_by!(Definition, name: endpoint_name)
+
+    Repo.all(
+      from distrib in distrib_module,
+        where:
+          distrib.fg_endpoint_id == ^endpoint.id and
+          distrib.dataset == ^dataset,
+        select: {
+          distrib.left,
+          distrib.right,
+          distrib.count
+        },
+        # the first data row in the DB has nil in the "left" column,
+        # need to sort data to have the data from that row as first item of a list returned by the DB query
+        order_by: [asc_nulls_first: distrib.left]
+    )
+    # convert a list of tuples returned by the DB query into a list of nested maps
+    |> Enum.map(fn {left, right, count} ->
+      %{
+        "interval" => %{
+          "left" => left,
+          "right" => right
+          },
+        "count" => count
+      }
+    end)
   end
 
   # -- Correlation --

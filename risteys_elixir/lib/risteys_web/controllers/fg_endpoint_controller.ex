@@ -7,9 +7,9 @@ defmodule RisteysWeb.FGEndpointController do
     CoxHR,
     DrugStats,
     FGEndpoint,
-    StatsSex
+    KeyFigures
   }
-
+  import IO
   import Ecto.Query
 
   def redirect_legacy_url(conn, %{"name" => name}) do
@@ -135,61 +135,10 @@ defmodule RisteysWeb.FGEndpointController do
         %{}
       end
 
-    # Get stats
-    stats_FG = get_stats(endpoint, "FG")
-    stats_FR = get_stats(endpoint, "FR")
-    stats_FR_index = get_stats(endpoint, "FR_index")
-    %{all: %{distrib_year: distrib_year_FG, distrib_age: distrib_age_FG}} = stats_FG
-    %{all: %{distrib_year: distrib_year_FR, distrib_age: distrib_age_FR}} = stats_FR
-
-    # Unwrap histograms
-    %{"hist" => distrib_year_FG} =
-      case distrib_year_FG do
-        nil ->
-          %{"hist" => nil}
-
-        [] ->
-          %{"hist" => nil}
-
-        _ ->
-          distrib_year_FG
-      end
-
-    %{"hist" => distrib_year_FR} =
-      case distrib_year_FR do
-        nil ->
-          %{"hist" => nil}
-
-        [] ->
-          %{"hist" => nil}
-
-        _ ->
-          distrib_year_FR
-      end
-
-    %{"hist" => distrib_age_FG} =
-      case distrib_age_FG do
-        nil ->
-          %{"hist" => nil}
-
-        [] ->
-          %{"hist" => nil}
-
-        _ ->
-          distrib_age_FG
-      end
-
-    %{"hist" => distrib_age_FR} =
-      case distrib_age_FR do
-        nil ->
-          %{"hist" => nil}
-
-        [] ->
-          %{"hist" => nil}
-
-        _ ->
-          distrib_age_FR
-      end
+    # Get key figures
+    key_figures_FG = get_key_figures(endpoint, "FG")
+    key_figures_FR = get_key_figures(endpoint, "FR")
+    key_figures_FR_index = get_key_figures(endpoint, "FR_index")
 
     # Variants in correlations
     authz_list_variants? =
@@ -215,13 +164,9 @@ defmodule RisteysWeb.FGEndpointController do
     |> assign(:ontology, ontology)
     |> assign(:broader_endpoints, FGEndpoint.broader_endpoints(endpoint))
     |> assign(:narrower_endpoints, FGEndpoint.narrower_endpoints(endpoint))
-    |> assign(:stats_FG, stats_FG)
-    |> assign(:stats_FR, stats_FR)
-    |> assign(:stats_FR_index, stats_FR_index)
-    |> assign(:distrib_year_FG, distrib_year_FG)
-    |> assign(:distrib_year_FR, distrib_year_FR)
-    |> assign(:distrib_age_FG, distrib_age_FG)
-    |> assign(:distrib_age_FR, distrib_age_FR)
+    |> assign(:key_figures_FG, key_figures_FG)
+    |> assign(:key_figures_FR, key_figures_FR)
+    |> assign(:key_figures_FR_index, key_figures_FR_index)
     |> assign(:description, description)
     |> assign(:data_assocs, data_assocs(endpoint))
     |> assign(:has_drug_stats, FGEndpoint.has_drug_stats?(endpoint))
@@ -230,40 +175,23 @@ defmodule RisteysWeb.FGEndpointController do
     |> render("show.html")
   end
 
-  defp get_stats(endpoint, dataset) do
-    stats = Repo.all(from ss in StatsSex, where: ss.fg_endpoint_id == ^endpoint.id and ss.dataset == ^dataset)
-
-    no_stats = %{
-      n_individuals: "-",
-      prevalence: "-",
-      median_age: "-",
-      distrib_year: [],
-      distrib_age: []
-    }
-
-    stats_all =
-      case Enum.filter(stats, fn stats_sex -> stats_sex.sex == 0 end) do
-        [] -> no_stats
-        values -> hd(values)
-      end
-
-    stats_female =
-      case Enum.filter(stats, fn stats_sex -> stats_sex.sex == 2 end) do
-        [] -> no_stats
-        values -> hd(values)
-      end
-
-    stats_male =
-      case Enum.filter(stats, fn stats_sex -> stats_sex.sex == 1 end) do
-        [] -> no_stats
-        values -> hd(values)
-      end
-
-    %{
-      all: stats_all,
-      female: stats_female,
-      male: stats_male
-    }
+  defp get_key_figures(endpoint, dataset) do
+    key_fig =
+      Repo.one(from kf in KeyFigures,
+      where: kf.fg_endpoint_id == ^endpoint.id and kf.dataset == ^dataset,
+      select: %{
+        fg_endpoint_id: kf.fg_endpoint_id,
+        nindivs_all: kf.nindivs_all,
+        nindivs_female: kf.nindivs_female,
+        nindivs_male: kf.nindivs_male,
+        median_age_all: kf.median_age_all,
+        median_age_female: kf.median_age_female,
+        median_age_male: kf.median_age_male,
+        prevalence_all: kf.prevalence_all,
+        prevalence_female: kf.prevalence_female,
+        prevalence_male: kf.prevalence_male,
+        dataset: kf.dataset
+      })
   end
 
   defp data_assocs(endpoint) do
