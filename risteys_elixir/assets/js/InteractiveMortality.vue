@@ -51,10 +51,10 @@
 			</p>-->
 		</div>
 		<div>
-			<h3 class="pt-3"> Absolute risk</h3>
+			<h3 class="pt-3"> Mortality risk</h3>
 			<p class="pb-6 leading-loose">
 				<span id="help-mortality"></span>
-				Absolute risk for people of age
+				Mortality risk for people of age
 
 				<select
 					v-model="age"
@@ -125,7 +125,7 @@ export default {
 			}
 		},
 
-		/* get absolute risk for females and males*/
+		/* get mortality risk (absolute risk) for females and males*/
 		get_AR () {
 			this.AR_females = this.compute_AR("female")
 			this.AR_males = this.compute_AR("male")
@@ -136,7 +136,7 @@ export default {
 			let n_year = [1,5,10,15,20];
 			let AR = []
 
-			/* Compute absolute risk for each follow-up time using baseline hazard, age, sex, and birth year */
+			/* Compute mortality risk (absolute risk) for each follow-up time using baseline hazard, age, sex, and birth year */
 			for(let i = 0; i < n_year.length; i ++) {
 
 				AR[i] = (1 - this.compute_S(this.age + n_year[i], sex) / this.compute_S(this.age, sex)) * 100
