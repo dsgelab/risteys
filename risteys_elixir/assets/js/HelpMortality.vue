@@ -6,7 +6,7 @@
 		</article>
 
 		<article>
-			<h3>Absolute risk</h3>
+			<h3>Mortality risk</h3>
 			<p>Estimates the N-year risk of death for a person of a specific age having the endpoint. See <a href="/documentation/#mortality">Documentation</a> for more details.</p>
 		</article>
 	</HelpButton>
