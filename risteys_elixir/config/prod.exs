@@ -15,7 +15,9 @@ config :risteys, RisteysWeb.Endpoint,
   cache_static_manifest: "priv/static/cache_manifest.json",
   # Enable gzip compression. Note that phx.digest MUST be run in order
   # to generate the gzip files that will be used.
-  gzip: true
+  gzip: true,
+  # force_ssl: [hsts: true] # this causes page not to open due to too many redirections
+  force_ssl: [rewrite_on: [:x_forwarded_proto]]
 
 # Do not print debug messages in production
 config :logger, level: :info
