@@ -192,6 +192,22 @@ defmodule RisteysWeb.FGEndpointController do
         prevalence_male: kf.prevalence_male,
         dataset: kf.dataset
       })
+
+    key_figures =
+      case key_fig do
+        nil -> nil
+        _ ->
+          Enum.reduce(
+            key_fig,
+            %{},
+            fn {k, v}, acc ->
+              case v do
+                nil -> Map.put(acc, k, "-")
+                _ -> Map.put(acc, k, v)
+              end
+            end
+          )
+      end
   end
 
   defp data_assocs(endpoint) do
