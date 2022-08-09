@@ -20,6 +20,7 @@ defmodule RisteysWeb.Router do
     get "/documentation", DocumentationController, :index
     get "/changelog", ChangelogController, :index
     get "/endpoint/:name", FGEndpointController, :show
+    get "/random_endpoint/", FGEndpointController, :redir_random
 
     # Redirect legacy URL to keep shared and published links working
     get "/phenocode/:name", FGEndpointController, :redirect_phenocode
