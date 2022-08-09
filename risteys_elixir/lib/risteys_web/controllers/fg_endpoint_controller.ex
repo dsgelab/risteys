@@ -34,6 +34,12 @@ defmodule RisteysWeb.FGEndpointController do
     end
   end
 
+  def redir_random(conn, _params) do
+    endpoint = FGEndpoint.get_random_endpoint()
+
+    redirect(conn, to: Routes.fg_endpoint_path(conn, :show, endpoint.name))
+  end
+
   def get_assocs_json(conn, params) do
     get_assocs(conn, params, :json)
   end

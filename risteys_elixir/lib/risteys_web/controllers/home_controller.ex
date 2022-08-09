@@ -4,10 +4,6 @@ defmodule RisteysWeb.HomeController do
   plug :put_layout, "minimal.html"
 
   def index(conn, _params) do
-    random_endpoint = Risteys.FGEndpoint.get_random_endpoint()
-
-    conn
-    |> assign(:random_endpoint, random_endpoint)
-    |> render("index.html")
+    render(conn, "index.html")
   end
 end
