@@ -193,9 +193,23 @@ defmodule RisteysWeb.FGEndpointController do
         dataset: kf.dataset
       })
 
+    no_key_figures = %{
+      fg_endpoint_id: "-",
+      nindivs_all: "-",
+      nindivs_female: "-",
+      nindivs_male: "-",
+      median_age_all: "-",
+      median_age_female: "-",
+      median_age_male: "-",
+      prevalence_all: "-",
+      prevalence_female: "-",
+      prevalence_male: "-",
+      dataset: "-"
+    }
+
     key_figures =
       case key_fig do
-        nil -> nil
+        nil -> no_key_figures
         _ ->
           Enum.reduce(
             key_fig,
