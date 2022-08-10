@@ -18,10 +18,10 @@ defmodule RisteysWeb.LayoutView do
         path
       end
 
-    # Endpoint page was /phenocode/<NAME> instead of /endpoint/<NAME> before version 9
+    # Endpoint page was /phenocode/<NAME> instead of /endpoints/<NAME> before version 9
     path =
       if version < 9 do
-        String.replace_prefix(path, "/endpoint/", "/phenocode/")
+        String.replace_prefix(path, "/endpoints/", "/phenocode/")
       else
         path
       end

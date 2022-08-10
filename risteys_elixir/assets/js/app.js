@@ -129,7 +129,7 @@ if (path === "/") {
 /*
  * ENDPOINT PAGE
  */
-if (path.startsWith("/endpoint/")) {  // Load only on endpoint pages
+if (path.startsWith("/endpoints/")) {  // Load only on endpoint pages
 
     let endpoint = path.split("/")[2];
 
@@ -236,7 +236,7 @@ if (path.startsWith("/endpoint/")) {  // Load only on endpoint pages
 
 
     /* SURVIVAL ANALYSIS DATA */
-    fetch('/api/endpoint/' + endpoint + '/assocs.json', {
+    fetch('/api/endpoints/' + endpoint + '/assocs.json', {
         cache: 'default',
         mode: 'same-origin'
     }).then((response) => {
@@ -263,7 +263,7 @@ if (path.startsWith("/endpoint/")) {  // Load only on endpoint pages
 
 
     /* DRUG TABLE */
-    fetch('/api/endpoint/' + endpoint + '/drugs.json', {
+    fetch('/api/endpoints/' + endpoint + '/drugs.json', {
         cache: 'default',
         mode: 'same-origin'
     }).then((response) => {
