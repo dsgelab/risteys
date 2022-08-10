@@ -202,6 +202,9 @@ defmodule RisteysWeb.FGEndpointView do
       Enum.max(step_counts) == 0 ->
         no_count
 
+      count == "-" ->
+	no_count
+
       true ->
         count / Enum.max(step_counts) * 100
     end
