@@ -38,6 +38,7 @@ defmodule RisteysWeb.Router do
   scope "/api", RisteysWeb do
     pipe_through :api
 
+    get "/endpoints/", FGEndpointController, :index_json
     get "/endpoints/:name/assocs.json", FGEndpointController, :get_assocs_json
     get "/endpoints/:name/assocs.csv", FGEndpointController, :get_assocs_csv
     get "/endpoints/:name/drugs.json", FGEndpointController, :get_drugs_json

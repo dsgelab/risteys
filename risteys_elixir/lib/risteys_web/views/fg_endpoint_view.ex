@@ -4,6 +4,10 @@ defmodule RisteysWeb.FGEndpointView do
 
   alias Risteys.FGEndpoint
 
+  def render("index.json", %{endpoints: endpoints}) do
+    endpoints
+  end
+
   def render("assocs.json", %{
         endpoint: endpoint,
         assocs: assocs,
