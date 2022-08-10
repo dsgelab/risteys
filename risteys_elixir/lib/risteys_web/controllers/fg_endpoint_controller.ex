@@ -40,6 +40,14 @@ defmodule RisteysWeb.FGEndpointController do
     redirect(conn, to: Routes.fg_endpoint_path(conn, :show, endpoint.name))
   end
 
+  def index_json(conn, _params) do
+    endpoints = FGEndpoint.list_endpoint_names()
+
+    conn
+    |> assign(:endpoints, endpoints)
+    |> render("index.json")
+  end
+
   def get_assocs_json(conn, params) do
     get_assocs(conn, params, :json)
   end

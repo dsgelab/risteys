@@ -16,6 +16,10 @@ defmodule Risteys.FGEndpoint do
   alias Risteys.FGEndpoint.StatsCumulativeIncidence
 
   # -- Endpoint --
+  def list_endpoint_names() do
+    Repo.all(from endpoint in Definition, select: endpoint.name)
+  end
+
   def list_endpoints_ids() do
     Repo.all(from endpoint in Definition, select: {endpoint.id, endpoint.name})
     |> Enum.reduce(%{}, fn {id, name}, acc ->
