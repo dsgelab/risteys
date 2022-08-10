@@ -19,11 +19,12 @@ defmodule RisteysWeb.Router do
     get "/", HomeController, :index
     get "/documentation", DocumentationController, :index
     get "/changelog", ChangelogController, :index
-    get "/endpoint/:name", FGEndpointController, :show
+    get "/endpoints/:name", FGEndpointController, :show
     get "/random_endpoint/", FGEndpointController, :redir_random
 
-    # Redirect legacy URL to keep shared and published links working
-    get "/phenocode/:name", FGEndpointController, :redirect_phenocode
+    # Redirect legacy URLs to keep shared and published links working
+    get "/phenocode/:name", FGEndpointController, :redirect_legacy_url
+    get "/endpoint/:name", FGEndpointController, :redirect_legacy_url
   end
 
   scope "/auth", RisteysWeb do
@@ -37,9 +38,9 @@ defmodule RisteysWeb.Router do
   scope "/api", RisteysWeb do
     pipe_through :api
 
-    get "/endpoint/:name/assocs.json", FGEndpointController, :get_assocs_json
-    get "/endpoint/:name/assocs.csv", FGEndpointController, :get_assocs_csv
-    get "/endpoint/:name/drugs.json", FGEndpointController, :get_drugs_json
-    get "/endpoint/:name/drugs.csv", FGEndpointController, :get_drugs_csv
+    get "/endpoints/:name/assocs.json", FGEndpointController, :get_assocs_json
+    get "/endpoints/:name/assocs.csv", FGEndpointController, :get_assocs_csv
+    get "/endpoints/:name/drugs.json", FGEndpointController, :get_drugs_json
+    get "/endpoints/:name/drugs.csv", FGEndpointController, :get_drugs_csv
   end
 end

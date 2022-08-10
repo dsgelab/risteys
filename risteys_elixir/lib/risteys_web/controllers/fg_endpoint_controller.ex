@@ -13,7 +13,7 @@ defmodule RisteysWeb.FGEndpointController do
 
   import Ecto.Query
 
-  def redirect_phenocode(conn, %{"name" => name}) do
+  def redirect_legacy_url(conn, %{"name" => name}) do
     conn
     |> put_status(:moved_permanently)
     |> redirect(to: Routes.fg_endpoint_path(conn, :show, name))

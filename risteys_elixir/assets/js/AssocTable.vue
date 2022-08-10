@@ -96,7 +96,7 @@
 				<!-- ENDPOINT NAME -->
 				<div role="cell">
 					<img src="/images/explag.svg" v-on:click="toggle_fold(endpoint.name)" alt="expand data" class="cursor-pointer mini-button">
-					<a :href="'/endpoint/' + endpoint.name" :title="endpoint.name">{{ endpoint.longname }}</a>
+					<a :href="'/endpoints/' + endpoint.name" :title="endpoint.name">{{ endpoint.longname }}</a>
 				</div>
 
 				<!-- (before) HR -->
