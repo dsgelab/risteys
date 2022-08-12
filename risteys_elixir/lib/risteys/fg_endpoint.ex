@@ -2,6 +2,7 @@ defmodule Risteys.FGEndpoint do
   @moduledoc """
   The FGEndpoint context.
   """
+  import IO
   import Ecto.Query, warn: false
   alias Risteys.Repo
   alias Risteys.Icd10
@@ -10,6 +11,7 @@ defmodule Risteys.FGEndpoint do
   alias Risteys.AgeDistribution
   alias Risteys.MortalityParams
   alias Risteys.MortalityBaseline
+  alias Risteys.MortalityCounts
   alias Risteys.Genomics
   alias Risteys.DrugStats
 
@@ -741,6 +743,31 @@ defmodule Risteys.FGEndpoint do
             end
           end
 
+        # get sex-specific case counts
+        case_counts =
+          Repo.one(
+            from counts in MortalityCounts,
+              where: counts.fg_endpoint_id == ^endpoint.id and
+              counts.sex == ^sex,
+              select: %{
+                exposed: counts.exposed,
+                exposed_cases: counts.exposed_cases
+              }
+            )
+
+        empty_counts_map = %{
+          exposed: nil,
+          exposed_cases: nil
+        }
+
+        # save data or empty map to "sex_specific_results" map
+        sex_specific_results =
+          case case_counts do
+            nil -> Map.put(sex_specific_results, :case_counts, empty_counts_map)
+            case_counts -> Map.put(sex_specific_results, :case_counts, Enum.into(case_counts, %{}))
+          end
+
+        # save sex_specific_results to mortality_data map
         sex_key = String.to_atom(sex)
 
         Map.put_new(acc, sex_key, sex_specific_results)

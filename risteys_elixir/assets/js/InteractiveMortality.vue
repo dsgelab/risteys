@@ -1,5 +1,5 @@
 <template>
-	<div class="grid-2fr-3fr">
+	<div class="grid-1fr-1fr">
 		<div>
 			<h3 class="pt-3"> Association</h3>
 			<p> Association between endpoint <span class="italic"> {{ this.mortality_data.name}} </span> and mortality:</p>
@@ -45,10 +45,15 @@
 						</tr>
 					</tbody>
 				</table>
+
+				<p class="pt-6 pb-6">
+					{{ get_value_or_0(template_mortality_data[sex].case_counts.exposed_cases) }} out of
+					{{ get_value_or_0(template_mortality_data[sex].case_counts.exposed) }} {{ sex }}s
+					with <span class="italic"> {{ template_mortality_data.name}} </span> died during the follow-up period (1998 — 2019).
+				</p>
+
 			</div>
-			<!--<p class="pt-6 pb-6">
-				XXX out of XXX (XXX %) individuals with <span class="italic"> {{ this.mortality_data.name}} </span> died between 1998 and 2019.
-			</p>-->
+
 		</div>
 		<div>
 			<h3 class="pt-3"> Mortality risk</h3>
@@ -122,6 +127,17 @@ export default {
 				return "<" + String.fromCharCode(160) + "0.001" // Non-breakable space is char 160
 			} else {
 				return value.toFixed(3);
+			}
+		},
+
+		/* get mortality counts if available, if null, return 0.
+		both "exposed" and "exposed_case" values are always both available or null,
+		so no need to test it here (changeset validates values to be >= 0) */
+		get_value_or_0 (value){
+			if(value == null) {
+				return 0
+			} else {
+				return value
 			}
 		},
 
