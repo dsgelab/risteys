@@ -1,5 +1,5 @@
 <template>
-	<div class="grid-2fr-3fr">
+	<div class="grid-1fr-1fr">
 		<div>
 			<h3 class="pt-3"> Association</h3>
 			<p> Association between endpoint <span class="italic word-break"> {{ this.mortality_data.name}} </span> and mortality:</p>
