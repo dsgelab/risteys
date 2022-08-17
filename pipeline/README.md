@@ -5,7 +5,6 @@ The Risteys pipeline is used for generating aggregated data displayed on the [Ri
 - Age and year distributions 
 - Cumulative incidence function 
 - Mortality analysis
-- (Coming soon: Endpoint-endpoint survival analysis)
 
 The methods are described in [Risteys documentation](https://risteys.finregistry.fi/documentation). If you have any questions or feedback, feel free to [contact us](https://airtable.com/shrTzTwby7JhFEqi6) or [open an issue](https://github.com/dsgelab/risteys/issues/new) on GitHub.
 
