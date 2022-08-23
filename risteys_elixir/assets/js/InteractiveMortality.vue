@@ -32,7 +32,7 @@
 						</tr>
 
 						<tr>
-							<td> Birth Year </td>
+							<td> Birth year </td>
 							<td>
 								{{ get_HR_and_CIs(
 									template_mortality_data[sex].birth_year.coef,
