@@ -2,7 +2,7 @@
 	<div class="grid-1fr-1fr">
 		<div>
 			<h3 class="pt-3"> Association</h3>
-			<p> Association between endpoint <span class="italic"> {{ this.mortality_data.name}} </span> and mortality:</p>
+			<p> Association between endpoint <span class="italic word-break"> {{ this.mortality_data.name}} </span> and mortality:</p>
 			<div v-for="sex in sexes">
 				<h4 class="pt-6 italic">{{ make_sex_title(sex) }}</h4>
 				<table class="horizontal pb-6">
@@ -15,7 +15,9 @@
 					</thead>
 					<tbody>
 						<tr class="font-bold">
-							<td> {{ template_mortality_data.name }} </td>
+							<td>
+								<span> {{ name_or_shortcut(template_mortality_data.name) }} </span>
+							</td>
 							<td>
 								{{ get_HR_and_CIs(
 									template_mortality_data[sex].exposure.coef,
@@ -49,7 +51,7 @@
 				<p class="pt-6 pb-6">
 					{{ get_value_or_0(template_mortality_data[sex].case_counts.exposed_cases) }} out of
 					{{ get_value_or_0(template_mortality_data[sex].case_counts.exposed) }} {{ sex }}s
-					with <span class="italic"> {{ template_mortality_data.name}} </span> died during the follow-up period (1998 — 2019).
+					with <span class="italic"> {{ name_or_shortcut(template_mortality_data.name) }} </span> died during the follow-up period (1998 — 2019).
 				</p>
 
 			</div>
@@ -70,7 +72,7 @@
 				</select>
 
 				years, who have
-				<span class="italic"> {{ this.mortality_data.longname }} ({{ this.mortality_data.name}})</span>.
+				<span class="italic"> {{ this.mortality_data.longname }} ({{ name_or_shortcut(this.mortality_data.name) }})</span>.
 			</p>
 			<table class="horizontal mb-6">
 				<thead>
@@ -210,6 +212,16 @@ export default {
 				return this.mortality_data[sex].bch[age]
 			} catch (error) {
 				return null
+			}
+		},
+
+		name_or_shortcut (endp_name) {
+			/* if endpoint name is longer than 24 char, return only first 24 char
+			followed by three dots, otherwise return the whole name*/
+			if (endp_name.length > 24) {
+				return endp_name.slice(0, 24) + "..."
+			} else {
+				return endp_name
 			}
 		},
 
