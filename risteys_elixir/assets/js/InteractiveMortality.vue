@@ -49,9 +49,10 @@
 				</table>
 
 				<p class="pt-6 pb-6">
+					During the follow-up period (1.1.1998 — 31.12.2019),
 					{{ get_value_or_0(template_mortality_data[sex].case_counts.exposed_cases) }} out of
 					{{ get_value_or_0(template_mortality_data[sex].case_counts.exposed) }} {{ sex }}s
-					with <span class="italic"> {{ name_or_shortcut(template_mortality_data.name) }} </span> died during the follow-up period (1998 — 2019).
+					with <span class="italic"> {{ name_or_shortcut(template_mortality_data.name) }} </span> died.
 				</p>
 
 			</div>
