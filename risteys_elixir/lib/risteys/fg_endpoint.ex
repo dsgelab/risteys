@@ -650,9 +650,18 @@ defmodule Risteys.FGEndpoint do
     females = get_cumulinc_sex(endpoint_id, "female", dataset)
     males = get_cumulinc_sex(endpoint_id, "male", dataset)
 
+    # Get value for CIF plot y-axis to scale to content
+    # Get the max values of "value" for both females and males and take the max between them
+    # and ceil to closest integer
+    max_females = get_max_of_value(females)
+    max_males = get_max_of_value(males)
+    max_value = Enum.max([max_females, max_males])
+    max_value = Float.ceil(max_value)
+
     %{
       females: females,
-      males: males
+      males: males,
+      max_value: max_value
     }
   end
 
@@ -676,6 +685,17 @@ defmodule Risteys.FGEndpoint do
       data_point = %{age: age, value: value * 100}
       [data_point | acc]
     end)
+  end
+
+  defp get_max_of_value(list_of_maps) do
+    # the input is a list of maps where keys are "age" and "value"
+    # make a list of values of the "value" key from the list of maps
+    # this creates a list because a list is the default output of for
+    values = for %{age: age, value: value} <- list_of_maps, do: value
+
+    # return max value of values
+    # if there is no results, return 0.0 (need to be float for Float.ceil to work in later step)
+    max_value = if values == [], do: 0.0, else: Enum.max(values)
   end
 
   # -- Interactive Mortality --

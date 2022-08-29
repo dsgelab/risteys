@@ -212,13 +212,15 @@ if (path.startsWith("/endpoints/")) {  // Load only on endpoint pages
                 name: "female",
                 color: color_blue_base,
                 dasharray: pattern_female,
-                cumulinc: payload.females
+                cumulinc: payload.females,
+                max_value: payload.max_value
             },
             {
                 name: "male",
                 color: color_black,
                 dasharray: pattern_male,
-                cumulinc: payload.males
+                cumulinc: payload.males,
+                max_value: payload.max_value
             }
         ];
 
@@ -282,13 +284,15 @@ if (path.startsWith("/endpoints/")) {  // Load only on endpoint pages
                         name: "female",
                         color: color_teal_500,
                         dasharray: pattern_female,
-                        cumulinc: payload.females
+                        cumulinc: payload.females,
+                        max_value: payload.max_value
                     },
                     {
                         name: "male",
                         color: color_black,
                         dasharray: pattern_male,
-                        cumulinc: payload.males
+                        cumulinc: payload.males,
+                        max_value: payload.max_value
                     }
                 ];
 
