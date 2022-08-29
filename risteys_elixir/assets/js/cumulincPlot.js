@@ -76,9 +76,10 @@ function drawPlot(selector, data) {
   	  .clamp(true)
   ;
   // Domain (cumulative incidence) to range (pixels)
+  // Scale y-axis to content by using ceiled max of cumulinc values among females and males (max_value)
   const y = d3
   	  .scaleLinear()
-  	  .domain([cumulinc.min, cumulinc.max]).nice()
+  	  .domain([cumulinc.min, data[0].max_value]).nice()
   	  .range([height - margin.bottom, margin.top])
   ;
   const xAxis = (g) => {
@@ -226,8 +227,10 @@ function drawPlot(selector, data) {
     tooltipMale.attr("transform", `translate(${xRangeVal}, ${yMaleRangeVal})`);
 
     // Set and position texts
-    textFemale.text(`Female: ${Math.floor(yFemaleDomainVal)}%`);
-    textMale.text(`Male: ${Math.floor(yMaleDomainVal)}%`);
+    // the text is not shown when value is null
+    // to avoid TypeErrors from toFixed, Number() is used to force the input to Number -> nulls become 0
+    textFemale.text(`Female: ${Number(yFemaleDomainVal).toFixed(1)}%`);
+    textMale.text(`Male: ${Number(yMaleDomainVal).toFixed(1)}%`);
 
     // Reposition textMale if we are close to the right-side
     const percToLeft = xRangeVal / width;
