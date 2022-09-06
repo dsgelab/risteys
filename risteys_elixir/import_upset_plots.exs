@@ -7,10 +7,16 @@ import Ecto.Query
 require Logger
 alias Risteys.FGEndpoint
 alias Risteys.Repo
-alias Risteys.StatsSex
+alias Risteys.KeyFigures
 
 # --- CLI argument parser
-[in_dir] = System.argv()
+[in_dir, dataset | _] = System.argv()
+
+# raise an error if correct dataset info is not provided
+# at the moment, upset plots and tables are only done from FinnGen data, so dataset needs to be FG
+if dataset != "FG" do
+  raise ArgumentError, message: "Dataset 'FG' need to be given as a second argument"
+end
 
 # --- Configuration
 runlog_file = "error_log.csv"
@@ -112,7 +118,6 @@ end)
 
 # --- Generate and import tables
 Logger.info("Generating upset tables, adding as static files and setting status in DB")
-value_sex_any = 0
 
 registries = %{
   "PRIM_OUT" => "Avohilmo: Primary healthcare outpatient",
@@ -129,10 +134,10 @@ registries = %{
 db_endpoints_stats =
   Repo.all(
     from endp in FGEndpoint.Definition,
-      join: stats in StatsSex,
-      on: endp.id == stats.fg_endpoint_id,
-      where: endp.name in ^Map.keys(tables),
-      select: {{endp.name, stats.sex}, stats.n_individuals}
+      join: key_fig in KeyFigures,
+      on: endp.id == key_fig.fg_endpoint_id,
+      where: endp.name in ^Map.keys(tables) and key_fig.dataset == ^dataset,
+      select: {endp.name, key_fig.nindivs_all}
   )
   |> Enum.into(%{})
 
@@ -158,8 +163,9 @@ Enum.each(tables, fn {endpoint, table_path} ->
       case_count = String.to_integer(case_count)
 
       case_percentage =
-        case Map.fetch(db_endpoints_stats, {endpoint, value_sex_any}) do
+        case Map.fetch(db_endpoints_stats, endpoint) do
           :error -> nil
+          {:ok, nil} -> nil
           {:ok, total_cases} -> case_count / total_cases * 100
         end
 
