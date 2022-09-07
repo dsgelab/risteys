@@ -131,6 +131,7 @@ def load_data(path_definitions, path_dense_fevents, path_info):
     # Get sex and approximate birth date of each indiv
     df_info = pd.read_csv(path_info, usecols=["FINNGENID", "BL_YEAR", "BL_AGE", "SEX"])
     df_info["female"] = df_info.SEX == "female"
+    df_info = df_info.loc[(~ df_info.BL_YEAR.isna()) & (~ df_info.BL_AGE.isna()), :]  # remove individuals without time info
     df_info["BIRTH_TYEAR"] = df_info.BL_YEAR - df_info.BL_AGE
     df_info = df_info.drop(columns=["SEX", "BL_YEAR", "BL_AGE"])
 
