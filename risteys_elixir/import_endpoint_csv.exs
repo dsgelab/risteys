@@ -272,6 +272,9 @@ end)
 # Omit comment line
 |> Stream.reject(fn %{name: name} -> String.starts_with?(name, "#") end)
 
+# Discard OMIT=2 endpoints
+|> Stream.reject(fn %{omit: omit} -> omit == "2" end)
+
 # Replace NA values with nil
 |> Stream.map(fn row ->
   Enum.reduce(row, %{}, fn {header, value}, acc ->
