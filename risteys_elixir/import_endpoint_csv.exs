@@ -93,7 +93,7 @@ tags =
   tagged_path
   |> File.stream!()
   |> CSV.decode!(headers: true)
-  |> Enum.reduce(%{}, fn %{"TAG" => tag, "NAME" => name}, acc ->
+  |> Enum.reduce(%{}, fn %{"CATEGORYNAME" => tag, "NAME" => name}, acc ->
     Map.put(acc, name, tag)
   end)
 
