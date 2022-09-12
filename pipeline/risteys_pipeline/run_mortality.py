@@ -23,10 +23,10 @@ def times_without_personal_data(times):
     Get times with at least `MIN_SUBJECTS_PERSONAL_DATA` persons.
     Event times are rounded to form groups.
 
-    Args: 
+    Args:
         times (Series): list of distinct event times (e.g. ages or follow-up durations)
 
-    Returns: 
+    Returns:
         times (Series): event times with no personal data
     """
     times = times.round().value_counts().sort_index()
@@ -41,16 +41,16 @@ def exposure_to_death(endpoint, cases, exposed, cohort):
     - Kaplan-Meier estimate (Aalen-Johansen with no competing events)
     - time-on-study (exposure-to-death) as a timescale
     - only exposed persons are included
-    - stratified by sex 
+    - stratified by sex
     - buffer of 30 days between exposure and outcome
 
-    Args: 
+    Args:
         endpoint (str): name of the endpoint
         cases (DataFrame): cases dataset (persons who died)
         exposed (DataFrame): exposed dataset (persons with exposure endpoint)
         cohort (DataFrame): cohort for sampling controls
 
-    Returns: 
+    Returns:
         surv (DataFrame): survival function for endpoint
     """
     logger.debug(f"{endpoint}")
@@ -76,7 +76,7 @@ def exposure_to_death(endpoint, cases, exposed, cohort):
         model = survival_analysis(df_survival, "aalen-johansen")
 
         if model is not None:
-            
+
             logger.debug("Removing personal data")
 
             times = df_survival.loc[df_survival["outcome"] == 1, "stop"]
@@ -96,20 +96,20 @@ def exposure_to_death(endpoint, cases, exposed, cohort):
 def mortality_analysis(endpoint, cases, exposed, cohort):
     """
     Mortality analysis for `endpoint`
-    - Cox PH model 
-    - age as timescale 
+    - Cox PH model
+    - age as timescale
     - endpoint is a time-varying covariate, birth_year is a covariate
     - stratified by sex (parameters are estimated by sex)
     - buffer of 30 days between exposure and outcome
-    
-    Args: 
+
+    Args:
         endpoint (str): name of the endpoint
         cases (DataFrame): cases dataset (persons who died)
         exposed (DataFrame): exposed dataset (persons with exposure endpoint)
         cohort (DataFrame): cohort for sampling controls
 
-    Returns: 
-        (params, cumulative_baseline_hazard) (tuple of DataFrames): 
+    Returns:
+        (params, cumulative_baseline_hazard) (tuple of DataFrames):
         parameters and cumulative baseline hazard by age
     """
     logger.debug(f"{endpoint}")
