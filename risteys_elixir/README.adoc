@@ -1,7 +1,7 @@
 Risteys
 =======
 
-This directory contains the code to power the online Risteys web portal. For the data pipeline, please check the other link:../pipeline/README.adoc[pipeline] directory.
+This directory contains the code to power the online FinRegistry-FinnGen Risteys web portal. For the data pipeline, please check the other link:../pipeline/README.md[pipeline] directory.
 
 The project is based on the https://phoenixframework.org/[Phoenix web framework].
 This framework is written in https://elixir-lang.org/[elixir], which is also used to do data pre-processing and import into the database.
@@ -22,14 +22,14 @@ Requirements
 
 Configuration
 ~~~~~~~~~~~~~
-Some configuration files contain secret credentials, therefore are not present in this public GitHub repository. Risteys developer can get them by requesting access to the GitLab repository "risteys/risteys_secrets".
+Some configuration files contain secret credentials, therefore are not present in this public GitHub repository. Risteys developer can get them by requesting access to the GitLab repository "risteys/risteys_secrets". Please note, that FR_FG branch for FinRegistry-FinnGen Risteys has separate secret credentials than master branch.
 
-Create a file *`dev.secret.exs`* in the `config/` directory, with the following content and replacing the <VAR>:
+Create a file *`dev_FRFG.secret.exs`* in the `config/` directory, with the following content and replacing the <VAR>:
 
-dev.secret.exs
+dev_FRFG.secret.exs
 [source,elixir]
 ----
-import Config
+use Mix.Config
 
 # Configure your database
 config :risteys, Risteys.Repo,
@@ -42,10 +42,10 @@ config :risteys, Risteys.Repo,
 
 Tips to find needed information:
 
-* Open a psql console in a terminal by running `psql postgres` (`\q` to quit). 
-* List existing users by `\du`. If you don't have postrgesql user (other than superuser), create a user with the ability to create a database. 
+* Open a psql console in a terminal by running `psql postgres` (`\q` to quit).
+* List existing users by `\du`. If you don't have postrgesql user (other than superuser), create a user with the ability to create a database.
 ** create user: `CREATE USER <username> WITH PASSWORD <password>;`
-** grant permission to create a database: `ALTER USER <username> CREATEDB;` 
+** grant permission to create a database: `ALTER USER <username> CREATEDB;`
 * get database name: `\conninfo`
 * get hostname: +
   `SELECT boot_val,reset_val` +
@@ -58,14 +58,14 @@ Create a file *`config.secret.exs`* in the `config/` directory, with the below c
 config.secret.exs
 [source,elixir]
 ----
-import Config
+use Mix.Config
 
 # Configures the endpoint
 config :risteys, RisteysWeb.Endpoint,
   url: [host: "localhost"],
   secret_key_base: "<INSERT KEY HERE>",
   render_errors: [view: RisteysWeb.ErrorView, accepts: ~w(html json)],
-  pubsub: [name: Risteys.PubSub, adapter: Phoenix.PubSub.PG2]
+  pubsub_server: Risteys.PubSub
 ----
 
 First-time dependency initialization
@@ -80,14 +80,14 @@ From a terminal in the project root directory (i.e. `risteys_elixir`), run:
 
 Running
 ~~~~~~~
-change directory back to `risteys_elixir` and connect to the server: `mix phx.server` 
+change directory back to `risteys_elixir` and connect to the server: `mix phx.server`
 
 You can now access Risteys from http://localhost:4000
 
 Importing data
 --------------
 
-Once the Risteys web server is running we still need to put data there. First, if you haven't already, the various statistics displayed in Risteys need to be computed using the link:../pipeline/README.adoc[pipeline]. Then, you can proceed to importing this data into the Risteys database for them to be displayed in the web portal.
+Once the Risteys web server is running we still need to put data there. First, if you haven't already, the various statistics displayed in Risteys need to be computed using the link:../pipeline/README.md[pipeline]. Then, you can proceed to importing this data into the Risteys database for them to be displayed in the web portal.
 
 Scripts to import files into the Risteys database are in this current directory (`risteys_elixir`) and they should be run in that directory, for example:
 `mix run import_icd9.exs <path-to-input-file>`.
@@ -115,32 +115,53 @@ Import scripts should be run in this order:
 5. import_ontology.exs, using:
   - <<file-ontology,Risteys ontology>>
 
-6. import_aggregated_stats.exs, using:
-  - <<file-stats-agg,Risteys aggregate statistics>>
+6. import_excluded_endpoints.exs, using:
+  - <<file-excluded_endp,FinRegistry excluded endpoints>>
 
-7. import_coxhr.exs, using:
-  - <<file-coxhrs,Risteys survival analyses>>
+7. import_key_figures.exs, using:
+  - <<file-key-fig-FR-all,Risteys FinRegistry key figures of full population>> and `FR` as dataset argument
 
-8. import_drug_stats.exs, using:
-  - <<file-atc-codes,ATC Codes>>
-  - <<file-stats-drugs,Risteys drug statistics>>
+8. import_key_figures.exs, using:
+  - <<file-key-fig-FR-index,Risteys FinRegistry key figures of index-persons>> and `FR-index` as dataset argument
 
-9. import_mortality_stats.exs, using:
-  - <<file-stats-mortality,Risteys mortality statistics>>
+9. import_key_figures.exs, using:
+  - <<file-key-fig-FG,Risteys FinnGen key figures>> and `FG` as dataset argument
 
-10. import_correlation.exs, using:
+10. import_distributions.exs, using:
+  - <<file-distrib-age-FR,Risteys FinRegistry age distributions>> and `age` and `FR` as arguments
+
+11. import_distributions.exs, using:
+  - <<file-distrib-year-FR,Risteys FinRegistry year distributions>> and `year` and `FR` as arguments
+
+12. import_distributions.exs, using:
+  - <<file-distrib-age-FG,Risteys FinnGen age distributions>> and `age` and `FG` as arguments
+
+13. import_distributions.exs, using:
+  - <<file-distrib-year-FG,Risteys Finngen year distributions>> and `year` and `FG` as arguments
+
+14. import_stats_cumulative_incidence.exs, using:
+  - <<file-cumul-inc-FR,Risteys FinRegistry cumulative incidence>> and `FR` as argument
+
+15. import_stats_cumulative_incidence.exs, using:
+  - <<file-cumul-inc-FG,Risteys FinnGen cumulative incidence>> and `FG` as argument
+
+16. import_interactive_mortality_baseline.exs, using:
+  - <<file-mortality-baseline,Risteys FinRegistry mortality baseline cumulative hazards>>
+
+17. import_interactive_mortality_params.exs, using:
+  - <<file-mortality-params,Risteys FinRegistry mortality parameters>>
+
+18. import_mortality_counts.exs, using:
+  - <<file-mortality-counts,Risteys FinRegistry mortality counts>>
+
+19. import_correlation.exs, using:
   - <<file-corr-pheno-geno,FinnGen phenotypic + genotypic correlations>>
-  - <<file-corr-variants,FinnGen coloc variants>>
-
-11. import_genes.exs, using:
-  - <<file-havana,HAVANA gene list>>
-
-12. import_stas_cumulative_incidence.exs, using:
- - <<file-stats-cumulinc,Risteys cumulative incidence statistics>>
+  - <<file-dummy-corr-variants,FinnGen dummy file of coloc variants>>
 
 
-File list (as of FinnGen R10)
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+File list (as of FinRegistry and FinnGen R8)
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 * [[file-icd10]]ICD-10
 ** name: `ICD10_koodistopalvelu_2015-08_26_utf8.csv`
 ** source: https://91.202.112.142/codeserver/pages/classification-view-page.xhtml?classificationKey=23&versionKey=58[Kela Kansallinen koodistopalvelu]
@@ -150,7 +171,7 @@ File list (as of FinnGen R10)
 ** source: FinnGen
 
 * [[file-endp-defs]]FinnGen endpoint definitions
-** name: `finngen_R10_endpoint_core_noncore_1.0__added_omit2.csv`
+** name: `finngen_R8_endpoint_definitions__myfix.csv`
 
 * [[file-endp-main-tag]]FinnGen endpoint main tag
 ** name: `FINNGEN_ENDPOINTS_DF10_Final_2022-05-16.names_tagged_ordered.csv`
@@ -165,44 +186,69 @@ File list (as of FinnGen R10)
 ** source: FinnGen clinical team
 
 * [[file-interm-counts]]FinnGen endpoint intermediate counts
-** name: `from_THLregisterteam_intermediate_counts_finngen_endpoints_intermediate_counts_green_export_R10_v1.csv`
+** name: `intermediate_counts_r8v4__2021-11-10.csv`
 ** source: FinnGen registry team
 
 * [[file-ontology]]Risteys ontology
-** name: `out_ontology__2020-08-10.json`
+** name: `ontology_2022-08-22.json`
 ** source: Risteys pipeline
 
-* [[file-stats-agg]]Risteys aggregate statistics
-** name: `basic_stats__fg-r10__2022-09-05.json`
+* [[file-excluded_endp]]FinRegistry excluded endpoints
+** name: `excluded_endpoints.csv`
+** source: Risteys script
+
+* [[file-key-fig-FR-all]]Risteys FinRegistry key figures, all individuals
+** name: `key_figures_all_2022-06-13.csv`
 ** source: Risteys pipeline
 
-* [[file-coxhrs]]Risteys survival analyses
-** name: `coxhrs__small-headers__priority-endpoints__fg-r10__2022-09-12.csv`
+* [[file-key-fig-FR-index]]Risteys FinRegistry key figures, only index-persons
+** name: `key_figures_index_2022-06-13.csv`
 ** source: Risteys pipeline
 
-* [[file-atc-codes]]ATC Codes
-** name: `atc_codes_wikipedia.csv`
-** source: Risteys pipeline & Wikipedia
-
-* [[file-stats-drugs]]Risteys drug statistics
-** name: `drug_stats__fg-r10__2022-09-08.csv`
+* [[file-key-fig-FG]]Risteys FinnGen key figures
+** name: `key_figures_all__essi_pipeline__fg_r8__2022-08-09.csv`
 ** source: Risteys pipeline
 
-* [[file-stats-mortality]]Risteys mortality statistics
-** name: `mortality_stats__minimal-headers__fg-r10__2022-09-07.csv`
+* [[file-distrib-age-FR]]Risteys FinRegistry age distributions
+** name: `distribution_age_2022-06-13.csv`
+** source: Risteys pipeline
+
+* [[file-distrib-year-FR]]Risteys FinRegistry year distributions
+** name: `distribution_year_2022-06-13.csv`
+** source: Risteys pipeline
+
+* [[file-distrib-age-FG]]Risteys FinnGen age distributions
+** name: `distribution_age__essi_pipeline__fg_r8__2022-08-09.csv`
+** source: Risteys pipeline
+
+* [[file-distrib-year-FG]]Risteys FinnGen year distributions
+** name: `distribution_year__essi_pipeline__fg_r8__2022-08-09.csv`
+** source: Risteys pipeline
+
+* [[file-cumul-inc-FG]]Risteys FinRegistry cumulative incidence
+** name: `cumulative_incidence_2022-05-01.csv`
+** source: Risteys pipeline
+
+* [[file-cumul-inc-FR]]Risteys FinnGen cumulative incidence
+** name: `all_cumulative_incidence__essi_pipeline__fg_r8__2022-08-09.csv`
+** source: Risteys pipeline
+
+* [[file-mortality-baseline]]Risteys FinRegistry mortality baseline cumulative hazards
+** name: `mortality_baseline_cumulative_hazard_2022-05-02.csv`
+** source: Risteys pipeline
+
+* [[file-mortality-params]]Risteys FinRegistry mortality parameters
+** name: `mortality_params_2022-05-02.csv`
+** source: Risteys pipeline
+
+* [[file-mortality-counts]]Risteys FinRegistry mortality counts
+** name: `mortality_counts_2022-05-02.csv`
 ** source: Risteys pipeline
 
 * [[file-corr-pheno-geno]]FinnGen phenotypic + genotypic correlations
-** name: `corr_pheno-fg-r10.0_geno-fg-r9.1.0_full-join__2022-09-08.csv.zst`
-** source: https://github.com/FINNGEN/endpcorr[FinnGen correlation pipeline] for the phenotypic file, merged with genotypic correlation file from FinnGen analysis team
+** name: `corr_pheno-r8v4_geno-r8v4_full-join__2021-11-23.csv`
+** source: FinnGen correlation pipeline for the phenotypic file, merged with genotypic correlation file from FinnGen analysis team
 
-* [[file-corr-variants]]FinnGen coloc variatns
-** name: `r9_fg_r2_0_8_p_5e_08_keep_cs.pheno.csv`
+* [[file-dummy-corr-variants]]FinnGen dummy file of coloc variants
+** name: `dummy__r9_fg_r2_0_8_p_5e_08_keep_cs.variants__small-headers__2022-05-02.csv`
 ** source: FinnGen analysis team
-
-* [[file-havana]]HAVANA gene list
-** name: `havana.json`
-
-* [[file-stats-cumulinc]]Risteys cumulative incidence statistics
-** name: `all_cumuluative_incidence__fg-r10.0__2022-09-05.csv`
-** source: Risteys pipeline
