@@ -25,9 +25,9 @@ Input file
 
 Output
 ------
-Outputs a Parquet file in narrow format with all control information discarded.
+Outputs a Feather file in narrow format with all control information discarded.
 - Dense first events
-  Parquet format
+  Feather v2 format
   . columns: individual FinnGen ID, endpoint, age, year, number of events
   . rows: one row per event, so all the events from the same individual span multiple rows
 
@@ -37,7 +37,7 @@ import argparse
 from pathlib import Path
 
 import pyarrow
-import pyarrow.parquet as parquet
+import pyarrow.feather as feather
 
 
 # How the controls, cases, and excluded controls are coded in the input file
@@ -68,7 +68,7 @@ def cli_parser():
     )
     parser.add_argument(
         "-o", "--output",
-        help="path to output 'densified' file (Parquet)",
+        help="path to output 'densified' file (Feather v2)",
         required=True,
         type=Path
     )
@@ -100,7 +100,7 @@ def main():
         lambda c: c + "_AGE" in in_header and c + "_YEAR" in in_header and c + "_NEVT" in in_header,
         in_header))
 
-    # Initialize arrays that will be used to make the Parquet output file
+    # Initialize arrays that will be used to make the Feather output file
     fgid_values = []
     endpoint_values = []
     kind_values = []
@@ -154,7 +154,7 @@ def main():
         ],
         names=OUT_HEADER
     )
-    parquet.write_table(out_table, args.output)
+    feather.write_feather(out_table, args.output, version=2)
 
 
 if __name__ == "__main__":
