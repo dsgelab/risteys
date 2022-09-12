@@ -20,8 +20,8 @@ def load_data():
     """
     Loads the following datasets using the data paths on config:
     - endpoint definitions
-    - minimal phenotype 
-    - first events 
+    - minimal phenotype
+    - first events
 
     Args:
         None
@@ -44,11 +44,11 @@ def load_minimal_phenotype_data(data_path=FINREGISTRY_MINIMAL_PHENOTYPE_DATA_PAT
     - drop redundant columns (date_of_birth, death_date)
     - set `index_person` to boolean
     - add `female` and drop `sex`
-    
+
     Args:
         data_path (str, optional): file path of the minimal phenotype csv file
 
-    Returns: 
+    Returns:
         df (DataFrame): minimal phenotype dataframe
     """
     cols = ["FINREGISTRYID", "date_of_birth", "death_date", "sex", "index_person"]
@@ -84,10 +84,10 @@ def load_endpoint_definitions_data(
     """
     Loads and applies the following steps to FinnGen endpoint definitions data:
     - rename columns
-    - remove the endpoint DEATH 
+    - remove the endpoint DEATH
 
     The input file only includes endpoints to be included, i.e. omits are not included.
-    
+
     Args:
         data_path (str, optional): file path to the list of FinnGen endpoints to be included
 
@@ -112,7 +112,7 @@ def load_first_events_data(
     - remove endpoints not in endpoints dataset
     - add demographics from minimal phenotype
     - add the event year
-    
+
     Args:
         data_path (str, optional): file path of the long (densified) first events feather file
 
