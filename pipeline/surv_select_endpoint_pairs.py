@@ -43,6 +43,7 @@ def main():
 
     endpoints = load_endpoints(args.endpoint_definitions)
     endpoints = filter_core(endpoints)
+    endpoints = filter_omit(endpoints)
     prios = load_priority_endpoints(args.priority_endpoints)
     pairs = gen_pairs(prios, endpoints)
     pairs = filter_correlations(args.correlations, pairs)
@@ -119,6 +120,11 @@ def load_priority_endpoints(filepath):
 def filter_core(endpoints):
     """Keep only core endpoints"""
     return list(filter(lambda endp: endp["CORE_ENDPOINTS"] == "yes", endpoints))
+
+
+def filter_omit(endpoints):
+    """Keep only non-OMITed endpoints"""
+    return list(filter(lambda endp: endp["OMIT"] == "", endpoints))
 
 
 def gen_pairs(prios, endpoints):
