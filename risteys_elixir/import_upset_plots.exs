@@ -27,6 +27,11 @@ tables_output = "priv/static/table_case_counts/"
 
 Logger.configure(level: :info)
 
+# --- Checking DB for existing endpoints
+existing_endpoints_db =
+  FGEndpoint.list_endpoint_names()
+  |> MapSet.new()
+
 # --- Gather input data
 Logger.info("Gathering input data")
 
@@ -65,6 +70,7 @@ upset_plots =
     path = Path.join(upset_plots_path, file)
     {endpoint, path}
   end)
+  |> Enum.filter(fn {endpoint, _path} -> endpoint in existing_endpoints_db end)
   |> Enum.into(%{})
 
 tables_path =
@@ -88,6 +94,7 @@ tables =
 
     {endpoint, path}
   end)
+  |> Enum.filter(fn {endpoint, _path} -> endpoint in existing_endpoints_db end)
   |> Enum.into(%{})
 
 # --- Import upset plots
@@ -119,7 +126,7 @@ registries = %{
   "CANC" => "Cancer"
 }
 
-db_endpoints =
+db_endpoints_stats =
   Repo.all(
     from endp in FGEndpoint.Definition,
       join: stats in StatsSex,
@@ -151,7 +158,7 @@ Enum.each(tables, fn {endpoint, table_path} ->
       case_count = String.to_integer(case_count)
 
       case_percentage =
-        case Map.fetch(db_endpoints, {endpoint, value_sex_any}) do
+        case Map.fetch(db_endpoints_stats, {endpoint, value_sex_any}) do
           :error -> nil
           {:ok, total_cases} -> case_count / total_cases * 100
         end
