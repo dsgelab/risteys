@@ -14,7 +14,6 @@ defmodule Risteys.DataCase do
 
   alias Risteys.FGEndpoint
   alias Risteys.Repo
-  alias Risteys.StatsSex
 
   use ExUnit.CaseTemplate
 
@@ -63,19 +62,5 @@ defmodule Risteys.DataCase do
       FGEndpoint.Definition.changeset(%FGEndpoint.Definition{}, %{name: name, longname: "Longname for #{name}"})
 
     {:ok, endpoint} = Repo.insert(endpoint)
-
-    stats_all =
-      StatsSex.changeset(%StatsSex{}, %{
-        fg_endpoint_id: endpoint.id,
-        sex: 0,
-        case_fatality: 0.2,
-        mean_age: 40.0,
-        median_reoccurence: 2,
-        n_individuals: 100,
-        prevalence: 0.02,
-        reoccurence_rate: 0.001
-      })
-
-    {:ok, _stats_all} = Repo.insert(stats_all)
   end
 end
