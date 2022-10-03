@@ -2,7 +2,6 @@ defmodule Risteys.FGEndpoint do
   @moduledoc """
   The FGEndpoint context.
   """
-  import IO
   import Ecto.Query, warn: false
   alias Risteys.Repo
   alias Risteys.Icd10
