@@ -30,11 +30,10 @@ defmodule RisteysWeb.LayoutView do
     current_FG_version = 9 # this need to be manually updated for new versions
 
     # have the rX prefix only for previous FinnGen Risteys versions
-    url =
-      if version < current_FG_version do
-        "https://r#{version}.risteys.finngen.fi#{path}"
-      else
-        "https://risteys.finngen.fi#{path}"
-      end
+    if version < current_FG_version do
+      "https://r#{version}.risteys.finngen.fi#{path}"
+    else
+      "https://risteys.finngen.fi#{path}"
+    end
   end
 end
