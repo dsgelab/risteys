@@ -9,7 +9,6 @@ defmodule RisteysWeb.FGEndpointController do
     FGEndpoint,
     KeyFigures
   }
-  import IO
   import Ecto.Query
 
   def redirect_legacy_url(conn, %{"name" => name}) do
@@ -207,21 +206,21 @@ defmodule RisteysWeb.FGEndpointController do
       dataset: "-"
     }
 
-    key_figures =
-      case key_fig do
-        nil -> no_key_figures
-        _ ->
-          Enum.reduce(
-            key_fig,
-            %{},
-            fn {k, v}, acc ->
-              case v do
-                nil -> Map.put(acc, k, "-")
-                _ -> Map.put(acc, k, v)
-              end
+    # create and return key_figures
+    case key_fig do
+      nil -> no_key_figures
+      _ ->
+        Enum.reduce(
+          key_fig,
+          %{},
+          fn {k, v}, acc ->
+            case v do
+              nil -> Map.put(acc, k, "-")
+              _ -> Map.put(acc, k, v)
             end
-          )
-      end
+          end
+        )
+    end
   end
 
   defp data_assocs(endpoint) do
