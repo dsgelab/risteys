@@ -172,44 +172,6 @@ defmodule RisteysWeb.FGEndpointView do
     |> Enum.intersperse(", ")
   end
 
-  defp relative_count(steps, count) do
-    # In some cases it is impossible to compute a relative count:
-    # - 0 case for this endpoint
-    # - endpoint was no intermediate case count
-    # We handle these cases by returning 0, which will effectively
-    # set the bar width to 0 in the endpoint explainer flow.
-    no_count = 0
-
-    # Compute the percentage of the given count across meaningful steps
-    check_steps =
-      MapSet.new([
-        :filter_registries,
-        :precond_main_mode_icdver,
-        :min_number_events,
-        :includes
-      ])
-
-    step_counts =
-      steps
-      |> Enum.filter(fn %{name: name} -> name in check_steps end)
-      |> Enum.map(fn %{nindivs_post_step: ncases} -> ncases end)
-      |> Enum.reject(&is_nil/1)
-
-    cond do
-      Enum.empty?(step_counts) ->
-        no_count
-
-      Enum.max(step_counts) == 0 ->
-        no_count
-
-      count == "-" ->
-	no_count
-
-      true ->
-        count / Enum.max(step_counts) * 100
-    end
-  end
-
   defp rows_original_rules(endpoint) do
     rows = [
       %{title: "NAME", value: endpoint.name},
