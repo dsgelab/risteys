@@ -2,11 +2,9 @@ defmodule Risteys.FGEndpoint do
   @moduledoc """
   The FGEndpoint context.
   """
-  import IO
   import Ecto.Query, warn: false
   alias Risteys.Repo
   alias Risteys.Icd10
-  alias Risteys.StatsSex
   alias Risteys.YearDistribution
   alias Risteys.AgeDistribution
   alias Risteys.MortalityParams
@@ -688,14 +686,15 @@ defmodule Risteys.FGEndpoint do
   end
 
   defp get_max_of_value(list_of_maps) do
-    # the input is a list of maps where keys are "age" and "value"
-    # make a list of values of the "value" key from the list of maps
-    # this creates a list because a list is the default output of for
-    values = for %{age: age, value: value} <- list_of_maps, do: value
+    # Input is a list of maps where keys are "age" and "value".
+    # Make a list of values of the "value" key from the list of maps.
+    # Below code line creates a list because a list is the default output of for.
+    # Variable "age" is unused so it has an underscore prefix.
+    values = for %{age: _age, value: value} <- list_of_maps, do: value
 
     # return max value of values
     # if there is no results, return 0.0 (need to be float for Float.ceil to work in later step)
-    max_value = if values == [], do: 0.0, else: Enum.max(values)
+    if values == [], do: 0.0, else: Enum.max(values)
   end
 
   # -- Interactive Mortality --
@@ -704,94 +703,93 @@ defmodule Risteys.FGEndpoint do
     mortality_data = %{name: endpoint.name, longname: endpoint.longname}
 
     # get sex-specific results and save in mortality_data map as key-value pairs, where key is :female or :male
-    mortality_data =
-      Enum.reduce ["female", "male"], mortality_data, fn sex, acc ->
+    Enum.reduce ["female", "male"], mortality_data, fn sex, acc ->
 
-        sex_specific_results = %{}
+      sex_specific_results = %{}
 
-        # get sex-specific baseline cumulative hazards
-        bch =
-          Repo.all(
-            from baseline in MortalityBaseline,
-            where: baseline.fg_endpoint_id == ^endpoint.id
-            and baseline.sex == ^sex,
-            select: {
-              baseline.age,
-              baseline.baseline_cumulative_hazard
+      # get sex-specific baseline cumulative hazards
+      bch =
+        Repo.all(
+          from baseline in MortalityBaseline,
+          where: baseline.fg_endpoint_id == ^endpoint.id
+          and baseline.sex == ^sex,
+          select: {
+            baseline.age,
+            baseline.baseline_cumulative_hazard
+          }
+        )
+
+      # handle missing data
+      sex_specific_results =
+        case bch do
+          [] ->  Map.put_new(sex_specific_results, :bch, nil)
+          bch -> Map.put_new(sex_specific_results, :bch,  Enum.into(bch, %{}))
+        end
+
+      # get sex-specific covariate results
+      sex_specific_results =
+        Enum.reduce ["exposure", "birth_year"], sex_specific_results, fn covariate_name, acc ->
+
+          covariate_data =
+            Repo.one(
+              from params in MortalityParams,
+                where: params.fg_endpoint_id == ^endpoint.id and
+                params.covariate == ^covariate_name and
+                params.sex == ^sex,
+                select: %{
+                  coef: params.coef,
+                  ci95_lower: params.ci95_lower,
+                  ci95_upper: params.ci95_upper,
+                  p_value: params.p_value,
+                  mean: params.mean
+                }
+            )
+
+          empty_map = %{
+            coef: nil,
+            ci95_lower: nil,
+            ci95_upper: nil,
+            p_value: nil,
+            mean: nil
+          }
+
+          key = String.to_atom(covariate_name)
+
+          case covariate_data do
+            nil -> Map.put(acc, key, empty_map)
+            covariate_data -> Map.put(acc, key, Enum.into(covariate_data, %{}))
+          end
+        end
+
+      # get sex-specific case counts
+      case_counts =
+        Repo.one(
+          from counts in MortalityCounts,
+            where: counts.fg_endpoint_id == ^endpoint.id and
+            counts.sex == ^sex,
+            select: %{
+              exposed: counts.exposed,
+              exposed_cases: counts.exposed_cases
             }
           )
 
-        # handle missing data
-        sex_specific_results =
-          case bch do
-            [] ->  Map.put_new(sex_specific_results, :bch, nil)
-            bch -> Map.put_new(sex_specific_results, :bch,  Enum.into(bch, %{}))
-          end
+      empty_counts_map = %{
+        exposed: nil,
+        exposed_cases: nil
+      }
 
-        # get sex-specific covariate results
-        sex_specific_results =
-          Enum.reduce ["exposure", "birth_year"], sex_specific_results, fn covariate_name, acc ->
+      # save data or empty map to "sex_specific_results" map
+      sex_specific_results =
+        case case_counts do
+          nil -> Map.put(sex_specific_results, :case_counts, empty_counts_map)
+          case_counts -> Map.put(sex_specific_results, :case_counts, Enum.into(case_counts, %{}))
+        end
 
-            covariate_data =
-              Repo.one(
-                from params in MortalityParams,
-                  where: params.fg_endpoint_id == ^endpoint.id and
-                  params.covariate == ^covariate_name and
-                  params.sex == ^sex,
-                  select: %{
-                    coef: params.coef,
-                    ci95_lower: params.ci95_lower,
-                    ci95_upper: params.ci95_upper,
-                    p_value: params.p_value,
-                    mean: params.mean
-                  }
-              )
+      # save sex_specific_results to mortality_data map
+      sex_key = String.to_atom(sex)
 
-            empty_map = %{
-              coef: nil,
-              ci95_lower: nil,
-              ci95_upper: nil,
-              p_value: nil,
-              mean: nil
-            }
-
-            key = String.to_atom(covariate_name)
-
-            case covariate_data do
-              nil -> Map.put(acc, key, empty_map)
-              covariate_data -> Map.put(acc, key, Enum.into(covariate_data, %{}))
-            end
-          end
-
-        # get sex-specific case counts
-        case_counts =
-          Repo.one(
-            from counts in MortalityCounts,
-              where: counts.fg_endpoint_id == ^endpoint.id and
-              counts.sex == ^sex,
-              select: %{
-                exposed: counts.exposed,
-                exposed_cases: counts.exposed_cases
-              }
-            )
-
-        empty_counts_map = %{
-          exposed: nil,
-          exposed_cases: nil
-        }
-
-        # save data or empty map to "sex_specific_results" map
-        sex_specific_results =
-          case case_counts do
-            nil -> Map.put(sex_specific_results, :case_counts, empty_counts_map)
-            case_counts -> Map.put(sex_specific_results, :case_counts, Enum.into(case_counts, %{}))
-          end
-
-        # save sex_specific_results to mortality_data map
-        sex_key = String.to_atom(sex)
-
-        Map.put_new(acc, sex_key, sex_specific_results)
-      end
+      Map.put_new(acc, sex_key, sex_specific_results)
+    end
   end
 
   # --- Drug statistics
