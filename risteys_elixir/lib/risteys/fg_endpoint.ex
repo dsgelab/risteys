@@ -139,13 +139,27 @@ defmodule Risteys.FGEndpoint do
       }
     ]
 
-    counts = get_explainer_step_counts(endpoint)
+    counts_FG = get_explainer_step_counts(endpoint, "FG")
+
+    IO.inspect("counts_FG")
+    IO.inspect(counts_FG)
+
+    counts_FR = get_explainer_step_counts(endpoint, "FR")
+
+    IO.inspect("counts_FR")
+    IO.inspect(counts_FR)
 
     Enum.map(steps, fn step ->
       %{name: step_name} = step
       # nil or count as an integer
-      count = counts[step_name]
-      Map.put_new(step, :nindivs_post_step, count)
+      count_FG = counts_FG[step_name]
+      count_FR = counts_FR[step_name]
+
+      # Map.put_new(step, :nindivs_post_step, count_FG)
+      step = Map.put_new(step, :nindivs_post_step_FG, count_FG)
+      step = Map.put_new(step, :nindivs_post_step_FR, count_FR)
+      IO.inspect(step)
+      step
     end)
   end
 
@@ -415,7 +429,7 @@ defmodule Risteys.FGEndpoint do
   end
 
   def upsert_explainer_step(attrs) do
-    case Repo.get_by(ExplainerStep, fg_endpoint_id: attrs.fg_endpoint_id, step: attrs.step) do
+    case Repo.get_by(ExplainerStep, fg_endpoint_id: attrs.fg_endpoint_id, step: attrs.step, dataset: attrs.dataset) do
       nil -> %ExplainerStep{}
       existing -> existing
     end
@@ -423,10 +437,10 @@ defmodule Risteys.FGEndpoint do
     |> Repo.insert_or_update()
   end
 
-  defp get_explainer_step_counts(endpoint) do
+  defp get_explainer_step_counts(endpoint, dataset) do
     Repo.all(
       from ee in ExplainerStep,
-        where: ee.fg_endpoint_id == ^endpoint.id,
+        where: ee.fg_endpoint_id == ^endpoint.id and ee.dataset == ^dataset,
         select: %{step: ee.step, nindivs: ee.nindivs}
     )
     |> Enum.reduce(%{}, fn %{nindivs: count, step: step_name}, acc ->

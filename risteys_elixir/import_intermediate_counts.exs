@@ -1,9 +1,23 @@
+# Import endpoint definition intermediate counts to the DB
+#
+# Usage: mix run import_intermediate_counts.exs <counts_filepath> <dataset>
+# where
+# <counts_filepath> is path to intermediate counts input file, that is csv file with the following columns:
+# ENDPOINT,SOURCE,N(all),N(-sex),N(-conditions),N(-regex),N(-pre_conditions/mainonly/mode/icdver/reimb_icd),N(-nevt),N(pass+include_unique)
+#
+# <dataset> is either "FR" for FinRegistry counts or "FG" for FinnGen counts
+
 alias Risteys.FGEndpoint
 
 require Logger
 
 Logger.configure(level: :info)
-[counts_filepath | _] = System.argv()
+[counts_filepath, dataset | _] = System.argv()
+
+# raise an error if correct dataset info is not provided
+if dataset != "FG" and dataset != "FR" do
+  raise ArgumentError, message: "Dataset need to be given as a second argument, either FG or FR."
+end
 
 # Map: name -> id
 endpoints = FGEndpoint.list_endpoints_ids()
@@ -103,7 +117,8 @@ end)
       FGEndpoint.upsert_explainer_step(%{
         fg_endpoint_id: endpoint_id,
         step: step,
-        nindivs: count
+        nindivs: count,
+        dataset: dataset
       })
 
     case upsert do
