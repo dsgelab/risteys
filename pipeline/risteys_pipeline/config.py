@@ -3,23 +3,12 @@ from pathlib import Path
 
 # --- FinRegistry
 # Input data
-
 ROOT_DIR = Path("/data") / "processed_data"
-
-FINREGISTRY_MINIMAL_PHENOTYPE_DATA_PATH = (
-    ROOT_DIR / "minimal_phenotype" / "minimal_phenotype_2022-03-28.feather"
-)
-
-FINREGISTRY_DENSIFIED_FIRST_EVENTS_DATA_PATH = (
-    ROOT_DIR / "endpointer" / "densified_first_events_DF8_no_omits_2022-03-17.feather"
-)
-
-FINREGISTRY_ENDPOINT_DEFINITIONS_DATA_PATH = (
-    ROOT_DIR / "endpoint_metadata" / "finngen_endpoints_2021-09-02.csv"
-)
+FINREGISTRY_MINIMAL_PHENOTYPE_DATA_PATH = ROOT_DIR / "minimal_phenotype" / "minimal_phenotype_2022-03-28.feather"
+FINREGISTRY_DENSIFIED_FIRST_EVENTS_DATA_PATH = ROOT_DIR / "endpointer" / "densified_first_events_DF10_no_omits_2022-09-20.feather"
+FINREGISTRY_ENDPOINT_DEFINITIONS_DATA_PATH = ROOT_DIR / "endpoint_metadata" / "endpoints_DF10_2022-10-10.csv"
 
 # Output directory
-
 FINREGISTRY_OUTPUT_DIR = Path("/data") / "projects" / "risteys"
 
 

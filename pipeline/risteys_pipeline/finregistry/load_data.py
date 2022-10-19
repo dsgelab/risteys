@@ -84,28 +84,20 @@ def load_endpoint_definitions_data(
     """
     Loads and applies the following steps to FinnGen endpoint definitions data:
     - rename columns
-    - drop omitted endpoints 
-    - replace `sex` with `female`
+    - remove the endpoint DEATH 
+
+    The input file only includes endpoints to be included, i.e. omits are not included.
     
     Args:
-        data_path (str, optional): file path of the FinnGen endpoint definitions csv file
+        data_path (str, optional): file path to the list of FinnGen endpoints to be included
 
     Returns:
         df (DataFrame): FinnGen endpoints dataframe
     """
-    cols = ["NAME", "SEX", "OMIT"]
-    df = pd.read_csv(
-        data_path, sep=";", usecols=cols, skiprows=[1], encoding="latin1"
-    )
+    df = pd.read_csv(data_path, header=None)
     logger.debug(f"{df.shape[0]:,} rows loaded")
-
-    df = df.rename(columns={"NAME": "endpoint", "SEX": "sex", "OMIT": "omit"})
-    df = df.loc[df["omit"].isnull()]
-    df = df.reset_index(drop=True)
-    df["female"] = np.nan
-    df.loc[df["sex"] == SEX_FEMALE_ENDPOINTS, "female"] = True
-    df.loc[df["sex"] == SEX_MALE_ENDPOINTS, "female"] = False
-    df = df.drop(columns=["omit", "sex"])
+    df = df.rename(columns={0: "endpoint"})
+    df = df.loc[df["endpoint"] != "DEATH"].reset_index(drop=True)
     logger.info(f"{df.shape[0]:,} rows in endpoint definitions")
 
     return df

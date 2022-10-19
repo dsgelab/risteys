@@ -145,6 +145,7 @@ def mortality_analysis(endpoint, cases, exposed, cohort):
                 cbh_ = cbh_.reset_index().rename(columns={"index": "age"})
                 cbh_["age"] = cbh_["age"].round(0)
                 cbh_ = cbh_.groupby("age").mean().reset_index()
+                cbh_ = cbh_.rename(columns={"baseline cumulative hazard": "baseline_cumulative_hazard"})
 
                 # Get ages with enough data
                 age_counts = (
@@ -216,13 +217,10 @@ if __name__ == "__main__":
     from functools import partial
     from tqdm import tqdm
 
-    import logging
-
-    logger.setLevel(logging.DEBUG)
-
     N_PROCESSES = 20
 
     endpoint_definitions, minimal_phenotype, first_events = load_data()
+    endpoint_definitions = endpoint_definitions.loc[endpoint_definitions["endpoint"] != "DEATH"].reset_index(drop=True)
     n_endpoints = endpoint_definitions.shape[0]
 
     cohort = get_cohort(minimal_phenotype)
