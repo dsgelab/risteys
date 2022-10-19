@@ -13,7 +13,7 @@ from risteys_pipeline.survival_analysis import (
     survival_analysis,
 )
 
-N_DIGITS = 4
+N_DECIMALS = 4
 
 
 def cumulative_incidence_function(endpoint, cases, cohort):
@@ -79,7 +79,7 @@ def cumulative_incidence_function(endpoint, cases, cohort):
                     # Format output
                     CIF_ = CIF_.reset_index()
                     CIF_ = CIF_.rename(columns={"index": "age", "CIF_1": "cumulinc"})
-                    CIF_["cumulinc"] = CIF_["cumulinc"].round(N_DIGITS)
+                    CIF_["cumulinc"] = CIF_["cumulinc"].round(N_DECIMALS)
                     CIF_["sex"] = {True: "female", False: "male"}[sex]
 
                     CIF.append(CIF_[["age", "sex", "cumulinc"]])
@@ -98,7 +98,7 @@ if __name__ == "__main__":
     from multiprocessing import get_context
     from tqdm import tqdm
 
-    N_PROCESSES = 40
+    N_PROCESSES = 20
 
     endpoint_definitions, minimal_phenotype, first_events = load_data()
     n_endpoints = endpoint_definitions.shape[0]

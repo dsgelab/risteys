@@ -5,6 +5,7 @@ import pandas as pd
 from risteys_pipeline.utils.log import logger
 from risteys_pipeline.config import MIN_SUBJECTS_PERSONAL_DATA
 
+N_DECIMALS = 4
 
 def compute_key_figures(first_events, minimal_phenotype, index_persons=False):
     """
@@ -14,6 +15,7 @@ def compute_key_figures(first_events, minimal_phenotype, index_persons=False):
         - median age at first event (years)
 
     The numbers are calculated for males, females, and all.
+    Floats are rounded to N_DECIMALS digits.
 
     Args:
         first_events (DataFrame): first events dataframe
@@ -87,6 +89,10 @@ def compute_key_figures(first_events, minimal_phenotype, index_persons=False):
     # Remove personal data
     cols = ["nindivs_", "median_age_", "prevalence_"]
     kf.loc[kf["nindivs_"] < MIN_SUBJECTS_PERSONAL_DATA, cols,] = np.nan
+
+    # Round floats
+    kf["median_age_"] = kf["median_age_"].round(N_DECIMALS)
+    kf["prevalence_"] = kf["prevalence_"].round(N_DECIMALS)
 
     # Pivot and flatten hierarchical columns
     kf = kf.pivot(index="endpoint", columns="sex").reset_index()
