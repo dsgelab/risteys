@@ -79,11 +79,7 @@ def cumulative_incidence_function(endpoint, cases, cohort):
                     # Format output
                     CIF_ = CIF_.reset_index()
                     CIF_ = CIF_.rename(columns={"index": "age", "CIF_1": "cumulinc"})
-<<<<<<< HEAD
                     CIF_["cumulinc"] = CIF_["cumulinc"].round(N_DECIMALS)
-=======
-                    CIF_["cumulinc"] = CIF_["cumulinc"].round(N_DIGITS)
->>>>>>> 6d4e40b3 (Dev/risteys pipeline (#201))
                     CIF_["sex"] = {True: "female", False: "male"}[sex]
 
                     CIF.append(CIF_[["age", "sex", "cumulinc"]])
@@ -102,11 +98,7 @@ if __name__ == "__main__":
     from multiprocessing import get_context
     from tqdm import tqdm
 
-<<<<<<< HEAD
     N_PROCESSES = 20
-=======
-    N_PROCESSES = 40
->>>>>>> 6d4e40b3 (Dev/risteys pipeline (#201))
 
     endpoint_definitions, minimal_phenotype, first_events = load_data()
     n_endpoints = endpoint_definitions.shape[0]

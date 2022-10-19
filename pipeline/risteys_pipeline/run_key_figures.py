@@ -90,13 +90,10 @@ def compute_key_figures(first_events, minimal_phenotype, index_persons=False):
     cols = ["nindivs_", "median_age_", "prevalence_"]
     kf.loc[kf["nindivs_"] < MIN_SUBJECTS_PERSONAL_DATA, cols,] = np.nan
 
-<<<<<<< HEAD
     # Round floats
     kf["median_age_"] = kf["median_age_"].round(N_DECIMALS)
     kf["prevalence_"] = kf["prevalence_"].round(N_DECIMALS)
 
-=======
->>>>>>> 6d4e40b3 (Dev/risteys pipeline (#201))
     # Pivot and flatten hierarchical columns
     kf = kf.pivot(index="endpoint", columns="sex").reset_index()
     kf.columns = ["".join(col).strip() for col in kf.columns.values]
