@@ -188,7 +188,15 @@ if (path.startsWith("/endpoints/")) {  // Load only on endpoint pages
         const yAxisLabel = "Individuals";
         const data = payload.data;
         const plot_color = color_black;
-        varBinPlot(elementSelector, data, xAxisLabel, yAxisLabel, plot_color);
+
+        /* render plot only if data is available. If there's no results, data is an empty array */
+        if (!data.length) {
+            /* need to use "bin-plot-age-FG" here, using elementSelector would not work*/
+            const node = document.getElementById("bin-plot-age-FG");
+            node.innerText = "No data";
+        } else {
+            varBinPlot(elementSelector, data, xAxisLabel, yAxisLabel, plot_color);
+        }
     });
 
     /* YEAR HISTOGRAM FG */
@@ -199,7 +207,13 @@ if (path.startsWith("/endpoints/")) {  // Load only on endpoint pages
         const yAxisLabel = "Individuals";
         const data = payload.data;
         const plot_color = color_black;
-        varBinPlot(elementSelector, data, xAxisLabel, yAxisLabel, plot_color);
+
+        if (!data.length) {
+            const node = document.getElementById("bin-plot-year-FG");
+            node.innerText = "No data";
+        } else {
+            varBinPlot(elementSelector, data, xAxisLabel, yAxisLabel, plot_color);
+        }
     });
 
     /* CUMMULATIVE INCIDENCE FG */
@@ -259,7 +273,15 @@ if (path.startsWith("/endpoints/")) {  // Load only on endpoint pages
                 const yAxisLabel = "Individuals";
                 const data = payload.data;
                 const plot_color = color_teal_500;
-                varBinPlot(elementSelector, data, xAxisLabel, yAxisLabel, plot_color);
+
+                /* render plot only if data is available. If there's no results, data is an empty array */
+                if (!data.length) {
+                    /* need to use "bin-plot-age-FR" here, using elementSelector would not work*/
+                    const node = document.getElementById("bin-plot-age-FR");
+                    node.innerText = "No data";
+                } else {
+                    varBinPlot(elementSelector, data, xAxisLabel, yAxisLabel, plot_color);
+                }
             });
 
             /* YEAR HISTOGRAM FR */
@@ -270,7 +292,13 @@ if (path.startsWith("/endpoints/")) {  // Load only on endpoint pages
                 const yAxisLabel = "Individuals";
                 const data = payload.data;
                 const plot_color = color_teal_500;
-                varBinPlot(elementSelector, data, xAxisLabel, yAxisLabel, plot_color);
+
+                if (!data.length) {
+                    const node = document.getElementById("bin-plot-year-FR");
+                    node.innerText = "No data";
+                } else {
+                    varBinPlot(elementSelector, data, xAxisLabel, yAxisLabel, plot_color);
+                }
             });
 
 
