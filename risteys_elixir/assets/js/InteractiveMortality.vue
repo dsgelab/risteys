@@ -68,8 +68,8 @@
 					v-model="age"
 					v-on:change="get_AR()"
 				>
-					<!-- v-for="(item, index) in items" syntax to start the range for age choices from 0-->
-					<option v-for="(item, age) in 101" :value=age> {{ age }} </option>
+					<!-- v-for="(item, index) in items" syntax to start the range for age choices from 0 to 90-->
+					<option v-for="(item, age) in 91" :value=age> {{ age }} </option>
 				</select>
 
 				years, who have
