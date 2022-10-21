@@ -5,56 +5,65 @@
 			<p> Association between endpoint <span class="italic word-break"> {{ this.mortality_data.name}} </span> and mortality:</p>
 			<div v-for="sex in sexes">
 				<h4 class="pt-6 italic">{{ make_sex_title(sex) }}</h4>
-				<table class="horizontal pb-6">
-					<thead>
-						<tr>
-							<th>Parameter </th>
-							<th>HR [95% CI]</th>
-							<th>p-value</th>
-						</tr>
-					</thead>
-					<tbody>
-						<tr class="font-bold">
-							<td>
-								<span> {{ name_or_shortcut(template_mortality_data.name) }} </span>
-							</td>
-							<td>
-								{{ get_HR_and_CIs(
-									template_mortality_data[sex].exposure.coef,
-									template_mortality_data[sex].exposure.ci95_lower,
-									template_mortality_data[sex].exposure.ci95_upper
-									)
-								}}
-							</td>
-							<td>
-								{{ show_p(template_mortality_data[sex].exposure.p_value)}}
-							</td>
-						</tr>
 
-						<tr>
-							<td> Birth year </td>
-							<td>
-								{{ get_HR_and_CIs(
-									template_mortality_data[sex].birth_year.coef,
-									template_mortality_data[sex].birth_year.ci95_lower,
-									template_mortality_data[sex].birth_year.ci95_upper
-									)
-								}}
-							</td>
-							<td>
-								{{ show_p(template_mortality_data[sex].birth_year.p_value)}}
-							</td>
-						</tr>
-					</tbody>
-				</table>
-
-				<p class="pt-6 pb-6">
-					During the follow-up period (1.1.1998 — 31.12.2019),
-					{{ get_value_or_0(template_mortality_data[sex].case_counts.exposed_cases) }} out of
-					{{ get_value_or_0(template_mortality_data[sex].case_counts.exposed) }} {{ sex }}s
-					with <span class="italic"> {{ name_or_shortcut(template_mortality_data.name) }} </span> died.
+				<!-- If there's no HR data and 0 cases, don't render table and case counts and show only "No data" instead -->
+				<p v-if="template_mortality_data[sex].exposure.coef == null &
+				get_value_or_0(template_mortality_data[sex].case_counts.exposed_cases) == 0">
+					No data
 				</p>
 
+				<!-- <table> and <p> elements need to be wrapped in <template> for v-else to be attached to both of them -->
+				<template v-else>
+					<table class="horizontal pb-6">
+						<thead>
+							<tr>
+								<th>Parameter </th>
+								<th>HR [95% CI]</th>
+								<th>p-value</th>
+							</tr>
+						</thead>
+						<tbody>
+							<tr class="font-bold">
+								<td>
+									<span> {{ name_or_shortcut(template_mortality_data.name) }} </span>
+								</td>
+								<td>
+									{{ get_HR_and_CIs(
+										template_mortality_data[sex].exposure.coef,
+										template_mortality_data[sex].exposure.ci95_lower,
+										template_mortality_data[sex].exposure.ci95_upper
+										)
+									}}
+								</td>
+								<td>
+									{{ show_p(template_mortality_data[sex].exposure.p_value)}}
+								</td>
+							</tr>
+
+							<tr>
+								<td> Birth year </td>
+								<td>
+									{{ get_HR_and_CIs(
+										template_mortality_data[sex].birth_year.coef,
+										template_mortality_data[sex].birth_year.ci95_lower,
+										template_mortality_data[sex].birth_year.ci95_upper
+										)
+									}}
+								</td>
+								<td>
+									{{ show_p(template_mortality_data[sex].birth_year.p_value)}}
+								</td>
+							</tr>
+						</tbody>
+					</table>
+
+					<p class="pt-6 pb-6">
+						During the follow-up period (1.1.1998 — 31.12.2019),
+						{{ get_value_or_0(template_mortality_data[sex].case_counts.exposed_cases) }} out of
+						{{ get_value_or_0(template_mortality_data[sex].case_counts.exposed) }} {{ sex }}s
+						with <span class="italic"> {{ name_or_shortcut(template_mortality_data.name) }} </span> died.
+					</p>
+				</template>
 			</div>
 
 		</div>
@@ -75,7 +84,12 @@
 				years, who have
 				<span class="italic"> {{ this.mortality_data.longname }} ({{ name_or_shortcut(this.mortality_data.name) }})</span>.
 			</p>
-			<table class="horizontal mb-6">
+
+			<!-- If there's no data for females nor males, don't render table and show only "No data" instead -->
+			<p v-if="(AR_females.every( v => v == 'No data' ) == true & AR_males.every( v => v == 'No data' ) == true)">
+				No data
+			</p>
+			<table v-else class="horizontal mb-6">
 				<thead>
 					<tr>
 						<th>N-year risk</th>
@@ -125,7 +139,7 @@ export default {
 
 		show_p (value){
 			if(value == null) {
-				return "no data"
+				return "No data"
 			} else if (value < 0.001) {
 				return "<" + String.fromCharCode(160) + "0.001" // Non-breakable space is char 160
 			} else {
@@ -161,7 +175,7 @@ export default {
 				AR[i] = (1 - this.compute_S(this.age + n_year[i], sex) / this.compute_S(this.age, sex)) * 100
 
 				if (isNaN(AR[i])) { // some of the input values is not available
-					AR[i] = "no data";
+					AR[i] = "No data";
 				} else if(AR[i] < 0.001) {
 					AR[i] = "<" + String.fromCharCode(160) + "0.001%"; // Non-breakable space is char 160
 				} else if(AR[i] > 95) {
@@ -230,7 +244,7 @@ export default {
 			if(hr != null & ci_lower != null & ci_upper != null) {
 				return this.get_exp(hr, 3) + " [" + this.get_exp(ci_lower, 2) + ", " + this.get_exp(ci_upper, 2) + "]"
 			} else {
-				return "no data"
+				return "No data"
 			}
 		},
 
