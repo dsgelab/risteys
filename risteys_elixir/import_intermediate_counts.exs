@@ -38,7 +38,7 @@ counts_filepath
     "N(all)" => nall,
     "N(-sex)" => nsex,
     "N(-conditions)" => nconditions,
-    "N(-pre_conditions/mainonly/mode/icdver/reimb_icd)" => nmulti,
+    "N(-pre_conditions/mainonly/mode/regex_icdver/reimb_icd)" => nmulti,
     "N(-nevt)" => nevt,
     "N(pass+include_unique)" => nend
   } = row
