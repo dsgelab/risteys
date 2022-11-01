@@ -8,7 +8,6 @@
 
 alias Risteys.Repo
 alias Risteys.FGEndpoint.Definition
-import Ecto.Query
 require Logger
 
 Logger.configure(level: :info)
