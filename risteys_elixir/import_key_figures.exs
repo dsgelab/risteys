@@ -6,7 +6,7 @@ Logger.configure(level: :info)
 
 # raise an error if correct dataset info is not provided
 if dataset != "FG" and dataset != "FR" and dataset != "FR_index" do
-  raise ArgumentError, message: "Dataset need to be given as a second argument, either FG or FR."
+  raise ArgumentError, message: "Dataset need to be given as a second argument, either FG, FR or FR_index."
 end
 
 # helper function
