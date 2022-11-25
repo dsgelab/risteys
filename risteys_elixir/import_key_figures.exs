@@ -1,35 +1,29 @@
-# Import pre-processed / aggregated data in the database.
+# Import key figures data in the database.
 # Clean-up endpoints without statistics afterwards.
 #
 # Usage:
-#     mix run import_aggregated_stats.exs <json-file-aggregegated-stats>
+#     mix run import_key_figures.exs <csv-file-key-figures>
 #
-# where <json-file-aggregegated-stats> is a JSON file with all the
-# aggregated stats, with the following format:
-#
-# {
-#   "stats":
-#   {"ENDPOINT XYZ": {
-#     ...
-#   },
-#   ...},
-#   "distrib_age":
-#   {"ENDPOINT XYZ": {
-#     ...
-#   },
-#   ...},
-#   "distrib_year":
-#   {"ENDPOINT XYZ": {
-#     ...
-#   },
-#   ...}
-# }
+# where <csv-file-key-figures> is a CSV file with all the key figures,
+# with the following headers:
+# - endpoint
+# - nindivs_all
+# - nindivs_female
+# - nindivs_male
+# - median_age_all
+# - median_age_female
+# - median_age_male
+# - prevalence_all
+# - prevalence_female
+# - prevalence_male
+
+
 
 alias Risteys.{FGEndpoint, Repo, StatsSex}
 require Logger
 
 Logger.configure(level: :info)
-[stats_filepath | _] = System.argv()
+[key_figures_filepath | _] = System.argv()
 
 defmodule Risteys.ImportAgg do
   def stats(
@@ -72,6 +66,90 @@ defmodule Risteys.ImportAgg do
 end
 
 # Parse the data
+key_figures_path
+|> File.stream!()
+|> CSV.decode!(headers: true)
+
+|> Stream.map(fn row ->
+  %{
+    "endpoint"          => name,
+    "nindivs_all"       => nindivs_all,
+    "nindivs_female"    => nindivs_female,
+    "nindivs_male"      => nindivs_male,
+    "median_age_all"    => median_age_all,
+    "median_age_female" => median_age_female,
+    "median_age_male"   => median_age_male,
+    "prevalence_all"    => prevalence_all,
+    "prevalence_female" => prevalence_female,
+    "prevalence_male"   => prevalence_male,
+  } = row
+
+  %{
+    endpoint:           name,
+    nindivs_all:        nindivs_all,
+    nindivs_female:     nindivs_female,
+    nindivs_male:       nindivs_male,
+    median_age_all:     median_age_all,
+    median_age_female:  median_age_female,
+    median_age_male:    median_age_male,
+    prevalence_all:     prevalence_all,
+    prevalence_female:  prevalence_female,
+    prevalence_male:    prevalence_male,
+  }
+end)
+# Convert "" to nil
+|> Stream.map(fn row ->
+  Enum.map(row, fn {name, value} ->
+    if value == "" do
+      nil
+    else
+      value
+    end
+  end)
+end)
+
+# Discard rows based on number of individuals
+|> Stream.reject(fn row ->
+  reject_endpoint = (
+    is_nil(row.nindivs_all) or is_nil(row.nindivs_female) or is_nil(row.nindivs_male)
+    or row.nindivs_all == 0 or row.nindivs_female == 0 or row.nindivs_male == 0
+  )
+  
+  if reject_endpoint do
+    Logger.warning("Rejecting #{row.endpoint} based on number of individuals")
+  end
+  
+  reject_endpoint
+end)
+
+|> Enum.each(fn row ->
+  
+  Logger.info("Processing stats for #{name}")
+  
+  # Convert to right value type
+  nindivs_all    = String.to_float(nindivs_all) |> floor()
+  nindivs_female = String.to_float(nindivs_female) |> floor()
+  nindivs_male   = String.to_float(nindivs_male) |> floor()
+  median_age_all = String.to_float(median_age_all)
+  median_age_female = String.to_float(median_age_female)
+  median_age_male = String.to_float(median_age_male)
+  prevalence_all = String.to_float(prevalence_all)
+  prevalence_female = String.to_float(prevalence_female)
+  prevalence_male = String.to_float(prevalence_male)
+  
+  case Repo.get_by(FGEndpoint.Definition, name: name) do
+    nil ->
+      Logger.warn("Skipping #{name}: not found in DB")
+      
+    endpoint ->
+    
+  end
+  
+end)
+
+
+
+
 %{
   "stats" => stats,
   "distrib_year" => distrib_year,
