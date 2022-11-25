@@ -79,8 +79,11 @@ defmodule Risteys.FGEndpoint.Definition do
     field :gws_hits, :integer
 
     # Upset plot and table info
-    field :status_upset_plot, :string
-    field :status_upset_table, :string
+    field :status_upset_plot_fr, :string
+    field :status_upset_table_fr, :string
+    field :status_upset_plot_fg, :string
+    field :status_upset_table_fg, :string
+
     # exclusion reason for FinRegistry enpoints. nil = not exluded
     field :fr_excl, :string
 
@@ -166,8 +169,10 @@ defmodule Risteys.FGEndpoint.Definition do
       :ontology,
       :description,
       :gws_hits,
-      :status_upset_plot,
-      :status_upset_table,
+      :status_upset_plot_fr,
+      :status_upset_table_fr,
+      :status_upset_plot_fg,
+      :status_upset_table_fg,
       :fr_excl
     ])
     |> validate_required([:name])
@@ -196,8 +201,10 @@ defmodule Risteys.FGEndpoint.Definition do
       end
     end)
     |> validate_number(:gws_hits, greater_than_or_equal_to: 0)
-    |> validate_inclusion(:status_upset_plot, valid_upset_status)
-    |> validate_inclusion(:status_upset_table, valid_upset_status)
+    |> validate_inclusion(:status_upset_plot_fr, valid_upset_status)
+    |> validate_inclusion(:status_upset_table_fr, valid_upset_status)
+    |> validate_inclusion(:status_upset_plot_fg, valid_upset_status)
+    |> validate_inclusion(:status_upset_table_fg, valid_upset_status)
     |> unique_constraint(:name)
   end
 

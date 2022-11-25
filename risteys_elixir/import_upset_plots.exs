@@ -12,10 +12,11 @@ alias Risteys.KeyFigures
 # --- CLI argument parser
 [in_dir, dataset | _] = System.argv()
 
-# raise an error if correct dataset info is not provided
-# at the moment, upset plots and tables are only done from FinnGen data, so dataset needs to be FG
-if dataset != "FG" do
-  raise ArgumentError, message: "Dataset 'FG' need to be given as a second argument"
+# Dataset "fg" or "fr" tells from which project the data comes and is used to
+# save the plot and table files and status information accordingly to their own locations.
+# Raise an error if correct dataset info is not provided
+if dataset != "fg" and dataset != "fr" do
+  raise ArgumentError, message: "Dataset 'fg' or 'fr' need to be given as a second argument"
 end
 
 # --- Configuration
@@ -27,9 +28,13 @@ tables_dir = "name_tables_json"
 tables_prefix = "name_table_"
 tables_suffix = ".json"
 
-upset_plots_output = "priv/static/upset_plot/"
+upset_plots_output = "priv/static/upset_plot/" <> dataset <> "/"
 table_template = "template_upset_table.html.heex"
-tables_output = "priv/static/table_case_counts/"
+tables_output = "priv/static/table_case_counts/" <> dataset <> "/"
+
+# dataset specific keys for FGEndpoint.set_status function that sets status in the DB
+key_upset_plot = String.to_atom("upset_plot_" <> dataset)
+key_upset_table = String.to_atom("upset_table_" <> dataset)
 
 Logger.configure(level: :info)
 
@@ -113,7 +118,7 @@ Enum.each(upset_plots, fn {endpoint, upset_path} ->
   File.cp!(upset_path, out)
 
   # Set upset plot status
-  FGEndpoint.set_status!(endpoint, :upset_plot, "ok")
+  FGEndpoint.set_status!(endpoint, key_upset_plot, "ok")
 end)
 
 # --- Generate and import tables
@@ -188,7 +193,7 @@ Enum.each(tables, fn {endpoint, table_path} ->
     File.write!(out, html)
 
     # Set table status
-    FGEndpoint.set_status!(endpoint, :upset_table, "ok")
+    FGEndpoint.set_status!(endpoint, key_upset_table, "ok")
   else
     Logger.warning("Discarding upset table for #{endpoint}: no rows left after filtering.")
   end
@@ -198,8 +203,14 @@ end)
 Logger.info("Setting status for endpoints in DB without upset plot or table")
 all_db_endpoints = Repo.all(FGEndpoint.Definition)
 
+# Create dataset specific keys for getting the status information from the DB
+key_status_upset_plot = String.to_atom("status_upset_plot_" <> dataset)
+key_status_upset_table = String.to_atom("status_upset_table_" <> dataset)
+
+# Go through every endpoint and filter by plot or table status not to be "ok" to set correct status for those cases
 for endpoint <- all_db_endpoints,
-    endpoint.status_upset_plot != "ok" or endpoint.status_upset_table != "ok" do
+  Map.get(endpoint, key_status_upset_plot) != "ok" or Map.get(endpoint, key_status_upset_table) != "ok" do
+
   failure =
     case Map.fetch(runlogs, endpoint.name) do
       :error ->
@@ -216,11 +227,12 @@ for endpoint <- all_db_endpoints,
         end
     end
 
-  if endpoint.status_upset_plot != "ok" do
-    FGEndpoint.set_status!(endpoint, :upset_plot, failure)
+  if Map.get(endpoint, key_status_upset_plot) != "ok" do
+
+    FGEndpoint.set_status!(endpoint, key_upset_plot, failure)
   end
 
-  if endpoint.status_upset_table != "ok" do
-    FGEndpoint.set_status!(endpoint, :upset_table, failure)
+  if Map.get(endpoint, key_status_upset_table) != "ok" do
+    FGEndpoint.set_status!(endpoint, key_upset_table, failure)
   end
 end
