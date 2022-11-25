@@ -38,8 +38,10 @@ defmodule Risteys.FGEndpoint do
   def set_status!(%Definition{} = endpoint, field, status) do
     attrs =
       case field do
-        :upset_plot -> %{status_upset_plot: status}
-        :upset_table -> %{status_upset_table: status}
+        :upset_plot_fg -> %{status_upset_plot_fg: status}
+        :upset_plot_fr -> %{status_upset_plot_fr: status}
+        :upset_table_fg -> %{status_upset_table_fg: status}
+        :upset_table_fr -> %{status_upset_table_fr: status}
       end
 
     Definition.changeset(endpoint, attrs)
