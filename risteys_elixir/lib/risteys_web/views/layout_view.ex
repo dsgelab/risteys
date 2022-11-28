@@ -46,6 +46,7 @@ defmodule RisteysWeb.LayoutView do
       {"FR_FG", version_num} when version_num == current_FR_FG_version ->
         "https://risteys.finregistry.fi#{path}"
 
+      # There is no actually previous FR-FG version atm, but this is left for future use
       {"FR_FG", version_num} when version_num < current_FR_FG_version ->
         "https://r#{version_num}-risteys.finregistry.fi#{path}"
     end
