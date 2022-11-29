@@ -220,6 +220,12 @@ if __name__ == "__main__":
     N_PROCESSES = 20
 
     endpoint_definitions, minimal_phenotype, first_events = load_data()
+    # All results will be discarded if the output files are not writable, so
+    # we open them before running the analyses.
+    logger.info("Checking that output files are writable")
+    params_output_file = open(get_output_filepath("mortality_params", "csv"), "x")
+    bch_output_file = open(get_output_filepath("mortality_baseline_cumulative_hazard", "csv"), "x")
+    counts_output_file = open(get_output_filepath("mortality_counts", "csv"), "x")
     endpoint_definitions = endpoint_definitions.loc[endpoint_definitions["endpoint"] != "DEATH"].reset_index(drop=True)
     n_endpoints = endpoint_definitions.shape[0]
 
@@ -253,10 +259,10 @@ if __name__ == "__main__":
     counts = pd.concat(counts, axis=0, ignore_index=True)
 
     logger.info("Writing output to file")
-    params_output_file = get_output_filepath("mortality_params", "csv")
-    bch_output_file = get_output_filepath("mortality_baseline_cumulative_hazard", "csv")
-    counts_output_file = get_output_filepath("mortality_counts", "csv")
     params.to_csv(params_output_file, index=False)
     bch.to_csv(bch_output_file, index=False)
     counts.to_csv(counts_output_file, index=False)
 
+    params_output_file.close()
+    bch_output_file.close()
+    counts_output_file.close()
