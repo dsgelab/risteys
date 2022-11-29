@@ -7,7 +7,8 @@
 import Config
 
 config :risteys,
-  ecto_repos: [Risteys.Repo]
+  ecto_repos: [Risteys.Repo],
+  data_project: :finngen
 
 # Configures Elixir's Logger
 config :logger, :console,
