@@ -75,7 +75,7 @@ end)
   %{
     "endpoint_a" => endpoint_a_pheno,
     "endpoint_b" => endpoint_b_pheno,
-    "case_ratio" => case_overlap,
+    "case_overlap_percent" => case_overlap,
     "ratio_shared_of_a" => shared_of_a,
     "ratio_shared_of_b" => shared_of_b,
     "pheno1" => endpoint_a_geno,
