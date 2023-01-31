@@ -1,3 +1,6 @@
+# Import FinnGen correlation
+# Usage: mix run import_correlations.exs <phenotypic_and_genotypic_correlations_csv_file> <coloc_varians_csv_file>
+
 alias Risteys.FGEndpoint
 alias Risteys.Repo
 
@@ -75,7 +78,8 @@ end)
   %{
     "endpoint_a" => endpoint_a_pheno,
     "endpoint_b" => endpoint_b_pheno,
-    "case_ratio" => case_overlap,
+    "case_overlap_percent" => case_overlap_percent,
+    "case_overlap_N" => case_overlap_N,
     "ratio_shared_of_a" => shared_of_a,
     "ratio_shared_of_b" => shared_of_b,
     "pheno1" => endpoint_a_geno,
@@ -140,12 +144,18 @@ end)
       variants_same_dir = Map.get(corr_variants, {endpoint_a.name, endpoint_b.name, :same_dir}, [])
       variants_opp_dir = Map.get(corr_variants, {endpoint_a.name, endpoint_b.name, :opp_dir}, [])
 
+      # multiply by 100 to get percentage
+      case_overlap_percent = if case_overlap_percent == "", do: nil, else: (Float.parse(case_overlap_percent) |> elem(0)) * 100
+
+      case_overlap_N = if case_overlap_N == "", do: nil, else: String.to_integer(case_overlap_N)
+
       # Split same vs. opposite direction-of-effect variants
       upsert =
         FGEndpoint.upsert_correlation(%{
           fg_endpoint_a_id: endpoint_a.id,
           fg_endpoint_b_id: endpoint_b.id,
-          case_overlap: case_overlap,
+          case_overlap_percent: case_overlap_percent,
+          case_overlap_N: case_overlap_N,
           shared_of_a: shared_of_a,
           shared_of_b: shared_of_b,
           coloc_gws_hits_same_dir: coloc_gws_hits_same_dir,
