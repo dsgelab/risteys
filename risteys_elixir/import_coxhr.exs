@@ -108,3 +108,4 @@ end)
       end
   end
 end)
+Logger.info("Import done.")

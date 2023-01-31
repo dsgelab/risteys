@@ -167,7 +167,6 @@ defmodule RisteysWeb.FGEndpointController do
     |> assign(:key_figures_FR, key_figures_FR)
     |> assign(:key_figures_FR_index, key_figures_FR_index)
     |> assign(:description, description)
-    |> assign(:data_assocs, data_assocs(endpoint))
     |> assign(:has_drug_stats, FGEndpoint.has_drug_stats?(endpoint))
     |> assign(:authz_list_variants?, authz_list_variants?)
     |> assign(:variants_by_corr, variants_by_corr)

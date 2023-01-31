@@ -22,9 +22,9 @@ import {plot as varBinPlot} from "./varBinPlot";
 import {drawPlot as drawPlotCumulInc} from "./cumulincPlot";
 import {forEach} from "lodash-es";
 import InteractiveMortality from './InteractiveMortality.vue';
-import CorrTable from './CorrTable.vue';
 import AssocPlot from './AssocPlot.vue';
 import AssocTable from './AssocTable.vue';
+import Relationships from './Relationships.vue';
 import DrugTable from './DrugTable.vue';
 import SearchBox from './SearchBox.vue';
 
@@ -34,6 +34,8 @@ import HelpNumberIndividuals from './HelpNumberIndividuals.vue';
 import HelpPrevalence from './HelpPrevalence.vue';
 import HelpMedianAge from './HelpMedianAge.vue';
 import HelpMortality from './HelpMortality.vue';
+import HelpAssociation from './HelpAssociation.vue';
+import HelpRelationships from './HelpRelationships.vue';
 
 
 var path = window.location.pathname;
@@ -172,6 +174,11 @@ if (path.startsWith("/endpoints/")) {  // Load only on endpoint pages
         template: `<HelpMortality/>`,
         components: { HelpMortality },
     });
+    var help_relationships = new Vue({
+        el: '#help-relationships',
+        template: `<HelpRelationships/>`,
+        components: { HelpRelationships }
+    });
 
     /* set colors for plots */
     /* from Tailwind color palettes (v0.7.4 (FG) & v3.0.23 (FR)) */
@@ -246,17 +253,6 @@ if (path.startsWith("/endpoints/")) {  // Load only on endpoint pages
         }
     });
 
-    /* CORRELATION TABLE */
-    stats_data_channel.push("get_correlations", {endpoint: endpoint});
-    stats_data_channel.on("data_correlations", payload => {
-        var vv = new Vue({
-            el: "#vue-correlations",
-            data: {
-                rows: payload.rows
-            },
-            components: { CorrTable },
-        });
-    });
 
     /* FinRegistry results*/
     stats_data_channel.push("test_exclusion", {endpoint: endpoint});
@@ -344,47 +340,19 @@ if (path.startsWith("/endpoints/")) {  // Load only on endpoint pages
                 });
             });
 
-            /* SURVIVAL ANALYSIS DATA */
-            fetch('/api/endpoint/' + endpoint + '/assocs.json', {
-                cache: 'default',
-                mode: 'same-origin'
-            }).then((response) => {
-                return response.json();
-            }).then((assoc_data) => {
-                /* SURVIVAL ANALYSIS PLOT */
+            /* RELATIONSHIPS */
+            stats_data_channel.push("get_relationships", {endpoint: endpoint});
+            stats_data_channel.on("data_relationships", payload => {
                 new Vue({
-                    el: '#assoc-plot',
+                    el: '#vue-relationships',
                     data: {
-                        assoc_data: assoc_data["plot"]
+                        relationships_data: payload.relationships_data,
                     },
-                    components: { AssocPlot },
+                    components: { Relationships }
                 });
-
-                /* SURVIVAL ANALYSIS TABLE */
-                new Vue({
-                    el: '#assoc-table',
-                    data: {
-                        assoc_data: assoc_data["table"]
-                    },
-                    components: { AssocTable },
-                });
-            });
-
-
-            /* DRUG TABLE */
-            fetch('/api/endpoint/' + endpoint + '/drugs.json', {
-                cache: 'default',
-                mode: 'same-origin'
-            }).then((response) => {
-                return response.json();
-            }).then((drug_data) => {
-                new Vue({
-                    el: '#drug-table',
-                    data: {
-                        drug_data: drug_data
-                    },
-                    components: { DrugTable },
-                });
+                console.log(payload.relationships_data)
+                console.log(endpoint)
+                console.log(payload)
             });
         }
     });

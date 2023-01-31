@@ -51,4 +51,10 @@ defmodule RisteysWeb.StatsDataChannel do
     :ok = push(socket, year_hist_event, %{data: payload})
     {:noreply, socket}
   end
+
+  def handle_in("get_relationships", %{"endpoint" => endpoint_name}, socket) do
+    payload = FGEndpoint.get_relationships(endpoint_name)
+    :ok = push(socket, "data_relationships", %{relationships_data: payload})
+    {:noreply, socket}
+  end
 end
