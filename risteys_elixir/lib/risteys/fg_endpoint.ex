@@ -145,13 +145,7 @@ defmodule Risteys.FGEndpoint do
 
     counts_FG = get_explainer_step_counts(endpoint, "FG")
 
-    IO.inspect("counts_FG")
-    IO.inspect(counts_FG)
-
     counts_FR = get_explainer_step_counts(endpoint, "FR")
-
-    IO.inspect("counts_FR")
-    IO.inspect(counts_FR)
 
     Enum.map(steps, fn step ->
       %{name: step_name} = step
@@ -162,7 +156,6 @@ defmodule Risteys.FGEndpoint do
       # Map.put_new(step, :nindivs_post_step, count_FG)
       step = Map.put_new(step, :nindivs_post_step_FG, count_FG)
       step = Map.put_new(step, :nindivs_post_step_FR, count_FR)
-      IO.inspect(step)
       step
     end)
   end
