@@ -38,6 +38,6 @@ defmodule RisteysWeb.AuthController do
       urls: %{website: website}
     } = info
 
-    String.ends_with?(email, "@finngen.fi") and website == "finngen.fi"
+    String.ends_with?(email, "@finngen.fi") # and website == "finregistry.fi" # TODO: find out what is correct condition for authorization. website == "finregistry.fi condition causes HTTP error 500.
   end
 end

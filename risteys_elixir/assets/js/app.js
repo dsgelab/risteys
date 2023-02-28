@@ -350,9 +350,6 @@ if (path.startsWith("/endpoints/")) {  // Load only on endpoint pages
                     },
                     components: { Relationships }
                 });
-                console.log(payload.relationships_data)
-                console.log(endpoint)
-                console.log(payload)
             });
         }
     });

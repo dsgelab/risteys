@@ -175,7 +175,14 @@
 
 				<!-- GWS coloc hits -->
 				<div role="cell" v-if="endpoint.coloc_gws_hits === null">-</div>
-				<div role="cell" v-else> {{ endpoint.coloc_gws_hits}} </div>
+				<div role="cell" v-else>
+					<template v-if="endpoint.coloc_gws_hits > 0">
+						<a :href="'#dialog-corr-' + endpoint.name" v-on:click="openDialogAuthz(endpoint.name)">{{ endpoint.coloc_gws_hits }}</a>
+					</template>
+					<template v-else>
+						{{ endpoint.coloc_gws_hits }}
+					</template>
+				</div>
 			</div>
 		</div>
 	</div>
@@ -288,7 +295,7 @@ export default {
 	},
 	props: {
 		table: Array,
-		endpoint: String,
+		authz: Boolean,
 	},
 	methods: {
 		compBox(hr_binned) {
@@ -330,6 +337,16 @@ export default {
 				}
 			}
 			return n + ending
+		},
+		openDialogAuthz(corrName) {
+			const dialogIdCorr = 'corr-' + corrName;
+			const dialogIdAuthn = 'user-authn';
+
+			if (this.authz) {
+				openDialog(dialogIdCorr);
+			} else {
+				openDialog(dialogIdAuthn);
+			}
 		}
 	},
 	created () {
