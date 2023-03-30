@@ -1,6 +1,8 @@
 defmodule RisteysWeb.LayoutView do
   use RisteysWeb, :view
 
+  alias RisteysWeb.ViewHelpers
+
   # change_release_url is a helper function for creating a link to the same page where the user
   # is but in a selected Risteys version.
   # version_num is the number of the release
