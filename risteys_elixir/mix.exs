@@ -48,6 +48,9 @@ defmodule Risteys.MixProject do
       {:plug_cowboy, "~> 2.5"},
       {:csv, "~> 2.3"},
       {:ueberauth_google, "~> 0.10"},
+
+      # Development deps
+      {:dialyxir, "~> 1.2", only: [:dev], runtime: false}
     ]
   end
 
