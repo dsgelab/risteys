@@ -165,7 +165,7 @@
 				<div
 					role="cell" v-else
 					v-html="compBox(endpoint.rg_binned)"
-					v-bind:title="textPercentile(Math.trunc(endpoint.rg_binned * 100) + ' percentile')"
+					v-bind:title="textPercentile(Math.trunc(endpoint.rg_binned * 100)) + ' percentile'"
 				>
 				</div>
 
