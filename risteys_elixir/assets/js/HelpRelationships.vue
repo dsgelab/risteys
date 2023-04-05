@@ -18,7 +18,7 @@
                     <b>Hazard ratios (HR)</b> with 95% confidence intervals are shown for cases in the FinRegistry
                     data where the onset of the selected endpoint occurred first.
                     Results with statistically significant Bonferroni corrected p-values are indicated by *.
-                    See <a href="/documentation/#relationships">Documentation</a> for details.
+                    See <a href="/documentation/#methods-relationships">Documentation</a> for details.
                 </p>
 
                 <div class="mt-2">
