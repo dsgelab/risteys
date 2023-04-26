@@ -18,7 +18,7 @@ Logger.configure(level: :info)
 
 filepath
 |> File.stream!()
-|> CSV.decode!(headers: true)
+|> CSV.decode!(separator: ?\t, headers: true)
 |> Stream.filter(fn %{"code_set" => code_set} -> code_set == "ICD9" end)
 |> Stream.map(fn %{"code" => icd9, "name_en" => description} ->
   %Icd9{code: icd9, description: description}

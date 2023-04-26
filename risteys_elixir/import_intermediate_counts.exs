@@ -24,7 +24,7 @@ endpoints = FGEndpoint.list_endpoints_ids()
 
 counts_filepath
 |> File.stream!()
-|> CSV.decode!(headers: true)
+|> CSV.decode!(separator: ?\t, headers: true)
 
 # We are not interested in registry specific counts
 |> Stream.filter(fn %{"SOURCE" => source} -> source == "ALL" end)

@@ -92,7 +92,7 @@ Logger.info("Pre-processing endpoint metadata files")
 tags =
   tagged_path
   |> File.stream!()
-  |> CSV.decode!(headers: true)
+  |> CSV.decode!(separator: ?\t, headers: true)
   |> Enum.reduce(%{}, fn %{"CATEGORYNAME" => tag, "NAME" => name}, acc ->
     Map.put(acc, name, tag)
   end)
