@@ -23,7 +23,7 @@ Logger.info("Loading ICD-10s")
 icd10s =
   code_translations
   |> File.stream!()
-  |> CSV.decode!(headers: true)
+  |> CSV.decode!(separator: ?\t, headers: true)
   |> Stream.filter(fn %{"code_set" => code_set} -> code_set == "ICD10" end)
   |> Enum.reduce(%{}, fn %{"code" => code, "name_en" => description}, acc ->
     Map.put(acc, code, description)

@@ -1,7 +1,7 @@
 # Import ontology data into the database
 #
 # Usage:
-#     mix run import_ontology.exs <json-file-ontology>
+#     mix run import_ontology.exs <json-file-ontology> <csv-file-corrected-descriptions>
 #
 # where <json-file-ontology> is a JSON file containing ontology data
 # with the following structure:
@@ -18,19 +18,44 @@
 #
 # The map data for each endpoint will be imported "as is" in a row
 # cell in the database.
+#
+# and where <csv-file-corrected-descriptions> is a CSV file with the following columns:
+# - Endpoint
+# - Corrected description
 
 alias Risteys.{FGEndpoint, Repo}
 import Ecto.Query
 require Logger
 
 Logger.configure(level: :info)
-[filepath | _] = System.argv()
+[ontology_filepath, corrections_filepath | _] = System.argv()
 
-filepath
+
+Logger.info("Parsing corrected descriptions")
+corrections =
+  corrections_filepath
+  |> File.stream!()
+  |> CSV.decode!(headers: true)
+  |> Enum.into(%{}, fn %{"Endpoint" => endpoint, "Corrected description" => description} ->
+    {endpoint, description}
+  end)
+
+
+ontology_filepath
 |> File.read!()
 |> Jason.decode!()
 |> Enum.each(fn {name, data} ->
   {description, ontology} = Map.pop(data, "description")
+
+  description =
+    case Map.fetch(corrections, name) do
+      {:ok, corrected_description} ->
+	Logger.info("applying corrected description for endpoint #{name}")
+	corrected_description
+
+      :error ->
+	description
+    end
 
   Logger.info("Importing #{name}…")
 
@@ -62,3 +87,5 @@ with_data =
 
 total = length(ontologies)
 Logger.info("There are #{with_data} / #{total} endpoints with ontology data.")
+
+
