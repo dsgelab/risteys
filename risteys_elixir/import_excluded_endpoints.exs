@@ -19,7 +19,7 @@ excl_endpoints =
   filepath
   |> File.stream!()
   |> CSV.decode!(headers: :true)
-  |> Enum.reduce(%{}, fn %{"FR_EXCL" => fr_excl, "NAME" => name}, acc ->
+  |> Enum.reduce(%{}, fn %{"endpoint" => name, "reason_finregistry_excluded" => fr_excl}, acc ->
     Map.put(acc, name, fr_excl)
   end)
 
