@@ -1,9 +1,9 @@
 defmodule RisteysWeb.HomeController do
   use RisteysWeb, :controller
 
-  plug :put_layout, "minimal.html"
-
-  def index(conn, _params) do
-    render(conn, "index.html")
+  def redir(conn, _params) do
+    conn
+    |> put_status(:moved_permanently)
+    |> redirect(external: "https://risteys.finregistry.fi")
   end
 end
