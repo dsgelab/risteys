@@ -40,19 +40,19 @@
 				<div role="columnheader" class="green border-left">
 					<p> FR </p>
 					<p>
-						<input type="radio" id="nindivs_fr_asc" value="nindivs_fr_asc" v-model="sorter" v-on:change="refresh_table()">
-						<label for="nindivs_fr_asc" class="radio-left">▲</label>
-						<input type="radio" id="nindivs_fr_desc" value="nindivs_fr_desc" v-model="sorter" v-on:change="refresh_table()">
-						<label for="nindivs_fr_desc" class="radio-right">▼</label>
+						<input type="radio" id="case_overlap_fr_asc" value="case_overlap_fr_asc" v-model="sorter" v-on:change="refresh_table()">
+						<label for="case_overlap_fr_asc" class="radio-left">▲</label>
+						<input type="radio" id="case_overlap_fr_desc" value="case_overlap_fr_desc" v-model="sorter" v-on:change="refresh_table()">
+						<label for="case_overlap_fr_desc" class="radio-right">▼</label>
 					</p>
 				</div>
 				<div role="columnheader" class = "dec-pl blue">
 					<p> FG </p>
 					<p>
-						<input type="radio" id="nindivs_fg_asc" value="nindivs_fg_asc" v-model="sorter" v-on:change="refresh_table()">
-						<label for="nindivs_fg_asc" class="radio-left">▲</label>
-						<input type="radio" id="nindivs_fg_desc" value="nindivs_fg_desc" v-model="sorter" v-on:change="refresh_table()">
-						<label for="nindivs_fg_desc" class="radio-right">▼</label>
+						<input type="radio" id="case_overlap_fg_asc" value="case_overlap_fg_asc" v-model="sorter" v-on:change="refresh_table()">
+						<label for="case_overlap_fg_asc" class="radio-left">▲</label>
+						<input type="radio" id="case_overlap_fg_desc" value="case_overlap_fg_desc" v-model="sorter" v-on:change="refresh_table()">
+						<label for="case_overlap_fg_desc" class="radio-right">▼</label>
 					</p>
 				</div>
 
@@ -207,17 +207,17 @@ let compute_table = (col_filter, sorter, table) => {
 
 	// Sort rows
 	switch (sorter) {
-		case "nindivs_fr_desc":
-			result = sortByNull(result, (endpoint) => endpoint.fr_case_overlap_N, "desc");
+		case "cave_overlap_fr_desc":
+			result = sortByNull(result, (endpoint) => strNumToFloat(endpoint.fr_case_overlap_percent), "desc");
 			break;
-		case "nindivs_fr_asc":
-			result = sortByNull(result, (endpoint) => endpoint.fr_case_overlap_N, "asc");
+		case "case_overlap_fr_asc":
+			result = sortByNull(result, (endpoint) => strNumToFloat(endpoint.fr_case_overlap_percent), "asc");
 			break;
-		case "nindivs_fg_desc":
-			result = sortByNull(result, (endpoint) => endpoint.fg_case_overlap_N, "desc");
+		case "case_overlap_fg_desc":
+			result = sortByNull(result, (endpoint) => strNumToFloat(endpoint.fg_case_overlap_percent), "desc");
 			break;
-		case "nindivs_fg_asc":
-			result = sortByNull(result, (endpoint) => endpoint.fg_case_overlap_N, "asc");
+		case "case_overlap_fg_asc":
+			result = sortByNull(result, (endpoint) => strNumToFloat(endpoint.fg_case_overlap_percent), "asc");
 			break;
 		case "hr_fr_desc":
 			result = sortByNull(result, (endpoint) => endpoint.hr, "desc");
@@ -262,6 +262,13 @@ let compute_table = (col_filter, sorter, table) => {
 	return result
 };
 
+let strNumToFloat = (num) => {
+	if (num === null) {
+		return null;
+	} else {
+		return parseFloat(num);
+	}
+}
 
 /**
  * Same as sortBy but keep null values at the end
