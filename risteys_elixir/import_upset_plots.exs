@@ -12,11 +12,11 @@ alias Risteys.KeyFigures
 # --- CLI argument parser
 [in_dir, dataset | _] = System.argv()
 
-# Dataset "fg" or "fr" tells from which project the data comes and is used to
+# Dataset "FG" or "FR" tells from which project the data comes and is used to
 # save the plot and table files and status information accordingly to their own locations.
 # Raise an error if correct dataset info is not provided
-if dataset != "fg" and dataset != "fr" do
-  raise ArgumentError, message: "Dataset 'fg' or 'fr' need to be given as a second argument"
+if dataset != "FG" and dataset != "FR" do
+  raise ArgumentError, message: "Dataset 'FG' or 'FR' need to be given as a second argument"
 end
 
 # --- Configuration
@@ -33,8 +33,9 @@ table_template = "template_upset_table.html.heex"
 tables_output = "priv/static/table_case_counts/" <> dataset <> "/"
 
 # dataset specific keys for FGEndpoint.set_status function that sets status in the DB
-key_upset_plot = String.to_atom("upset_plot_" <> dataset)
-key_upset_table = String.to_atom("upset_table_" <> dataset)
+dataset_atom = String.downcase(dataset)
+key_upset_plot = String.to_atom("upset_plot_" <> dataset_atom)
+key_upset_table = String.to_atom("upset_table_" <> dataset_atom)
 
 Logger.configure(level: :info)
 
@@ -204,8 +205,8 @@ Logger.info("Setting status for endpoints in DB without upset plot or table")
 all_db_endpoints = Repo.all(FGEndpoint.Definition)
 
 # Create dataset specific keys for getting the status information from the DB
-key_status_upset_plot = String.to_atom("status_upset_plot_" <> dataset)
-key_status_upset_table = String.to_atom("status_upset_table_" <> dataset)
+key_status_upset_plot = String.to_atom("status_upset_plot_" <> dataset_atom)
+key_status_upset_table = String.to_atom("status_upset_table_" <> dataset_atom)
 
 # Go through every endpoint and filter by plot or table status not to be "ok" to set correct status for those cases
 for endpoint <- all_db_endpoints,
