@@ -16,7 +16,7 @@ defmodule RisteysWeb.Router do
   scope "/", RisteysWeb do
     pipe_through :browser
 
-    get "/", HomeController, :redir
+    get "/", HomeController, :index
     get "/documentation", DocumentationController, :index
     get "/changelog", ChangelogController, :index
     get "/endpoints/:name", FGEndpointController, :show
