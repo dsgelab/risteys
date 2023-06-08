@@ -4,7 +4,7 @@ defmodule RisteysWeb.LayoutView do
   # change_release_url is a helper function for creating a link to the same page where the user
   # is but in a selected Risteys version.
   # version_num is the number of the release
-  # risteys_version is either "FG" for FinnGen Risteys or "FR_FG" FinRegistry-FinnGen Risteys. Dsed for setting correct domain in URL
+  # risteys_version is either "FG" for FinnGen Risteys or "FR_FG" FinRegistry-FinnGen Risteys. Used for setting correct domain in URL
   def change_release_url(conn, version_num, risteys_version) do
     # path to the selected page
     path = conn.request_path
@@ -31,24 +31,19 @@ defmodule RisteysWeb.LayoutView do
 
     # URL to current page in a selected version
     # current version numbers need to be manually updated for new versions
-    current_FG_version = 10
-    current_FR_FG_version = 10
+    current_FR_FG_version = 11
 
     # return the URL. Have the rX prefix only for previous Risteys versions
     # different subdomain name for previous FR_FG Risteys versions & sub-subdomain for previous FinnGen Risteys versions
     case {risteys_version, version_num} do
-      {"FG", version_num} when version_num == current_FG_version ->
-        "https://risteys.finngen.fi#{path}"
-
-      {"FG", version_num} when version_num < current_FG_version ->
-        "https://r#{version_num}.risteys.finngen.fi#{path}"
-
       {"FR_FG", version_num} when version_num == current_FR_FG_version ->
         "https://risteys.finregistry.fi#{path}"
 
-      # There is no actually previous FR-FG version atm, but this is left for future use
       {"FR_FG", version_num} when version_num < current_FR_FG_version ->
-        "https://r#{version_num}-risteys.finregistry.fi#{path}"
+        "https://r#{version_num}.risteys.finregistry.fi#{path}"
+
+      {"FG", version_num} ->
+        "https://r#{version_num}.risteys.finngen.fi#{path}"
     end
   end
 end
