@@ -1,0 +1,255 @@
+<%# Navigation on wide screen: display only the page links since other links are already in the header %>
+<nav class="wide">
+	<p>Go to:
+		<a href="#endpoint-definition">Endpoint definition</a>
+		<a href="#summary-statistics">Summary statistics</a>
+		<a href="#correlations">Correlations</a>
+		<a href="#survival-analyses">Survival analyses</a>
+		<a href="#drugs-statistics">Drug statistics</a>
+	</p>
+</nav>
+
+<%= if not @endpoint.is_core do%>
+<article class="fluid-container mt-16 mb-16 info">
+	<img src={"#{Routes.static_path(@conn, "/images/info_black.svg")}"} alt="info icon">
+
+	<article>
+		<p>This is a <b>non-core</b> endpoint: only basic statistics are computed.</p>
+
+		<%= case @replacements do %>
+			<% {_reason, nil} -> %>
+				<%# No replacement endpoints to show, so we don't display anything. %>
+
+			<% {reason, replacement} when reason in [:selected_core, :exallc_priority] -> %>
+			<p>
+				See its core counterpart <a href={"#{replacement.name}"}><%= replacement.name %></a> for full statistics.
+			</p>
+
+			<% {:correlated, replacements} -> %>
+			<p>
+			See these related core endpoints for full statistics:
+			<ul>
+				<%= for correlated <- replacements do %>
+				<li><a href={"#{correlated.name}"}><%= correlated.name %></a></li>
+				<% end %>
+			</ul>
+			</p>
+		<% end %>
+	</article>
+</article>
+<% end %>
+
+<main class="fluid-container">
+	<div class="title">
+		<h1><%= @endpoint.longname %></h1>
+		<p class="links">
+			<%= for link <- ontology_links(@ontology) do %>
+			<%= link %>
+			<% end %>
+
+			<%# Only core endpoints are on PheWeb, so we don't show a link for non-core endpoints %>
+			<%= if @endpoint.is_core do %>
+			<a href={"https://results.finngen.fi/pheno/#{@endpoint.name}"} target="_blank" rel="noopener noreferrer external" class="button-out">PheWeb</a>
+			<% end %>
+		</p>
+		<p style="padding-top: 0"><%= @endpoint.name %></p>
+		<p class="description"><%= @description %></p>
+	</div>
+
+	<div class="endpoint-grid">
+		<article id="endpoint-definition" class="box">
+			<div class="left-right-heading">
+				<h2>Endpoint definition</h2>
+				<a href="#">↥</a>
+			</div>
+
+			<%= render(
+					RisteysWeb.FGEndpointView,
+					"endpoint_explainer.html",
+					steps: @explainer_steps,
+					endpoint: @endpoint,
+					stats: @stats,
+					count_registries: @count_registries
+				)
+			%>
+
+		</article>
+
+		<div> <%# wrap into a div so the <article> height is independent of the grid cell height %>
+			<article id="similar-endpoints" class="box">
+				<div class="left-right-heading">
+					<h2>Similar endpoints</h2>
+					<a href="#">↥</a>
+				</div>
+
+			<%= render(RisteysWeb.FGEndpointView, "similar_endpoints.html", assigns) %>
+
+			</article>
+		</div>
+	</div>
+
+
+	<article id="summary-statistics" class="stats-grid box">
+		<div class="left-right-heading">
+			<h2>Summary Statistics</h2>
+			<a href="#">↥</a>
+		</div>
+
+		<article>
+			<h3>Key figures</h3>
+			<table class="horizontal">
+				<thead>
+					<tr>
+						<th></th>
+						<th>All</th>
+						<th>Female</th>
+						<th>Male</th>
+					</tr>
+				</thead>
+				<tbody>
+					<tr>
+						<th><span id="help-button-nindivs"></span> Number of individuals</th>
+						<td><%= @stats.all.n_individuals %></td>
+						<td><%= @stats.female.n_individuals %></td>
+						<td><%= @stats.male.n_individuals %></td>
+					</tr>
+					<tr>
+						<th><span id="help-button-prevalence"></span> Unadjusted prevalence (%)</th>
+						<td><%= @stats.all.prevalence |> percentage() |> round(2) %></td>
+						<td><%= @stats.female.prevalence |> percentage() |> round(2) %></td>
+						<td><%= @stats.male.prevalence |> percentage() |> round(2) %></td>
+					</tr>
+					<tr>
+						<th><span id="help-button-mean-age"></span> Mean age at first event (years)</th>
+						<td><%= @stats.all.mean_age |> round(2) %></td>
+						<td><%= @stats.female.mean_age |> round(2) %></td>
+						<td><%= @stats.male.mean_age |> round(2) %></td>
+					</tr>
+				</tbody>
+			</table>
+		</article>
+
+		<article>
+			<h3><span id="help-mortality"></span> Mortality</h3>
+			<%= if @endpoint.is_core do %>
+			<table class="horizontal">
+				<thead>
+					<tr>
+						<th>Follow-up</th>
+						<th>Absolute risk</th>
+						<th><abbr data-title="Hazard Ratio">HR</abbr> [95% <abbr data-title="confidence interval">CI</abbr>]</th>
+						<th><abbr data-title="p-value">p</abbr></th>
+						<th><abbr data-title="number of individuals">N</abbr></th>
+					</tr>
+				</thead>
+				<tbody>
+					<%= for {title, stat} <- mortality_table(@mortality) do %>
+					<tr>
+						<th><%= title %></th>
+						<td><%= stat.absolute_risk %></td>
+						<td><%= stat.hr %></td>
+						<td><%= stat.pvalue%></td>
+						<td><%= stat.n_individuals %></td>
+					</tr>
+					<% end %>
+				</tbody>
+			</table>
+			<% else %>
+			<p class="no-data">Not a core endpoint, no data to show.</p>
+			<% end %>
+		</article>
+
+		<article>
+			<h3>Age distribution of first events</h3>
+			<div id="bin-plot-age"></div>
+		</article>
+
+		<article>
+			<h3>Year distribution of first events</h3>
+			<div id="bin-plot-year"></div>
+		</article>
+
+		<article>
+			<h3>Cumulative Incidence</h3>
+			<%= if @endpoint.is_core do %>
+			<div id="cumulinc-plot" class="mt-4"></div>
+			<% else %>
+			<p class="no-data">Not a core endpoint, no data to show.</p>
+			<% end %>
+		</article>
+	</article>
+
+	<article id="correlations" class="box">
+		<div class="left-right-heading">
+			<h2>Correlations</h2>
+			<a href="#">↥</a>
+		</div>
+
+		<%= render(RisteysWeb.FGEndpointView, "correlations.html", assigns) %>
+	</article>
+
+	<article id="survival-analyses" class="box">
+		<div class="left-right-heading">
+			<h2>Survival analyses between endpoints</h2>
+			<a href="#">↥</a>
+		</div>
+
+		<%= case @data_assocs do %>
+		<% [] -> %>
+		<p class="no-data">Not a core endpoint, no data to show.</p>
+
+		<% _data -> %>
+		<article class="surv-plot">
+			<h3>Plot</h3>
+			<div id="assoc-plot"> <%# Vue.js instance %>
+				<div class="text-center">
+					<p class="legend">
+						<svg width="10" height="10"><circle r="5" cx="5" cy="5" fill="#000000"/></svg> before <%= @endpoint.longname %>
+						<br>
+						<svg width="9" height="9"><rect height="9" width="9" fill="#000000"/></svg> after <%= @endpoint.longname %>
+					</p>
+				</div>
+				<assoc-plot v-bind:assocs="assoc_data" endpoint={@endpoint.name}>
+					<p>
+						<img src={Routes.static_path(@conn, "/images/spinner.svg")} alt="loading spinner">
+						Loading survival analyses plot
+					</p>
+				</assoc-plot>
+			</div>
+		</article>
+
+		<article>
+			<h3>Table</h3>
+			<div id="assoc-table"> <%# Vue.js instance %>
+				<assoc-table v-bind:table="assoc_data" endpoint={@endpoint.name}>
+					<p>
+						<img src={Routes.static_path(@conn, "/images/spinner.svg")} alt="loading spinner">
+						Loading survival analyses table
+					</p>
+				</assoc-table>
+			</div>
+			<a href={"/api/endpoints/#{@endpoint.name}/assocs.csv"}><button class="button-faded mt-2">Download CSV</button></a>
+		</article>
+		<% end %>
+	</article>
+
+	<article id="drugs-statistics" class="box">
+		<div class="left-right-heading">
+			<h2>Drugs most likely to be purchased after <%= @endpoint.longname %></h2>
+			<a href="#">↥</a>
+		</div>
+
+		<%= if @has_drug_stats do %>
+		<article>
+			<div id="drug-table">
+				<drug-table v-bind:drug_data="drug_data" endpoint={@endpoint.name} />
+			</div>
+			<a href={"/api/endpoints/#{@endpoint.name}/drugs.csv"}><button class="button-faded mt-2">Download CSV</button></a>
+		</article>
+
+		<% else %>
+		<p class="no-data">Endpoint not on priority list, no data to show.</p>
+
+		<% end %>
+	</article>
+</main>
