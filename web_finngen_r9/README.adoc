@@ -1,0 +1,208 @@
+Risteys
+=======
+
+This directory contains the code to power the online Risteys web portal. For the data pipeline, please check the other link:../pipeline/README.adoc[pipeline] directory.
+
+The project is based on the https://phoenixframework.org/[Phoenix web framework].
+This framework is written in https://elixir-lang.org/[elixir], which is also used to do data pre-processing and import into the database.
+The front-end interactions are using https://vuejs.org/[Vue.js].
+Communication between Vue.js and the backend is done using https://hexdocs.pm/phoenix/channels.html[Phoenix Channels] (which runs on Websockets).
+
+
+Setting up a development environment
+------------------------------------
+
+Requirements
+~~~~~~~~~~~~
+
+- https://elixir-lang.org/install.html[elixir]
+- node.js
+- PostgreSQL database
+
+
+Configuration
+~~~~~~~~~~~~~
+Some configuration files contain secret credentials, therefore are not present in this public GitHub repository. Risteys developer can get them by requesting access to the GitLab repository "risteys/risteys_secrets".
+
+Create a file *`dev.secret.exs`* in the `config/` directory, with the following content and replacing the <VAR>:
+
+dev.secret.exs
+[source,elixir]
+----
+import Config
+
+# Configure your database
+config :risteys, Risteys.Repo,
+  username: "<USER>",
+  password: "<PASSWORD>",
+  database: "<DBNAME>",
+  hostname: "<HOSTNAME>",
+  pool_size: 10
+----
+
+Tips to find needed information:
+
+* Open a psql console in a terminal by running `psql postgres` (`\q` to quit). 
+* List existing users by `\du`. If you don't have postrgesql user (other than superuser), create a user with the ability to create a database. 
+** create user: `CREATE USER <username> WITH PASSWORD <password>;`
+** grant permission to create a database: `ALTER USER <username> CREATEDB;` 
+* get database name: `\conninfo`
+* get hostname: +
+  `SELECT boot_val,reset_val` +
+  `FROM pg_settings` +
+  `WHERE name='listen_addresses';;`
+
+
+Create a file *`config.secret.exs`* in the `config/` directory, with the below content and replacing the <INSERT KEY HERE> with key with a random key given by Vincent. (For a working project, a random key can be made by using a command `mix phx.gen.secret 64`).
+
+config.secret.exs
+[source,elixir]
+----
+import Config
+
+# Configures the endpoint
+config :risteys, RisteysWeb.Endpoint,
+  url: [host: "localhost"],
+  secret_key_base: "<INSERT KEY HERE>",
+  render_errors: [view: RisteysWeb.ErrorView, accepts: ~w(html json)],
+  pubsub: [name: Risteys.PubSub, adapter: Phoenix.PubSub.PG2]
+----
+
+First-time dependency initialization
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+From a terminal in the project root directory (i.e. `risteys_elixir`), run:
+
+* `mix deps.get` to get the Elixir dependencies
+* `mix ecto.setup` to create the DB and apply the migrations
+* change directory to `assets/` and then `npm install` to install the Javascript dependencies listed in the `assets\package.json`
+** if the command directs to some other file than `assets\package.json` and is not installing dependencies listed in that file, but gives an error instead, remove `node_modules` and `package-lock.json` and run again.
+
+
+Running
+~~~~~~~
+change directory back to `risteys_elixir` and connect to the server: `mix phx.server` 
+
+You can now access Risteys from http://localhost:4000
+
+Importing data
+--------------
+
+Once the Risteys web server is running we still need to put data there. First, if you haven't already, the various statistics displayed in Risteys need to be computed using the link:../pipeline/README.adoc[pipeline]. Then, you can proceed to importing this data into the Risteys database for them to be displayed in the web portal.
+
+Scripts to import files into the Risteys database are in this current directory (`risteys_elixir`) and they should be run in that directory, for example:
+`mix run import_icd9.exs <path-to-input-file>`.
+
+Input files are listed at the beginning of `import_` files.
+
+Import scripts should be run in this order:
+
+1. import_icd10.exs, using:
+  - <<file-medcode,FG Medcode>>
+
+2. import_icd9.exs, using:
+  - <<file-medcode,FG Medcode>>
+
+3. import_endpoint_csv.exs, using:
+  - <<file-endp-defs,FG Endpoint definitions>>
+  - <<file-endp-main-tag,FG Endpoint main tag>>
+  - <<file-endp-taglist,FG Endpoint tag list>>
+  - <<file-icd10,ICD-10>>
+  - <<file-endp-selected-core,FG Endpoint selected core>>
+
+4. import_intermediate_counts.exs, using:
+  - <<file-interm-counts,FG intermediate counts>>
+
+5. import_ontology.exs, using:
+  - <<file-ontology,Risteys ontology>>
+
+6. import_aggregated_stats.exs, using:
+  - <<file-stats-agg,Risteys aggregate statistics>>
+
+7. import_coxhr.exs, using:
+  - <<file-coxhrs,Risteys survival analyses>>
+
+8. import_drug_stats.exs, using:
+  - <<file-atc-codes,ATC Codes>>
+  - <<file-stats-drugs,Risteys drug statistics>>
+
+9. import_mortality_stats.exs, using:
+  - <<file-stats-mortality,Risteys mortality statistics>>
+
+10. import_correlation.exs, using:
+  - <<file-corr-pheno-geno,FinnGen phenotypic + genotypic correlations>>
+  - <<file-corr-variants,FinnGen coloc variants>>
+
+11. import_genes.exs, using:
+  - <<file-havana,HAVANA gene list>>
+
+12. import_stas_cumulative_incidence.exs, using:
+ - <<file-stats-cumulinc,Risteys cumulative incidence statistics>>
+
+
+File list (as of FinnGen R9)
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+* [[file-icd10]]ICD-10
+** name: `ICD10_koodistopalvelu_2015-08_26_utf8.csv`
+** source: https://91.202.112.142/codeserver/pages/classification-view-page.xhtml?classificationKey=23&versionKey=58[Kela Kansallinen koodistopalvelu]
+
+* [[file-medcode]]FinnGen medcode
+** name: `finngen_R6_medcode_ref.csv`
+** source: FinnGen
+
+* [[file-endp-defs]]FinnGen endpoint definitions
+** name: `Endpoints_Controls_FINNGEN_ENDPOINTS_DF9_Final_2021-11-23_corrected.add-core-endpoints.add-reason-noncore.csv`
+
+* [[file-endp-main-tag]]FinnGen endpoint main tag
+** name: `FINNGEN_ENDPOINTS_DF5_V2_2020-02-11.names_tagged_ordered.csv`
+** source: FinnGen clinical team
+
+* [[file-endp-taglist]]FinnGen endpoint tag list
+** name: `TAGLIST_DF5.csv`
+** source: FinnGen clinical team
+
+* [[file-endp-selected-core]]FinnGen endpoint selected core
+** name: `finngen_correlation_clusters_DF8.csv`
+** source: FinnGen clinical team
+
+* [[file-interm-counts]]FinnGen endpoint intermediate counts
+** name: `finngen_endpoints_intermediate_counts_green_export.df9.2022-02-22.csv`
+** source: FinnGen registry team
+
+* [[file-ontology]]Risteys ontology
+** name: `out_ontology__2020-08-10.json`
+** source: Risteys pipeline
+
+* [[file-stats-agg]]Risteys aggregate statistics
+** name: `basic_stats__2022-02-08.json`
+** source: Risteys pipeline
+
+* [[file-coxhrs]]Risteys survival analyses
+** name: `coxhrs__small-headers__priority-endpoints__2022-02-17.csv`
+** source: Risteys pipeline
+
+* [[file-atc-codes]]ATC Codes
+** name: `atc_codes_wikipedia.csv`
+** source: Risteys pipeline & Wikipedia
+
+* [[file-stats-drugs]]Risteys drug statistics
+** name: `meds_scores.2022-02-15.csv`
+** source: Risteys pipeline
+
+* [[file-stats-mortality]]Risteys mortality statistics
+** name: `mortality__minim_headers__2022-02-14.csv`
+** source: Risteys pipeline
+
+* [[file-corr-pheno-geno]]FinnGen phenotypic + genotypic correlations
+** name: `corr_pheno-r9.1.0_geno-r8v4_full-join__2022-02-21.csv.zst`
+** source: https://github.com/FINNGEN/endpcorr[FinnGen correlation pipeline] for the phenotypic file, merged with genotypic correlation file from FinnGen analysis team
+
+* [[file-corr-variants]]FinnGen coloc variatns
+** name: `r8_fg_r2_0_8_p_5e_08_keep_cs.variants__small-headers__2021-11-26.csv`
+** source: FinnGen analysis team
+
+* [[file-havana]]HAVANA gene list
+** name: `havana.json`
+
+* [[file-stats-cumulinc]]Risteys cumulative incidence statistics
+** name: `cumulative_incidence__2022-02-14.csv`
+** source: Risteys pipeline
