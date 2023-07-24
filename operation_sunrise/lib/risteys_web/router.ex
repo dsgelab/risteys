@@ -18,6 +18,7 @@ defmodule RisteysWeb.Router do
     pipe_through :browser
 
     get "/", PageController, :home
+    get "/changelog", ChangelogController, :index
   end
 
   # Other scopes may use custom stacks.
