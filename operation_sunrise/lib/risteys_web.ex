@@ -82,8 +82,13 @@ defmodule RisteysWeb do
     quote do
       # HTML escaping functionality
       import Phoenix.HTML
+      # HTML utilities
+      import Phoenix.HTML.Link
       # Core UI components and translation
       import RisteysWeb.CoreComponents
+
+      # Our custom HTML helpers
+      import RisteysWeb.CustomHTMLHelpers
 
       # Shortcut for generating JS commands
       alias Phoenix.LiveView.JS
