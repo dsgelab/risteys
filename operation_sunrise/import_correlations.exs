@@ -108,13 +108,13 @@ end)
 
   case {endpoint_a, endpoint_b} do
     {nil, nil} ->
-      Logger.warn("Skipping row, both endpoints not found: #{endpoint_a_name}, #{endpoint_b_name}")
+      Logger.warning("Skipping row, both endpoints not found: #{endpoint_a_name}, #{endpoint_b_name}")
 
     {nil, _} ->
-      Logger.warn("Skipping row, A not found: #{endpoint_a_name}")
+      Logger.warning("Skipping row, A not found: #{endpoint_a_name}")
 
     {_, nil} ->
-      Logger.warn("Skipping row, B not found: #{endpoint_b_name}")
+      Logger.warning("Skipping row, B not found: #{endpoint_b_name}")
 
     _ ->
       # Update GWS hits of endpoint A.
@@ -137,7 +137,7 @@ end)
           Logger.debug("insert/update ok for GWS hits on #{endpoint_a.name}")
 
         {:error, changeset} ->
-          Logger.warn(inspect(changeset))
+          Logger.warning(inspect(changeset))
       end
 
       # Update (a, b) correlations
@@ -171,7 +171,7 @@ end)
           Logger.debug("insert/update ok for A:#{endpoint_a.name} B:#{endpoint_b.name}")
 
         {:error, changeset} ->
-          Logger.warn(inspect(changeset))
+          Logger.warning(inspect(changeset))
       end
   end
 end)

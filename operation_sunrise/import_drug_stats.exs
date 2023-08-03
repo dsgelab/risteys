@@ -24,7 +24,7 @@ drug_descs_path
 
   case status do
     :ok -> Logger.debug("insert/update ok")
-    :error -> Logger.warn(inspect(changeset))
+    :error -> Logger.warning(inspect(changeset))
   end
 end)
 
@@ -42,7 +42,7 @@ drug_scores_path
   is_nan = score == "nan" or stderr == "nan" or pvalue == "nan"
 
   if is_nan do
-    Logger.warn(
+    Logger.warning(
       "Drug score with NaN value for #{endpoint}/#{atc}: score:#{score} ; stderr:#{stderr} ; pvalue:#{pvalue}"
     )
   end
@@ -51,7 +51,7 @@ drug_scores_path
 end)
 |> Stream.reject(fn %{"endpoint" => endpoint, "drug" => atc, "n_indivs" => n_indivs} ->
   if n_indivs < 6 do
-    Logger.warn("Reject entry for #{endpoint}/#{atc} with indidivual level-data N=#{n_indivs}")
+    Logger.warning("Reject entry for #{endpoint}/#{atc} with indidivual level-data N=#{n_indivs}")
     true
   else
     false
@@ -96,7 +96,7 @@ end)
         Logger.debug("insert/update ok")
 
       {:error, changeset} ->
-        Logger.warn(inspect(changeset))
+        Logger.warning(inspect(changeset))
     end
   end
 end)

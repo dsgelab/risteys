@@ -41,13 +41,13 @@ end)
   endp_a_in_endpoints = MapSet.member?(endpoints, endpoint_a_name)
 
   if not endp_a_in_endpoints do
-    Logger.warn("Endpoint A, #{endpoint_a_name}, not found in endpoints")
+    Logger.warning("Endpoint A, #{endpoint_a_name}, not found in endpoints")
   end
 
   endp_b_in_endpoints = MapSet.member?(endpoints, endpoint_b_name)
 
   if not endp_b_in_endpoints do
-    Logger.warn("Endpoint B #{endpoint_b_name} not found in endpoints")
+    Logger.warning("Endpoint B #{endpoint_b_name} not found in endpoints")
   end
 
   not_same_endpoint = endpoint_a_name != endpoint_b_name
@@ -57,7 +57,7 @@ end)
 |> Stream.filter(fn %{"rg" => rg, "p1" => endpoint_a_name, "p2" => endpoint_b_name} ->
   #filter out rows where rg is missing
   if rg == "NA" do
-    Logger.warn("Missing rg value for endpoint pair #{endpoint_a_name} – #{endpoint_b_name}")
+    Logger.warning("Missing rg value for endpoint pair #{endpoint_a_name} – #{endpoint_b_name}")
   end
 
   rg != "NA"
@@ -109,7 +109,7 @@ end)
       Logger.debug("insert/update ok")
 
     {:error, changeset} ->
-      Logger.warn(inspect(changeset))
+      Logger.warning(inspect(changeset))
   end
 
   # Import analysis results in both directions because for genetic correlation a --> b is same as b --> a,
@@ -136,7 +136,7 @@ end)
       Logger.debug("insert/update ok")
 
     {:error, changeset} ->
-      Logger.warn(inspect(changeset))
+      Logger.warning(inspect(changeset))
   end
 
 end)
