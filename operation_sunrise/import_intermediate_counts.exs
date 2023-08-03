@@ -103,7 +103,7 @@ end)
   is_not_found = is_nil(endpoint_id)
 
   if is_not_found do
-    Logger.warn("Endpoint not found, skipping: #{endpoint_name}")
+    Logger.warning("Endpoint not found, skipping: #{endpoint_name}")
   end
 
   is_not_found
@@ -126,7 +126,7 @@ end)
         Logger.debug("insert/update of for #{endpoint_name}")
 
       {:error, changeset} ->
-        Logger.warn(inspect(changeset))
+        Logger.warning(inspect(changeset))
     end
   end
 end)

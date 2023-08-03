@@ -64,7 +64,7 @@ filepath
         {:ok, _} ->
           Logger.info("Insert ok")
         {:error, changeset} ->
-          Logger.warn(inspect(changeset))
+          Logger.warning(inspect(changeset))
       end
   end
 end)

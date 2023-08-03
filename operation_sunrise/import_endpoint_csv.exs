@@ -419,7 +419,7 @@ end)
     is_nil(row.control_conditions) or not String.contains?(row.control_conditions, ["(", ")"])
 
   if not valid_conditions or not valid_control_conditions do
-    Logger.warn(
+    Logger.warning(
       "Endpoint #{row.name} has 'conditions' or 'control_conditions' with '(' or ')': it will be incorrectly displayed."
     )
   end
