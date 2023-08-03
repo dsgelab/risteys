@@ -30,13 +30,13 @@ coxhr_filepath
   prior_in_endpoints = MapSet.member?(endpoints, prior)
 
   if not prior_in_endpoints do
-    Logger.warn("Prior #{prior} not found in endpoints")
+    Logger.warning("Prior #{prior} not found in endpoints")
   end
 
   outcome_in_endpoints = MapSet.member?(endpoints, outcome)
 
   if not outcome_in_endpoints do
-    Logger.warn("Outcome #{outcome} not found in endpoints")
+    Logger.warning("Outcome #{outcome} not found in endpoints")
   end
 
   prior_in_endpoints and outcome_in_endpoints
@@ -68,10 +68,10 @@ end)
 
   cond do
     hr == "nan" ->
-      Logger.warn("NaN HR, not doing import: #{prior} -> #{outcome}")
+      Logger.warning("NaN HR, not doing import: #{prior} -> #{outcome}")
 
     ci_max == "inf" ->
-      Logger.warn("∞ HR, can't import: #{prior} -> #{outcome}")
+      Logger.warning("∞ HR, can't import: #{prior} -> #{outcome}")
 
     true ->
       # Get the endpoint IDs for prior and outcome
@@ -104,7 +104,7 @@ end)
           Logger.debug("insert/update ok")
 
         {:error, changeset} ->
-          Logger.warn(inspect(changeset))
+          Logger.warning(inspect(changeset))
       end
   end
 end)
