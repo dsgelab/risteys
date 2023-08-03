@@ -20,6 +20,7 @@ defmodule RisteysWeb.Router do
     get "/", HomeController, :index
     get "/changelog", ChangelogController, :index
     get "/documentation", DocumentationController, :index
+    get "/random_endpoint", FGEndpointController, :redir_random
   end
 
   # Other scopes may use custom stacks.
