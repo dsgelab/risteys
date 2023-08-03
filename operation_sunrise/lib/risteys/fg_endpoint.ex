@@ -112,7 +112,7 @@ defmodule Risteys.FGEndpoint do
   end
 
   def get_random_endpoint() do
-    Repo.all(Definition) |> Enum.random()
+    Repo.all(from endpoint in Definition, select: endpoint.name) |> Enum.random()
   end
 
   def search_icds(query, limit) do
