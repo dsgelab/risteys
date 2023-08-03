@@ -33,3 +33,16 @@ liveSocket.connect()
 // >> liveSocket.disableLatencySim()
 window.liveSocket = liveSocket
 
+/*
+ * UTILS
+ */
+function init_search_key () {
+    document.addEventListener('keyup', (event) => {
+        if (event.key === "s") {
+            let search_box = document.getElementById('search-input');
+            search_box.focus();
+        }
+    })
+}
+
+init_search_key()

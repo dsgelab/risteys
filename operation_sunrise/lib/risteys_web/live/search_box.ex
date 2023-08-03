@@ -1,57 +1,35 @@
 defmodule RisteysWeb.Live.SearchBox do
   use RisteysWeb, :live_view
+  require Integer
 
   def mount(_params, _session, socket) do
-    # TODO
-    mock_results =
-      [
-        [
-          "Endpoint long name",
-          [
-            %{endpoint: "endpoint1", content: "cont"},
-            %{endpoint: "endpoint2", content: "content"},
-            %{endpoint: "endpoint3", content: "content"},
-            %{endpoint: "endpoint1", content: "cont"},
-            %{endpoint: "endpoint2", content: "content"},
-            %{endpoint: "endpoint3", content: "content"}
-          ]
-        ],
-        [
-          "ICD-10 code",
-          [
-            %{endpoint: "endpoint4", content: "content"},
-            %{endpoint: "endpoint5", content: "content"}
-          ]
-        ],
-        [
-          "Description",
-          [
-            %{endpoint: "endpoint7", content: "content"},
-            %{endpoint: "endpoint8", content: "content"},
-            %{endpoint: "endpoint9", content: "content"},
-            %{endpoint: "endpoint9", content: "content"}
-          ]
-        ],
-        [
-          "Endpoint name",
-          [
-            %{endpoint: "endpoint10", content: "content"},
-            %{endpoint: "endpoint11", content: "content"},
-            %{endpoint: "endpoint12", content: "content"}
-          ]
-        ]
-      ]
+    results = []
 
     socket =
       socket
       |> assign(:form, to_form(%{"search_query" => ""}))
-      |> assign(:results, mock_results)
+      |> assign(:results, results)
       |> assign(:selected, %{category_index: 0, result_index: 0, endpoint: ""})
 
     {:ok, socket, layout: false}
   end
 
-  def handle_event("update_search_results", _value, socket) do
+  def handle_event("update_search_results", %{"search_query" => ""}, socket) do
+    socket = assign(socket, :results, [])
+    {:noreply, socket}
+  end
+
+  def handle_event("update_search_results", %{"search_query" => query}, socket) do
+    results =
+      [
+        ["ICD-10 code", search_icds(query)],
+        ["Endpoint long name", search_longnames(query)],
+        ["Description", search_descriptions(query)],
+        ["Endpoint name", search_names(query)]
+      ]
+      |> Enum.reject(fn [_category, result_list] -> Enum.empty?(result_list) end)
+
+    socket = assign(socket, :results, results)
     {:noreply, socket}
   end
 
@@ -74,6 +52,62 @@ defmodule RisteysWeb.Live.SearchBox do
 
   def handle_event("keydown", _value, socket) do
     {:noreply, socket}
+  end
+
+  defp search_icds(query) do
+    Risteys.FGEndpoint.search_icds(query, 10)
+    |> Enum.map(fn %{name: name, icds: icds} ->
+      icds =
+        icds
+        # dedup ICDs
+        |> MapSet.new()
+        |> MapSet.to_list()
+        |> Enum.join(", ")
+
+      %{endpoint: name, content: highlight_matches(icds, query), url: ~p"/endpoints/#{name}"}
+    end)
+  end
+
+  defp search_longnames(query) do
+    Risteys.FGEndpoint.search_longnames(query, 10)
+    |> Enum.map(fn %{name: name, longname: longname} ->
+      %{endpoint: highlight_matches(name, query), content: highlight_matches(longname, query), url: ~p"/endpoints/#{name}"}
+    end)
+  end
+
+  defp search_descriptions(query) do
+    Risteys.FGEndpoint.search_descriptions(query, 10)
+    |> Enum.map(fn %{name: name, description: description} ->
+      description =
+        description
+        |> String.split(".")
+        |> Enum.filter(fn sentence -> String.contains?(sentence, query) end)
+        |> Enum.intersperse("…")
+        |> Enum.join("")
+
+      %{endpoint: name, content: highlight_matches(description, query), url: ~p"/endpoints/#{name}"}
+    end)
+  end
+
+  defp search_names(query) do
+    Risteys.FGEndpoint.search_names(query, 10)
+    |> Enum.map(fn %{name: name, longname: longname} ->
+      %{endpoint: highlight_matches(name, query), content: longname, url: ~p"/endpoints/#{name}"}
+    end)
+  end
+
+  defp highlight_matches(content, query) do
+    regex = Regex.compile!(query, "i")
+    content_chunks = Regex.split(regex, content, include_captures: true)
+
+    for {chunk, index} <- Enum.with_index(content_chunks) do
+      # matches will be in the indices 1, 3, 5, ...
+      if Integer.is_odd(index) do
+        Phoenix.HTML.Tag.content_tag(:span, chunk, class: "highlight")
+      else
+        chunk
+      end
+    end
   end
 
   defp change_selected(results, selected, action) do

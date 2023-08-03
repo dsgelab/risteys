@@ -16,6 +16,7 @@ defmodule Risteys.FGEndpoint do
   alias Risteys.FGEndpoint.GeneticCorrelation
   alias Risteys.FGEndpoint.Correlation
   alias Risteys.FGEndpoint.Definition
+  alias Risteys.FGEndpoint.DefinitionICD10
   alias Risteys.FGEndpoint.ExplainerStep
   alias Risteys.FGEndpoint.StatsCumulativeIncidence
   alias Risteys.FGEndpoint.CaseOverlapsFR
@@ -112,6 +113,59 @@ defmodule Risteys.FGEndpoint do
 
   def get_random_endpoint() do
     Repo.all(Definition) |> Enum.random()
+  end
+
+  def search_icds(query, limit) do
+    pattern = "%" <> query <> "%"
+
+    query =
+      from endpoint in Definition,
+      join: assoc in DefinitionICD10,
+      on: endpoint.id == assoc.fg_endpoint_id,
+      join: icd in Icd10,
+      on: assoc.icd10_id == icd.id,
+      where: ilike(icd.code, ^pattern),
+      group_by: endpoint.name,
+      select: %{name: endpoint.name, icds: fragment("array_agg(?)", icd.code)},
+      limit: ^limit
+
+    Repo.all(query)
+  end
+
+  def search_longnames(query, limit) do
+    pattern = "%" <> query <> "%"
+
+    query =
+      from endpoint in Definition,
+      select: %{name: endpoint.name, longname: endpoint.longname},
+      where: ilike(endpoint.longname, ^pattern),
+      limit: ^limit
+
+    Repo.all(query)
+  end
+
+  def search_names(query, limit) do
+    pattern = "%" <> query <> "%"
+
+    query =
+      from endpoint in Definition,
+      select: %{name: endpoint.name, longname: endpoint.longname},
+      where: ilike(endpoint.name, ^pattern),
+      limit: ^limit
+
+    Repo.all(query)
+  end
+
+  def search_descriptions(query, limit) do
+    pattern = "%" <> query <> "%"
+
+    query =
+      from endpoint in Definition,
+      where: ilike(endpoint.description, ^pattern),
+      select: %{name: endpoint.name, description: endpoint.description},
+      limit: ^limit
+
+    Repo.all(query)
   end
 
   # -- Endpoint Explainer --
