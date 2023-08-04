@@ -11,7 +11,7 @@ defmodule RisteysWeb.FGEndpointController do
   def redirect_legacy_url(conn, %{"name" => name}) do
     conn
     |> put_status(:moved_permanently)
-    |> redirect(to: Routes.fg_endpoint_path(conn, :show, name))
+    |> redirect(to: ~p"/endpoints/#{name}")
   end
 
   def show(conn, %{"name" => name}) do
@@ -32,7 +32,7 @@ defmodule RisteysWeb.FGEndpointController do
   def redir_random(conn, _params) do
     endpoint = FGEndpoint.get_random_endpoint()
 
-    redirect(conn, to: ~p"/endpoint/#{endpoint}")
+    redirect(conn, to: ~p"/endpoints/#{endpoint}")
   end
 
   def index_json(conn, _params) do
@@ -91,6 +91,7 @@ defmodule RisteysWeb.FGEndpointController do
     |> assign(:key_figures_FR, key_figures_FR)
     |> assign(:key_figures_FR_index, key_figures_FR_index)
     |> assign(:description, description)
+    |> assign(:mortality_data, Risteys.FGEndpoint.get_mortality_data(endpoint.name))
     |> assign(:has_drug_stats, FGEndpoint.has_drug_stats?(endpoint))
     |> assign(:authz_list_variants?, authz_list_variants?)
     |> assign(:variants_by_corr, variants_by_corr)
