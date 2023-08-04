@@ -20,7 +20,12 @@ defmodule RisteysWeb.Router do
     get "/", HomeController, :index
     get "/changelog", ChangelogController, :index
     get "/documentation", DocumentationController, :index
+    get "/endpoints/:name", FGEndpointController, :show
     get "/random_endpoint", FGEndpointController, :redir_random
+
+    # Redirect legacy URLs to keep shared and published links working
+    get "/phenocode/:name", FGEndpointController, :redirect_legacy_url
+    get "/endpoint/:name", FGEndpointController, :redirect_legacy_url
   end
 
   # Other scopes may use custom stacks.

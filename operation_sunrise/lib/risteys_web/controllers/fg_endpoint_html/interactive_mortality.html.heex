@@ -1,0 +1,64 @@
+<div class="grid-1fr-1fr">
+    <div>
+        <h3 class="pt-3">Association</h3>
+        <p>Association between endpoint <span class="italic word-break"><%= @conn.assigns.endpoint.name %></span> and mortality.</p>
+        <%= for sex <- [:female, :male] do %>
+            <h4 class="pt-6 italic"><%= sex |> Atom.to_string() |> String.capitalize() |> (&(&1 <> "s")).() %></h4>
+
+            <!-- If there's no HR data and 0 cases, don't render table and case counts and show only "No data" instead -->
+            <%= if not any_mortality_data?(@conn.assigns.mortality_data, sex) do %>
+            No data
+
+            <% else %>
+            <table class="horizontal pb-6">
+                <thead>
+                    <tr>
+                        <th>Parameter </th>
+                        <th>HR [95% CI]</th>
+                        <th>p-value</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr class="font-bold">
+                        <td>
+                            <span><%= @conn.assigns.endpoint.name %></span>
+                        </td>
+                        <td>
+                            <%= get_HR_and_CIs(@conn.assigns.mortality_data, sex, :exposure) %>
+                        </td>
+                        <td>
+                            <%= show_p(@conn.assigns.mortality_data, sex, :exposure) %>
+                        </td>
+                    </tr>
+
+                    <tr>
+                        <td> Birth year </td>
+                        <td>
+                            <%= get_HR_and_CIs(@conn.assigns.mortality_data, sex, :birth_year) %>
+                        </td>
+                        <td>
+                            <%= show_p(@conn.assigns.mortality_data, sex, :birth_year) %>
+                        </td>
+                    </tr>
+                </tbody>
+            </table>
+
+            <p class="pt-6 pb-6">
+                During the follow-up period (1.1.1998 — 31.12.2019),
+                <%= @conn.assigns.mortality_data |> Map.fetch!(sex) |> Map.fetch!(:case_counts) |> Map.fetch!(:exposed_cases) || "0" %>
+                out of
+                <%= @conn.assigns.mortality_data |> Map.fetch!(sex) |> Map.fetch!(:case_counts) |> Map.fetch!(:exposed) || "0" %> <%= sex %>s
+                with <span class="italic"><%= @conn.assigns.endpoint.name %></span> died.
+            </p>
+            <% end %>
+        <% end %>
+    </div>
+    <%= live_render(
+        @conn,
+        RisteysWeb.Live.InteractiveMortality,
+        session: %{
+            "endpoint_name" => @conn.assigns.endpoint.name,
+            "mortality_data" => @conn.assigns.mortality_data
+        })
+    %>
+</div>
