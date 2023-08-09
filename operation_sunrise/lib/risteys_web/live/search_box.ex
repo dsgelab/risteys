@@ -9,13 +9,17 @@ defmodule RisteysWeb.Live.SearchBox do
       socket
       |> assign(:form, to_form(%{"search_query" => ""}))
       |> assign(:results, results)
-      |> assign(:selected, %{category_index: 0, result_index: 0, endpoint: ""})
+      |> assign(:selected, select_nothing())
 
     {:ok, socket, layout: false}
   end
 
   def handle_event("update_search_results", %{"search_query" => ""}, socket) do
-    socket = assign(socket, :results, [])
+    socket =
+      socket
+      |> assign(:results, [])
+      |> assign(:selected, select_nothing())
+
     {:noreply, socket}
   end
 
@@ -30,6 +34,16 @@ defmodule RisteysWeb.Live.SearchBox do
       |> Enum.reject(fn [_category, result_list] -> Enum.empty?(result_list) end)
 
     socket = assign(socket, :results, results)
+
+    selected =
+      if Enum.empty?(results) do
+        select_nothing()
+      else
+        select_first(results)
+      end
+
+    socket = assign(socket, :selected, selected)
+
     {:noreply, socket}
   end
 
@@ -54,6 +68,15 @@ defmodule RisteysWeb.Live.SearchBox do
     {:noreply, socket}
   end
 
+  defp select_nothing() do
+    %{category_index: nil, result_index: nil, endpoint: nil}
+  end
+
+  defp select_first(results) do
+    [[_category_name, [%{endpoint_name: endpoint_name} | _]] | _] = results
+    %{category_index: 0, result_index: 0, endpoint: endpoint_name}
+  end
+
   defp search_icds(query) do
     Risteys.FGEndpoint.search_icds(query, 10)
     |> Enum.map(fn %{name: name, icds: icds} ->
@@ -64,14 +87,22 @@ defmodule RisteysWeb.Live.SearchBox do
         |> MapSet.to_list()
         |> Enum.join(", ")
 
-      %{endpoint: name, content: highlight_matches(icds, query), url: ~p"/endpoints/#{name}"}
+      %{
+        endpoint_name: name,
+        endpoint_column: name,
+        content_column: highlight_matches(icds, query)
+      }
     end)
   end
 
   defp search_longnames(query) do
     Risteys.FGEndpoint.search_longnames(query, 10)
     |> Enum.map(fn %{name: name, longname: longname} ->
-      %{endpoint: highlight_matches(name, query), content: highlight_matches(longname, query), url: ~p"/endpoints/#{name}"}
+      %{
+        endpoint_name: name,
+        endpoint_column: highlight_matches(name, query),
+        content_column: highlight_matches(longname, query)
+      }
     end)
   end
 
@@ -85,14 +116,22 @@ defmodule RisteysWeb.Live.SearchBox do
         |> Enum.intersperse("…")
         |> Enum.join("")
 
-      %{endpoint: name, content: highlight_matches(description, query), url: ~p"/endpoints/#{name}"}
+      %{
+        endpoint_name: name,
+        endpoint_column: name,
+        content_column: highlight_matches(description, query)
+      }
     end)
   end
 
   defp search_names(query) do
     Risteys.FGEndpoint.search_names(query, 10)
     |> Enum.map(fn %{name: name, longname: longname} ->
-      %{endpoint: highlight_matches(name, query), content: longname, url: ~p"/endpoints/#{name}"}
+      %{
+        endpoint_name: name,
+        endpoint_column: highlight_matches(name, query),
+        content_column: longname
+      }
     end)
   end
 
@@ -114,7 +153,11 @@ defmodule RisteysWeb.Live.SearchBox do
     flat_index =
       for {[_name, category_results], category_index} <- Enum.with_index(results) do
         for {result, result_index} <- Enum.with_index(category_results) do
-          %{category_index: category_index, result_index: result_index, endpoint: result.endpoint}
+          %{
+            category_index: category_index,
+            result_index: result_index,
+            endpoint: result.endpoint_name
+          }
         end
       end
       |> List.flatten()
@@ -129,7 +172,7 @@ defmodule RisteysWeb.Live.SearchBox do
       case action do
         :next ->
           # min() for bound checking
-          min(current_index + 1, length(flat_index))
+          min(current_index + 1, length(flat_index) - 1)
 
         :previous ->
           # max(, 0) to prevent cycling the results with a negative index
