@@ -28,10 +28,11 @@ defmodule RisteysWeb.Router do
     get "/endpoint/:name", FGEndpointController, :redirect_legacy_url
   end
 
-  # Other scopes may use custom stacks.
-  # scope "/api", RisteysWeb do
-  #   pipe_through :api
-  # end
+  scope "/api", RisteysWeb do
+    pipe_through :api
+
+    get "/endpoints/", FGEndpointController, :index_json
+  end
 
   # Enable LiveDashboard in development
   if Application.compile_env(:risteys, :dev_routes) do
