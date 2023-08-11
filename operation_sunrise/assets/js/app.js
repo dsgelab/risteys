@@ -27,7 +27,29 @@ let Hooks = {}
 /*
  * Risteys
  */
-import { drawCompBox } from './CompBox.js';
+import {drawCompBox} from './CompBox.js';
+import {plot as varBinPlot} from './varBinPlot.js';
+import {drawPlot as drawPlotCumulInc} from "./cumulincPlot.js";
+
+/* Draw histograms */
+const histograms = document.querySelectorAll("[data-histogram-values")
+for (const ee of histograms) {
+    const xLabel = ee.dataset.histogramXAxisLabel
+    const yLabel = ee.dataset.histogramYAxisLabel
+    const barColor = ee.dataset.histogramPlotBarColor
+    const values = JSON.parse(ee.dataset.histogramValues)
+    const selector = "#" + ee.id
+
+    varBinPlot(selector, values, xLabel, yLabel, barColor)
+}
+
+/* Draw Cumulative Incidence Functions */
+const cif_plots = document.querySelectorAll("[data-cif-data]")
+for (const ee of cif_plots) {
+    const selector = "#" + ee.id
+    const data = JSON.parse(ee.dataset.cifData)
+    drawPlotCumulInc(selector, data)
+}
 
 /* Draw CompBoxes
  *
