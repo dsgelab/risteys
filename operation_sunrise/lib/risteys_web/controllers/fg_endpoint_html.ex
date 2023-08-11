@@ -3,6 +3,116 @@ defmodule RisteysWeb.FGEndpointHTML do
 
   embed_templates "fg_endpoint_html/*"
 
+  # -- Summary Statistics --
+  defp gen_histogram(endpoint, variable, dataset) do
+    variable_str = Atom.to_string(variable)
+    dataset_str = Atom.to_string(dataset)
+    id = "bin-plot-#{variable_str}-#{dataset_str}"
+
+    x_label =
+      case variable do
+        :age -> "Age"
+        :year -> "Year"
+      end
+
+    y_label = "Individuals"
+
+    bar_color =
+      case dataset do
+        :finregistry -> "#14b8a6"
+        :finngen -> "#22292F"
+      end
+
+    values =
+      case {variable, dataset} do
+        {:age, :finregistry} ->
+          Risteys.FGEndpoint.get_age_histogram(endpoint.name, "FR")
+
+        {:year, :finregistry} ->
+          Risteys.FGEndpoint.get_year_histogram(endpoint.name, "FR")
+
+        {:age, :finngen} ->
+          Risteys.FGEndpoint.get_age_histogram(endpoint.name, "FG")
+
+        {:year, :finngen} ->
+          Risteys.FGEndpoint.get_year_histogram(endpoint.name, "FG")
+      end
+
+    gen_div_histogram(id, x_label, y_label, bar_color, values)
+  end
+
+  defp gen_div_histogram(id, x_label, y_label, bar_color, values) do
+    Phoenix.HTML.Tag.content_tag(
+      :div,
+      "",
+      # NOTE[D3SELECT] Setting the id is necessary has the downstream d3.select only accepts a string selector and not a node %>
+      id: id,
+      data_histogram_x_axis_label: x_label,
+      data_histogram_y_axis_label: y_label,
+      data_histogram_plot_bar_color: bar_color,
+      data_histogram_values: Jason.encode!(values)
+    )
+  end
+
+  defp gen_cif_plot(endpoint, dataset) do
+    dataset_db =
+      case dataset do
+        :finregistry -> "FR"
+        :finngen -> "FG"
+      end
+
+    cif_plot_data =
+      Risteys.FGEndpoint.get_cumulative_incidence_plot_data(endpoint.name, dataset_db)
+
+    any_data? = (not Enum.empty?(cif_plot_data.females)) or (not Enum.empty?(cif_plot_data.males))
+
+    content =
+      if any_data? do
+        ""
+      else
+        "No data"
+      end
+
+    dataset_str = Atom.to_string(dataset)
+    id = "cumulinc-plot-#{dataset_str}"
+
+    female_color =
+      case dataset do
+        :finregistry -> "#14b8a6"
+        :finngen -> "#3490DC"
+      end
+
+    payload =
+      if any_data? do
+        [
+          %{
+            name: "female",
+            color: female_color,
+            dasharray: "1 0",
+            cumulinc: cif_plot_data.females,
+            max_value: cif_plot_data.max_value
+          },
+          %{
+            name: "male",
+            color: "#22292F",
+            dasharray: "9 1",
+            cumulinc: cif_plot_data.males,
+            max_value: cif_plot_data.max_value
+          }
+        ]
+      else
+        []
+      end
+
+    Phoenix.HTML.Tag.content_tag(
+      :div,
+      content,
+      # See NOTE[D3SELECT]
+      id: id,
+      data_cif_data: Jason.encode!(payload)
+    )
+  end
+
   # -- Ontology --
   defp ontology_links(ontology) do
     # Helper function to link to external resources
@@ -207,7 +317,7 @@ defmodule RisteysWeb.FGEndpointHTML do
       |> Map.fetch!(:case_counts)
       |> Map.fetch!(:exposed_cases)
 
-    (not is_nil(coef)) and (not is_nil(cases))
+    not is_nil(coef) and not is_nil(cases)
   end
 
   def get_HR_and_CIs(data, sex, stat_name) do
