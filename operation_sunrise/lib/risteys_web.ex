@@ -17,7 +17,7 @@ defmodule RisteysWeb do
   those modules here.
   """
 
-  def static_paths, do: ~w(assets css fonts images favicon.ico robots.txt)
+  def static_paths, do: ~w(assets css fonts images favicon.ico robots.txt upset_plot table_case_counts)
 
   def router do
     quote do
