@@ -30,6 +30,12 @@ let Hooks = {}
 import {drawCompBox} from './CompBox.js';
 import {plot as varBinPlot} from './varBinPlot.js';
 import {drawPlot as drawPlotCumulInc} from "./cumulincPlot.js";
+import {openDialog, closeDialog} from "./dialog.js";
+
+/* Dialog / modal */
+// Making the dialog functions available globally
+window.openDialog = openDialog;
+window.closeDialog = closeDialog;
 
 /* Draw histograms */
 const histograms = document.querySelectorAll("[data-histogram-values")
