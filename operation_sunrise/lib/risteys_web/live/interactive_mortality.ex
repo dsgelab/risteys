@@ -22,9 +22,10 @@ defmodule RisteysWeb.Live.InteractiveMortality do
 
   defp show_risk(data, nyear, age, sex) do
     # Deal with missing data
-    case compute_risk(data, nyear, age, sex) do
-      nil -> "no data"
-      risk -> risk
+    if data |> Map.fetch!(sex) |> Map.fetch!(:bch) do
+      compute_risk(data, nyear, age, sex)
+    else
+      "No data"
     end
   end
 
