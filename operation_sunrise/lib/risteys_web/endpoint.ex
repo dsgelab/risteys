@@ -21,6 +21,7 @@ defmodule RisteysWeb.Endpoint do
     at: "/",
     from: :risteys,
     gzip: true,
+    brotli: true,
     only: RisteysWeb.static_paths()
 
   # Code reloading can be explicitly enabled under the
