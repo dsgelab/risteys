@@ -79,17 +79,19 @@ defmodule RisteysWeb.Live.RelationshipsTable do
     mapper =
       fn row ->
         case sorter do
+          # TODO(Vincent) The case_overlap_percent are converted here to float at runtime,
+          #   Would be better to have them as number in the DB directly. Keep both str and num if needed.
           "cases-fr_asc" ->
-            row.fr_case_overlap_percent
+            if is_nil(row.fr_case_overlap_percent), do: nil, else: String.to_float(row.fr_case_overlap_percent)
 
           "cases-fr_desc" ->
-            row.fr_case_overlap_percent
+            if is_nil(row.fr_case_overlap_percent), do: nil, else: String.to_float(row.fr_case_overlap_percent)
 
           "cases-fg_asc" ->
-            row.fg_case_overlap_percent
+            if is_nil(row.fg_case_overlap_percent), do: nil, else: String.to_float(row.fg_case_overlap_percent)
 
           "cases-fg_desc" ->
-            row.fg_case_overlap_percent
+            if is_nil(row.fg_case_overlap_percent), do: nil, else: String.to_float(row.fg_case_overlap_percent)
 
           "sa-hr_asc" ->
             row.hr
