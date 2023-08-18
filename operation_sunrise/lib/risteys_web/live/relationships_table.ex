@@ -191,4 +191,28 @@ defmodule RisteysWeb.Live.RelationshipsTable do
       class: class
     )
   end
+
+  defp text_percentile(normalized_value) do
+    value = floor(normalized_value * 100)
+
+    ending =
+      cond do
+        value >= 10 and value <= 20 ->
+          "th"
+
+        rem(value, 10) == 1 ->
+          "st"
+
+        rem(value, 10) == 2 ->
+          "nd"
+
+        rem(value, 10) == 3 ->
+          "rd"
+
+        true ->
+          "th"
+      end
+
+    Integer.to_string(value) <> ending <> " percentile"
+  end
 end
