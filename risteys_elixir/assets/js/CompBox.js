@@ -1,4 +1,4 @@
-import * as d3 from 'd3';
+import * as d3 from '../vendor/d3.v6.js';
 
 // Dimensions
 const dim = {

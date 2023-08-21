@@ -1,5 +1,6 @@
-import * as d3 from "d3";
-import {filter, flatMap, indexOf, map, take, uniq, zipWith} from "lodash-es";
+import * as d3 from '../vendor/d3.v6.js';
+import {filter, flatMap, indexOf, map, take, uniq, zipWith} from '../vendor/lodash-full.v4.17.15.js';
+
 
 
 // -- CONFIG --
