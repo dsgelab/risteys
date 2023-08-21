@@ -54,7 +54,9 @@ const cif_plots = document.querySelectorAll("[data-cif-data]")
 for (const ee of cif_plots) {
     const selector = "#" + ee.id
     const data = JSON.parse(ee.dataset.cifData)
-    drawPlotCumulInc(selector, data)
+    if (data.length > 0) {  // 'data' will be '[]' when there is no CIF to show
+        drawPlotCumulInc(selector, data)
+    }
 }
 
 /* Draw CompBoxes
