@@ -1,5 +1,6 @@
 import http.client
 import json
+from sys import stderr
 
 
 # 1. Get list of all endpoints
@@ -19,13 +20,17 @@ n_success = 0
 n_failure = 0
 for idx, endpoint in enumerate(endpoints):
     clear_line = "\x1b[K\r"
-    print(f"{idx + 1}/{len(endpoints)} ({n_success} OK, {n_failure} fail) {endpoint}", end=clear_line)
+    print(
+        f"{idx + 1}/{len(endpoints)} ({n_success} OK, {n_failure} fail) {endpoint}",
+        end=clear_line,
+        file=stderr
+    )
 
     conn.request("GET", f"/endpoints/{endpoint}")
     resp = conn.getresponse()
 
     if resp.status != 200:
-        print(resp.status, endpoint, f"http://localhost:4000/endpoints/{endpoint}")
+        print(resp.status, endpoint, f"http://localhost:4000/endpoints/{endpoint}", flush=True)
         n_failure += 1
     else:
         n_success += 1

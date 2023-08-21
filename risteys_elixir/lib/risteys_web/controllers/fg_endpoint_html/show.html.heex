@@ -1,0 +1,259 @@
+<%# Navigation on wide screen: display only the page links since other links are already in the header %>
+<nav class="wide">
+	<p>Go to:
+		<a href="#endpoint-definition">Endpoint definition</a>
+		<a href="#similar-endpoints">Similar endpoints</a>
+		<a href="#case-counts">Case counts</a>
+		<a href="#summary-statistics">Summary statistics</a>
+		<a href="#mortality">Mortality</a>
+		<a href="#relationships">Relationships</a>
+	</p>
+</nav>
+
+<%= if not @endpoint.is_core do%>
+	<article class="fluid-container mt-16 mb-16 info">
+		<img src={~p"/images/info_black.svg"} alt="info icon">
+		<article>
+			<p>This is a <b>non-core</b> endpoint: only basic statistics are computed.</p>
+			<%= case @replacements do %>
+				<% {_reason, nil} -> %>
+					<%# No replacement endpoints to show, so we don't display anything. %>
+				<% {reason, replacement} when reason in [:selected_core, :exallc_priority] -> %>
+					<p>
+						See its core counterpart <a href={"#{replacement.name}"}><%= replacement.name %></a> for full statistics.
+					</p>
+				<% {:correlated, replacements} -> %>
+					<p>
+					See these related core endpoints for full statistics:
+						<ul>
+							<%= for correlated <- replacements do %>
+								<li><a href={"#{correlated.name}"}><%= correlated.name %></a></li>
+							<% end %>
+						</ul>
+					</p>
+			<% end %>
+		</article>
+	</article>
+<% end %>
+
+
+<main class="fluid-container">
+	<div class="title">
+		<h1 class="pt-4 pl-6"><%= @endpoint.longname %></h1>
+		<p class="pt-4 pr-4 links">
+			<%= for link <- ontology_links(@ontology) do %>
+			<%= link %>
+			<% end %>
+
+			<a href={"https://geneviz.aalto.fi/endpoint_browser_2.0/?endpoint=#{@endpoint.name}"} target="_blank" rel="noopener noreferrer external" class="button-out endpoint-browser">Endpoint Browser</a>
+
+			<%# Only core endpoints are on PheWeb, so we don't show a link for non-core endpoints %>
+			<%= if @endpoint.is_core do %>
+			<a href={"https://results.finngen.fi/pheno/#{@endpoint.name}"} target="_blank" rel="noopener noreferrer external" class="button-out">PheWeb</a>
+			<% end %>
+		</p>
+		<p class="p-2 pl-6"><%= @endpoint.name %></p>
+		<article class="description">
+			<p class="p-6 pb-0"><%= @description %></p>
+			<p class="text-right pb-1 pr-2 text-sm"><a href={"https://airtable.com/shrDh0g0YiXfzplun?prefill_Endpoint=#{@endpoint.name}"} target="_blank" rel="noopener noreferrer external" >Suggest a new description</a></p>
+		</article>
+	</div>
+
+    <div class="endpoint-grid">
+		<article id="endpoint-definition" class="box">
+			<div class="left-right-heading p-4 pl-6">
+				<h2>Endpoint definition</h2>
+				<a href="#">↥</a>
+			</div>
+
+            <.endpoint_explainer
+                steps={@explainer_steps}
+                endpoint={@endpoint}
+                count_registries={@count_registries}
+                key_figures={@key_figures_FG}
+            />
+		</article>
+
+		<div> <%# wrap into a div so the <article> height is independent of the grid cell height %>
+			<article id="similar-endpoints" class="box">
+				<div class="p-4 pl-6 left-right-heading">
+					<h2>Similar endpoints</h2>
+					<a href="#">↥</a>
+				</div>
+
+            <.similar_endpoints
+                endpoint={@endpoint}
+                broader_endpoints={@broader_endpoints}
+                narrower_endpoints={@narrower_endpoints}
+            />
+			</article>
+
+			<article id="case-counts" class="box">
+				<div class="p-4 pl-6 left-right-heading">
+					<h2>Case counts by codes</h2>
+					<a href="#">↥</a>
+				</div>
+
+				<div class="box_content">
+					<p> FinnGen case counts by registry codes:</p>
+                    <.upset_plot endpoint={@endpoint} />
+				</div>
+			</article>
+		</div>
+	</div>
+
+
+	<!-- Show FR results only if endpoint is not excluded.
+	if EXCL_REASON is nil, endpoint is not excluded -> show results, otherwise explanation text -->
+	<article id="summary-statistics" class="box">
+		<div class="p-4 pl-6 left-right-heading">
+			<h2>Summary Statistics</h2>
+			<a href="#">↥</a>
+		</div>
+
+		<div class="box_content stats-grid">
+			<article class="sumstats">
+				<h3>-FinRegistry-</h3>
+				<%= case @endpoint.fr_excl do %>
+					<% nil -> %>
+                        <.sumstats_key_figures_FR
+                            key_figures_FR={@key_figures_FR}
+                            key_figures_FR_index={@key_figures_FR_index}
+                        />
+					<% "excl_omitted" -> %>
+						<p class = "explanation_text"> This endpoint is excluded from FinRegistry analyses (omitted endpoint). </p>
+
+					<% "excl_diff_def" -> %>
+						<p> This endpoint is excluded (different definition than used in FinnGen).</p>
+
+					<% "excl_not_available" -> %>
+						<p>This endpoint is excluded (not available in FinRegistry).</p>
+					<% _ -> %>
+						<p> An issue occured with rendering results for this endpoint.</p>
+				<% end %>
+			</article>
+
+			<article class="sumstats">
+				<h3>-FinnGen-</h3>
+                <.sumstats_key_figures key_figures={@key_figures_FG} />
+			</article>
+
+			<article class="sumstats">
+				<%= if is_nil(@endpoint.fr_excl) do %>
+					<h3 class="narrow_screen_info">-FinRegistry-</h3>
+					<h3>Age distribution of first events</h3>
+					<%= gen_histogram(@endpoint, :age, :finregistry) %>
+				<% end %>
+			</article>
+
+			<article class="sumstats">
+				<h3 class="narrow_screen_info">-FinnGen-</h3>
+				<h3>Age distribution of first events</h3>
+				<%= gen_histogram(@endpoint, :age, :finngen) %>
+			</article>
+
+			<article class="sumstats">
+				<%= if is_nil(@endpoint.fr_excl) do %>
+					<h3 class="narrow_screen_info">-FinRegistry-</h3>
+					<h3>Year distribution of first events</h3>
+					<%= gen_histogram(@endpoint, :year, :finregistry) %>
+				<% end %>
+			</article>
+
+			<article class="sumstats">
+				<h3 class="narrow_screen_info">-FinnGen-</h3>
+				<h3>Year distribution of first events</h3>
+				<%= gen_histogram(@endpoint, :year, :finngen) %>
+			</article>
+
+			<article class="sumstats">
+				<%= if is_nil(@endpoint.fr_excl) do %>
+					<h3 class="narrow_screen_info">-FinRegistry-</h3>
+					<h3>Cumulative Incidence Function</h3>
+					<%= gen_cif_plot(@endpoint, :finregistry) %>
+				<% end %>
+			</article>
+
+			<article class="sumstats">
+				<h3 class="narrow_screen_info">-FinnGen-</h3>
+				<h3>Cumulative Incidence Function</h3>
+				<%= if @endpoint.is_core do %>
+					<%= gen_cif_plot(@endpoint, :finngen) %>
+				<% else %>
+					<p class="no-data">Not a core endpoint, no data to show.</p>
+				<% end %>
+			</article>
+		</div>
+	</article>
+
+	<article id="mortality" class="box">
+		<div class="left-right-heading p-4 pl-6">
+			<h2>Mortality – FinRegistry
+				<span class="ml-2">
+					<span id="help-mortality"> </span>
+				</span>
+			</h2>
+			<a href="#">↥</a>
+		</div>
+
+		<div class="box_content">
+			<%= case @endpoint.fr_excl do %>
+				<% nil -> %>
+					<div id="vue-interactive-mortality">
+						<.interactive_mortality conn={@conn} />
+					</div>
+				<% "excl_omitted" -> %>
+					<p class = "explanation_text"> This endpoint is excluded from FinRegistry analyses (omitted endpoint). </p>
+
+				<% "excl_diff_def" -> %>
+					<p> This endpoint is excluded (different definition than used in FinnGen).</p>
+
+				<% "excl_not_available" -> %>
+					<p>This endpoint is excluded (not available in FinRegistry).</p>
+				<% _ -> %>
+					<p> An issue occured with rendering results for this endpoint.</p>
+			<% end %>
+		</div>
+	</article>
+
+	<article id="relationships" class="box">
+		<div class="left-right-heading p-4 pl-6">
+			<h2>
+				Relationships between endpoints
+				<span class="ml-2">
+					<span id="help-relationships"> </span>
+				</span>
+			</h2>
+			<a href="#">↥</a>
+		</div>
+
+		<section class="box_content">
+			<p>
+				<strong>Index endpoint:</strong> <%= @endpoint.name %> – <%= @endpoint.longname %>
+			</p>
+
+			<p class="mb-50">
+				<strong>GWS hits:</strong> <%= if is_nil(@endpoint.gws_hits), do: "-", else: @endpoint.gws_hits %>
+			</p>
+
+			<%= case @endpoint.fr_excl do %>
+			<% nil -> %>
+				<div id="vue-relationships">
+					<%= live_render(@conn, RisteysWeb.Live.RelationshipsTable, session: %{"endpoint" => @endpoint}) %>
+				</div>
+			<% "excl_omitted" -> %>
+				<p class = "explanation_text"> This endpoint is excluded from FinRegistry analyses (omitted endpoint). </p>
+
+			<% "excl_diff_def" -> %>
+				<p> This endpoint is excluded (different definition than used in FinnGen).</p>
+
+			<% "excl_not_available" -> %>
+				<p>This endpoint is excluded (not available in FinRegistry).</p>
+			<% _ -> %>
+				<p> An issue occured with rendering results for this endpoint.</p>
+			<% end %>
+
+		</section>
+	</article>
+
+</main>

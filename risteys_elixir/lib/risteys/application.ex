@@ -5,19 +5,19 @@ defmodule Risteys.Application do
 
   use Application
 
+  @impl true
   def start(_type, _args) do
-    # List all child processes to be supervised
     children = [
-      # Start the PubSub system
-      {Phoenix.PubSub, name: Risteys.PubSub},
-
+      # Start the Telemetry supervisor
+      RisteysWeb.Telemetry,
       # Start the Ecto repository
       Risteys.Repo,
-
-      # Start the endpoint when the application starts
+      # Start the PubSub system
+      {Phoenix.PubSub, name: Risteys.PubSub},
+      # Start the Endpoint (http/https)
       RisteysWeb.Endpoint
-      # Starts a worker by calling: Risteys.Worker.start_link(arg)
-      # {Risteys.Worker, arg},
+      # Start a worker by calling: Risteys.Worker.start_link(arg)
+      # {Risteys.Worker, arg}
     ]
 
     # See https://hexdocs.pm/elixir/Supervisor.html
@@ -28,6 +28,7 @@ defmodule Risteys.Application do
 
   # Tell Phoenix to update the endpoint configuration
   # whenever the application is updated.
+  @impl true
   def config_change(changed, _new, removed) do
     RisteysWeb.Endpoint.config_change(changed, removed)
     :ok

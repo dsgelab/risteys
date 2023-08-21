@@ -1,4 +1,4 @@
-import * as d3 from "d3";
+import * as d3 from '../vendor/d3.v6.js';
 
 const margin = {
 	top: 0,
@@ -187,7 +187,7 @@ function drawPlot(selector, data) {
   });
 
   svg.on("touchmove mousemove", (event) => {
-    const mouseX = d3.pointer(event, this)[0];
+    const mouseX = d3.pointer(event)[0];
     const xDomainVal = x.invert(mouseX);
     const xRangeVal = x(xDomainVal);  // pass it in x() to clamp the value
 
