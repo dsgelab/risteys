@@ -120,14 +120,14 @@ defmodule Risteys.FGEndpoint do
 
     query =
       from endpoint in Definition,
-      join: assoc in DefinitionICD10,
-      on: endpoint.id == assoc.fg_endpoint_id,
-      join: icd in Icd10,
-      on: assoc.icd10_id == icd.id,
-      where: ilike(icd.code, ^pattern),
-      group_by: endpoint.name,
-      select: %{name: endpoint.name, icds: fragment("array_agg(?)", icd.code)},
-      limit: ^limit
+        join: assoc in DefinitionICD10,
+        on: endpoint.id == assoc.fg_endpoint_id,
+        join: icd in Icd10,
+        on: assoc.icd10_id == icd.id,
+        where: ilike(icd.code, ^pattern),
+        group_by: endpoint.name,
+        select: %{name: endpoint.name, icds: fragment("array_agg(?)", icd.code)},
+        limit: ^limit
 
     Repo.all(query)
   end
@@ -137,9 +137,9 @@ defmodule Risteys.FGEndpoint do
 
     query =
       from endpoint in Definition,
-      select: %{name: endpoint.name, longname: endpoint.longname},
-      where: ilike(endpoint.longname, ^pattern),
-      limit: ^limit
+        select: %{name: endpoint.name, longname: endpoint.longname},
+        where: ilike(endpoint.longname, ^pattern),
+        limit: ^limit
 
     Repo.all(query)
   end
@@ -149,9 +149,9 @@ defmodule Risteys.FGEndpoint do
 
     query =
       from endpoint in Definition,
-      select: %{name: endpoint.name, longname: endpoint.longname},
-      where: ilike(endpoint.name, ^pattern),
-      limit: ^limit
+        select: %{name: endpoint.name, longname: endpoint.longname},
+        where: ilike(endpoint.name, ^pattern),
+        limit: ^limit
 
     Repo.all(query)
   end
@@ -161,9 +161,9 @@ defmodule Risteys.FGEndpoint do
 
     query =
       from endpoint in Definition,
-      where: ilike(endpoint.description, ^pattern),
-      select: %{name: endpoint.name, description: endpoint.description},
-      limit: ^limit
+        where: ilike(endpoint.description, ^pattern),
+        select: %{name: endpoint.name, description: endpoint.description},
+        limit: ^limit
 
     Repo.all(query)
   end
@@ -455,6 +455,7 @@ defmodule Risteys.FGEndpoint do
       canc_morph_excl: :canc,
       canc_behav: :canc
     }
+
     steps = get_explainer_steps(endpoint)
 
     filters =
@@ -480,7 +481,11 @@ defmodule Risteys.FGEndpoint do
   end
 
   def upsert_explainer_step(attrs) do
-    case Repo.get_by(ExplainerStep, fg_endpoint_id: attrs.fg_endpoint_id, step: attrs.step, dataset: attrs.dataset) do
+    case Repo.get_by(ExplainerStep,
+           fg_endpoint_id: attrs.fg_endpoint_id,
+           step: attrs.step,
+           dataset: attrs.dataset
+         ) do
       nil -> %ExplainerStep{}
       existing -> existing
     end
@@ -543,7 +548,7 @@ defmodule Risteys.FGEndpoint do
       from distrib in distrib_module,
         where:
           distrib.fg_endpoint_id == ^endpoint.id and
-          distrib.dataset == ^dataset,
+            distrib.dataset == ^dataset,
         select: {
           distrib.left,
           distrib.right,
@@ -559,7 +564,7 @@ defmodule Risteys.FGEndpoint do
         "interval" => %{
           "left" => left,
           "right" => right
-          },
+        },
         "count" => count
       }
     end)
@@ -770,39 +775,39 @@ defmodule Risteys.FGEndpoint do
     mortality_data = %{name: endpoint.name, longname: endpoint.longname}
 
     # get sex-specific results and save in mortality_data map as key-value pairs, where key is :female or :male
-    Enum.reduce ["female", "male"], mortality_data, fn sex, acc ->
-
+    Enum.reduce(["female", "male"], mortality_data, fn sex, acc ->
       sex_specific_results = %{}
 
       # get sex-specific baseline cumulative hazards
       bch =
         Repo.all(
           from baseline in MortalityBaseline,
-          where: baseline.fg_endpoint_id == ^endpoint.id
-          and baseline.sex == ^sex,
-          select: {
-            baseline.age,
-            baseline.baseline_cumulative_hazard
-          }
+            where:
+              baseline.fg_endpoint_id == ^endpoint.id and
+                baseline.sex == ^sex,
+            select: {
+              baseline.age,
+              baseline.baseline_cumulative_hazard
+            }
         )
 
       # handle missing data
       sex_specific_results =
         case bch do
-          [] ->  Map.put_new(sex_specific_results, :bch, nil)
-          bch -> Map.put_new(sex_specific_results, :bch,  Enum.into(bch, %{}))
+          [] -> Map.put_new(sex_specific_results, :bch, nil)
+          bch -> Map.put_new(sex_specific_results, :bch, Enum.into(bch, %{}))
         end
 
       # get sex-specific covariate results
       sex_specific_results =
-        Enum.reduce ["exposure", "birth_year"], sex_specific_results, fn covariate_name, acc ->
-
+        Enum.reduce(["exposure", "birth_year"], sex_specific_results, fn covariate_name, acc ->
           covariate_data =
             Repo.one(
               from params in MortalityParams,
-                where: params.fg_endpoint_id == ^endpoint.id and
-                params.covariate == ^covariate_name and
-                params.sex == ^sex,
+                where:
+                  params.fg_endpoint_id == ^endpoint.id and
+                    params.covariate == ^covariate_name and
+                    params.sex == ^sex,
                 select: %{
                   coef: params.coef,
                   ci95_lower: params.ci95_lower,
@@ -826,19 +831,20 @@ defmodule Risteys.FGEndpoint do
             nil -> Map.put(acc, key, empty_map)
             covariate_data -> Map.put(acc, key, Enum.into(covariate_data, %{}))
           end
-        end
+        end)
 
       # get sex-specific case counts
       case_counts =
         Repo.one(
           from counts in MortalityCounts,
-            where: counts.fg_endpoint_id == ^endpoint.id and
-            counts.sex == ^sex,
+            where:
+              counts.fg_endpoint_id == ^endpoint.id and
+                counts.sex == ^sex,
             select: %{
               exposed: counts.exposed,
               exposed_cases: counts.exposed_cases
             }
-          )
+        )
 
       empty_counts_map = %{
         exposed: nil,
@@ -856,7 +862,7 @@ defmodule Risteys.FGEndpoint do
       sex_key = String.to_atom(sex)
 
       Map.put_new(acc, sex_key, sex_specific_results)
-    end
+    end)
   end
 
   # -- Relationships --
@@ -893,24 +899,26 @@ defmodule Risteys.FGEndpoint do
     fg_correlations = list_correlations(endpoint_name)
 
     # First, create joined_results map based on template map and FG correlation results
-    joined_results = Enum.reduce(fg_correlations, %{}, fn data_map, acc ->
-      tmp =
-        template
-        |> Map.put(:name, data_map.name)
-        |> Map.put(:longname, data_map.longname)
-        |> Map.put(:fg_case_overlap_percent, round_and_str(data_map.case_overlap_percent, 2))
-        |> Map.put(:fg_case_overlap_N, data_map.case_overlap_N)
-        |> Map.put(:gws_hits, data_map.gws_hits)
-        |> Map.put(:coloc_gws_hits, data_map.coloc_gws_hits)
+    joined_results =
+      Enum.reduce(fg_correlations, %{}, fn data_map, acc ->
+        tmp =
+          template
+          |> Map.put(:name, data_map.name)
+          |> Map.put(:longname, data_map.longname)
+          |> Map.put(:fg_case_overlap_percent, round_and_str(data_map.case_overlap_percent, 2))
+          |> Map.put(:fg_case_overlap_N, data_map.case_overlap_N)
+          |> Map.put(:gws_hits, data_map.gws_hits)
+          |> Map.put(:coloc_gws_hits, data_map.coloc_gws_hits)
 
-      Map.put(acc, data_map.fg_endpoint_b_id, tmp)
-    end)
+        Map.put(acc, data_map.fg_endpoint_b_id, tmp)
+      end)
 
     # get FR case overlaps
     # this returns a list of maps where each map has data for one endpoint pair, i.e. one row in the Relationships table
     fr_case_overlaps = get_case_overlaps(endpoint)
     # add results to a map that will join all results from all tables
-    joined_results = join_results(fr_case_overlaps, "fr_case_overlaps", joined_results, template, endpoint.id)
+    joined_results =
+      join_results(fr_case_overlaps, "fr_case_overlaps", joined_results, template, endpoint.id)
 
     # get FR survival analysis results
     fr_associations = data_assocs(endpoint)
@@ -918,15 +926,21 @@ defmodule Risteys.FGEndpoint do
 
     # get FR survival analysis HR extremity
     hr_outcome_distribs = hr_outcome_distribs(endpoint)
-    joined_results = join_results(hr_outcome_distribs, "fr_surv_extremity", joined_results, template)
+
+    joined_results =
+      join_results(hr_outcome_distribs, "fr_surv_extremity", joined_results, template)
 
     # get FG genetic correlations
     fg_genetic_correlations = get_genetic_correlations(endpoint)
-    joined_results = join_results(fg_genetic_correlations, "fg_gen_corr", joined_results, template)
+
+    joined_results =
+      join_results(fg_genetic_correlations, "fg_gen_corr", joined_results, template)
 
     # get FG genetic correlations rg extremity
     rg_outcome_distribs = rg_outcome_distribs(endpoint)
-    joined_results = join_results(rg_outcome_distribs, "fg_gen_corr_extremity", joined_results, template)
+
+    joined_results =
+      join_results(rg_outcome_distribs, "fg_gen_corr_extremity", joined_results, template)
 
     # return a list of maps, where each map has all available results for one enpdpoint pair
     Map.values(joined_results)
@@ -947,19 +961,21 @@ defmodule Risteys.FGEndpoint do
           # If map for current endpoint b is not found, results for the current endpoint pair have not been available
           # in FG correlations, which means that the map doesn't have name of the endpoint b and it needs to be added.
           # Name and longname are added here to avoid any unnecassary enumeration throught the data maps
-          name_map = Repo.one(
-            from definition in Definition,
-              where: definition.id == ^data_map.fg_endpoint_b_id,
-              select: %{
-                name: definition.name,
-                longname: definition.longname
-              }
-          )
+          name_map =
+            Repo.one(
+              from definition in Definition,
+                where: definition.id == ^data_map.fg_endpoint_b_id,
+                select: %{
+                  name: definition.name,
+                  longname: definition.longname
+                }
+            )
 
           tmp = Map.merge(template, name_map)
           tmp = Map.merge(tmp, data_map)
 
           Map.put(acc, tmp.fg_endpoint_b_id, tmp)
+
         map ->
           Map.put(acc, data_map.fg_endpoint_b_id, Map.merge(map, data_map))
       end
@@ -969,7 +985,10 @@ defmodule Risteys.FGEndpoint do
   defp format_data(map, data_type, current_endpoint_id) do
     case data_type do
       "fr_case_overlaps" ->
-        id = if map.fg_endpoint_b_id != current_endpoint_id, do: map.fg_endpoint_b_id, else: map.fg_endpoint_a_id
+        id =
+          if map.fg_endpoint_b_id != current_endpoint_id,
+            do: map.fg_endpoint_b_id,
+            else: map.fg_endpoint_a_id
 
         %{
           fg_endpoint_b_id: id,
@@ -980,7 +999,8 @@ defmodule Risteys.FGEndpoint do
       "fr_surv" ->
         # to get bonferroni corrected pvalues for FR HR values, threshold for significant pvalue is 0.05 / number of all converged analyses
         # 9773 is number of all converged FR survival analyses in the R10 input data file
-        p_threshold = 0.05/ 9773
+        p_threshold = 0.05 / 9773
+
         %{
           fg_endpoint_b_id: map.outcome_id,
           hr_ci_max: round_and_str(map.ci_max, 2),
@@ -1003,7 +1023,8 @@ defmodule Risteys.FGEndpoint do
           rg_str: round_and_str(map.rg, 2),
           rg_ci_min: round_and_str(get_95_ci(map.rg, map.rg_se, "lower"), 2),
           rg_ci_max: round_and_str(get_95_ci(map.rg, map.rg_se, "upper"), 2),
-          rg_pvalue_str: pvalue_star(map.rg_pvalue, 1.0e-6) # 0.000001 is threshold for significant p-value for FG genetic correlations
+          # 0.000001 is threshold for significant p-value for FG genetic correlations
+          rg_pvalue_str: pvalue_star(map.rg_pvalue, 1.0e-6)
         }
 
       "fg_gen_corr_extremity" ->
@@ -1034,8 +1055,9 @@ defmodule Risteys.FGEndpoint do
           hr: assoc.hr,
           ci_min: assoc.ci_min,
           ci_max: assoc.ci_max,
-          pvalue: assoc.pvalue,
+          pvalue: assoc.pvalue
         }
+
     Repo.all(query)
   end
 
@@ -1047,13 +1069,13 @@ defmodule Risteys.FGEndpoint do
       from case_overlap in CaseOverlapsFR,
         where:
           (case_overlap.fg_endpoint_a_id == ^endpoint.id or
-          case_overlap.fg_endpoint_b_id == ^endpoint.id) and
-          case_overlap.fg_endpoint_a_id != case_overlap.fg_endpoint_b_id,
+             case_overlap.fg_endpoint_b_id == ^endpoint.id) and
+            case_overlap.fg_endpoint_a_id != case_overlap.fg_endpoint_b_id,
         select: %{
           fg_endpoint_a_id: case_overlap.fg_endpoint_a_id,
           fg_endpoint_b_id: case_overlap.fg_endpoint_b_id,
           case_overlap_N: case_overlap.case_overlap_N,
-          case_overlap_percent: case_overlap.case_overlap_percent,
+          case_overlap_percent: case_overlap.case_overlap_percent
         }
     )
   end
@@ -1063,13 +1085,13 @@ defmodule Risteys.FGEndpoint do
       from gen_corr in GeneticCorrelation,
         where:
           gen_corr.fg_endpoint_a_id == ^endpoint.id and
-          gen_corr.fg_endpoint_a_id != gen_corr.fg_endpoint_b_id,
+            gen_corr.fg_endpoint_a_id != gen_corr.fg_endpoint_b_id,
         select: %{
           fg_endpoint_b_id: gen_corr.fg_endpoint_b_id,
           fg_endpoint_a_id: gen_corr.fg_endpoint_a_id,
           rg: gen_corr.rg,
           rg_se: gen_corr.se,
-          rg_pvalue: gen_corr.pvalue,
+          rg_pvalue: gen_corr.pvalue
         }
     )
   end
@@ -1163,10 +1185,12 @@ defmodule Risteys.FGEndpoint do
     cond do
       is_nil(pvalue) ->
         nil
+
       pvalue <= p_threshold ->
         "*"
+
       true ->
-         ""
+        ""
     end
   end
 
