@@ -4,7 +4,8 @@ defmodule RisteysWeb.FGEndpointController do
   alias Risteys.{
     Repo,
     FGEndpoint,
-    KeyFigures
+    KeyFigures,
+    CodeWAS
   }
   import Ecto.Query
 
@@ -78,6 +79,10 @@ defmodule RisteysWeb.FGEndpointController do
         []
       end
 
+    # CodeWAS table
+    codewas_cohort = CodeWAS.get_cohort_stats(endpoint)
+    codewas_codes = CodeWAS.list_codes(endpoint)
+
     conn
     |> assign(:endpoint, endpoint)
     |> assign(:page_title, endpoint.name)
@@ -95,6 +100,8 @@ defmodule RisteysWeb.FGEndpointController do
     |> assign(:has_drug_stats, FGEndpoint.has_drug_stats?(endpoint))
     |> assign(:authz_list_variants?, authz_list_variants?)
     |> assign(:variants_by_corr, variants_by_corr)
+    |> assign(:codewas_cohort, codewas_cohort)
+    |> assign(:codewas_codes, codewas_codes)
     |> render("show.html")
   end
 
