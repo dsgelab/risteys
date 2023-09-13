@@ -61,12 +61,48 @@ defmodule RisteysWeb.Live.CodeWASTable do
 
   defp to_descriptive_vocabulary(value) do
     case value do
-      "ICD10fi" -> Phoenix.HTML.Tag.content_tag(:span, "ICD-10 Finland", title: "ICD-10 Finland")
-      "ICD9fi" -> Phoenix.HTML.Tag.content_tag(:span, "ICD-9 Finland", title: "ICD-9 Finland")
-      "ICD8fi" -> Phoenix.HTML.Tag.content_tag(:span, "ICD-8 Finland", title: "ICD-8 Finland")
-      "ICDO3" -> "ICD-O-3"
-      "REIMB" -> Phoenix.HTML.Tag.content_tag(:span, "Kela drug reimbursment", title: "Kela drug reimbursment")
-      _ -> value
+      # TODO(Vincent) Use our abbr/2 function when we figure out a way that
+      # the tooltip appears on top of everything when used in a table.
+      "ATC" ->
+        Phoenix.HTML.Tag.content_tag(:abbr, "ATC",
+          title: "Anatomical Therapeutic Chemical Classification System"
+        )
+
+      "FHL" ->
+        Phoenix.HTML.Tag.content_tag(:abbr, "FHL", title: "Finnish Hospital League")
+
+      _ when value in ["HPN", "HPO"] ->
+        Phoenix.HTML.Tag.content_tag(:abbr, "HP", title: "Heart Patients")
+
+      "ICD10fi" ->
+        Phoenix.HTML.Tag.content_tag(:span, "ICD-10 Finland", title: "ICD-10 Finland")
+
+      "ICD9fi" ->
+        Phoenix.HTML.Tag.content_tag(:span, "ICD-9 Finland", title: "ICD-9 Finland")
+
+      "ICD8fi" ->
+        Phoenix.HTML.Tag.content_tag(:span, "ICD-8 Finland", title: "ICD-8 Finland")
+
+      "ICDO3" ->
+        "ICD-O-3"
+
+      "ICPC" ->
+        Phoenix.HTML.Tag.content_tag(:abbr, "ICPC",
+          title: "International Classification of Primary Care"
+        )
+
+      "REIMB" ->
+        Phoenix.HTML.Tag.content_tag(:span, "Kela drug reimbursment",
+          title: "Kela drug reimbursment"
+        )
+
+      "SPAT" ->
+        Phoenix.HTML.Tag.content_tag(:abbr, "SPAT",
+          title: "Finnish primary care outpatient procedures"
+        )
+
+      _ ->
+        value
     end
   end
 end
