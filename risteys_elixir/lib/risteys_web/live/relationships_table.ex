@@ -131,65 +131,7 @@ defmodule RisteysWeb.Live.RelationshipsTable do
         end
       end
 
-    Enum.sort_by(elements, mapper, fn aa, bb ->
-      case {aa, bb, direction} do
-        {nil, _, _} -> false
-        {_, nil, _} -> true
-        {_, _, :asc} -> aa < bb
-        {_, _, :desc} -> aa > bb
-      end
-    end)
-  end
-
-  defp sorter_buttons(column, form_id, active_sorter) do
-    [
-      gen_button(:asc, column, form_id, active_sorter),
-      gen_button(:desc, column, form_id, active_sorter)
-    ]
-  end
-
-  defp gen_button(direction, column, form_id, active_sorter) do
-    content =
-      case direction do
-        :asc ->
-          "▲"
-
-        :desc ->
-          "▼"
-      end
-
-    value =
-      case direction do
-        :asc ->
-          column <> "_asc"
-
-        :desc ->
-          column <> "_desc"
-      end
-
-    class =
-      case {direction, active_sorter} do
-        {:asc, ^value} ->
-          "radio-left active"
-
-        {:asc, _} ->
-          "radio-left"
-
-        {:desc, ^value} ->
-          "radio-right active"
-
-        {:desc, _} ->
-          "radio-right"
-      end
-
-    Phoenix.HTML.Tag.content_tag(
-      :button,
-      content,
-      name: "sorter",
-      value: value,
-      form: form_id,
-      class: class
-    )
+    Enum.sort_by(elements, mapper, RisteysWeb.Utils.sorter_nil_end(direction))
   end
 
   defp text_percentile(normalized_value) do
