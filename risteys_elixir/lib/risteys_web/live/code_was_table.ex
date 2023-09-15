@@ -31,6 +31,18 @@ defmodule RisteysWeb.Live.CodeWASTable do
   defp sort_with_nil(elements, sorter) do
     {mapper, direction} =
       case sorter do
+        "code_asc" ->
+          {fn row -> String.downcase(row.code) end, :asc}
+
+        "code_desc" ->
+          {fn row -> String.downcase(row.code) end, :desc}
+
+        "vocabulary_asc" ->
+          {fn row -> String.downcase(row.vocabulary) end, :asc}
+
+        "vocabulary_desc" ->
+          {fn row -> String.downcase(row.vocabulary) end, :desc}
+
         "nlog10p_asc" ->
           {fn row -> row.nlog10p end, :asc}
 
