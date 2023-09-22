@@ -50,10 +50,10 @@ defmodule RisteysWeb.Live.CodeWASTable do
           {fn row -> row.nlog10p end, :desc}
 
         "odds_ratio_asc" ->
-          {fn row -> row.log10OR end, :asc}
+          {fn row -> row.odds_ratio end, :asc}
 
         "odds_ratio_desc" ->
-          {fn row -> row.log10OR end, :desc}
+          {fn row -> row.odds_ratio end, :desc}
 
         "n_matched_cases_asc" ->
           {fn row -> row.n_matched_cases end, :asc}
@@ -71,13 +71,11 @@ defmodule RisteysWeb.Live.CodeWASTable do
     Enum.sort_by(elements, mapper, RisteysWeb.Utils.sorter_nil_end(direction))
   end
 
-  defp display_odds_ratio(log10OR) do
-
-    if log10OR == Float.max_finite() do
+  defp display_odds_ratio(odds_ratio) do
+    if odds_ratio == Float.max_finite() do
       "+∞"
     else
-      :math.pow(10, log10OR)
-      |> :erlang.float_to_binary(decimals: 1)
+      odds_ratio
     end
   end
 
