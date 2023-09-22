@@ -95,7 +95,7 @@ defmodule Risteys.CodeWAS do
             "n_cases_yes_char" => n_cases,
             "n_controls_yes_char" => n_controls,
             "nlog10p" => nlog10p,
-            "log10OR" => log10OR
+            "OR" => odds_ratio
           } = record
 
           code_key = {code1, code2, code3, vocabulary}
@@ -108,42 +108,29 @@ defmodule Risteys.CodeWAS do
           code = Map.get(codes_info, code_key, default_code)
 
           # Parsing floats
-          log10OR_parsed =
-            case log10OR do
+          odds_ratio_parsed =
+            case odds_ratio do
               # Elixir doesn't support ±infinity, so we use the max float instead
               "Inf" ->
                 Float.max_finite()
 
               _ ->
                 # Using Float.parse to handle both floats and integers, since our input data has both
-                {float, _remainder} = Float.parse(log10OR)
+                {float, _remainder} = Float.parse(odds_ratio)
                 float
             end
 
           {nlog10p_parsed, _remainder} = Float.parse(nlog10p)
-
-          # Use 'nil' to represent "<5"
-          n_cases_parsed =
-            case n_cases do
-              "<5" -> nil
-              _ -> String.to_integer(n_cases)
-            end
-
-          n_controls_parsed =
-            case n_controls do
-              "<5" -> nil
-              _ -> String.to_integer(n_controls)
-            end
 
           attrs = %{
             fg_endpoint_id: endpoint.id,
             code: code,
             description: description,
             vocabulary: vocabulary,
-            log10OR: log10OR_parsed,
+            odds_ratio: odds_ratio_parsed,
             nlog10p: nlog10p_parsed,
-            n_matched_cases: n_cases_parsed,
-            n_matched_controls: n_controls_parsed
+            n_matched_cases: n_cases,
+            n_matched_controls: n_controls
           }
 
           {:ok, _schema} =
