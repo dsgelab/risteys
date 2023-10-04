@@ -92,8 +92,8 @@ defmodule Risteys.CodeWAS do
             "FG_CODE3" => code3,
             "vocabulary_id" => vocabulary,
             "name_en" => description,
-            "n_cases_yes_char" => n_cases,
-            "n_controls_yes_char" => n_controls,
+            "n_cases_yes" => n_cases,
+            "n_controls_yes" => n_controls,
             "nlog10p" => nlog10p,
             "OR" => odds_ratio
           } = record
@@ -108,6 +108,8 @@ defmodule Risteys.CodeWAS do
           code = Map.get(codes_info, code_key, default_code)
 
           # Parsing floats
+          {nlog10p_parsed, _remainder} = Float.parse(nlog10p)
+
           odds_ratio_parsed =
             case odds_ratio do
               # Elixir doesn't support ±infinity, so we use the max float instead
@@ -119,8 +121,6 @@ defmodule Risteys.CodeWAS do
                 {float, _remainder} = Float.parse(odds_ratio)
                 float
             end
-
-          {nlog10p_parsed, _remainder} = Float.parse(nlog10p)
 
           attrs = %{
             fg_endpoint_id: endpoint.id,

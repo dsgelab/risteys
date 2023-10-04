@@ -11,21 +11,69 @@ defmodule RisteysWeb.Live.CodeWASTable do
     socket =
       socket
       |> assign(:form, init_form)
-      |> assign(:active_sorter, default_sorter)
       |> assign(:all_codes, all_codes)
+      |> assign(:active_sorter, default_sorter)
+      |> assign(:code_filter, "")
+      |> assign(:vocabulary_filter, "")
+      |> assign(:display_codes, all_codes)
 
     {:ok, socket, layout: false}
   end
 
   def handle_event("sort_table", %{"sorter" => sorter}, socket) do
-    all_codes = sort_with_nil(socket.assigns.all_codes, sorter)
+    socket =
+      socket
+      |> assign(:active_sorter, sorter)
+      |> update_table()
+
+    {:noreply, socket}
+  end
+
+  def handle_event("update_table", filters, socket) do
+    %{
+      "code-filter" => code_filter,
+      "vocabulary-filter" => vocabulary_filter
+    } = filters
 
     socket =
       socket
-      |> assign(:all_codes, all_codes)
-      |> assign(:active_sorter, sorter)
+      |> assign(:code_filter, code_filter)
+      |> assign(:vocabulary_filter, vocabulary_filter)
+      |> update_table()
 
     {:noreply, socket}
+  end
+
+  defp update_table(socket) do
+    display_codes =
+      socket.assigns.all_codes
+      |> Enum.filter(fn row ->
+        code_filter =
+        String.contains?(
+          String.downcase(row.code),
+          String.downcase(socket.assigns.code_filter)
+        )
+
+        vocabulary_namings = Risteys.CodeWAS.Codes.vocabulary_namings(row.vocabulary)
+        vocabulary_filter =
+          String.contains?(
+            String.downcase(row.vocabulary),
+            String.downcase(socket.assigns.vocabulary_filter)
+          ) or
+          String.contains?(
+            String.downcase(vocabulary_namings.short),
+            String.downcase(socket.assigns.vocabulary_filter)
+          ) or
+          String.contains?(
+            String.downcase(vocabulary_namings.full),
+            String.downcase(socket.assigns.vocabulary_filter)
+          )
+
+        code_filter and vocabulary_filter
+      end)
+      |> sort_with_nil(socket.assigns.active_sorter)
+
+    assign(socket, :display_codes, display_codes)
   end
 
   defp sort_with_nil(elements, sorter) do
@@ -75,54 +123,26 @@ defmodule RisteysWeb.Live.CodeWASTable do
     if odds_ratio == Float.max_finite() do
       "+∞"
     else
-      odds_ratio
+      :erlang.float_to_binary(odds_ratio, decimals: 1)
     end
   end
 
   defp to_descriptive_vocabulary(value) do
-    case value do
-      # TODO(Vincent) Use our abbr/2 function when we figure out a way that
-      # the tooltip appears on top of everything when used in a table.
-      "ATC" ->
-        Phoenix.HTML.Tag.content_tag(:abbr, "ATC",
-          title: "Anatomical Therapeutic Chemical Classification System"
-        )
+    # TODO(Vincent) Use our abbr/2 function when we figure out a way that
+    # the tooltip appears on top of everything when used in a table.
+    namings = Risteys.CodeWAS.Codes.vocabulary_namings(value)
 
-      "FHL" ->
-        Phoenix.HTML.Tag.content_tag(:abbr, "FHL", title: "Finnish Hospital League")
+    tag =
+      if not is_nil(namings.abbr) do
+        :abbr
+      else
+        :span
+      end
 
-      _ when value in ["HPN", "HPO"] ->
-        Phoenix.HTML.Tag.content_tag(:abbr, "HP", title: "Heart Patients")
-
-      "ICD10fi" ->
-        Phoenix.HTML.Tag.content_tag(:span, "ICD-10 Finland", title: "ICD-10 Finland")
-
-      "ICD9fi" ->
-        Phoenix.HTML.Tag.content_tag(:span, "ICD-9 Finland", title: "ICD-9 Finland")
-
-      "ICD8fi" ->
-        Phoenix.HTML.Tag.content_tag(:span, "ICD-8 Finland", title: "ICD-8 Finland")
-
-      "ICDO3" ->
-        "ICD-O-3"
-
-      "ICPC" ->
-        Phoenix.HTML.Tag.content_tag(:abbr, "ICPC",
-          title: "International Classification of Primary Care"
-        )
-
-      "REIMB" ->
-        Phoenix.HTML.Tag.content_tag(:span, "Kela drug reimbursment",
-          title: "Kela drug reimbursment"
-        )
-
-      "SPAT" ->
-        Phoenix.HTML.Tag.content_tag(:abbr, "SPAT",
-          title: "Finnish primary care outpatient procedures"
-        )
-
-      _ ->
-        value
-    end
+    Phoenix.HTML.Tag.content_tag(
+      tag,
+      namings.short,
+      title: namings.full
+    )
   end
 end
