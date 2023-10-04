@@ -15,6 +15,21 @@ defmodule RisteysWeb.Utils do
     end
   end
 
+
+  @doc """
+  Generate an text input field for a Live View.
+  """
+  def text_input_field(name, form_id, value, placeholder) do
+    Phoenix.HTML.Tag.tag(
+      :input,
+      type: "text",
+      name: name,
+      form: form_id,
+      value: value,
+      placeholder: placeholder
+    )
+  end
+
   @doc """
   Generate a pair of asc/desc sorting button for a Live View.
   """
