@@ -90,7 +90,9 @@ Hooks.DrawCompBox = {
  */
 function init_search_key () {
     document.addEventListener('keyup', (event) => {
-        if (event.key === "s") {
+        const isInputText = (document.activeElement.tagName === "INPUT") && (document.activeElement.type === "text")
+        const isTextarea = document.activeElement.tagName === "TEXTAREA"
+        if (!isInputText && !isTextarea && event.key === "s") {
             let search_box = document.getElementById('search-input');
             search_box.focus();
         }
