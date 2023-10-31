@@ -8,7 +8,7 @@ An endpoint could be excluded in FinRegistry for a couple of reasons:
 - Endpoints having in their definition HD_ICD_10_ATC = "ANY"
 - Some specifics endpoints are manually excluded (e.g. DEATH, F5_SAD)
 
-For backward compatibility 1 or 3 reasons can be used for excluded endpoints:
+For backward compatibility 1 of 3 reasons can be used for excluded endpoints:
 - excl_diff_def
 - excl_omitted
 - excl_not_available
