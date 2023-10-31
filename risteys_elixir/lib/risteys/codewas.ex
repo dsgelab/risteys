@@ -14,9 +14,9 @@ defmodule Risteys.CodeWAS do
   def get_cohort_stats(endpoint) do
     Repo.one(
       from cc in CodeWAS.Cohort,
-      join: ee in FGEndpoint.Definition,
-      on: cc.fg_endpoint_id == ee.id,
-      where: ee.name == ^endpoint.name
+        join: ee in FGEndpoint.Definition,
+        on: cc.fg_endpoint_id == ee.id,
+        where: ee.name == ^endpoint.name
     )
   end
 
@@ -30,22 +30,25 @@ defmodule Risteys.CodeWAS do
     )
   end
 
-  def import_cohort_file(filepath) do
-    endpoint_name = Path.basename(filepath, ".json")
-    endpoint = Repo.get_by(FGEndpoint.Definition, name: endpoint_name)
-
-    %{
-      "n_cases" => n_cases,
-      "n_controls" => n_controls,
-      "per_cases_after_match" => percent_match_cases,
-      "per_controls_after_match" => percent_match_controls
-    } =
-      filepath
-      |> File.read!()
+  def import_file(codewas_file, codes_info) do
+    codewas_file
+    |> File.stream!()
+    |> Enum.each(fn line ->
+      line
       |> Jason.decode!()
+      |> import_endpoint_codewas(codes_info)
+    end)
+  end
 
-    n_matched_cases = floor(n_cases * percent_match_cases)
-    n_matched_controls = floor(n_controls * percent_match_controls)
+  def import_endpoint_codewas(codewas_data, codes_info) do
+    %{
+      "endpoint_name" => endpoint_name,
+      "n_matched_cases" => n_matched_cases,
+      "n_matched_controls" => n_matched_controls,
+      "codes" => codes
+    } = codewas_data
+
+    endpoint = Repo.get_by(FGEndpoint.Definition, name: endpoint_name)
 
     case endpoint do
       nil ->
@@ -62,41 +65,25 @@ defmodule Risteys.CodeWAS do
           n_matched_controls: n_matched_controls
         }
 
+        Logger.debug("Parsing and importing CodeWAS codes data for endpoint #{endpoint.name}.")
+
         {:ok, _schema} =
           %CodeWAS.Cohort{}
           |> CodeWAS.Cohort.changeset(attrs)
           |> Repo.insert()
-    end
-  end
 
-  def import_codes_file(filepath, codes_info) do
-    endpoint_name = Path.basename(filepath, ".csv")
-    endpoint = Repo.get_by(FGEndpoint.Definition, name: endpoint_name)
-
-    case endpoint do
-      nil ->
-        Logger.warning(
-          "Endpoint #{endpoint_name} not found in DB. Not importing CodeWAS codes stats."
-        )
-
-      _ ->
-        Logger.debug("Parsing and importing CodeWAS codes data for endpoint #{endpoint.name}.")
-
-        filepath
-        |> File.stream!()
-        |> CSV.decode!(headers: true)
-        |> Enum.map(fn record ->
+        for code_record <- codes do
           %{
-            "FG_CODE1" => code1,
-            "FG_CODE2" => code2,
-            "FG_CODE3" => code3,
-            "vocabulary_id" => vocabulary,
-            "name_en" => description,
-            "n_cases_yes" => n_cases,
-            "n_controls_yes" => n_controls,
+            "code1" => code1,
+            "code2" => code2,
+            "code3" => code3,
+            "description" => description,
+            "vocabulary" => vocabulary,
+            "odds_ratio" => odds_ratio,
             "nlog10p" => nlog10p,
-            "OR" => odds_ratio
-          } = record
+            "n_matched_cases" => n_matched_cases,
+            "n_matched_controls" => n_matched_controls
+          } = code_record
 
           code_key = {code1, code2, code3, vocabulary}
 
@@ -107,37 +94,31 @@ defmodule Risteys.CodeWAS do
 
           code = Map.get(codes_info, code_key, default_code)
 
-          # Parsing floats
-          {nlog10p_parsed, _remainder} = Float.parse(nlog10p)
-
-          odds_ratio_parsed =
+          odds_ratio =
             case odds_ratio do
-              # Elixir doesn't support ±infinity, so we use the max float instead
-              "Inf" ->
+              "Infinity" ->
                 Float.max_finite()
 
               _ ->
-                # Using Float.parse to handle both floats and integers, since our input data has both
-                {float, _remainder} = Float.parse(odds_ratio)
-                float
-            end
+                odds_ratio
+              end
 
           attrs = %{
             fg_endpoint_id: endpoint.id,
             code: code,
             description: description,
             vocabulary: vocabulary,
-            odds_ratio: odds_ratio_parsed,
-            nlog10p: nlog10p_parsed,
-            n_matched_cases: n_cases,
-            n_matched_controls: n_controls
+            odds_ratio: odds_ratio,
+            nlog10p: nlog10p,
+            n_matched_cases: n_matched_cases,
+            n_matched_controls: n_matched_controls
           }
 
           {:ok, _schema} =
             %CodeWAS.Codes{}
             |> CodeWAS.Codes.changeset(attrs)
             |> Repo.insert()
-        end)
+        end
     end
   end
 

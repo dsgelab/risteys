@@ -116,7 +116,7 @@ defmodule RisteysWeb.Live.CodeWASTable do
           {fn row -> row.n_matched_controls end, :desc}
       end
 
-    Enum.sort_by(elements, mapper, RisteysWeb.Utils.sorter_nil_end(direction))
+    Enum.sort_by(elements, mapper, RisteysWeb.Utils.sorter_nil_is_0(direction))
   end
 
   defp display_odds_ratio(odds_ratio) do
@@ -124,6 +124,14 @@ defmodule RisteysWeb.Live.CodeWASTable do
       "+∞"
     else
       :erlang.float_to_binary(odds_ratio, decimals: 1)
+    end
+  end
+
+  defp mask_low_n(value) do
+    if is_nil(value) do
+      Phoenix.HTML.Tag.content_tag(:abbr, "*", title: "To safeguard privacy, we will not display the precise number of study subjects.")
+    else
+      value
     end
   end
 
