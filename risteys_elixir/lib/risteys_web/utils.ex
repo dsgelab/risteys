@@ -15,6 +15,27 @@ defmodule RisteysWeb.Utils do
     end
   end
 
+  @doc """
+  Custom sorter that considers nil values to be just below 0.
+  To be used as the sorter of Enum.sort_by/3
+  """
+  def sorter_nil_is_0(direction) do
+    fn aa, bb ->
+      case {aa, bb, direction} do
+        {nil, 0, :asc} -> true
+        {nil, 0, :desc} -> false
+        {0, nil, :asc} -> false
+        {0, nil, :desc} -> true
+        {nil, _, :asc} -> 0 < bb
+        {nil, _, :desc} -> 0 > bb
+        {_, nil, :asc} -> 0 > aa
+        {_, nil, :desc} -> 0 < aa
+        {_, _, :asc} -> aa < bb
+        {_, _, :desc} -> aa > bb
+      end
+    end
+  end
+
 
   @doc """
   Generate an text input field for a Live View.

@@ -15,8 +15,9 @@ defmodule Risteys.CodeWAS.Cohort do
     cohort
     |> cast(attrs, [:n_matched_cases, :n_matched_controls, :fg_endpoint_id])
     |> validate_required([:n_matched_cases, :n_matched_controls, :fg_endpoint_id])
-    |> validate_change(:n_matched_cases, &Risteys.Utils.is_green/2)
-    |> validate_change(:n_matched_controls, &Risteys.Utils.is_green/2)
+    # For CodeWAS, the 2023-10 decision is to have cohort of minimum 50 people.
+    |> validate_number(:n_matched_cases, greater_than_or_equal_to: 50)
+    |> validate_number(:n_matched_controls, greater_than_or_equal_to: 50)
     |> unique_constraint(:codewas_cohort)
   end
 end
