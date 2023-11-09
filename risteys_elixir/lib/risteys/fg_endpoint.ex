@@ -867,342 +867,147 @@ defmodule Risteys.FGEndpoint do
 
   # -- Relationships --
   def get_relationships(endpoint_name) do
-    endpoint = Repo.get_by!(Definition, name: endpoint_name)
+    page_endpoint = Repo.get_by!(Definition, name: endpoint_name)
 
-    # template map to use to make sure every map has every field to avoid reference issues later
-    template = %{
-      fg_endpoint_b_id: nil,
-      name: nil,
-      longname: nil,
-      fr_case_overlap_percent: nil,
-      fr_case_overlap_N: nil,
-      hr_ci_max: nil,
-      hr_ci_min: nil,
-      hr: nil,
-      hr_str: nil,
-      hr_pvalue_str: nil,
-      hr_binned: nil,
-      rg: nil,
-      rg_se: nil,
-      rg_str: nil,
-      rg_pvalue_str: nil,
-      rg_ci_min: nil,
-      rg_ci_max: nil,
-      rg_binned: nil,
-      fg_case_overlap_percent: nil,
-      fg_case_overlap_N: nil,
-      gws_hits: nil,
-      coloc_gws_hits: nil
-    }
+    # At least this number of HR in a group (by outcome_id) to be statically meaningful
+    extremity_groups_min_count = 30
 
-    # get FG correlations
-    fg_correlations = list_correlations(endpoint_name)
-
-    # First, create joined_results map based on template map and FG correlation results
-    joined_results =
-      Enum.reduce(fg_correlations, %{}, fn data_map, acc ->
-        tmp =
-          template
-          |> Map.put(:name, data_map.name)
-          |> Map.put(:longname, data_map.longname)
-          |> Map.put(:fg_case_overlap_percent, round_and_str(data_map.case_overlap_percent, 2))
-          |> Map.put(:fg_case_overlap_N, data_map.case_overlap_N)
-          |> Map.put(:gws_hits, data_map.gws_hits)
-          |> Map.put(:coloc_gws_hits, data_map.coloc_gws_hits)
-
-        Map.put(acc, data_map.fg_endpoint_b_id, tmp)
-      end)
-
-    # get FR case overlaps
-    # this returns a list of maps where each map has data for one endpoint pair, i.e. one row in the Relationships table
-    fr_case_overlaps = get_case_overlaps(endpoint)
-    # add results to a map that will join all results from all tables
-    joined_results =
-      join_results(fr_case_overlaps, "fr_case_overlaps", joined_results, template, endpoint.id)
-
-    # get FR survival analysis results
-    fr_associations = data_assocs(endpoint)
-    joined_results = join_results(fr_associations, "fr_surv", joined_results, template)
-
-    # get FR survival analysis HR extremity
-    hr_outcome_distribs = hr_outcome_distribs(endpoint)
-
-    joined_results =
-      join_results(hr_outcome_distribs, "fr_surv_extremity", joined_results, template)
-
-    # get FG genetic correlations
-    fg_genetic_correlations = get_genetic_correlations(endpoint)
-
-    joined_results =
-      join_results(fg_genetic_correlations, "fg_gen_corr", joined_results, template)
-
-    # get FG genetic correlations rg extremity
-    rg_outcome_distribs = rg_outcome_distribs(endpoint)
-
-    joined_results =
-      join_results(rg_outcome_distribs, "fg_gen_corr_extremity", joined_results, template)
-
-    # return a list of maps, where each map has all available results for one enpdpoint pair
-    Map.values(joined_results)
-  end
-
-  def join_results(data_list, data_type, joined_results, template, current_endpoint_id \\ nil) do
-    Enum.reduce(data_list, joined_results, fn data_map, acc ->
-      # Format the data so that it has field "fg_endpoint_b_id" having the id of the endpoint of interest
-      # and other field names match with the respective names in the template map
-      data_map = format_data(data_map, data_type, current_endpoint_id)
-
-      # If current endpoint in the given data list (i.e., the pair endpoint of the endpoint of current page) is found from
-      # the joined reults, append reusults to the corresponding map, otherwise create a new map using the teplate map.
-      # Template map is used when creating a new map to make sure that all maps have keys for all possible fields.
-      # --> Join all results from all tables together
-      case Map.get(acc, data_map.fg_endpoint_b_id) do
-        nil ->
-          # If map for current endpoint b is not found, results for the current endpoint pair have not been available
-          # in FG correlations, which means that the map doesn't have name of the endpoint b and it needs to be added.
-          # Name and longname are added here to avoid any unnecassary enumeration throught the data maps
-          name_map =
-            Repo.one(
-              from definition in Definition,
-                where: definition.id == ^data_map.fg_endpoint_b_id,
-                select: %{
-                  name: definition.name,
-                  longname: definition.longname
-                }
-            )
-
-          tmp = Map.merge(template, name_map)
-          tmp = Map.merge(tmp, data_map)
-
-          Map.put(acc, tmp.fg_endpoint_b_id, tmp)
-
-        map ->
-          Map.put(acc, data_map.fg_endpoint_b_id, Map.merge(map, data_map))
-      end
-    end)
-  end
-
-  defp format_data(map, data_type, current_endpoint_id) do
-    case data_type do
-      "fr_case_overlaps" ->
-        id =
-          if map.fg_endpoint_b_id != current_endpoint_id,
-            do: map.fg_endpoint_b_id,
-            else: map.fg_endpoint_a_id
-
-        %{
-          fg_endpoint_b_id: id,
-          fr_case_overlap_percent: round_and_str(map.case_overlap_percent, 2),
-          fr_case_overlap_N: map.case_overlap_N
-        }
-
-      "fr_surv" ->
-        # to get bonferroni corrected pvalues for FR HR values, threshold for significant pvalue is 0.05 / number of all converged analyses
-        # 9773 is number of all converged FR survival analyses in the R10 input data file
-        p_threshold = 0.05 / 9773
-
-        %{
-          fg_endpoint_b_id: map.outcome_id,
-          hr_ci_max: round_and_str(map.ci_max, 2),
-          hr_ci_min: round_and_str(map.ci_min, 2),
-          hr: map.hr,
-          hr_str: round_and_str(map.hr, 2),
-          hr_pvalue_str: pvalue_star(map.pvalue, p_threshold)
-        }
-
-      "fr_surv_extremity" ->
-        %{
-          fg_endpoint_b_id: map.endpoint_id,
-          hr_binned: map.percent_rank
-        }
-
-      "fg_gen_corr" ->
-        %{
-          fg_endpoint_b_id: map.fg_endpoint_b_id,
-          rg: map.rg,
-          rg_str: round_and_str(map.rg, 2),
-          rg_ci_min: round_and_str(get_95_ci(map.rg, map.rg_se, "lower"), 2),
-          rg_ci_max: round_and_str(get_95_ci(map.rg, map.rg_se, "upper"), 2),
-          # 0.000001 is threshold for significant p-value for FG genetic correlations
-          rg_pvalue_str: pvalue_star(map.rg_pvalue, 1.0e-6)
-        }
-
-      "fg_gen_corr_extremity" ->
-        %{
-          fg_endpoint_b_id: map.endpoint_id,
-          rg_binned: map.percent_rank
-        }
-
-      _ ->
-        raise "Given data type for formatting data doesn't match with any of the allowed keywords for data format."
-    end
-  end
-
-  defp data_assocs(endpoint) do
-    query =
-      from assoc in CoxHR,
-        join: prior in Definition,
-        on: assoc.prior_id == prior.id,
-        join: outcome in Definition,
-        on: assoc.outcome_id == outcome.id,
-        where: assoc.prior_id == ^endpoint.id,
-        order_by: [desc: assoc.hr],
+    query_definition =
+      from other_endpoint in Definition,
+        where: other_endpoint.id != ^page_endpoint.id,
         select: %{
-          prior_id: prior.id,
-          outcome_id: outcome.id,
-          outcome_name: outcome.name,
-          outcome_longname: outcome.longname,
-          hr: assoc.hr,
-          ci_min: assoc.ci_min,
-          ci_max: assoc.ci_max,
-          pvalue: assoc.pvalue
+          other_id: other_endpoint.id,
+          name: other_endpoint.name,
+          longname: other_endpoint.longname,
+          gws_hits: other_endpoint.gws_hits
         }
 
-    Repo.all(query)
-  end
-
-  defp get_case_overlaps(endpoint) do
-    # each FR endpoint case overlap pair is saved in the DB only once, because a --> b is same as b --> a
-    # --> need to query the data so that get all results for a given endpoint, regardless whether it's
-    # saved in the DB as endpoint_a or endpoint_b -> get all pairs and get correct "endpoint b" id later when formatting data
-    Repo.all(
-      from case_overlap in CaseOverlapsFR,
+    subquery_case_overlap =
+      from case_overlap_fr in CaseOverlapsFR,
         where:
-          (case_overlap.fg_endpoint_a_id == ^endpoint.id or
-             case_overlap.fg_endpoint_b_id == ^endpoint.id) and
-            case_overlap.fg_endpoint_a_id != case_overlap.fg_endpoint_b_id,
+          case_overlap_fr.fg_endpoint_a_id == ^page_endpoint.id or
+            case_overlap_fr.fg_endpoint_b_id == ^page_endpoint.id,
         select: %{
-          fg_endpoint_a_id: case_overlap.fg_endpoint_a_id,
-          fg_endpoint_b_id: case_overlap.fg_endpoint_b_id,
-          case_overlap_N: case_overlap.case_overlap_N,
-          case_overlap_percent: case_overlap.case_overlap_percent
+          other_id:
+            fragment(
+              "CASE WHEN ? = ? THEN ? ELSE ? END",
+              case_overlap_fr.fg_endpoint_a_id,
+              ^page_endpoint.id,
+              case_overlap_fr.fg_endpoint_b_id,
+              case_overlap_fr.fg_endpoint_a_id
+            ),
+          case_overlap_percent: case_overlap_fr.case_overlap_percent,
+          case_overlap_N: case_overlap_fr.case_overlap_N
         }
-    )
-  end
 
-  def get_genetic_correlations(endpoint) do
-    Repo.all(
-      from gen_corr in GeneticCorrelation,
+    subquery_coxhr_extremities = compute_hr_extremities(page_endpoint, extremity_groups_min_count)
+
+    subquery_coxhr =
+      from coxhr in CoxHR,
+        left_join: extrem in subquery(subquery_coxhr_extremities),
+        on: coxhr.outcome_id == extrem.outcome_id,
         where:
-          gen_corr.fg_endpoint_a_id == ^endpoint.id and
-            gen_corr.fg_endpoint_a_id != gen_corr.fg_endpoint_b_id,
+          coxhr.prior_id == ^page_endpoint.id and
+            coxhr.lagged_hr_cut_year == 0,
         select: %{
-          fg_endpoint_b_id: gen_corr.fg_endpoint_b_id,
-          fg_endpoint_a_id: gen_corr.fg_endpoint_a_id,
-          rg: gen_corr.rg,
-          rg_se: gen_corr.se,
-          rg_pvalue: gen_corr.pvalue
-        }
-    )
-  end
-
-  defp hr_outcome_distribs(endpoint) do
-    # at least that amount for a meaningful distribution
-    min_count = 30
-
-    percs =
-      from c in CoxHR,
-        where: c.lagged_hr_cut_year == 0,
-        select: %{
-          prior_id: c.prior_id,
-          outcome_id: c.outcome_id,
-          percent_rank:
-            fragment(
-              "percent_rank() OVER (PARTITION BY ? ORDER BY ?)",
-              c.outcome_id,
-              c.hr
-            )
+          outcome_id: coxhr.outcome_id,
+          hr: coxhr.hr,
+          ci_min: coxhr.ci_min,
+          ci_max: coxhr.ci_max,
+          pvalue: coxhr.pvalue,
+          percent_rank: extrem.percent_rank
         }
 
-    counts =
-      from c in CoxHR,
-        where: c.lagged_hr_cut_year == 0,
-        group_by: c.outcome_id,
+    subquery_rg_extremities = compute_rg_extremities(page_endpoint, extremity_groups_min_count)
+
+    subquery_genetic_correlation =
+      from genetic_correlation in GeneticCorrelation,
+        left_join: extrem in subquery(subquery_rg_extremities),
+        on: genetic_correlation.fg_endpoint_b_id == extrem.fg_endpoint_b_id,
+        where: genetic_correlation.fg_endpoint_a_id == ^page_endpoint.id,
         select: %{
-          outcome_id: c.outcome_id,
-          count: count()
+          fg_endpoint_b_id: genetic_correlation.fg_endpoint_b_id,
+          rg: genetic_correlation.rg,
+          se: genetic_correlation.se,
+          pvalue: genetic_correlation.pvalue,
+          percent_rank: extrem.percent_rank
         }
+
+    subquery_correlation =
+      from correlation in Correlation,
+        where: correlation.fg_endpoint_a_id == ^page_endpoint.id
 
     Repo.all(
-      from endpoint in subquery(percs),
-        join: cnt in subquery(counts),
-        on: endpoint.outcome_id == cnt.outcome_id,
-        where: endpoint.prior_id == ^endpoint.id and cnt.count > ^min_count,
+      from definition in subquery(query_definition),
+        left_join: fr_case_overlap in subquery(subquery_case_overlap),
+        on: definition.other_id == fr_case_overlap.other_id,
+        left_join: coxhr in subquery(subquery_coxhr),
+        on: definition.other_id == coxhr.outcome_id,
+        left_join: genetic_correlation in subquery(subquery_genetic_correlation),
+        on: definition.other_id == genetic_correlation.fg_endpoint_b_id,
+        left_join: fg_correlation in subquery(subquery_correlation),
+        on: definition.other_id == fg_correlation.fg_endpoint_b_id,
         select: %{
-          endpoint_id: endpoint.outcome_id,
-          percent_rank: endpoint.percent_rank
+          other_id: definition.other_id,
+          name: definition.name,
+          longname: definition.longname,
+          fr_case_overlap_percent: fr_case_overlap.case_overlap_percent,
+          fr_case_overlap_N: fr_case_overlap.case_overlap_N,
+          hr: coxhr.hr,
+          hr_ci_max: coxhr.ci_max,
+          hr_ci_min: coxhr.ci_min,
+          hr_pvalue: coxhr.pvalue,
+          hr_binned: coxhr.percent_rank,
+          rg: genetic_correlation.rg,
+          rg_se: genetic_correlation.se,
+          rg_pvalue: genetic_correlation.pvalue,
+          rg_binned: genetic_correlation.percent_rank,
+          fg_case_overlap_percent: fg_correlation.case_overlap_percent,
+          fg_case_overlap_N: fg_correlation.case_overlap_N,
+          gws_hits: definition.gws_hits,
+          coloc_gws_hits:
+            fg_correlation.coloc_gws_hits_same_dir + fg_correlation.coloc_gws_hits_opp_dir
         }
     )
   end
 
-  defp rg_outcome_distribs(endpoint) do
-    # at least that amount for a meaningful distribution
-    min_count = 30
-
-    percs =
-      from c in GeneticCorrelation,
+  defp compute_hr_extremities(page_endpoint, min_count) do
+    extremities =
+      from cox in CoxHR,
+        where: cox.lagged_hr_cut_year == 0,
         select: %{
-          prior_id: c.fg_endpoint_a_id,
-          outcome_id: c.fg_endpoint_b_id,
+          prior_id: cox.prior_id,
+          outcome_id: cox.outcome_id,
+          percent_rank: percent_rank() |> over(partition_by: cox.outcome_id, order_by: cox.hr),
+          count: count() |> over(partition_by: cox.outcome_id)
+        }
+
+    from extrem in subquery(extremities),
+      where: extrem.prior_id == ^page_endpoint.id and extrem.count >= ^min_count,
+      select: %{
+        outcome_id: extrem.outcome_id,
+        percent_rank: extrem.percent_rank
+      }
+  end
+
+  defp compute_rg_extremities(page_endpoint, min_count) do
+    extremities =
+      from gene_corr in GeneticCorrelation,
+        select: %{
+          fg_endpoint_a_id: gene_corr.fg_endpoint_a_id,
+          fg_endpoint_b_id: gene_corr.fg_endpoint_b_id,
           percent_rank:
-            fragment(
-              "percent_rank() OVER (PARTITION BY ? ORDER BY ?)",
-              c.fg_endpoint_b_id,
-              c.rg
-            )
+            percent_rank()
+            |> over(partition_by: gene_corr.fg_endpoint_b_id, order_by: gene_corr.rg),
+          count: count() |> over(partition_by: gene_corr.fg_endpoint_b_id)
         }
 
-    counts =
-      from c in GeneticCorrelation,
-        group_by: c.fg_endpoint_b_id,
-        select: %{
-          outcome_id: c.fg_endpoint_b_id,
-          count: count()
-        }
-
-    Repo.all(
-      from endpoint in subquery(percs),
-        join: cnt in subquery(counts),
-        on: endpoint.outcome_id == cnt.outcome_id,
-        where: endpoint.prior_id == ^endpoint.id and cnt.count > ^min_count,
-        select: %{
-          endpoint_id: endpoint.outcome_id,
-          percent_rank: endpoint.percent_rank
-        }
-    )
-  end
-
-  defp round_and_str(number, precision) do
-    case number do
-      nil -> nil
-      "-" -> "-"
-      _ -> :io_lib.format("~.#{precision}. f", [number]) |> to_string()
-    end
-  end
-
-  defp pvalue_star(pvalue, p_threshold) do
-    # statistically significant p-values are presented by "*"
-    cond do
-      is_nil(pvalue) ->
-        nil
-
-      pvalue <= p_threshold ->
-        "*"
-
-      true ->
-        ""
-    end
-  end
-
-  def get_95_ci(estimate, se, direction) do
-    if !is_nil(estimate) and !is_nil(se) do
-      case direction do
-        # 1.96 is z-score for 95% confidence intervals
-        "lower" -> estimate - 1.96 * se
-        "upper" -> estimate + 1.96 * se
-        _ -> nil
-      end
-    end
+    from extrem in subquery(extremities),
+      where: extrem.fg_endpoint_a_id == ^page_endpoint.id and extrem.count >= ^min_count,
+      select: %{
+        fg_endpoint_b_id: extrem.fg_endpoint_b_id,
+        percent_rank: extrem.percent_rank
+      }
   end
 
   # --- Drug statistics
