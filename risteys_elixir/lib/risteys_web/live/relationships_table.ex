@@ -31,7 +31,11 @@ defmodule RisteysWeb.Live.RelationshipsTable do
   end
 
   def handle_info({:fetch_data, %{endpoint_name: endpoint_name, sorter: sorter}}, socket) do
-    data = sort_with_nil(Risteys.FGEndpoint.get_relationships(endpoint_name), sorter, :desc)
+    data =
+      endpoint_name
+      |> Risteys.FGEndpoint.get_relationships()
+      |> format_relationship_values()
+      |> sort_with_nil(sorter, :desc)
 
     socket =
       socket
@@ -156,5 +160,61 @@ defmodule RisteysWeb.Live.RelationshipsTable do
       end
 
     Integer.to_string(value) <> ending <> " percentile"
+  end
+
+  defp format_relationship_values(table) do
+    # To get bonferroni corrected pvalues for FR HR values, threshold for significant pvalue is 0.05 / number of all converged analyses
+    # 9773 is number of all converged FR survival analyses in the R10 input data file
+    p_threshold = 0.05 / 9773
+
+    # 0.000001 is threshold for significant p-value for FG genetic correlations
+    p_sig_fg_corr = 1.0e-6
+
+    Enum.map(table, fn row ->
+      row
+      |> Map.put(:fr_case_overlap_percent, round_and_str(row.fr_case_overlap_percent, 2))
+      |> Map.put(:fg_case_overlap_percent, round_and_str(row.fg_case_overlap_percent, 2))
+      |> Map.put(:hr_str, round_and_str(row.hr, 2))
+      |> Map.put(:hr_ci_max, round_and_str(row.hr_ci_max, 2))
+      |> Map.put(:hr_ci_min, round_and_str(row.hr_ci_min, 2))
+      |> Map.put(:hr_pvalue_str, pvalue_star(row.hr_pvalue, p_threshold))
+      |> Map.put(:rg_str, round_and_str(row.rg, 2))
+      |> Map.put(:rg_ci_min, get_95_ci(row.rg, row.rg_se, "lower") |> round_and_str(2))
+      |> Map.put(:rg_ci_max, get_95_ci(row.rg, row.rg_se, "upper") |> round_and_str(2))
+      |> Map.put(:rg_pvalue_str, pvalue_star(row.rg_pvalue, p_sig_fg_corr))
+    end)
+  end
+
+  defp round_and_str(number, precision) do
+    case number do
+      nil -> nil
+      "-" -> "-"
+      _ -> :io_lib.format("~.#{precision}. f", [number]) |> to_string()
+    end
+  end
+
+  defp pvalue_star(pvalue, p_threshold) do
+    # statistically significant p-values are presented by "*"
+    cond do
+      is_nil(pvalue) ->
+        nil
+
+      pvalue <= p_threshold ->
+        "*"
+
+      true ->
+        ""
+    end
+  end
+
+  def get_95_ci(estimate, se, direction) do
+    if !is_nil(estimate) and !is_nil(se) do
+      case direction do
+        # 1.96 is z-score for 95% confidence intervals
+        "lower" -> estimate - 1.96 * se
+        "upper" -> estimate + 1.96 * se
+        _ -> nil
+      end
+    end
   end
 end
