@@ -121,26 +121,27 @@ def load_minimal_phenotype_data(
     logger.info("Loading minimal phenotype data")
 
     # Load the data to get necessary info
-    df_sex = pd.read_csv(
+    df_minim = pd.read_csv(
         minimal_phenotype_path,
-        usecols=["FINNGENID", "SEX"],
+        usecols=["FINNGENID", "SEX", "APPROX_BIRTH_DATE"],
+        parse_dates=["APPROX_BIRTH_DATE"],
         dialect=csv.excel_tab,
     )
 
     # Input validation
-    sex_values = df_sex.SEX.unique()
+    sex_values = df_minim.SEX.unique()
     assert set(sex_values).issubset(set(["female", "male", np.nan]))
 
     # Only keep individuals that are in the covariates file
-    with log_if_diff("persons in min.pheno (fgid cov. filtering)", lambda: df_sex.FINNGENID.shape[0]):
-        df_sex = df_sex.loc[df_sex.FINNGENID.isin(df_fgid_covariates.FINNGENID), :]
+    with log_if_diff("persons in min.pheno (fgid cov. filtering)", lambda: df_minim.FINNGENID.shape[0]):
+        df_minim = df_minim.loc[df_minim.FINNGENID.isin(df_fgid_covariates.FINNGENID), :]
 
     # Get birth and death info
-    df_birth_year = get_birth_year(detailed_longit_path, df_fgid_covariates)
+    df_birth_year = get_birth_year(df_minim)
     df_death_age = get_death_age(dense_fevents_path, df_fgid_covariates)
 
-    # Combine sex & birth year info
-    df_out = df_sex.merge(df_birth_year, on="FINNGENID", how="outer")
+    # Combine minim & birth year info
+    df_out = df_minim.merge(df_birth_year, on="FINNGENID", how="outer")
 
     n_missing_sex = df_out.loc[df_out.SEX.isna(), :].shape[0]
     if n_missing_sex != 0:
@@ -168,51 +169,14 @@ def load_minimal_phenotype_data(
     return df_out
 
 
-def get_birth_year(detailed_longit_path, df_fgid_covariates):
-    """Derive the birth year of each FinnGen participant from longitudinal data"""
-    logger.debug("Getting birth year for all individuals using detailed longitudinal data")
+def get_birth_year(df_minimal_phenotype):
+    df = df_minimal_phenotype.copy()
 
     days_in_year = 365.25
-    months_in_year = 12
+    df["birth_year"] = df.APPROX_BIRTH_DATE.dt.year + df.APPROX_BIRTH_DATE.dt.dayofyear / days_in_year
+    df = df.loc[:, ["FINNGENID", "birth_year"]]
 
-    df = pd.read_csv(
-        detailed_longit_path,
-        usecols=["FINNGENID", "APPROX_EVENT_DAY", "EVENT_AGE"],
-        parse_dates=["APPROX_EVENT_DAY"],
-        dialect=csv.excel_tab,
-    )
-
-    # Input validation
-    n_nan_event_day = df.loc[df.APPROX_EVENT_DAY.isna(), :].shape[0]
-    assert n_nan_event_day == 0
-    n_nan_event_age = df.loc[df.EVENT_AGE.isna(), :].shape[0]
-    assert n_nan_event_age == 0
-
-    # Only keep individuals that are in the covariates file
-    with log_if_diff("persons to get birth year on (fgid cov. filtering)", lambda: df.FINNGENID.unique().shape[0]):
-        df = df.loc[df.FINNGENID.isin(df_fgid_covariates.FINNGENID), :]
-
-    # Convert EVENT_AGE to pandas Timedelta
-    deltas = pd.to_timedelta(
-        # Pandas Timedelta doesn't support year as unit, so we use a homemade good enough conversion
-        df.EVENT_AGE * days_in_year,
-        unit='day'
-    )
-    df["birth_datetimes"] = df.APPROX_EVENT_DAY - deltas
-
-    # Convert to float year
-    approx_birth_dates = df.groupby("FINNGENID").birth_datetimes.mean()
-    approx_birth_dates = (
-        approx_birth_dates.dt.year
-        + approx_birth_dates.dt.month / months_in_year
-        + approx_birth_dates.dt.day / days_in_year
-    )
-    approx_birth_dates = approx_birth_dates.round(decimals=2)
-
-    out = approx_birth_dates.reset_index().rename(
-        columns={"birth_datetimes": "birth_year"}
-    )
-    return out
+    return df
 
 
 def get_death_age(dense_fevents_path, df_fgid_covariates):
@@ -258,7 +222,7 @@ def load_first_events_data(
     df_fevents = df_fevents.drop(columns=[
         "CONTROL_CASE_EXCL",
         "NEVT",
-        "YEAR"  # we will compute the year more accuratyle based on birth_year + age at onset of endpoint
+        "APPROX_EVENT_DAY"
     ])
     df_fevents = df_fevents.rename(columns={
         "FINNGENID": "personid",
