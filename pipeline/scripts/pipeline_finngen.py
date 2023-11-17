@@ -4,15 +4,15 @@ import pandas as pd
 
 from risteys_pipeline import config
 from risteys_pipeline.finngen.load_data import load_data
-from risteys_pipeline.finregistry.cumulative_incidence import cumulative_incidence_function
-from risteys_pipeline.finregistry.distributions import compute_distribution
-from risteys_pipeline.finregistry.key_figures import compute_key_figures
-from risteys_pipeline.finregistry.survival_analysis import (
+from risteys_pipeline.run_cumulative_incidence import cumulative_incidence_function
+from risteys_pipeline.run_distributions import compute_distribution
+from risteys_pipeline.run_key_figures import compute_key_figures
+from risteys_pipeline.survival_analysis import (
     get_cases,
     get_cohort
 )
-from risteys_pipeline.finregistry.write_data import get_output_filepath
-from risteys_pipeline.log import logger
+from risteys_pipeline.utils.write_data import get_output_filepath
+from risteys_pipeline.utils.log import logger
 
 
 def pipeline():
@@ -58,8 +58,8 @@ def pipeline():
     ), index=False)
 
     # Run cumulative incidence and write to a file
-    logger.info("Running cumulative incidence on core endpoints")
-    ci_endpoints = df_definitions.loc[df_definitions.is_core, "endpoint"]
+    logger.info("Running cumulative incidence on ALL endpoints")
+    ci_endpoints = df_definitions.loc[:, "endpoint"]
     cohort = get_cohort(df_minimal_phenotype)
     for endpoint in ci_endpoints:
         cases = get_cases(endpoint, df_first_events, cohort)

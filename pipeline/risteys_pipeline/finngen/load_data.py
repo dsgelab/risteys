@@ -51,16 +51,14 @@ def load_endpoint_definitions(definitions_path):
     logger.info("Loading endpoint definitions")
     df = pd.read_csv(
         definitions_path,
-        usecols=["NAME", "SEX", "CORE_ENDPOINTS"],
+        usecols=["NAME", "SEX"],
         dtype={
             "NAME": str,
             # SEX values are "1", "2" or "". They look like numbers
             # but they are more akin to categorical variable, we don't
             # do math on them. So we store them as strings.
             "SEX": str,
-            "CORE_ENDPOINTS": str
-        },
-        dialect=csv.excel_tab
+        }
     )
 
     # Input encoding for the SEX column
@@ -70,8 +68,6 @@ def load_endpoint_definitions(definitions_path):
     # Input validation
     sex_values = df.SEX.unique()
     assert set(sex_values).issubset(set([sex_male, sex_female, np.nan]))
-    core_values = df.CORE_ENDPOINTS.unique()
-    assert set(core_values).issubset(set(["yes", "no"]))
 
     # Set "female" to:
     # - True for female-based endpoints,
@@ -81,12 +77,9 @@ def load_endpoint_definitions(definitions_path):
     df.loc[df.SEX == sex_female, "female"] = True
     df.loc[df.SEX == sex_male, "female"] = False
 
-    # Add is_core column
-    df["is_core"] = df.CORE_ENDPOINTS == "yes"
-
     # Reshape output dataframe
     df = df.rename(columns={"NAME": "endpoint"})
-    df = df.drop(columns=["SEX", "CORE_ENDPOINTS"])
+    df = df.drop(columns=["SEX"])
 
     return df
 
