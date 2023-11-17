@@ -18,17 +18,17 @@ Input file
 ----------
 - First events
   First-event file with a matrix-like structure:
-  . columns: endpoints with additional columns for age, year, number of events
+  . columns: endpoints with additional columns for age, day, number of events
   . rows: one individual per row
   Source: FinnGen data
 
 
 Output
 ------
-Outputs a Feather file in narrow format with all control information discarded.
+Outputs a Parquet file in narrow format with all control information discarded.
 - Dense first events
-  Feather v2 format
-  . columns: individual FinnGen ID, endpoint, age, year, number of events
+  Parquet format
+  . columns: individual FinnGen ID, endpoint, age, day, number of events
   . rows: one row per event, so all the events from the same individual span multiple rows
 
 """
@@ -37,7 +37,7 @@ import argparse
 from pathlib import Path
 
 import pyarrow
-import pyarrow.feather as feather
+import pyarrow.parquet as parquet
 
 
 # How the controls, cases, and excluded controls are coded in the input file
@@ -53,7 +53,7 @@ OUT_HEADER = [
     # Output notation: control=1, case=1, excluded control=2
     "CONTROL_CASE_EXCL",
     "AGE",
-    "YEAR",
+    "APPROX_EVENT_DAY",
     "NEVT"
 ]
 
@@ -68,7 +68,7 @@ def cli_parser():
     )
     parser.add_argument(
         "-o", "--output",
-        help="path to output 'densified' file (Feather v2)",
+        help="path to output 'densified' file (Parquet)",
         required=True,
         type=Path
     )
@@ -97,15 +97,15 @@ def main():
 
     # Find endpoint columns
     endpoints = list(filter(
-        lambda c: c + "_AGE" in in_header and c + "_YEAR" in in_header and c + "_NEVT" in in_header,
+        lambda c: c + "_FU_AGE" in in_header and c + "_APPROX_EVENT_DAY" in in_header and c + "_NEVT" in in_header,
         in_header))
 
-    # Initialize arrays that will be used to make the Feather output file
+    # Initialize arrays that will be used to make the Parquet output file
     fgid_values = []
     endpoint_values = []
     kind_values = []
     age_values = []
-    year_values = []
+    day_values = []
     nevt_values = []
 
     # Get the endpoint data for each individual
@@ -127,18 +127,18 @@ def main():
 
             # Get the event info
             if args.keep_all or kind == CASE:
-                col_age = in_header[endp + "_AGE"]
-                col_year = in_header[endp + "_YEAR"]
+                col_age = in_header[endp + "_FU_AGE"]
+                col_day = in_header[endp + "_APPROX_EVENT_DAY"]
                 col_nevt = in_header[endp + "_NEVT"]
                 val_age = records[col_age]
-                val_year = records[col_year]
+                val_day = records[col_day]
                 val_nevt = records[col_nevt]
 
                 fgid_values.append(val_fgid)
                 endpoint_values.append(endp)
                 kind_values.append(int(kind))
                 age_values.append(float(val_age))
-                year_values.append(int(val_year))
+                day_values.append(val_day)
                 nevt_values.append(int(val_nevt))
 
     in_file.close()
@@ -149,12 +149,12 @@ def main():
             endpoint_values,
             kind_values,
             age_values,
-            year_values,
+            day_values,
             nevt_values,
         ],
         names=OUT_HEADER
     )
-    feather.write_feather(out_table, args.output, version=2)
+    parquet.write_table(out_table, args.output)
 
 
 if __name__ == "__main__":
