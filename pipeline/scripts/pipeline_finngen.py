@@ -20,7 +20,7 @@ def pipeline():
     print_config_paths(config)
     check_paths(config)
 
-    # --- 1. Densify first-events
+    # --- 1. Long-format first-events
     # TODO
 
     # --- 2. Load data
@@ -28,7 +28,7 @@ def pipeline():
         config.FINNGEN_ENDPOINT_DEFINITIONS,
         config.FINNGEN_MINIMAL_PHENOTYPE,
         config.FINNGEN_COVARIATES,
-        config.FINNGEN_DENSIFIED_FIRST_EVENTS,
+        config.FINNGEN_LONG_FORMAT_FIRST_EVENTS,
         config.FINNGEN_DETAILED_LONGITUDINAL
     )
 
@@ -82,7 +82,7 @@ def check_paths(config):
     assert config.FINNGEN_ENDPOINT_DEFINITIONS.is_file()
     assert config.FINNGEN_MINIMAL_PHENOTYPE.is_file()
     assert config.FINNGEN_COVARIATES.is_file()
-    assert config.FINNGEN_DENSIFIED_FIRST_EVENTS.is_file()
+    assert config.FINNGEN_LONG_FORMAT_FIRST_EVENTS.is_file()
     assert config.FINNGEN_DETAILED_LONGITUDINAL.is_file()
 
     # Similarly with Path.is_dir(): checking path existence and type is directory
@@ -100,7 +100,7 @@ def print_config_paths(config):
         "endpoint definitions": config.FINNGEN_ENDPOINT_DEFINITIONS,
         "minimal phenotype": config.FINNGEN_MINIMAL_PHENOTYPE,
         "analysis covariates": config.FINNGEN_COVARIATES,
-        "densified endpoint first-events": config.FINNGEN_DENSIFIED_FIRST_EVENTS,
+        "long-format endpoint first-events": config.FINNGEN_LONG_FORMAT_FIRST_EVENTS,
         "detailed longitudinal": config.FINNGEN_DETAILED_LONGITUDINAL
     }
     message += "INPUTS\n"

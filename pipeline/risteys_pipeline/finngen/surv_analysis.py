@@ -12,7 +12,7 @@ environment. One needs to set the following environment variables (see
 "Input files" and "Output files" sections for a description):
 - INPUT_PAIRS
 - INPUT_DEFINITIONS
-- INPUT_DENSE_FEVENTS
+- INPUT_LONG_FORMAT_FEVENTS
 - INPUT_INFO
 - OUTPUT
 - TIMINGS
@@ -30,8 +30,8 @@ Input files
   Endpoint definitions for FinnGen.
   Source: FinnGen
 
-- INPUT_DENSE_FEVENTS
-  The densified first-event phenotype file.
+- INPUT_LONG_FORMAT_FEVENTS
+  The long-format first-event phenotype file.
   Source: previous pipeline step
 
 - INPUT_INFO
@@ -134,7 +134,7 @@ MEAN_INDIV_FEMALE_RATIO = 0.5
 BCH_TIMEPOINTS = [0, 2.5, 5, 7.5, 10, 12.5, 15, 17.5, 20, 21.99]
 
 
-def main(path_pairs, path_definitions, path_dense_fevents, path_info, output_path, timings_path):
+def main(path_pairs, path_definitions, path_long_format_fevents, path_info, output_path, timings_path):
     # Initialize the CSV output
     line_buffering = 1
     res_file = open(output_path, "x", buffering=line_buffering)
@@ -149,7 +149,7 @@ def main(path_pairs, path_definitions, path_dense_fevents, path_info, output_pat
     pairs, endpoints, df_events, df_info = load_data(
         path_pairs,
         path_definitions,
-        path_dense_fevents,
+        path_long_format_fevents,
         path_info
     )
 
@@ -226,7 +226,7 @@ def main(path_pairs, path_definitions, path_dense_fevents, path_info, output_pat
     res_file.close()
 
 
-def load_data(path_pairs, path_definitions, path_dense_fevents, path_info):
+def load_data(path_pairs, path_definitions, path_long_format_fevents, path_info):
     logger.info("Loading data")
     # Get pairs
     pairs = pd.read_csv(path_pairs)
@@ -236,7 +236,7 @@ def load_data(path_pairs, path_definitions, path_dense_fevents, path_info):
     endpoints = pd.read_csv(path_definitions, usecols=["NAME", "SEX"])
 
     # Get first events
-    df_events = pd.read_parquet(path_dense_fevents)
+    df_events = pd.read_parquet(path_long_format_fevents)
 
     # Get sex and approximate birth date of each indiv
     df_info = pd.read_csv(path_info, usecols=["FINNGENID", "BL_YEAR", "BL_AGE", "SEX"])
@@ -666,7 +666,7 @@ def bch_at(df, time):
 if __name__ == '__main__':
     INPUT_PAIRS = Path(getenv("INPUT_PAIRS"))
     INPUT_DEFINITIONS = Path(getenv("INPUT_DEFINITIONS"))
-    INPUT_DENSE_FEVENTS = Path(getenv("INPUT_DENSE_FEVENTS"))
+    INPUT_LONG_FORMAT_FEVENTS = Path(getenv("INPUT_LONG_FORMAT_FEVENTS"))
     INPUT_INFO = Path(getenv("INPUT_INFO"))
     OUTPUT = Path(getenv("OUTPUT"))
     TIMINGS = Path(getenv("TIMINGS"))
@@ -674,7 +674,7 @@ if __name__ == '__main__':
     main(
         INPUT_PAIRS,
         INPUT_DEFINITIONS,
-        INPUT_DENSE_FEVENTS,
+        INPUT_LONG_FORMAT_FEVENTS,
         INPUT_INFO,
         OUTPUT,
         TIMINGS
