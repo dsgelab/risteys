@@ -93,9 +93,10 @@ def load_fgid_covariates(covariates_path):
     logger.info("Loading covariates file")
     df_cov = pd.read_csv(
         covariates_path,
-        usecols=["FINNGENID"],
+        usecols=["FID"],
         dialect=csv.excel_tab
     )
+    df_cov = df_cov.rename(columns={"FID": "FINNGENID"})
 
     # Input validation
     assert df_cov.loc[df_cov.FINNGENID.isna(), :].shape[0] == 0
