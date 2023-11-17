@@ -223,7 +223,8 @@ def build_survival_dataset(
     if exposed is not None:
         df_survival = add_exposure(exposed, df_survival)
 
-    df_survival = df_survival.loc[df_survival["start"] < df_survival["stop"]]
+    time_epsilon = 0.01
+    df_survival = df_survival.loc[df_survival.stop - df_survival.start > time_epsilon, :]
     df_survival = df_survival.reset_index(drop=True)
 
     return df_survival
