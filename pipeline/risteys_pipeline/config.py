@@ -29,7 +29,7 @@ FINNGEN_OUTPUT_DIRECTORY = Path()
 
 # Follow-up start and end year for survival analyses
 FOLLOWUP_START = 1998.0
-FOLLOWUP_END = 2019.99
+FOLLOWUP_END = 2023.32  # 2023-04-28 according to the data documentation
 
 # Minimum number of subjects
 MIN_SUBJECTS_PERSONAL_DATA = 5
