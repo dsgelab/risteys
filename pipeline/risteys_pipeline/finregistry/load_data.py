@@ -5,7 +5,7 @@ import numpy as np
 from risteys_pipeline.config import (
     FINREGISTRY_MINIMAL_PHENOTYPE_DATA_PATH,
     FINREGISTRY_ENDPOINT_DEFINITIONS_DATA_PATH,
-    FINREGISTRY_DENSIFIED_FIRST_EVENTS_DATA_PATH,
+    FINREGISTRY_LONG_FORMAT_FIRST_EVENTS_DATA_PATH,
 )
 from risteys_pipeline.utils.log import logger
 from risteys_pipeline.utils.utils import to_decimal_year
@@ -104,7 +104,7 @@ def load_endpoint_definitions_data(
 
 
 def load_first_events_data(
-    endpoints, minimal_phenotype, data_path=FINREGISTRY_DENSIFIED_FIRST_EVENTS_DATA_PATH
+    endpoints, minimal_phenotype, data_path=FINREGISTRY_LONG_FORMAT_FIRST_EVENTS_DATA_PATH
 ):
     """
     Loads and applies the following steps to first events data:
@@ -114,7 +114,7 @@ def load_first_events_data(
     - add the event year
 
     Args:
-        data_path (str, optional): file path of the long (densified) first events feather file
+        data_path (str, optional): file path of the long-format first events feather file
 
     Returns:
         df (DataFrame): first events dataframe

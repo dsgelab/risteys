@@ -12,7 +12,7 @@ def load_data(
         definitions_path,
         minimal_phenotype_path,
         covariates_path,
-        densified_first_events_path,
+        long_format_first_events_path,
         detailed_longitudinal_path
 ):
     """Load input data from original files to pandas DataFrames.
@@ -24,12 +24,12 @@ def load_data(
     df_fgid_covariates = load_fgid_covariates(covariates_path)
     df_minimal_phenotype = load_minimal_phenotype_data(
         minimal_phenotype_path,
-        densified_first_events_path,
+        long_format_first_events_path,
         detailed_longitudinal_path,
         df_fgid_covariates
     )
     df_first_events = load_first_events_data(
-        densified_first_events_path,
+        long_format_first_events_path,
         df_definitions,
         df_minimal_phenotype,
         df_fgid_covariates
@@ -106,7 +106,7 @@ def load_fgid_covariates(covariates_path):
 
 def load_minimal_phenotype_data(
         minimal_phenotype_path,
-        dense_fevents_path,
+        long_format_fevents_path,
         detailed_longit_path,
         df_fgid_covariates
 ):
@@ -138,7 +138,7 @@ def load_minimal_phenotype_data(
 
     # Get birth and death info
     df_birth_year = get_birth_year(df_minim)
-    df_death_age = get_death_age(dense_fevents_path, df_fgid_covariates)
+    df_death_age = get_death_age(long_format_fevents_path, df_fgid_covariates)
 
     # Combine minim & birth year info
     df_out = df_minim.merge(df_birth_year, on="FINNGENID", how="outer")
@@ -179,10 +179,10 @@ def get_birth_year(df_minimal_phenotype):
     return df
 
 
-def get_death_age(dense_fevents_path, df_fgid_covariates):
+def get_death_age(long_format_fevents_path, df_fgid_covariates):
     """Get the death age of individuals from the DEATH endpoint"""
-    logger.debug("Getting death age for all individuals using densified first-events data")
-    df = pd.read_parquet(dense_fevents_path)
+    logger.debug("Getting death age for all individuals using long-format first-events data")
+    df = pd.read_parquet(long_format_fevents_path)
 
     df["death_age"] = np.nan
     df.loc[df.ENDPOINT == "DEATH", "death_age"] = df.loc[df.ENDPOINT == "DEATH", "AGE"]
@@ -202,14 +202,14 @@ def get_death_age(dense_fevents_path, df_fgid_covariates):
 
 
 def load_first_events_data(
-        dense_fevents_path,
+        long_format_fevents_path,
         df_definitions,
         df_minimal_phenotype,
         df_fgid_covariates
 ):
-    """Load and validate the densified endpoint first-events file"""
+    """Load and validate the long-format endpoint first-events file"""
     logger.info("Loading first-events data")
-    df_fevents = pd.read_parquet(dense_fevents_path)
+    df_fevents = pd.read_parquet(long_format_fevents_path)
 
     # Only keep individuals that are in the covariates file
     with log_if_diff(
@@ -275,8 +275,8 @@ if __name__ == '__main__':
         type=Path
     )
     parser.add_argument(
-        "-f", "--input-densified-first-events",
-        help="densified version of the endpoint first-events file (Parquet)",
+        "-f", "--input-long-format-first-events",
+        help="long-format version of the endpoint first-events file (Parquet)",
         required=True,
         type=Path
     )
@@ -293,6 +293,6 @@ if __name__ == '__main__':
         args.input_endpoint_definitions,
         args.input_minimal_phenotype,
         args.input_covariates,
-        args.input_densified_first_events,
+        args.input_long_format_first_events,
         args.input_detailed_longitudinal
     )

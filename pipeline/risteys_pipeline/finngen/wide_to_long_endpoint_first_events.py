@@ -1,5 +1,5 @@
 """
-Transform the wide-format first-event file into a long-format / "dense".
+Transform the wide-format first-event file into a long-format.
 
 The orignal wide-format first-event file has a huge amount of
 columns. Some tools like Pandas or SQLite don't deal really well with
@@ -11,7 +11,7 @@ Note that this script doesn't do any input validation. It's also why it's quite 
 
 Usage
 -----
-  python densify_first_events.py --help
+  python wide_to_long_endpoint_first_events.py --help
 
 
 Input file
@@ -25,12 +25,11 @@ Input file
 
 Output
 ------
-Outputs a Parquet file in narrow format with all control information discarded.
-- Dense first events
+Outputs a Parquet file in long format with all control information discarded.
+- Long format first events
   Parquet format
   . columns: individual FinnGen ID, endpoint, age, day, number of events
   . rows: one row per event, so all the events from the same individual span multiple rows
-
 """
 
 import argparse
@@ -68,7 +67,7 @@ def cli_parser():
     )
     parser.add_argument(
         "-o", "--output",
-        help="path to output 'densified' file (Parquet)",
+        help="path to output long-format file (Parquet)",
         required=True,
         type=Path
     )

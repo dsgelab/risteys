@@ -61,8 +61,8 @@ LAG_COLS = {
 BCH_TIMEPOINTS = [0, 2.5, 5, 7.5, 10, 12.5, 15, 17.5, 20, 21.99]
 
 
-def main(path_definitions, path_dense_fevents, path_info, output_path, timings_path):
-    endpoints, df_events, df_info = load_data(path_definitions, path_dense_fevents, path_info)
+def main(path_definitions, path_long_format_fevents, path_info, output_path, timings_path):
+    endpoints, df_events, df_info = load_data(path_definitions, path_long_format_fevents, path_info)
 
     line_buffering = 1
     res_file = open(output_path, "x", buffering=line_buffering)
@@ -115,13 +115,13 @@ def main(path_definitions, path_dense_fevents, path_info, output_path, timings_p
     res_file.close()
 
 
-def load_data(path_definitions, path_dense_fevents, path_info):
+def load_data(path_definitions, path_long_format_fevents, path_info):
     logger.info("Loading data")
     # Get endpoint list
     endpoints = pd.read_csv(path_definitions, usecols=["NAME", "SEX", "CORE_ENDPOINTS"])
 
     # Get first events
-    df_events = pd.read_parquet(path_dense_fevents)
+    df_events = pd.read_parquet(path_long_format_fevents)
 
     # Keep only core endpoints
     endpoints = endpoints.loc[endpoints.CORE_ENDPOINTS == "yes", :]
