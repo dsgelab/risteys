@@ -182,7 +182,7 @@ def get_birth_year(df_minimal_phenotype):
 def get_death_age(dense_fevents_path, df_fgid_covariates):
     """Get the death age of individuals from the DEATH endpoint"""
     logger.debug("Getting death age for all individuals using densified first-events data")
-    df = pd.read_feather(dense_fevents_path)
+    df = pd.read_parquet(dense_fevents_path)
 
     df["death_age"] = np.nan
     df.loc[df.ENDPOINT == "DEATH", "death_age"] = df.loc[df.ENDPOINT == "DEATH", "AGE"]
@@ -209,7 +209,7 @@ def load_first_events_data(
 ):
     """Load and validate the densified endpoint first-events file"""
     logger.info("Loading first-events data")
-    df_fevents = pd.read_feather(dense_fevents_path)
+    df_fevents = pd.read_parquet(dense_fevents_path)
 
     # Only keep individuals that are in the covariates file
     with log_if_diff(
@@ -276,7 +276,7 @@ if __name__ == '__main__':
     )
     parser.add_argument(
         "-f", "--input-densified-first-events",
-        help="densified version of the endpoint first-events file (Feather)",
+        help="densified version of the endpoint first-events file (Parquet)",
         required=True,
         type=Path
     )
