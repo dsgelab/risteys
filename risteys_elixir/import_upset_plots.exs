@@ -118,6 +118,11 @@ Enum.each(upset_plots, fn {endpoint, upset_path} ->
   out = Path.join(upset_plots_output, Path.basename(upset_path))
   File.cp!(upset_path, out)
 
+  # Set default mode to also be writable by user, otherwise phx.digest
+  # will throw an error when called.
+  read_write = 0o644
+  File.chmod!(out, read_write)
+
   # Set upset plot status
   FGEndpoint.set_status!(endpoint, key_upset_plot, "ok")
 end)
