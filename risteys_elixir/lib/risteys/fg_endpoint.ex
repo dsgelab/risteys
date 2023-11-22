@@ -900,12 +900,8 @@ defmodule Risteys.FGEndpoint do
           case_overlap_N: case_overlap_fr.case_overlap_N
         }
 
-    subquery_coxhr_extremities = compute_hr_extremities(page_endpoint, extremity_groups_min_count)
-
     subquery_coxhr =
       from coxhr in CoxHR,
-        left_join: extrem in subquery(subquery_coxhr_extremities),
-        on: coxhr.outcome_id == extrem.outcome_id,
         where:
           coxhr.prior_id == ^page_endpoint.id and
             coxhr.lagged_hr_cut_year == 0,
@@ -915,22 +911,16 @@ defmodule Risteys.FGEndpoint do
           ci_min: coxhr.ci_min,
           ci_max: coxhr.ci_max,
           pvalue: coxhr.pvalue,
-          percent_rank: extrem.percent_rank
         }
-
-    subquery_rg_extremities = compute_rg_extremities(page_endpoint, extremity_groups_min_count)
 
     subquery_genetic_correlation =
       from genetic_correlation in GeneticCorrelation,
-        left_join: extrem in subquery(subquery_rg_extremities),
-        on: genetic_correlation.fg_endpoint_b_id == extrem.fg_endpoint_b_id,
         where: genetic_correlation.fg_endpoint_a_id == ^page_endpoint.id,
         select: %{
           fg_endpoint_b_id: genetic_correlation.fg_endpoint_b_id,
           rg: genetic_correlation.rg,
           se: genetic_correlation.se,
           pvalue: genetic_correlation.pvalue,
-          percent_rank: extrem.percent_rank
         }
 
     subquery_correlation =
@@ -957,11 +947,11 @@ defmodule Risteys.FGEndpoint do
           hr_ci_max: coxhr.ci_max,
           hr_ci_min: coxhr.ci_min,
           hr_pvalue: coxhr.pvalue,
-          hr_binned: coxhr.percent_rank,
+          hr_binned: nil,
           rg: genetic_correlation.rg,
           rg_se: genetic_correlation.se,
           rg_pvalue: genetic_correlation.pvalue,
-          rg_binned: genetic_correlation.percent_rank,
+          rg_binned: nil,
           fg_case_overlap_percent: fg_correlation.case_overlap_percent,
           fg_case_overlap_N: fg_correlation.case_overlap_N,
           gws_hits: definition.gws_hits,
