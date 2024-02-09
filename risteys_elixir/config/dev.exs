@@ -2,10 +2,10 @@ import Config
 
 # Configure your database
 config :risteys, Risteys.Repo,
-  username: "postgres",
-  password: "postgres",
+  username: System.get_env("DATABASE_USERNAME") || "postgres",
+  password: System.get_env("DATABASE_URL") || "postgres",
   hostname: "localhost",
-  database: "risteys_dev",
+  database: System.get_env("DATABASE_NAME") || "risteys_dev",
   stacktrace: true,
   show_sensitive_data_on_connection_error: true,
   pool_size: 10
