@@ -1,5 +1,5 @@
 # Import FinnGen correlation
-# Usage: mix run import_correlations.exs <phenotypic_and_genotypic_correlations_csv_file> <coloc_varians_csv_file>
+# Usage: mix run import_correlations.exs <phenotypic_and_genotypic_correlations_csv_file> <coloc_variants_csv_file>
 
 alias Risteys.FGEndpoint
 alias Risteys.Repo
