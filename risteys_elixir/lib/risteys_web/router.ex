@@ -34,6 +34,14 @@ defmodule RisteysWeb.Router do
     get "/endpoints/", FGEndpointController, :index_json
   end
 
+  scope "/auth", RisteysWeb do
+    pipe_through :browser
+
+    get "/:provider/set_redir/:fg_endpoint", AuthController, :set_redir
+    get "/:provider", AuthController, :request  # This will be auto-magically called by Ueberauth, we don't need to implement it.
+    get "/:provider/callback", AuthController, :callback
+  end
+
   # Enable LiveDashboard in development
   if Application.compile_env(:risteys, :dev_routes) do
     # If you want to use the LiveDashboard in production, you should put

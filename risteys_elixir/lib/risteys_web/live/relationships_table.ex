@@ -1,7 +1,7 @@
 defmodule RisteysWeb.Live.RelationshipsTable do
   use RisteysWeb, :live_view
 
-  def mount(_params, %{"endpoint" => endpoint}, socket) do
+  def mount(_params, %{"endpoint" => endpoint, "is_authz_list_variants" => authz_list_variants?, "variants_by_corr" => variants_by_corr}, socket) do
     default_sorter = "sa-hr_desc"
 
     # Trick to make the initial render non-blocking.
@@ -22,6 +22,9 @@ defmodule RisteysWeb.Live.RelationshipsTable do
 
     socket =
       socket
+      |> assign(:endpoint, endpoint)
+      |> assign(:authz_list_variants?, authz_list_variants?)
+      |> assign(:variants_by_corr, variants_by_corr)
       |> assign(:form, to_form(init_form))
       |> assign(:active_sorter, default_sorter)
       |> assign(:all_relationships, all_relationships)
@@ -207,7 +210,7 @@ defmodule RisteysWeb.Live.RelationshipsTable do
     end
   end
 
-  def get_95_ci(estimate, se, direction) do
+  defp get_95_ci(estimate, se, direction) do
     if !is_nil(estimate) and !is_nil(se) do
       case direction do
         # 1.96 is z-score for 95% confidence intervals

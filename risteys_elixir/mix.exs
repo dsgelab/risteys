@@ -46,7 +46,8 @@ defmodule Risteys.MixProject do
       {:telemetry_poller, "~> 1.0"},
       {:jason, "~> 1.2"},
       {:plug_cowboy, "~> 2.5"},
-      {:csv, "~> 2.3"}
+      {:csv, "~> 2.3"},
+      {:ueberauth_google, "== 0.12.1"}
     ]
   end
 

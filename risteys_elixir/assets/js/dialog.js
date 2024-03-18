@@ -25,4 +25,20 @@ function closeDialog(dialogId) {
 	document.body.classList.remove('dialog-open');
 }
 
-export {openDialog, closeDialog};
+
+/***
+ * For the Phoenix LiveView DialogComponent
+ */
+function setupDialogComponent() {
+	window.addEventListener("show-modal", (event) => {
+		console.log("show-modal", event.target);
+		event.target?.showModal();
+	});
+
+	window.addEventListener("hide-modal", (event) => {
+		console.log("hide-modal", event.target);
+		event.target?.close();
+	});
+}
+
+export {openDialog, closeDialog, setupDialogComponent};
