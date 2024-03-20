@@ -1,56 +1,36 @@
 import json
-import re
 import sys
 from datetime import date
-from datetime import datetime
 from datetime import timedelta
 from pathlib import Path
 
 import polars as pl
 
-
-def parse_log_file(filepath):
-    parsed_lines = []
-    with open(filepath) as fd:
-        for line in fd:
-            parsed = parse_log_line(line)
-
-            if parsed is not None:
-                parsed_lines.append(parsed)
-
-    return pl.DataFrame(
-        parsed_lines, schema=["DateTime", "Path", "StatusCode", "UserAgent"]
-    )
-
-
-def parse_log_line(line):
-    line = line.strip()
-
-    pattern = r'REDACTED - - \[(.{26})\] "\w+ (.*) HTTP/.*" (.*) \d+ ".*" "(.*)"'
-    res = re.match(pattern, line)
-
-    if res is None:
-        return None
-
-    else:
-        date_time, request_path, status_code, user_agent = res.groups()
-        date_time_parsed = datetime.strptime(date_time, "%d/%b/%Y:%H:%M:%S %z")
-        return date_time_parsed, request_path, int(status_code), user_agent
+from log_utils import assign_bots
+from log_utils import filter_days
+from log_utils import parse_log_file
 
 
 def analyse(dataf, last_n_days):
     today = date.today()
     since_day = today - timedelta(days=last_n_days)
-    dataf_recent = filter_days(dataf, since_day)
+    dataf_recent = (
+        dataf
+        .pipe(filter_days, since_day)
+        .pipe(assign_bots)
+    )
 
     total_hits = dataf_recent.shape[0]
     user_hits = (
         dataf_recent
-        .pipe(filter_out_bots)
+        .filter(pl.col("Requester") == "User")
         .shape[0]
     )
-    bot_hits = total_hits - user_hits
-
+    bot_hits = (
+        dataf_recent
+        .filter(pl.col("Requester") == "Bot")
+        .shape[0]
+    )
     relative_user_hits = user_hits / total_hits
     relative_bot_hits = bot_hits / total_hits
 
@@ -60,7 +40,7 @@ def analyse(dataf, last_n_days):
     dataf_user_hits = (
         dataf_recent
         .pipe(filter_out_bots)
-        .pipe(filter_in_known_routes)
+        .pipe(filter_in_page_routes)
     )
 
     stats_hits_per_day = (
@@ -91,13 +71,10 @@ def analyse(dataf, last_n_days):
 
 
 def filter_out_bots(dataf):
-    return dataf.filter(
-        (~pl.col("Path").str.ends_with(".php"))
-        & (~pl.col("UserAgent").str.to_lowercase().str.contains("bot"))
-    )
+    return dataf.filter(pl.col("Requester") != "Bot")
 
 
-def filter_in_known_routes(dataf):
+def filter_in_page_routes(dataf):
     return dataf.filter(
         (pl.col("Path") == "/")
         | pl.col("Path").str.starts_with("/changelog")
@@ -107,10 +84,6 @@ def filter_in_known_routes(dataf):
         | pl.col("Path").str.starts_with("/phenocode/")
         | pl.col("Path").str.starts_with("/random_endpoint")
     )
-
-
-def filter_days(dataf, since_day):
-    return dataf.filter(pl.col("DateTime").dt.date() >= since_day)
 
 
 def top_hits(dataf, limit):

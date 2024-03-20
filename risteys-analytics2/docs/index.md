@@ -16,7 +16,7 @@ body {
 
 
 ```js
-const data = FileAttachment("./data/server_logs.json").json();
+const data = FileAttachment("./data/summary_logs.json").json();
 ```
 Showing statistics using data from ${data.time_span.min_date} to ${data.time_span.max_date}.
 Updated daily. 🤖
@@ -144,4 +144,40 @@ const bots_users = data.traffic.map(
   }
     <p>Requests include: pages, images, data, etc.</p>
   </div>
+
+
+</div>
+
+```js
+const timelineData = FileAttachment("./data/log_timeline.json").json();
+```
+
+```js
+const timelineTyped = timelineData.timeline.map((rec) => {
+  return {
+    ...rec,
+    HourTruncated: new Date(rec.HourTruncated),
+  }
+});
+```
+
+<div class="card">
+${
+  Plot.plot({
+    x: {
+      type: "utc",
+      domain: [new Date(timelineData.date_range.from), new Date(timelineData.date_range.to)],
+      label: "Time"
+    },
+    y: {
+      domain: [0, 60],
+      label: "Minute"
+    },
+    color: {legend: true},
+    marks: [
+      Plot.ruleY([0]),
+      Plot.dot(timelineTyped, {x: "HourTruncated", y: "AtMinute", fillOpacity: 0.05, fill: "Requester", stroke: null, r: 1}),
+    ]
+  })
+}
 </div>
