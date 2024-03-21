@@ -19,13 +19,13 @@ def make_timeline(dataf):
         dataf
         .pipe(filter_days, since_day)
         .pipe(assign_bots)
-        .select(
+        .with_columns(
             pl.col("DateTime").dt.truncate("1h").cast(pl.String).alias("HourTruncated"),
             (
                 pl.col("DateTime").dt.minute().cast(pl.UInt32)
                 + ((pl.col("DateTime").dt.second()).cast(pl.UInt32) / 60)
             ).alias("AtMinute"),
-            pl.col("Requester")
+            pl.col("DateTime").cast(pl.String),
         )
         .to_dicts()
     )

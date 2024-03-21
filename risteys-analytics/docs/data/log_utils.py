@@ -40,8 +40,10 @@ def filter_days(dataf, since_day):
 def assign_bots(dataf):
     return dataf.with_columns(
         pl.when(
+            # Generic bot identification
             pl.col("Path").str.ends_with(".php")
             | pl.col("UserAgent").str.to_lowercase().str.contains("bot")
+            | pl.col("UserAgent").str.to_lowercase().str.contains("crawler")
         ).then(pl.lit("Bot"))
         .otherwise(pl.lit("User"))
         .alias("Requester")
