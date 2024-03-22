@@ -11,6 +11,14 @@ from log_utils import filter_days
 from log_utils import parse_log_file
 
 
+X_RESOLUTION = "1h" # x scale resolution, using polars string language https://docs.pola.rs/py-polars/html/reference/expressions/api/polars.Expr.dt.offset_by.html
+
+SECOND = 1
+MINUTE = 60 * SECOND
+Y_RESOLUTION = 10 * SECOND   # y scale resolution, in seconds
+
+
+
 def make_timeline(dataf):
     today = date.today()
     since_day = today - timedelta(days=30)
@@ -19,15 +27,24 @@ def make_timeline(dataf):
         dataf
         .pipe(filter_days, since_day)
         .pipe(assign_bots)
-        .with_columns(
-            pl.col("DateTime").dt.truncate("1h").cast(pl.String).alias("HourTruncated"),
+        .select(
+            pl.col("Requester"),
+            pl.col("DateTime").dt.truncate(X_RESOLUTION).alias("x1"),
             (
-                pl.col("DateTime").dt.minute().cast(pl.UInt32)
-                + ((pl.col("DateTime").dt.second()).cast(pl.UInt32) / 60)
-            ).alias("AtMinute"),
-            pl.col("DateTime").cast(pl.String),
+                pl.col("DateTime").dt.minute()
+                + (
+                    pl.col("DateTime").dt.second()
+                    // Y_RESOLUTION * Y_RESOLUTION  # put the second to a 10s wide bin
+                    / MINUTE  # plot is using minute as the time scale
+                )
+            ).alias("y1")
         )
-        .to_dicts()
+        .with_columns(
+            pl.col("x1").dt.to_string("%F %T").alias("x1"),
+            pl.col("x1").dt.offset_by(X_RESOLUTION).dt.to_string("%F %T").alias("x2"),
+            (pl.col("y1") + Y_RESOLUTION / MINUTE).alias("y2")
+        )
+        .to_dict(as_series=False)  # To a dict of lists, JSON serializable.
     )
 
     return {
