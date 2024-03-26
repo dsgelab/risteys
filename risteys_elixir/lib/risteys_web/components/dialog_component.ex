@@ -10,6 +10,7 @@ defmodule RisteysWeb.DialogComponent do
   <dialog> tag, as it is now supported by all evergreen browsers.
   """
   attr :id, :string, required: true
+  attr :corr_variants, :map, required: true
   slot :inner_block, required: true
 
   def modal_list_variants(assigns) do
