@@ -44,6 +44,7 @@ def assign_bots(dataf):
             pl.col("Path").str.ends_with(".php")
             | pl.col("UserAgent").str.to_lowercase().str.contains("bot")
             | pl.col("UserAgent").str.to_lowercase().str.contains("crawler")
+            | pl.col("UserAgent").str.to_lowercase().str.contains("spider")
         ).then(pl.lit("Bot"))
         .otherwise(pl.lit("User"))
         .alias("Requester")

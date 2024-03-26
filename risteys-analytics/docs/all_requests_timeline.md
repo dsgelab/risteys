@@ -105,7 +105,7 @@ ${
 </div>
 
 <div class="card">
-  <h2>Timeline of user requests</h2>
+  <h2>User requests</h2>
 ${
   Plot.plot({
     width: plotWidth,
@@ -135,7 +135,7 @@ ${
 </div>
 
 <div class="card">
-  <h2>Timeline of bot requests</h2>
+  <h2>Bot requests</h2>
 ${
   Plot.plot({
     width: plotWidth,
