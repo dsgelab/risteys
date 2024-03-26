@@ -35,6 +35,29 @@ config :logger, :console,
   format: "$time $metadata[$level] $message\n",
   metadata: [:request_id]
 
+# Ueberauth for authentication and authorization
+config :ueberauth, Ueberauth,
+  providers: [
+    google: {
+      Ueberauth.Strategy.Google,
+      [
+        # Preselects the @finngen.fi account on Google screen
+        hd: "finngen.fi",
+        # Ask for the minimum needed info
+        default_scope: "email",
+        # Needed otherwise it will generate the URL with the local IP instead of risteys.finngen.fi
+        callback_url: "https://risteys.finregistry.fi/auth/google/callback"
+      ]
+    }
+  ]
+
+config :ueberauth, Ueberauth.Strategy.Google.OAuth,
+  client_id: (System.get_env("GOOGLE_CLIENT_ID") ||
+    raise "Environment variable GOOGLE_CLIENT_ID is missing."),
+
+  client_secret: (System.get_env("GOOGLE_CLIENT_SECRET") ||
+    raise "Environment variable GOOGLE_CLIENT_SECRET is missing.")
+
 # Use Jason for JSON parsing in Phoenix
 config :phoenix, :json_library, Jason
 
