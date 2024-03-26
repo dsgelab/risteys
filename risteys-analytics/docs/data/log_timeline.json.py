@@ -29,6 +29,7 @@ def make_timeline(dataf):
         .pipe(assign_bots)
         .select(
             pl.col("Requester"),
+            pl.col("UserAgent"),
             pl.col("DateTime").dt.truncate(X_RESOLUTION).alias("x1"),
             (
                 pl.col("DateTime").dt.minute()
@@ -42,7 +43,7 @@ def make_timeline(dataf):
         .with_columns(
             pl.col("x1").dt.to_string("%F %T").alias("x1"),
             pl.col("x1").dt.offset_by(X_RESOLUTION).dt.to_string("%F %T").alias("x2"),
-            (pl.col("y1") + Y_RESOLUTION / MINUTE).alias("y2")
+            (pl.col("y1") + Y_RESOLUTION / MINUTE).alias("y2"),
         )
         .to_dict(as_series=False)  # To a dict of lists, JSON serializable.
     )
