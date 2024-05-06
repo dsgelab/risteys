@@ -45,9 +45,18 @@ def assign_bots(dataf):
             | pl.col("UserAgent").str.to_lowercase().str.contains("bot")
             | pl.col("UserAgent").str.to_lowercase().str.contains("crawler")
             | pl.col("UserAgent").str.to_lowercase().str.contains("spider")
+
             # "-" is used in the logs when the user agent is not defined, this
             # was identified as bot behaviour on 2024-04-15.
             | (pl.col("UserAgent") == "-")
+
+            # Identified bot behaviour on 2024-04-28, bot looking for security
+            # holes in non-existing pages.
+            # Bot is using user agent "VivoBrowser/8.9.0.0 uni-app Html5Plus/1.0"
+            | (
+                pl.col("UserAgent").str.contains("VivoBrowser")
+                & pl.col("UserAgent").str.contains("uni-app")
+            )
         ).then(pl.lit("Bot"))
         .otherwise(pl.lit("User"))
         .alias("Requester")

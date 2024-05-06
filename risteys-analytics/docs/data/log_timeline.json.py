@@ -64,4 +64,3 @@ if __name__ == "__main__":
     data_out = make_timeline(dataf)
 
     json.dump(data_out, sys.stdout)
-
