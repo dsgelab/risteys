@@ -18,10 +18,15 @@ defmodule RisteysWeb.Router do
     pipe_through :browser
 
     get "/", HomeController, :index
+
     get "/changelog", ChangelogController, :index
+
     get "/documentation", DocumentationController, :index
+
     get "/endpoints/:name", FGEndpointController, :show
     get "/random_endpoint", FGEndpointController, :redir_random
+
+    get "/lab_tests/", LabTestController, :index
 
     # Redirect legacy URLs to keep shared and published links working
     get "/phenocode/:name", FGEndpointController, :redirect_legacy_url
@@ -38,7 +43,9 @@ defmodule RisteysWeb.Router do
     pipe_through :browser
 
     get "/:provider/set_redir/:fg_endpoint", AuthController, :set_redir
-    get "/:provider", AuthController, :request  # This will be auto-magically called by Ueberauth, we don't need to implement it.
+
+    # This will be auto-magically called by Ueberauth, we don't need to implement it.
+    get "/:provider", AuthController, :request
     get "/:provider/callback", AuthController, :callback
   end
 

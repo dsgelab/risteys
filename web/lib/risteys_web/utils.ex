@@ -1,5 +1,4 @@
 defmodule RisteysWeb.Utils do
-
   @doc """
   Custom sorter that puts nil values at the end.
   To be used as the sorter of Enum.sort_by/3
@@ -35,7 +34,6 @@ defmodule RisteysWeb.Utils do
       end
     end
   end
-
 
   @doc """
   Generate an text input field for a Live View.
@@ -103,5 +101,15 @@ defmodule RisteysWeb.Utils do
       form: form_id,
       class: class
     )
+  end
+
+  def round_and_str(number, precision) do
+    case number do
+      nil ->
+        "—"
+
+      _ ->
+        :io_lib.format("~.#{precision}. f", [number]) |> to_string()
+    end
   end
 end
