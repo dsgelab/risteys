@@ -34,66 +34,6 @@ defmodule Risteys.LabTestStats do
     end
   end
 
-  def get_loinc_component_stats() do
-    # List all the stats here, they will be processed the same then.
-    stats = [
-      get_loinc_component_stats_npeople()
-    ]
-
-    # For each statistic, convert from a list of map to a map of map:
-    # Before:
-    #   [
-    #     %{loinc_component_concept_id: "111", mystat: 123},
-    #     %{loinc_component_concept_id: "222", mystat: 456},
-    #     ...
-    #   ]
-    # After:
-    #   %{
-    #     "111" => %{mystat: 123},
-    #     "222" => %{mystat: 456}
-    #   }
-    stats =
-      for stat_list <- stats do
-        for loinc_component_stat <- stat_list, into: %{} do
-          Map.pop!(loinc_component_stat, :loinc_component_concept_id)
-        end
-      end
-
-    # Convert the list of statitics to a map with LOINC component as keys
-    stats =
-      Enum.reduce(stats, %{}, fn stat_map, acc ->
-        Map.merge(acc, stat_map, fn loinc_component_concept_id, stat_map1, stat_map2 ->
-          Map.merge(stat_map1, stat_map2)
-        end)
-      end)
-  end
-
-  defp get_loinc_component_stats_npeople() do
-    query_count_by_omopid =
-      from npeople_stats in NPeople,
-        left_join: lab_test in OMOP.Concept,
-        on: npeople_stats.omop_concept_dbid == lab_test.id,
-        group_by: lab_test.id,
-        select: %{
-          npeople: sum(npeople_stats.count),
-          lab_test_dbid: lab_test.id
-        }
-
-    query_count_by_loinc_component =
-      from lab_test_stat in subquery(query_count_by_omopid),
-        left_join: rel in OMOP.LOINCRelationship,
-        on: lab_test_stat.lab_test_dbid == rel.lab_test_id,
-        left_join: loinc_component in OMOP.Concept,
-        on: loinc_component.id == rel.loinc_component_id,
-        group_by: loinc_component.concept_id,
-        select: %{
-          npeople: max(lab_test_stat.npeople),
-          loinc_component_concept_id: loinc_component.concept_id
-        }
-
-    Repo.all(query_count_by_loinc_component)
-  end
-
   def get_overall_stats() do
     %{
       npeople: get_overall_stats_npeople()
