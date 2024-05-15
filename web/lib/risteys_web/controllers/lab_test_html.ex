@@ -3,13 +3,9 @@ defmodule RisteysWeb.LabTestHTML do
 
   embed_templates "lab_test_html/*"
 
-  defp prettify_stats(stats, loinc_component_stats, overall_stats) do
+  defp prettify_stats(stats, overall_stats) do
     assigns = %{}
     pretty_stats = stats
-
-    # There might be no stats for a LOINC component. If that's the case, the we
-    # transform the nil to an empty map, facilitating downstream processing.
-    loinc_component_stats = loinc_component_stats || %{}
 
     sex_female_percent =
       case stats.sex_female_percent do
@@ -22,14 +18,10 @@ defmodule RisteysWeb.LabTestHTML do
     plot_npeople_absolute =
       stats.npeople_total && plot_npeople(stats.npeople_total, overall_stats.npeople)
 
-    plot_npeople_relative =
-      stats.npeople_total && plot_npeople(stats.npeople_total, loinc_component_stats.npeople)
-
     pretty_stats =
       Map.merge(pretty_stats, %{
         sex_female_percent: sex_female_percent,
         plot_npeople_absolute: plot_npeople_absolute,
-        plot_npeople_relative: plot_npeople_relative,
         plot_sex_female_percent: plot_sex_female_percent
       })
 
