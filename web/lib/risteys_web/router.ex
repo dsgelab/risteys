@@ -26,7 +26,7 @@ defmodule RisteysWeb.Router do
     get "/endpoints/:name", FGEndpointController, :show
     get "/random_endpoint", FGEndpointController, :redir_random
 
-    get "/lab_tests/", LabTestController, :index
+    get "/lab-tests/", LabTestController, :index
 
     # Redirect legacy URLs to keep shared and published links working
     get "/phenocode/:name", FGEndpointController, :redirect_legacy_url
