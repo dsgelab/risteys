@@ -42,7 +42,7 @@ defmodule RisteysWeb.LabTestHTML do
 
     ~H"""
     <div style="width: 100%; height: 0.3em; background-color: #bfcde6;">
-      <div style={"width: #{@female_percent}%; height: 100%; background-color: #e0c3d0; border-right: 1px solid #777;"}>
+      <div style={"width: #{@female_percent}%; height: 100%; background-color: #dd9fbd; border-right: 1px solid #777;"}>
       </div>
     </div>
     """
