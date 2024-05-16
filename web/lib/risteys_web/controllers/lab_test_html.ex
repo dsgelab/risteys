@@ -16,13 +16,18 @@ defmodule RisteysWeb.LabTestHTML do
     plot_sex_female_percent = stats.sex_female_percent && plot_sex(stats.sex_female_percent)
 
     plot_npeople_absolute =
-      stats.npeople_total && plot_npeople(stats.npeople_total, overall_stats.npeople)
+      stats.npeople_total && plot_count(stats.npeople_total, overall_stats.npeople)
+
+    plot_median_n_measurements =
+      stats.median_n_measurements &&
+        plot_count(stats.median_n_measurements, overall_stats.median_n_measurements)
 
     pretty_stats =
       Map.merge(pretty_stats, %{
         sex_female_percent: sex_female_percent,
         plot_npeople_absolute: plot_npeople_absolute,
-        plot_sex_female_percent: plot_sex_female_percent
+        plot_sex_female_percent: plot_sex_female_percent,
+        plot_median_n_measurements: plot_median_n_measurements
       })
 
     missing_value = ~H"""
@@ -48,7 +53,7 @@ defmodule RisteysWeb.LabTestHTML do
     """
   end
 
-  defp plot_npeople(npeople, npeople_max) do
+  defp plot_count(npeople, npeople_max) do
     assigns = %{
       npeople_percent: 100 * npeople / npeople_max
     }
