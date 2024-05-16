@@ -22,12 +22,16 @@ defmodule RisteysWeb.LabTestHTML do
       stats.median_n_measurements &&
         plot_count(stats.median_n_measurements, overall_stats.median_n_measurements)
 
+    plot_median_ndays_first_to_last_measurement =
+      stats.median_ndays_first_to_last_measurement && plot_count(stats.median_ndays_first_to_last_measurement, overall_stats.median_ndays_first_to_last_measurement)
+
     pretty_stats =
       Map.merge(pretty_stats, %{
         sex_female_percent: sex_female_percent,
         plot_npeople_absolute: plot_npeople_absolute,
         plot_sex_female_percent: plot_sex_female_percent,
-        plot_median_n_measurements: plot_median_n_measurements
+        plot_median_n_measurements: plot_median_n_measurements,
+        plot_median_ndays_first_to_last_measurement: plot_median_ndays_first_to_last_measurement
       })
 
     missing_value = ~H"""
@@ -54,6 +58,11 @@ defmodule RisteysWeb.LabTestHTML do
   end
 
   defp plot_count(npeople, npeople_max) do
+    # TODO(Vincent 2024-05-16)
+    # Add a `tick` option, that will put a vertical bar (just slightly visible
+    # every `tick` %.
+    # For example, with `npeople_max = 110` and `tick = 25`, then ticks will
+    # show as vertical bars at the following positions: 0, 25, 50, 75, 100.
     assigns = %{
       npeople_percent: 100 * npeople / npeople_max
     }
