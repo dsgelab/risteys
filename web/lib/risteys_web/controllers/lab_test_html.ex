@@ -10,7 +10,7 @@ defmodule RisteysWeb.LabTestHTML do
     sex_female_percent =
       case stats.sex_female_percent do
         nil -> nil
-        value -> RisteysWeb.Utils.round_and_str(value, 2)
+        value -> RisteysWeb.Utils.round_and_str(value, 2) <> "%"
       end
 
     plot_sex_female_percent = stats.sex_female_percent && plot_sex(stats.sex_female_percent)
