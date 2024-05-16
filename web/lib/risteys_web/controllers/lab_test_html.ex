@@ -20,10 +20,13 @@ defmodule RisteysWeb.LabTestHTML do
     plot_median_n_measurements =
       plot_count(stats.median_n_measurements, overall_stats.median_n_measurements)
 
+    tick_every_year = 365.25
+
     plot_median_ndays_first_to_last_measurement =
       plot_count(
         stats.median_ndays_first_to_last_measurement,
-        overall_stats.median_ndays_first_to_last_measurement
+        overall_stats.median_ndays_first_to_last_measurement,
+        tick_every_year
       )
 
     pretty_stats =
@@ -60,22 +63,36 @@ defmodule RisteysWeb.LabTestHTML do
     """
   end
 
-  defp plot_count(nil, _), do: ""
+  defp plot_count(npeople, npeople_max, tick_every \\ nil)
 
-  defp plot_count(npeople, npeople_max) do
-    # TODO(Vincent 2024-05-16)
-    # Add a `tick` option, that will put a vertical bar (just slightly visible
-    # every `tick` %.
-    # For example, with `npeople_max = 110` and `tick = 25`, then ticks will
-    # show as vertical bars at the following positions: 0, 25, 50, 75, 100.
+  defp plot_count(nil, _, _), do: ""
+
+  defp plot_count(npeople, npeople_max, tick_every) do
+    tick_percents =
+      case tick_every do
+        nil ->
+          []
+
+        _ ->
+          last = round(npeople_max)
+          step = round(tick_every)
+          Range.to_list(step..last//step)
+      end
+      |> Enum.map(&(100 * &1 / npeople_max))
+
     assigns = %{
-      npeople_percent: 100 * npeople / npeople_max
+      npeople_percent: 100 * npeople / npeople_max,
+      tick_percents: tick_percents
     }
 
     ~H"""
-    <div style="width: 100%; height: 0.3em; background-color: var(--bg-color-plot-empty)">
-      <div style={"width: #{@npeople_percent}%; height: 100%; background-color: var(--bg-color-plot)"}>
+    <div style="width: 100%; height: 0.3em; background-color: var(--bg-color-plot-empty); position: relative;">
+      <div style={"width: #{@npeople_percent}%; height: 100%; background-color: var(--bg-color-plot); position: absolute;"}>
       </div>
+      <%= for tick_percent <- @tick_percents do %>
+        <div style={"width: #{tick_percent}%; height: 100%; border-right: 1px solid var(--bg-color-plot-empty); position: absolute;"}>
+        </div>
+      <% end %>
     </div>
     """
   end
