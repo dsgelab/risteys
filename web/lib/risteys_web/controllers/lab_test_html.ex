@@ -13,17 +13,18 @@ defmodule RisteysWeb.LabTestHTML do
         value -> RisteysWeb.Utils.round_and_str(value, 2) <> "%"
       end
 
-    plot_sex_female_percent = stats.sex_female_percent && plot_sex(stats.sex_female_percent)
+    plot_sex_female_percent = plot_sex(stats.sex_female_percent)
 
-    plot_npeople_absolute =
-      stats.npeople_total && plot_count(stats.npeople_total, overall_stats.npeople)
+    plot_npeople_absolute = plot_count(stats.npeople_total, overall_stats.npeople)
 
     plot_median_n_measurements =
-      stats.median_n_measurements &&
-        plot_count(stats.median_n_measurements, overall_stats.median_n_measurements)
+      plot_count(stats.median_n_measurements, overall_stats.median_n_measurements)
 
     plot_median_ndays_first_to_last_measurement =
-      stats.median_ndays_first_to_last_measurement && plot_count(stats.median_ndays_first_to_last_measurement, overall_stats.median_ndays_first_to_last_measurement)
+      plot_count(
+        stats.median_ndays_first_to_last_measurement,
+        overall_stats.median_ndays_first_to_last_measurement
+      )
 
     pretty_stats =
       Map.merge(pretty_stats, %{
@@ -46,6 +47,8 @@ defmodule RisteysWeb.LabTestHTML do
     pretty_stats
   end
 
+  defp plot_sex(nil), do: ""
+
   defp plot_sex(female_percent) do
     assigns = %{female_percent: female_percent}
 
@@ -56,6 +59,8 @@ defmodule RisteysWeb.LabTestHTML do
     </div>
     """
   end
+
+  defp plot_count(nil, _), do: ""
 
   defp plot_count(npeople, npeople_max) do
     # TODO(Vincent 2024-05-16)
