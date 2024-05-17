@@ -59,7 +59,7 @@ defmodule Risteys.LabTestStats do
             )
           )
         end
-        |> Enum.sort_by(fn stats -> stats.npeople_total end, :desc)
+        |> Enum.sort_by(fn stats -> stats.npeople_total end, RisteysWeb.Utils.sorter_nil_is_0(:desc))
 
       %{rec | lab_tests: with_stats}
     end
