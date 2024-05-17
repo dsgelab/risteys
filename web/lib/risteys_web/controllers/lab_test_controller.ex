@@ -12,4 +12,15 @@ defmodule RisteysWeb.LabTestController do
     |> assign(:lab_tests_overall_stats, Risteys.LabTestStats.get_overall_stats())
     |> render(:index)
   end
+
+  def show(conn, %{"omop_id" => omop_id} = _params) do
+    pretty_stats =
+      omop_id
+      |> Risteys.LabTestStats.get_single_lab_test_stats()
+      |> RisteysWeb.LabTestHTML.show_prettify_stats()
+
+    conn
+    |> assign(:lab_test, pretty_stats)
+    |> render()
+  end
 end

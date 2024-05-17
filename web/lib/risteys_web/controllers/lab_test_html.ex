@@ -3,7 +3,7 @@ defmodule RisteysWeb.LabTestHTML do
 
   embed_templates "lab_test_html/*"
 
-  defp prettify_stats(stats, overall_stats) do
+  defp index_prettify_stats(stats, overall_stats) do
     assigns = %{}
     pretty_stats = stats
 
@@ -20,10 +20,6 @@ defmodule RisteysWeb.LabTestHTML do
     plot_median_n_measurements =
       plot_count(stats.median_n_measurements, overall_stats.median_n_measurements)
 
-    # NOTE(Vincent 2024-05-17)
-    # Transforming N days to N months, simple way by using a constant as in:
-    # https://github.com/ClickHouse/ClickHouse/blob/11e4029c6b080e1ac0b6b47ec919e42e929c9b37/src/Functions/parseTimeDelta.cpp#L28-L30
-    days_in_month = 30.5
 
     median_nmonths_first_to_last_measurement =
       case stats.median_ndays_first_to_last_measurement do
@@ -31,7 +27,8 @@ defmodule RisteysWeb.LabTestHTML do
           nil
 
         _ ->
-          (stats.median_ndays_first_to_last_measurement / days_in_month)
+          stats.median_ndays_first_to_last_measurement
+          |> days_to_months()
           |> RisteysWeb.Utils.round_and_str(1)
       end
 
@@ -112,5 +109,30 @@ defmodule RisteysWeb.LabTestHTML do
       <% end %>
     </div>
     """
+  end
+
+  def show_prettify_stats(lab_test) do
+      median_nmonths_first_to_last_measurement =
+      case lab_test.median_ndays_first_to_last_measurement do
+        nil ->
+          nil
+
+        _ ->
+          lab_test.median_ndays_first_to_last_measurement
+          |> days_to_months()
+          |> RisteysWeb.Utils.round_and_str(1)
+      end
+
+    lab_test
+    |> Map.put(:median_nmonths_first_to_last_measurement, median_nmonths_first_to_last_measurement)
+  end
+
+  defp days_to_months(ndays) do
+    # NOTE(Vincent 2024-05-17)
+    # Transforming N days to N months, simple way by using a constant as in:
+    # https://github.com/ClickHouse/ClickHouse/blob/11e4029c6b080e1ac0b6b47ec919e42e929c9b37/src/Functions/parseTimeDelta.cpp#L28-L30
+    days_in_month = 30.5
+
+    ndays / days_in_month
   end
 end

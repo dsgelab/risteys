@@ -59,7 +59,10 @@ defmodule Risteys.LabTestStats do
             )
           )
         end
-        |> Enum.sort_by(fn stats -> stats.npeople_total end, RisteysWeb.Utils.sorter_nil_is_0(:desc))
+        |> Enum.sort_by(
+          fn stats -> stats.npeople_total end,
+          RisteysWeb.Utils.sorter_nil_is_0(:desc)
+        )
 
       %{rec | lab_tests: with_stats}
     end
@@ -343,5 +346,36 @@ defmodule Risteys.LabTestStats do
     %MedianNDaysFirstToLastMeasurement{}
     |> MedianNDaysFirstToLastMeasurement.changeset(attrs)
     |> Repo.insert!()
+  end
+
+  def get_single_lab_test_stats(omop_id) do
+    Repo.one(
+      from lab_test in OMOP.Concept,
+        # N people
+        full_join: npeople_female in NPeople,
+        on: lab_test.id == npeople_female.omop_concept_dbid,
+        full_join: npeople_male in NPeople,
+        on: lab_test.id == npeople_male.omop_concept_dbid,
+        # Median N measurements / person
+        full_join: median_n_measurements in MedianNMeasurements,
+        on: lab_test.id == median_n_measurements.omop_concept_dbid,
+        # Median duration from first to last measurement
+        full_join: median_duration in MedianNDaysFirstToLastMeasurement,
+        on: lab_test.id == median_duration.omop_concept_dbid,
+        where:
+          lab_test.concept_id == ^omop_id and
+            npeople_male.sex == "male" and
+            npeople_female.sex == "female",
+        select: %{
+          omop_concept_id: ^omop_id,
+          name: lab_test.concept_name,
+          median_n_measurements: median_n_measurements.median_n_measurements,
+          npeople_female: npeople_female.count,
+          npeople_male: npeople_male.count,
+          npeople_both_sex: npeople_female.count + npeople_male.count,
+          median_ndays_first_to_last_measurement:
+            median_duration.median_ndays_first_to_last_measurement
+        }
+    )
   end
 end
