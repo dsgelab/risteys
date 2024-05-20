@@ -63,6 +63,17 @@ defmodule Risteys.OMOP do
   end
 
   @doc """
+  Get a map from OMOP Concept IDs to the database IDs of the OMOP concepts.
+  """
+  def get_map_omop_ids() do
+    Repo.all(
+      from omop_concept in Concept,
+        select: {omop_concept.concept_id, omop_concept.id}
+    )
+    |> Enum.into(%{})
+  end
+
+  @doc """
   Reset the OMOP concepts and LOINC relationships from files.
   """
   def import_lab_test_loinc_concepts(

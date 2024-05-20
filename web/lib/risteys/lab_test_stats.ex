@@ -9,6 +9,7 @@ defmodule Risteys.LabTestStats do
   alias Risteys.LabTestStats.NPeople
   alias Risteys.LabTestStats.MedianNMeasurements
   alias Risteys.LabTestStats.MedianNDaysFirstToLastMeasurement
+  alias Risteys.LabTestStats.DistributionsLabValues
 
   require Logger
 
@@ -105,12 +106,7 @@ defmodule Risteys.LabTestStats do
   Reset all the lab test stats for N People using data from file.
   """
   def import_stats_npeople(file_path) do
-    omop_ids =
-      Repo.all(
-        from omop_concept in OMOP.Concept,
-          select: {omop_concept.concept_id, omop_concept.id}
-      )
-      |> Enum.into(%{})
+    omop_ids = OMOP.get_map_omop_ids()
 
     stats =
       file_path
@@ -239,12 +235,7 @@ defmodule Risteys.LabTestStats do
   Reset all the stats for median N measurements using data from file.
   """
   def import_stats_median_n_measurements(file_path) do
-    omop_ids =
-      Repo.all(
-        from lab_test in OMOP.Concept,
-          select: {lab_test.concept_id, lab_test.id}
-      )
-      |> Enum.into(%{})
+    omop_ids = OMOP.get_map_omop_ids()
 
     stats =
       file_path
@@ -257,7 +248,7 @@ defmodule Risteys.LabTestStats do
 
           false ->
             Logger.warning(
-              "Discarding N People stats for omop_concept_id=#{omop_concept_id}: OMOP concept ID not found in database."
+              "Discarding median N measurements stats for omop_concept_id=#{omop_concept_id}: OMOP concept ID not found in database."
             )
 
             false
@@ -296,12 +287,7 @@ defmodule Risteys.LabTestStats do
   Reset all the median N days from first to last measurement stats from a file.
   """
   def import_stats_median_ndays_first_to_last(file_path) do
-    omop_ids =
-      Repo.all(
-        from lab_test in OMOP.Concept,
-          select: {lab_test.concept_id, lab_test.id}
-      )
-      |> Enum.into(%{})
+    omop_ids = OMOP.get_map_omop_ids()
 
     stats =
       file_path
@@ -314,7 +300,7 @@ defmodule Risteys.LabTestStats do
 
           false ->
             Logger.warning(
-              "Discarding N People stats for omop_concept_id=#{omop_concept_id}: OMOP concept ID not found in database."
+              "Discarding median N days stats for omop_concept_id=#{omop_concept_id}: OMOP concept ID not found in database."
             )
 
             false
@@ -373,8 +359,161 @@ defmodule Risteys.LabTestStats do
           npeople_male: npeople.male_count,
           npeople_both_sex: coalesce(npeople.female_count, 0) + coalesce(npeople.male_count, 0),
           median_ndays_first_to_last_measurement:
-            median_duration.median_ndays_first_to_last_measurement
+            median_duration.median_ndays_first_to_last_measurement,
+          distributions_lab_values: distribution_lab_values.distributions
         }
     )
+  end
+
+  @doc """
+  Reset all the lab value distributions from files.
+
+  `stats_file_path` format should be CSV with the following columns:
+  - OMOP_ID
+  - LAB_UNIT
+  - Bin
+  - NRecords
+  - NPeople
+
+  `breaks_file_path` format should be newline-delimited JSON, each line having
+  the columns:
+  - omop_id
+  - lab_unit
+  - breaks
+  """
+  def import_stats_distribution_lab_values(stats_file_path, breaks_file_path) do
+    omop_ids = OMOP.get_map_omop_ids()
+
+    bins_map =
+      stats_file_path
+      |> File.stream!()
+      |> CSV.decode!(headers: true)
+      |> Stream.reject(fn %{"OMOP_ID" => omop_concept_id} -> omop_concept_id == "NA" end)
+      # Discard rows that are related to an OMOP Concept ID we don't have in the DB.
+      # This assumes that the OMOP concept ID have been imported already.
+      |> Enum.reduce({MapSet.new(), []}, fn %{"OMOP_ID" => omop_concept_id} = row, {seen, rows} ->
+        case {Map.has_key?(omop_ids, omop_concept_id), MapSet.member?(seen, omop_concept_id)} do
+          {true, _} ->
+            {seen, [row | rows]}
+
+          {false, true} ->
+            {seen, rows}
+
+          {false, false} ->
+            Logger.warning(
+              "Discarding all rows for lab value distribution for omop_concept_id=#{omop_concept_id}: OMOP concept ID not found in database."
+            )
+
+            {MapSet.put(seen, omop_concept_id), rows}
+        end
+      end)
+      |> (fn {_seen, rows} -> rows end).()
+      # Collect bins for each unique {OMOP_ID, LAB_UNIT}
+      # Data structure of the accumulator:
+      #   %{
+      #     {"omop id 1", "meas unit 1"} => [
+      #       {bin: "bin 1", npeople: Int, nrecords: Int},
+      #       ...
+      #     ],
+      #     ...
+      #   }
+      |> Enum.reduce(%{}, fn row, acc ->
+        %{
+          "OMOP_ID" => omop_concept_id,
+          "LAB_UNIT" => measurement_unit,
+          "Bin" => bin,
+          "NRecords" => nrecords,
+          "NPeople" => npeople
+        } = row
+
+        key = {omop_concept_id, measurement_unit}
+        existing_bins = Map.get(acc, key, [])
+
+        bin = %{"bin" => bin, "npeople" => npeople, "nrecords" => nrecords}
+
+        new_bins = [bin | existing_bins]
+        Map.put(acc, key, new_bins)
+      end)
+
+    breaks_map =
+      breaks_file_path
+      |> File.stream!()
+      |> Stream.map(&Jason.decode!/1)
+      # Collect breaks, group by {omop id, lab unit}.
+      |> Enum.reduce(%{}, fn row, acc ->
+        %{
+          "omop_id" => omop_id,
+          "breaks" => breaks,
+          "lab_unit" => measurement_unit
+        } = row
+
+        breaks = Enum.map(breaks, &to_string/1)
+
+        Map.put(acc, {omop_id, measurement_unit}, breaks)
+      end)
+
+    # Merging bins and breaks.
+    # If some bins don't have associated breaks, then we put an empty break
+    # list, because we still want to keep the bins.
+    # If some breaks don't have associated bins, then they are silently
+    # discarded.
+    distributions_map =
+      Enum.reduce(bins_map, %{}, fn {{omop_concept_id, measurement_unit} = key, dist_bins}, acc ->
+        dist_breaks =
+          case Map.get(breaks_map, key) do
+            nil ->
+              Logger.warning(
+                "Data for omop_concept_id=#{omop_concept_id}, measurement_unit=#{measurement_unit} doesn't have any associated breaks. Adding empty breaks."
+              )
+
+              []
+
+            dist_breaks ->
+              dist_breaks
+          end
+
+        Map.put(acc, key, %{bins: dist_bins, breaks: dist_breaks})
+      end)
+
+    # Ungroup the distributions by measurement unit. Only leave the OMOP ID as key.
+    grouped_by_omop_id =
+      Enum.reduce(distributions_map, %{}, fn {key, value}, acc ->
+        {omop_concept_id, measurement_unit} = key
+        %{bins: dist_bins, breaks: dist_breaks} = value
+
+        distribution = %{
+          "measurement_unit" => measurement_unit,
+          "bins" => dist_bins,
+          "breaks" => dist_breaks
+        }
+
+        existing_distributions = Map.get(acc, omop_concept_id, %{})
+        new_distributions = Map.put(existing_distributions, measurement_unit, distribution)
+
+        Map.put(acc, omop_concept_id, new_distributions)
+      end)
+
+    attrs_list =
+      Enum.map(grouped_by_omop_id, fn {omop_concept_id, distributions} ->
+        distributions = Map.values(distributions)
+        omop_concept_dbid = Map.fetch!(omop_ids, omop_concept_id)
+
+        %{
+          omop_concept_dbid: omop_concept_dbid,
+          distributions: distributions
+        }
+      end)
+
+    Repo.transaction(fn ->
+      Repo.delete_all(DistributionsLabValues)
+
+      Enum.each(attrs_list, &create_stats_distribution_lab_values/1)
+    end)
+  end
+
+  defp create_stats_distribution_lab_values(attrs) do
+    %DistributionsLabValues{}
+    |> DistributionsLabValues.changeset(attrs)
+    |> Repo.insert!()
   end
 end
