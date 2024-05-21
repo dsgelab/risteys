@@ -78,16 +78,12 @@ defmodule Risteys.LabTestStats do
   end
 
   defp get_overall_stats_npeople() do
-    query_count_by_omopid =
+    Repo.one(
       from npeople_stats in NPeople,
         left_join: omop_concept in OMOP.Concept,
         on: npeople_stats.omop_concept_dbid == omop_concept.id,
-        group_by: omop_concept.concept_id,
-        select: %{npeople: sum(npeople_stats.count)}
-
-    Repo.one(
-      from counts in subquery(query_count_by_omopid),
-        select: max(counts.npeople)
+        select:
+          max(coalesce(npeople_stats.female_count, 0) + coalesce(npeople_stats.male_count, 0))
     )
   end
 
@@ -133,19 +129,42 @@ defmodule Risteys.LabTestStats do
             false
         end
       end)
-      |> Enum.map(fn row ->
+
+      # Group NPeople stats by OMOP concept ID
+      |> Enum.reduce(%{}, fn row, acc ->
         %{
           "OMOP_ID" => omop_concept_id,
           "Sex" => sex,
-          "NPeople" => count
+          "NPeople" => npeople
         } = row
 
+        npeople = String.to_integer(npeople)
+
+        empty_counts = %{female_count: nil, male_count: nil}
+        counts = Map.get(acc, omop_concept_id, empty_counts)
+
+        new_counts =
+          case sex do
+            "female" ->
+              %{counts | female_count: npeople}
+
+            "male" ->
+              %{counts | male_count: npeople}
+
+            other ->
+              Logger.warning("Got unexpected value while parsing row: Sex=\"#{other}\"")
+              counts
+          end
+
+        Map.put(acc, omop_concept_id, new_counts)
+      end)
+      |> Enum.map(fn {omop_concept_id, %{female_count: female_count, male_count: male_count}} ->
         omop_concept_dbid = Map.fetch!(omop_ids, omop_concept_id)
 
         %{
           omop_concept_dbid: omop_concept_dbid,
-          sex: sex,
-          count: count
+          female_count: female_count,
+          male_count: male_count
         }
       end)
 
@@ -165,32 +184,14 @@ defmodule Risteys.LabTestStats do
   # Returns a map of OMOP Concept ID => N People stats
   defp get_stats_npeople() do
     Repo.all(
-      from stat in NPeople,
+      from npeople in NPeople,
         left_join: omop_concept in OMOP.Concept,
-        on: stat.omop_concept_dbid == omop_concept.id,
-        select: %{omop_concept_id: omop_concept.concept_id, sex: stat.sex, count: stat.count}
+        on: npeople.omop_concept_dbid == omop_concept.id,
+        select: {
+          omop_concept.concept_id,
+          %{npeople_female: npeople.female_count, npeople_male: npeople.male_count}
+        }
     )
-
-    # Make sure we have both :npeople_male and :npeople_female set
-    |> Enum.reduce(%{}, fn rec, acc ->
-      default_stats = %{
-        npeople_male: nil,
-        npeople_female: nil
-      }
-
-      lab_test_stats = Map.get(acc, rec.omop_concept_id, default_stats)
-
-      lab_test_stats =
-        case rec.sex do
-          "male" ->
-            %{lab_test_stats | npeople_male: rec.count}
-
-          "female" ->
-            %{lab_test_stats | npeople_female: rec.count}
-        end
-
-      Map.put(acc, rec.omop_concept_id, lab_test_stats)
-    end)
     |> Enum.reduce(%{}, fn {omop_concept_id, lab_test_stats}, acc ->
       npeople_total = (lab_test_stats.npeople_male || 0) + (lab_test_stats.npeople_female || 0)
 
@@ -352,27 +353,25 @@ defmodule Risteys.LabTestStats do
     Repo.one(
       from lab_test in OMOP.Concept,
         # N people
-        full_join: npeople_female in NPeople,
-        on: lab_test.id == npeople_female.omop_concept_dbid,
-        full_join: npeople_male in NPeople,
-        on: lab_test.id == npeople_male.omop_concept_dbid,
+        full_join: npeople in NPeople,
+        on: lab_test.id == npeople.omop_concept_dbid,
         # Median N measurements / person
         full_join: median_n_measurements in MedianNMeasurements,
         on: lab_test.id == median_n_measurements.omop_concept_dbid,
         # Median duration from first to last measurement
         full_join: median_duration in MedianNDaysFirstToLastMeasurement,
         on: lab_test.id == median_duration.omop_concept_dbid,
-        where:
-          lab_test.concept_id == ^omop_id and
-            npeople_male.sex == "male" and
-            npeople_female.sex == "female",
+        # Distribution of lab values
+        full_join: distribution_lab_values in DistributionsLabValues,
+        on: lab_test.id == distribution_lab_values.omop_concept_dbid,
+        where: lab_test.concept_id == ^omop_id,
         select: %{
           omop_concept_id: ^omop_id,
           name: lab_test.concept_name,
           median_n_measurements: median_n_measurements.median_n_measurements,
-          npeople_female: npeople_female.count,
-          npeople_male: npeople_male.count,
-          npeople_both_sex: npeople_female.count + npeople_male.count,
+          npeople_female: npeople.female_count,
+          npeople_male: npeople.male_count,
+          npeople_both_sex: coalesce(npeople.female_count, 0) + coalesce(npeople.male_count, 0),
           median_ndays_first_to_last_measurement:
             median_duration.median_ndays_first_to_last_measurement
         }
