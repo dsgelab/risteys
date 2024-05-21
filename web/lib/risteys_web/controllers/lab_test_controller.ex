@@ -19,8 +19,15 @@ defmodule RisteysWeb.LabTestController do
       |> Risteys.LabTestStats.get_single_lab_test_stats()
       |> RisteysWeb.LabTestHTML.show_prettify_stats()
 
+    main_obsplot =
+      case pretty_stats.distributions_lab_values do
+        [first | _] -> first.obsplot
+        [] -> nil
+      end
+
     conn
     |> assign(:lab_test, pretty_stats)
+    |> assign(:main_obsplot, main_obsplot)
     |> render()
   end
 end

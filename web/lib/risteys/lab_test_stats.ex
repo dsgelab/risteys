@@ -363,6 +363,22 @@ defmodule Risteys.LabTestStats do
           distributions_lab_values: distribution_lab_values.distributions
         }
     )
+    |> sort_distributions_lab_values()
+  end
+
+  defp sort_distributions_lab_values(lab_test_stats) do
+    sorted =
+      lab_test_stats.distributions_lab_values
+      |> Enum.sort_by(
+        fn dist ->
+          for bin <- dist["bins"], reduce: 0 do
+            acc -> acc + bin["nrecords"]
+          end
+        end,
+        :desc
+      )
+
+    %{lab_test_stats | distributions_lab_values: sorted}
   end
 
   @doc """

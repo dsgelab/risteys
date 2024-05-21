@@ -1,10 +1,10 @@
-import * as d3 from '../vendor/d3.v6.js';
+import * as d3 from "../vendor/d3.v7.9.0.js";
 
 const margin = {
-	top: 0,
-	right: 0,
-	bottom: 50,
-	left: 55
+  top: 0,
+  right: 0,
+  bottom: 50,
+  left: 55,
 };
 const width = 535;
 const height = 260;
@@ -21,19 +21,19 @@ const cumulinc = {
 function lerp(xm, points) {
   // No value if no points
   if (points.length === 0) {
-    return null
+    return null;
   }
 
   // No value to return if outside of points range
   const mini = points[0].age;
   const maxi = points[points.length - 1].age;
   if (xm < mini || xm > maxi) {
-    return null
+    return null;
   }
 
   // Value (finally!)
   else {
-    const bisectPoints = d3.bisector(d => d.age).right;
+    const bisectPoints = d3.bisector((d) => d.age).right;
 
     const idxRight = bisectPoints(points, xm);
     const idxLeft = Math.max(0, idxRight - 1);
@@ -50,7 +50,6 @@ function lerp(xm, points) {
   }
 }
 
-
 function drawPlot(selector, data) {
   let female_serie;
   let male_serie;
@@ -65,117 +64,111 @@ function drawPlot(selector, data) {
   // Setup axes domain / range
   const line = d3
     .line()
-    .x(d => x(d.age))
-    .y(d => y(d.value))
-  ;
+    .x((d) => x(d.age))
+    .y((d) => y(d.value));
   // Domain (ages) to range (pixels)
   const x = d3
-  	  .scaleLinear()
-  	  .domain(d3.extent([age.min, age.max]))
-  	  .range([margin.left, width - margin.right])
-  	  .clamp(true)
-  ;
+    .scaleLinear()
+    .domain(d3.extent([age.min, age.max]))
+    .range([margin.left, width - margin.right])
+    .clamp(true);
   // Domain (cumulative incidence) to range (pixels)
   // Scale y-axis to content by using ceiled max of cumulinc values among females and males (max_value)
   const y = d3
-  	  .scaleLinear()
-  	  .domain([cumulinc.min, data[0].max_value]).nice()
-  	  .range([height - margin.bottom, margin.top])
-  ;
+    .scaleLinear()
+    .domain([cumulinc.min, data[0].max_value])
+    .nice()
+    .range([height - margin.bottom, margin.top]);
   const xAxis = (g) => {
-     g.attr("transform", `translate(0,${height - margin.bottom})`)
-      .call(d3.axisBottom(x).tickValues(d3.range(0, age.max + 1, 10)).tickSizeOuter(0))
-      .attr("font-size", 12)
+    g.attr("transform", `translate(0,${height - margin.bottom})`)
+      .call(
+        d3
+          .axisBottom(x)
+          .tickValues(d3.range(0, age.max + 1, 10))
+          .tickSizeOuter(0),
+      )
+      .attr("font-size", 12);
   };
   const yAxis = (g) => {
     g.attr("transform", `translate(${margin.left},0)`)
-     .call(d3.axisLeft(y))
-     .attr("font-size", 12)
+      .call(d3.axisLeft(y))
+      .attr("font-size", 12);
   };
-
 
   // Build SVG
   const svg = d3
     .select(selector)
     .insert("svg", ":first-child")
     .attr("viewBox", [0, 0, width, height])
-    .style("overflow", "visible")
-  ;
+    .style("overflow", "visible");
+  svg.append("g").call(xAxis);
 
-  svg.append("g")
-    .call(xAxis);
+  svg.append("g").call(yAxis);
 
-  svg.append("g")
-    .call(yAxis);
-
-  svg.append("g")
-       .attr("fill", "none")
-       .attr("stroke-width", 3)
-     .selectAll("path")
-     .data(data)
-     .join("path")
-       .style("mix-blend-mode", "multiply")
-       .style("stroke-dasharray", d => d.dasharray)
-       .attr("stroke", d => d.color)
-       .attr("d", d => line(d.cumulinc))
-  ;
+  svg
+    .append("g")
+    .attr("fill", "none")
+    .attr("stroke-width", 3)
+    .selectAll("path")
+    .data(data)
+    .join("path")
+    .style("mix-blend-mode", "multiply")
+    .style("stroke-dasharray", (d) => d.dasharray)
+    .attr("stroke", (d) => d.color)
+    .attr("d", (d) => line(d.cumulinc));
 
   // Axis labels
   const xlabel = {
     text: "Age",
     x: 293,
-    y: 250
+    y: 250,
   };
-  svg.append("text")
-      .attr("transform",
-            `translate(${xlabel.x}, ${xlabel.y})`)
-      .style("text-anchor", "middle")
-      .text(xlabel.text);
-
+  svg
+    .append("text")
+    .attr("transform", `translate(${xlabel.x}, ${xlabel.y})`)
+    .style("text-anchor", "middle")
+    .text(xlabel.text);
 
   // Y axis label
   const ylabel = {
     text: "Probability of first incidence (%)",
     x: -110,
-    y: 15
+    y: 15,
   };
-  svg.append("text")
-      .attr("transform", `rotate(-90) translate(${ylabel.x}, ${ylabel.y})`)
-      .style("text-anchor", "middle")
-      .text(ylabel.text);
+  svg
+    .append("text")
+    .attr("transform", `rotate(-90) translate(${ylabel.x}, ${ylabel.y})`)
+    .style("text-anchor", "middle")
+    .text(ylabel.text);
 
   // Tooltip elements, drawn in order
-  const tooltips = svg.append("g")
+  const tooltips = svg
+    .append("g")
     .attr("display", "none")
-    .style("font", "0.8rem sans-serif")
-  ;
-
-  const vertline = tooltips.append("path")
+    .style("font", "0.8rem sans-serif");
+  const vertline = tooltips
+    .append("path")
     .attr("fill", "none")
     .attr("stroke", "hsl(10deg, 0%, 58%)")
     .attr("stroke-width", 1)
-    .style("stroke-dasharray", "1 1")
-  ;
-
+    .style("stroke-dasharray", "1 1");
   const tooltipFemale = tooltips.append("g");
-  const dotFemale = tooltipFemale.append("circle")
+  const dotFemale = tooltipFemale
+    .append("circle")
     .attr("r", 4)
     .attr("stroke", "white")
-    .attr("stroke-width", 2)
-  ;
+    .attr("stroke-width", 2);
   const textFemale = tooltipFemale
     .append("text")
     .attr("text-anchor", "end")
-    .attr("x", -4)
-  ;
+    .attr("x", -4);
   const tooltipMale = tooltips.append("g");
-  const dotMale = tooltipMale.append("circle")
+  const dotMale = tooltipMale
+    .append("circle")
     .attr("r", 4)
     .attr("stroke", "white")
-    .attr("stroke-width", 2)
-  ;
+    .attr("stroke-width", 2);
   const textMale = tooltipMale.append("text");
-
 
   // Data to get values from pointer position
   svg.on("touchstart mouseenter", () => {
@@ -189,7 +182,7 @@ function drawPlot(selector, data) {
   svg.on("touchmove mousemove", (event) => {
     const mouseX = d3.pointer(event)[0];
     const xDomainVal = x.invert(mouseX);
-    const xRangeVal = x(xDomainVal);  // pass it in x() to clamp the value
+    const xRangeVal = x(xDomainVal); // pass it in x() to clamp the value
 
     // These can be null if cursor falls outside of curve domain
     const yFemaleDomainVal = lerp(xDomainVal, data[female_serie].cumulinc);
@@ -199,12 +192,12 @@ function drawPlot(selector, data) {
     if (yFemaleDomainVal === null) {
       tooltipFemale.attr("display", "none");
     } else {
-      tooltipFemale.attr("display", null);  // "null" will be transformed to CSS "unset"
+      tooltipFemale.attr("display", null); // "null" will be transformed to CSS "unset"
     }
     if (yMaleDomainVal === null) {
       tooltipMale.attr("display", "none");
     } else {
-      tooltipMale.attr("display", null);  // "null" will be transformed to CSS "unset"
+      tooltipMale.attr("display", null); // "null" will be transformed to CSS "unset"
     }
 
     const yFemaleRangeVal = y(yFemaleDomainVal);
@@ -212,18 +205,26 @@ function drawPlot(selector, data) {
 
     // Vertline
     vertline
-    .datum([
-      {x: xRangeVal, y: 0},
-      {
-        x: xRangeVal,
-        y: height - margin.bottom  // position of the X axis line
-      }
-    ])
-      .attr("d", d3.line().x(d => d.x).y(d => d.y))
-    ;
+      .datum([
+        { x: xRangeVal, y: 0 },
+        {
+          x: xRangeVal,
+          y: height - margin.bottom, // position of the X axis line
+        },
+      ])
+      .attr(
+        "d",
+        d3
+          .line()
+          .x((d) => d.x)
+          .y((d) => d.y),
+      );
 
     // Position dots
-    tooltipFemale.attr("transform", `translate(${xRangeVal}, ${yFemaleRangeVal})`);
+    tooltipFemale.attr(
+      "transform",
+      `translate(${xRangeVal}, ${yFemaleRangeVal})`,
+    );
     tooltipMale.attr("transform", `translate(${xRangeVal}, ${yMaleRangeVal})`);
 
     // Set and position texts
@@ -235,16 +236,11 @@ function drawPlot(selector, data) {
     // Reposition textMale if we are close to the right-side
     const percToLeft = xRangeVal / width;
     if (percToLeft > 0.9) {
-       textMale
-         .attr("text-anchor", "end")
-         .attr("x", -4)
+      textMale.attr("text-anchor", "end").attr("x", -4);
     } else {
-       textMale
-         .attr("text-anchor", "start")
-         .attr("x", 4)
+      textMale.attr("text-anchor", "start").attr("x", 4);
     }
-
   });
 }
 
-export {drawPlot};
+export { drawPlot };
