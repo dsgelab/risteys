@@ -112,4 +112,15 @@ defmodule RisteysWeb.Utils do
         :io_lib.format("~.#{precision}. f", [number]) |> to_string()
     end
   end
+
+  @doc """
+  Takes a string number, parse it as a float or an integer, and return the parsed number.
+  """
+  def parse_number(number_str) do
+    case {Float.parse(number_str), Integer.parse(number_str)} do
+      {{parsed, _remainder}, _int} -> parsed
+      {:error, {parsed, _remainder}} -> parsed
+      _ -> :error
+    end
+  end
 end
