@@ -7,11 +7,18 @@ defmodule RisteysWeb.LabTestHTML do
     assigns = %{}
     pretty_stats = stats
 
+    npeople_total =
+      stats.npeople_total && RisteysWeb.Utils.pretty_number(stats.npeople_total)
+
     sex_female_percent =
       case stats.sex_female_percent do
         nil -> nil
         value -> RisteysWeb.Utils.round_and_str(value, 2) <> "%"
       end
+
+    median_n_measurements =
+      stats.median_n_measurements &&
+        RisteysWeb.Utils.pretty_number(stats.median_n_measurements, 1)
 
     plot_sex_female_percent = plot_sex(stats.sex_female_percent)
 
@@ -28,7 +35,7 @@ defmodule RisteysWeb.LabTestHTML do
         _ ->
           stats.median_ndays_first_to_last_measurement
           |> days_to_months()
-          |> RisteysWeb.Utils.round_and_str(1)
+          |> RisteysWeb.Utils.pretty_number(1)
       end
 
     tick_every_year = 365.25
@@ -42,7 +49,9 @@ defmodule RisteysWeb.LabTestHTML do
 
     pretty_stats =
       Map.merge(pretty_stats, %{
+        npeople_total: npeople_total,
         sex_female_percent: sex_female_percent,
+        median_n_measurements: median_n_measurements,
         plot_npeople_absolute: plot_npeople_absolute,
         plot_sex_female_percent: plot_sex_female_percent,
         plot_median_n_measurements: plot_median_n_measurements,
@@ -111,15 +120,22 @@ defmodule RisteysWeb.LabTestHTML do
   end
 
   def show_prettify_stats(lab_test) do
+    npeople_both_sex =
+      lab_test.npeople_both_sex && RisteysWeb.Utils.pretty_number(lab_test.npeople_both_sex)
+
+    median_n_measurements =
+      lab_test.median_n_measurements &&
+        RisteysWeb.Utils.pretty_number(lab_test.median_n_measurements, 1)
+
     median_nmonths_first_to_last_measurement =
       case lab_test.median_ndays_first_to_last_measurement do
         nil ->
           nil
 
-        _ ->
-          lab_test.median_ndays_first_to_last_measurement
+        num ->
+          num
           |> days_to_months()
-          |> RisteysWeb.Utils.round_and_str(1)
+          |> RisteysWeb.Utils.pretty_number(1)
       end
 
     distributions_lab_values =
@@ -130,12 +146,12 @@ defmodule RisteysWeb.LabTestHTML do
         end
       end
 
-    lab_test
-    |> Map.put(
-      :median_nmonths_first_to_last_measurement,
-      median_nmonths_first_to_last_measurement
-    )
-    |> Map.put(:distributions_lab_values, distributions_lab_values)
+    Map.merge(lab_test, %{
+      npeople_both_sex: npeople_both_sex,
+      median_n_measurements: median_n_measurements,
+      median_nmonths_first_to_last_measurement: median_nmonths_first_to_last_measurement,
+      distributions_lab_values: distributions_lab_values
+    })
   end
 
   defp prettify_distribution(:binary, distribution) do
@@ -248,17 +264,16 @@ defmodule RisteysWeb.LabTestHTML do
         default_y = 0
         yy = Map.get(map_nrecords, left, default_y)
 
-        # TODO(Vincent 2024-05-27)  Use new pretty_number instead of round_and_str
         x1_str =
           case left do
             "-inf" -> "−∞"
-            _ -> left |> RisteysWeb.Utils.parse_number() |> RisteysWeb.Utils.round_and_str(2)
+            _ -> left |> RisteysWeb.Utils.parse_number() |> RisteysWeb.Utils.pretty_number()
           end
 
         x2_str =
           case right do
             "+inf" -> "+∞"
-            _ -> right |> RisteysWeb.Utils.parse_number() |> RisteysWeb.Utils.round_and_str(2)
+            _ -> right |> RisteysWeb.Utils.parse_number() |> RisteysWeb.Utils.pretty_number()
           end
 
         en_dash = "–"
