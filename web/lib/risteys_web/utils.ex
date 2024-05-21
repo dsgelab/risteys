@@ -123,4 +123,46 @@ defmodule RisteysWeb.Utils do
       _ -> :error
     end
   end
+
+  def pretty_number(number, float_decimal_places \\ 2)
+
+  def pretty_number(number, _float_decimal_places) when is_integer(number) do
+    pretty_number_str_to_int(number)
+  end
+
+  def pretty_number(number, decimal_places) when is_float(number) do
+    pretty_number_str_to_float(number, decimal_places)
+  end
+
+  defp pretty_number_str_to_int(number) do
+    number
+    |> Integer.to_string()
+    |> pretty_str_number()
+  end
+
+  defp pretty_number_str_to_float(number, decimal_places) do
+    [left, right] =
+      number
+      |> :erlang.float_to_binary(decimals: decimal_places)
+      |> String.split(".")
+
+    [
+      pretty_str_number(left),
+      right
+    ]
+    |> Enum.join(".")
+  end
+
+  defp pretty_str_number(str_number) do
+    non_breaking_space = " "
+
+    str_number
+    |> String.split("", trim: true)
+    |> Enum.reverse()
+    |> Enum.chunk_every(3)
+    |> Enum.intersperse([non_breaking_space])
+    |> Enum.concat()
+    |> Enum.reverse()
+    |> Enum.join()
+  end
 end
