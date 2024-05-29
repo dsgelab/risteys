@@ -141,8 +141,14 @@ defmodule RisteysWeb.LabTestHTML do
     distributions_lab_values =
       for dist <- lab_test.distributions_lab_values do
         case dist["measurement_unit"] do
-          "binary" -> prettify_distribution(:binary, dist)
-          _ -> prettify_distribution(:continuous, dist)
+          "binary" ->
+            prettify_distribution(dist, :binary)
+
+          "titre" ->
+            prettify_distribution(dist, :categorical)
+
+          _ ->
+            prettify_distribution(dist, :continuous)
         end
       end
 
@@ -154,7 +160,7 @@ defmodule RisteysWeb.LabTestHTML do
     })
   end
 
-  defp prettify_distribution(:binary, distribution) do
+  defp prettify_distribution(distribution, :binary) do
     %{
       "bins" => bins,
       "measurement_unit" => measurement_unit
@@ -188,10 +194,36 @@ defmodule RisteysWeb.LabTestHTML do
     }
   end
 
-  defp prettify_distribution(
-         :continuous,
-         %{"measurement_unit" => measurement_unit} = distribution
-       ) do
+  defp prettify_distribution(distribution, :categorical) do
+    %{
+      "bins" => bins,
+      "breaks" => _breaks,
+      "measurement_unit" => measurement_unit
+    } = distribution
+
+    obsplot_bins =
+      for %{"bin" => xx, "nrecords" => yy} <- bins do
+        xx = RisteysWeb.Utils.parse_number(xx)
+        %{x: xx, y: yy}
+      end
+
+    assigns = %{
+      payload: Jason.encode!(%{bins: obsplot_bins, measurement_unit: measurement_unit})
+    }
+
+    obsplot = ~H"""
+    <div class="obsplot" data-obsplot-categorical={@payload}></div>
+    """
+
+    %{
+      measurement_unit: measurement_unit,
+      obsplot: obsplot
+    }
+  end
+
+  defp prettify_distribution(distribution, :continuous) do
+    %{"measurement_unit" => measurement_unit} = distribution
+
     payload =
       distribution
       |> build_obsplot_payload()
