@@ -34,6 +34,7 @@ function plotDiscreteAllOf(selector: string) {
         y: { label: null },
         marks: [
           Plot.gridX({ stroke: "#888" }),
+          Plot.ruleX([0]),
           Plot.barX(data.bins, {
             x: "y",
             y: "x",
@@ -50,6 +51,57 @@ function plotDiscreteAllOf(selector: string) {
           }),
         ],
       });
+      ee.append(plot);
+    }
+  }
+}
+
+function plotCategoricalAllOf(selector: string) {
+  const elements = document.querySelectorAll(selector);
+
+  for (const ee of elements) {
+    if (
+      ee instanceof HTMLElement &&
+      ee.dataset.obsplotCategorical !== undefined
+    ) {
+      const data = JSON.parse(ee.dataset.obsplotCategorical);
+
+      const plot = Plot.plot({
+        marginLeft: 70,
+        style: defaultPlotStyle,
+        x: {
+          label: "Measured value (" + data.measurement_unit + ")",
+          nice: true,
+          tickFormat: "~s",
+        },
+        y: {
+          label: "Number of records",
+          tickFormat: "s",
+          nice: true,
+          zero: true,
+        },
+        marks: [
+          Plot.gridY({ stroke: "#888" }),
+          Plot.ruleY([0]),
+          Plot.barY(data.bins, {
+            x: "x",
+            y: "y",
+            fill: "var(--color-risteys-darkblue, black)",
+          }),
+          Plot.tip(
+            data.bins,
+            Plot.pointerX({
+              x: "x",
+              y: "y",
+              format: {
+                x: (dd: number) => formatLocaleEU.format(",")(dd),
+                y: (dd: number) => formatLocaleEU.format(",")(dd),
+              },
+            }),
+          ),
+        ],
+      });
+
       ee.append(plot);
     }
   }
@@ -118,4 +170,4 @@ function plotContinuousAllOf(selector: string) {
   }
 }
 
-export { plotDiscreteAllOf, plotContinuousAllOf };
+export { plotDiscreteAllOf, plotCategoricalAllOf, plotContinuousAllOf };

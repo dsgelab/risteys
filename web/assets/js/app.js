@@ -30,7 +30,11 @@ import { drawCompBox } from "./CompBox.js";
 import { plot as varBinPlot } from "./varBinPlot.js";
 import { drawPlot as drawPlotCumulInc } from "./cumulincPlot.js";
 import { openDialog, closeDialog, setupDialogComponent } from "./dialog.js";
-import { plotDiscreteAllOf, plotContinuousAllOf } from "./plotting.js";
+import {
+  plotDiscreteAllOf,
+  plotContinuousAllOf,
+  plotCategoricalAllOf,
+} from "./plotting.js";
 
 /* Dialog / modal */
 // Making the dialog functions available globally
@@ -63,6 +67,7 @@ for (const ee of cif_plots) {
 
 /* Draw all Observable Plot plots */
 plotDiscreteAllOf("[data-obsplot-discrete");
+plotCategoricalAllOf("[data-obsplot-categorical]");
 plotContinuousAllOf("[data-obsplot-continuous]");
 
 /* Draw CompBoxes
