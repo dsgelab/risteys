@@ -463,6 +463,8 @@ defmodule Risteys.LabTestStats do
           "lab_unit" => measurement_unit
         } = row
 
+        # TODO(Vincent 2024-05-30)  Not sure if there is a good reason to convert to string here.
+        # Either convert to string and explain why here, or keep as floats.
         breaks = Enum.map(breaks, &to_string/1)
 
         Map.put(acc, {omop_id, measurement_unit}, breaks)
