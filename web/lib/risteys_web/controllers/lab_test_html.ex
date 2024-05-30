@@ -258,83 +258,115 @@ defmodule RisteysWeb.LabTestHTML do
     [break1, break2] = Enum.take(parsed_breaks, 2)
     break_interval = break2 - break1
 
-    # Collect bins and breaks
-    map_nrecords =
-      for bin <- bins, into: %{} do
+    # Breaks
+    breaks =
+      breaks
+      |> Enum.map(&RisteysWeb.Utils.parse_number/1)
+      |> Enum.sort(:asc)
+
+    breaks = Enum.concat([["-inf"], breaks, ["+inf"]])
+    # :discard the last chunk as it will only be ["+inf"] alone
+    break_ranges = Enum.chunk_every(breaks, 2, 1, :discard)
+
+    # Bins
+    parsed_bins =
+      for bin <- bins do
         %{
-          "bin" => range,
+          "bin" => bin_range,
           "npeople" => _npeople,
           "nrecords" => nrecords
         } = bin
 
-        [left, _right] = extract_range_values(range)
+        [range_left, range_right] =
+          bin_range
+          |> extract_range_values()
+          |> Enum.map(&RisteysWeb.Utils.parse_number/1)
 
-        {left, nrecords}
+        %{range_left: range_left, range_right: range_right, nrecords: nrecords}
       end
+      |> Enum.sort_by(fn %{range_left: left} -> left end, :asc)
 
-    breaks = Enum.sort_by(breaks, &RisteysWeb.Utils.parse_number/1, :asc)
-    breaks = Enum.concat([["-inf"], breaks, ["+inf"]])
-    bin_ranges = Enum.chunk_every(breaks, 2, 1)
-
-    obsplot_bins =
-      for [left, right] <- bin_ranges do
-        x1 =
-          case left do
-            "-inf" -> RisteysWeb.Utils.parse_number(right) - break_interval
-            num -> RisteysWeb.Utils.parse_number(num)
-          end
-
-        x2 =
-          case right do
-            "+inf" -> x1 + break_interval
-            num -> RisteysWeb.Utils.parse_number(num)
-          end
-
-        # If a bin is missing, it's either because there is no record in it, or
-        # because it was discarded due to N<5.
-        # In both cases, we want to set y=0
-        default_y = 0
-        yy = Map.get(map_nrecords, left, default_y)
-
-        x1_str =
-          case left do
-            "-inf" -> "−∞"
-            _ -> left |> RisteysWeb.Utils.parse_number() |> RisteysWeb.Utils.pretty_number()
-          end
-
-        x2_str =
-          case right do
-            "+inf" -> "+∞"
-            _ -> right |> RisteysWeb.Utils.parse_number() |> RisteysWeb.Utils.pretty_number()
-          end
-
-        en_dash = "–"
-        range_str = "#{x1_str}#{en_dash}#{x2_str}"
-
-        %{x1: x1, x2: x2, y: yy, range: range_str}
-      end
+    # Reconstruct bins by combining break_ranges and parsed_bins from above
+    reconstructed_bins =
+      reconstruct_bins(break_ranges, parsed_bins, break_interval)
       |> maybe_remove_negative_range()
-      # Remove bins without any values from the RIGHT tail.
-      |> Enum.reverse()
-      |> Enum.drop_while(fn %{y: yy} -> yy == 0 end)
-      |> Enum.reverse()
-
-    max =
-      obsplot_bins
-      |> Enum.map(fn %{x2: x2} -> x2 end)
-      |> Enum.max()
-
-    min =
-      obsplot_bins
-      |> Enum.map(fn %{x1: x1} -> x1 end)
-      |> Enum.min()
-      |> min(0)
 
     %{
-      "bins" => obsplot_bins,
-      "measurement_unit" => measurement_unit,
-      "domain" => [min, max]
+      "bins" => reconstructed_bins,
+      "measurement_unit" => measurement_unit
     }
+  end
+
+  defp reconstruct_bins(break_ranges, parsed_bins, break_interval) do
+    reconstruct_bins(break_ranges, parsed_bins, break_interval, [])
+    # We use the [ element | list ] update for when reconstructing the bins, so
+    # reversing it will restore its original order.
+    |> Enum.reverse()
+  end
+
+  defp reconstruct_bins([], _parsed_bins, _break_interval, reconstructed_bins) do
+    reconstructed_bins
+  end
+
+  defp reconstruct_bins(break_ranges, parsed_bins, break_interval, reconstructed_bins) do
+    [[break_range_left, break_range_right] | rest_break_ranges] = break_ranges
+
+    {yy, rest_parsed_bins} =
+      case parsed_bins do
+        [] ->
+          {0, []}
+
+        [bin | rest_parsed_bins]
+        when break_range_left == "-inf" and bin.range_right < break_range_right ->
+          {bin.nrecords, rest_parsed_bins}
+
+        # NOTE(Vincent 2024-05-31)  The "+inf" case is implicitely handled here.
+        [bin | rest_parsed_bins]
+        when break_range_left >= bin.range_left and break_range_left < bin.range_right ->
+          {bin.nrecords, rest_parsed_bins}
+
+        [_bin | _rest_parsed_bins] ->
+          {0, parsed_bins}
+      end
+
+    {x1, x2} =
+      case {break_range_left, break_range_right} do
+        {"-inf", right} ->
+          {right - break_interval, right}
+
+        {left, "+inf"} ->
+          {left, left + break_interval}
+
+        {left, right} ->
+          {left, right}
+      end
+
+    x1_str =
+      case break_range_left do
+        "-inf" ->
+          "−∞"
+
+        _ ->
+          break_range_left |> RisteysWeb.Utils.pretty_number()
+      end
+
+    x2_str =
+      case break_range_right do
+        "+inf" ->
+          "+∞"
+
+        _ ->
+          break_range_right |> RisteysWeb.Utils.pretty_number()
+      end
+
+    en_dash = "–"
+    range_str = x1_str <> en_dash <> x2_str
+
+    reconstructed_bins = [
+      %{x1: x1, x2: x2, y: yy, range: range_str} | reconstructed_bins
+    ]
+
+    reconstruct_bins(rest_break_ranges, rest_parsed_bins, break_interval, reconstructed_bins)
   end
 
   defp extract_range_values(range) do
