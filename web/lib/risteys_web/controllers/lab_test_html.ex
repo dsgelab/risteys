@@ -167,18 +167,28 @@ defmodule RisteysWeb.LabTestHTML do
     } = distribution
 
     bins =
-      for %{"bin" => xx, "nrecords" => yy} <- bins do
+      for %{"bin" => xx, "nrecords" => yy} <- bins, into: %{} do
         xx =
           case xx do
-            "0.0" ->
-              "negative"
-
-            "1.0" ->
-              "positive"
+            "0.0" -> :negative
+            "1.0" -> :positive
           end
 
-        %{x: xx, y: yy}
+        {xx, yy}
       end
+
+    # Make sure we have display both positive and negative, even if we don't have both of them in the data.
+    default = %{
+      positive: nil,
+      negative: nil
+    }
+
+    bins = Map.merge(default, bins)
+
+    bins = [
+      %{x: "positive", y: bins.positive},
+      %{x: "negative", y: bins.negative}
+    ]
 
     assigns = %{
       payload: Jason.encode!(%{bins: bins})
