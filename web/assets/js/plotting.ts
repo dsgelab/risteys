@@ -1,5 +1,3 @@
-// TODO(Vincent 2024-05-28)  Set a drawing max bin width so that distributions
-// with few bins don't appear overblown.
 import * as Plot from "../vendor/plot.v0.6.14.js";
 import * as d3 from "../vendor/d3.v7.9.0.js";
 
@@ -66,13 +64,24 @@ function plotCategoricalAllOf(selector: string) {
     ) {
       const data = JSON.parse(ee.dataset.obsplotCategorical);
 
+      // NOTE(Vincent 2024-06-03)
+      // By default, the bar plot has a width fixed to 640 units.
+      // This doesn't play well for some categorical plots that have very few
+      // bins. For example, if the plot has 1 bin, then this bin will take the
+      // full width of the 640px-wide plot.
+      // The solution I took here is to adjust the plot width based on the
+      // number of bins. It's kind of a "magic formula" that I made based on
+      // trial and error using different categorical plots.
+      const plotWidth = 100 + 32 * data.bins.length;
+
       const plot = Plot.plot({
         marginLeft: 70,
+        width: plotWidth,
         style: defaultPlotStyle,
         x: {
           label: "Measured value (" + data.measurement_unit + ")",
           nice: true,
-          tickFormat: "~s",
+          tickFormat: "",
         },
         y: {
           label: "Number of records",
