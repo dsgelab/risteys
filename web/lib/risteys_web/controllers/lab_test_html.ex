@@ -27,15 +27,15 @@ defmodule RisteysWeb.LabTestHTML do
     plot_median_n_measurements =
       plot_count(stats.median_n_measurements, overall_stats.median_n_measurements)
 
-    median_nmonths_first_to_last_measurement =
+    median_nyears_first_to_last_measurement =
       case stats.median_ndays_first_to_last_measurement do
         nil ->
           nil
 
         _ ->
           stats.median_ndays_first_to_last_measurement
-          |> days_to_months()
-          |> RisteysWeb.Utils.pretty_number(1)
+          |> days_to_years()
+          |> RisteysWeb.Utils.pretty_number(2)
       end
 
     tick_every_year = 365.25
@@ -55,7 +55,7 @@ defmodule RisteysWeb.LabTestHTML do
         plot_npeople_absolute: plot_npeople_absolute,
         plot_sex_female_percent: plot_sex_female_percent,
         plot_median_n_measurements: plot_median_n_measurements,
-        median_nmonths_first_to_last_measurement: median_nmonths_first_to_last_measurement,
+        median_nyears_first_to_last_measurement: median_nyears_first_to_last_measurement,
         plot_median_duration_first_to_last_measurement:
           plot_median_duration_first_to_last_measurement
       })
@@ -127,15 +127,15 @@ defmodule RisteysWeb.LabTestHTML do
       lab_test.median_n_measurements &&
         RisteysWeb.Utils.pretty_number(lab_test.median_n_measurements, 1)
 
-    median_nmonths_first_to_last_measurement =
+    median_nyears_first_to_last_measurement =
       case lab_test.median_ndays_first_to_last_measurement do
         nil ->
           nil
 
         num ->
           num
-          |> days_to_months()
-          |> RisteysWeb.Utils.pretty_number(1)
+          |> days_to_years()
+          |> RisteysWeb.Utils.pretty_number(2)
       end
 
     distributions_lab_values =
@@ -155,7 +155,7 @@ defmodule RisteysWeb.LabTestHTML do
     Map.merge(lab_test, %{
       npeople_both_sex: npeople_both_sex,
       median_n_measurements: median_n_measurements,
-      median_nmonths_first_to_last_measurement: median_nmonths_first_to_last_measurement,
+      median_nyears_first_to_last_measurement: median_nyears_first_to_last_measurement,
       distributions_lab_values: distributions_lab_values
     })
   end
@@ -406,12 +406,9 @@ defmodule RisteysWeb.LabTestHTML do
     [x1, x2]
   end
 
-  defp days_to_months(ndays) do
-    # NOTE(Vincent 2024-05-17)
-    # Transforming N days to N months, simple way by using a constant as in:
-    # https://github.com/ClickHouse/ClickHouse/blob/11e4029c6b080e1ac0b6b47ec919e42e929c9b37/src/Functions/parseTimeDelta.cpp#L28-L30
-    days_in_month = 30.5
+  defp days_to_years(ndays) do
+    days_in_year = 365.25
 
-    ndays / days_in_month
+    ndays / days_in_year
   end
 end
