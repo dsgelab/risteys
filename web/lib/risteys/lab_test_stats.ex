@@ -10,6 +10,7 @@ defmodule Risteys.LabTestStats do
   alias Risteys.LabTestStats.MedianNMeasurements
   alias Risteys.LabTestStats.MedianNDaysFirstToLastMeasurement
   alias Risteys.LabTestStats.DistributionsLabValues
+  alias Risteys.LabTestStats.DistributionYearOfBirth
 
   require Logger
 
@@ -347,9 +348,12 @@ defmodule Risteys.LabTestStats do
         # Median duration from first to last measurement
         full_join: median_duration in MedianNDaysFirstToLastMeasurement,
         on: lab_test.id == median_duration.omop_concept_dbid,
-        # Distribution of lab values
+        # Distributions of lab values
         full_join: distribution_lab_values in DistributionsLabValues,
         on: lab_test.id == distribution_lab_values.omop_concept_dbid,
+        # Distribution of year of birth
+        full_join: distribution_year_of_birth in DistributionYearOfBirth,
+        on: lab_test.id == distribution_year_of_birth.omop_concept_dbid,
         where: lab_test.concept_id == ^omop_id,
         select: %{
           omop_concept_id: ^omop_id,
@@ -360,7 +364,8 @@ defmodule Risteys.LabTestStats do
           npeople_both_sex: coalesce(npeople.female_count, 0) + coalesce(npeople.male_count, 0),
           median_ndays_first_to_last_measurement:
             median_duration.median_ndays_first_to_last_measurement,
-          distributions_lab_values: distribution_lab_values.distributions
+          distributions_lab_values: distribution_lab_values.distributions,
+          distribution_year_of_birth: distribution_year_of_birth.distribution
         }
     )
     |> sort_distributions_lab_values()
@@ -406,7 +411,7 @@ defmodule Risteys.LabTestStats do
       |> CSV.decode!(headers: true)
       |> Stream.reject(fn %{"OMOP_ID" => omop_concept_id} -> omop_concept_id == "NA" end)
       # Discard rows that are related to an OMOP Concept ID we don't have in the DB.
-      # This assumes that the OMOP concept ID have been imported already.
+      # This assumes that the OMOP concept IDs have been imported already.
       |> Enum.reduce({MapSet.new(), []}, fn %{"OMOP_ID" => omop_concept_id} = row, {seen, rows} ->
         case {Map.has_key?(omop_ids, omop_concept_id), MapSet.member?(seen, omop_concept_id)} do
           {true, _} ->
@@ -532,6 +537,145 @@ defmodule Risteys.LabTestStats do
   defp create_stats_distribution_lab_values(attrs) do
     %DistributionsLabValues{}
     |> DistributionsLabValues.changeset(attrs)
+    |> Repo.insert!()
+  end
+
+  def import_stats_distribution_year_of_birth(stats_file_path, breaks_file_path) do
+    omop_ids = OMOP.get_map_omop_ids()
+
+    bins_map =
+      stats_file_path
+      |> File.stream!()
+      |> CSV.decode!(headers: true)
+      |> Stream.reject(fn %{"OMOP_ID" => omop_concept_id} -> omop_concept_id == "NA" end)
+      # Discard rows that are related to an OMOP Concept ID we don't have in the DB.
+      # This assumes that the OMOP concept IDs have been imported already.
+      |> Enum.reduce({MapSet.new(), []}, fn %{"OMOP_ID" => omop_concept_id} = row, {seen, rows} ->
+        case {Map.has_key?(omop_ids, omop_concept_id), MapSet.member?(seen, omop_concept_id)} do
+          {true, _} ->
+            {seen, [row | rows]}
+
+          {false, true} ->
+            {seen, rows}
+
+          {false, false} ->
+            Logger.warning(
+              "Discarding all rows for lab value distribution for omop_concept_id=#{omop_concept_id}: OMOP concept ID not found in database."
+            )
+
+            {MapSet.put(seen, omop_concept_id), rows}
+        end
+      end)
+      |> (fn {_seen, rows} -> rows end).()
+      |> Enum.reduce(%{}, fn row, acc ->
+        %{
+          "OMOP_ID" => omop_concept_id,
+          "Bin" => bin_range,
+          "NPeople" => npeople
+        } = row
+
+        [range_left_parsed, range_right_parsed] =
+          bin_range
+          |> String.split(", ")
+          |> (fn [left, right] ->
+                [String.slice(left, 1..-1//1), String.slice(right, 0..-2//1)]
+              end).()
+          |> Enum.map(fn year_str ->
+            case year_str do
+              "-inf" ->
+                "-inf"
+
+              "inf" ->
+                "inf"
+
+              _ ->
+                {year_int, _remainder} = Integer.parse(year_str)
+                year_int
+            end
+          end)
+
+        {npeople_int, _remainder} = Integer.parse(npeople)
+
+        bin = %{
+          "range" => bin_range,
+          "range_left_parsed" => range_left_parsed,
+          "range_right_parsed" => range_right_parsed,
+          "npeople" => npeople_int
+        }
+
+        existing_bins = Map.get(acc, omop_concept_id, [])
+        new_bins = [bin | existing_bins]
+        Map.put(acc, omop_concept_id, new_bins)
+      end)
+      |> Enum.into(%{}, fn {omop_concept_id, bins} ->
+        sorted_bins =
+          Enum.sort(
+            bins,
+            fn bin_a, bin_b ->
+              cond do
+                bin_a["range_left_parsed"] == "-inf" ->
+                  true
+
+                bin_a["range_right_parsed"] == "inf" ->
+                  false
+
+                bin_b["range_left_parsed"] == "-inf" ->
+                  false
+
+                bin_b["range_right_parsed"] == "inf" ->
+                  true
+
+                true ->
+                  bin_a["range_left_parsed"] < bin_b["range_left_parsed"]
+              end
+            end
+          )
+
+        {omop_concept_id, sorted_bins}
+      end)
+
+    breaks_map =
+      breaks_file_path
+      |> File.stream!()
+      |> Stream.map(&Jason.decode!/1)
+      |> Enum.reduce(%{}, fn row, acc ->
+        %{
+          "omop_id" => omop_concept_id,
+          "breaks" => breaks_list,
+          "left_closed" => _left_closed?
+        } = row
+
+        breaks_list_int =
+          Enum.map(breaks_list, fn year ->
+            {year_int, _remainder} = Integer.parse(year)
+            year_int
+          end)
+          |> Enum.sort(:asc)
+
+        Map.put(acc, omop_concept_id, breaks_list_int)
+      end)
+
+    attrs_list =
+      for {omop_concept_id, bins} <- bins_map do
+        breaks = Map.get(breaks_map, omop_concept_id, [])
+
+        %{
+          omop_concept_dbid: Map.fetch!(omop_ids, omop_concept_id),
+          distribution: %{"bins" => bins, "breaks" => breaks}
+        }
+      end
+
+    {:ok, :ok} =
+      Repo.transaction(fn ->
+        Repo.delete_all(DistributionYearOfBirth)
+
+        Enum.each(attrs_list, &create_stats_distribution_year_of_birth/1)
+      end)
+  end
+
+  defp create_stats_distribution_year_of_birth(attrs) do
+    %DistributionYearOfBirth{}
+    |> DistributionYearOfBirth.changeset(attrs)
     |> Repo.insert!()
   end
 end
