@@ -152,11 +152,14 @@ defmodule RisteysWeb.LabTestHTML do
         end
       end
 
+    distribution_year_of_birth = prettify_distribution_year_of_birth(lab_test.distribution_year_of_birth)
+
     Map.merge(lab_test, %{
       npeople_both_sex: npeople_both_sex,
       median_n_measurements: median_n_measurements,
       median_nyears_first_to_last_measurement: median_nyears_first_to_last_measurement,
-      distributions_lab_values: distributions_lab_values
+      distributions_lab_values: distributions_lab_values,
+      distribution_year_of_birth: distribution_year_of_birth
     })
   end
 
@@ -410,5 +413,26 @@ defmodule RisteysWeb.LabTestHTML do
     days_in_year = 365.25
 
     ndays / days_in_year
+  end
+
+  defp prettify_distribution_year_of_birth(%{"bins" => bins}) do
+    plot_bins =
+      for bin <- bins do
+        %{
+          "range_left_parsed" => x1,
+          "range_right_parsed" => x2,
+          "npeople" => yy
+        } = bin
+
+        %{x1: x1, x2: x2, y: yy}
+      end
+
+    assigns = %{
+      payload: Jason.encode!(%{bins: plot_bins})
+    }
+
+    ~H"""
+    <div class="obsplot" data-obsplot-continuous={@payload}></div>
+    """
   end
 end
