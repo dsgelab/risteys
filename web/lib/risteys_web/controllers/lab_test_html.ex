@@ -140,19 +140,40 @@ defmodule RisteysWeb.LabTestHTML do
 
     distributions_lab_values =
       for dist <- lab_test.distributions_lab_values do
+        %{"bins" => bins} = dist
+        y_label = "Number of records"
+
         case dist["measurement_unit"] do
           "binary" ->
-            prettify_distribution(dist, :binary)
+            %{
+              obsplot: build_obsplot_payload(:binary, bins, "nrecords", "", y_label),
+              measurement_unit: "binary"
+            }
 
           "titre" ->
-            prettify_distribution(dist, :categorical)
+            x_label = "Measured value (titre)"
+
+            %{
+              obsplot: build_obsplot_payload(:categorical, bins, "nrecords", x_label, y_label),
+              measurement_unit: "titre"
+            }
 
           _ ->
-            prettify_distribution(dist, :continuous)
+            x_label = "Measured value (#{dist["measurement_unit"]})"
+
+            %{
+              obsplot: build_obsplot_payload(:continuous, bins, :nrecords, x_label, y_label),
+              measurement_unit: dist["measurement_unit"]
+            }
         end
       end
 
-    distribution_year_of_birth = prettify_distribution_year_of_birth(lab_test.distribution_year_of_birth)
+    distribution_year_of_birth =
+      build_obsplot_payload(
+        :years,
+        lab_test.distribution_year_of_birth["bins"],
+        :npeople
+      )
 
     Map.merge(lab_test, %{
       npeople_both_sex: npeople_both_sex,
@@ -163,14 +184,59 @@ defmodule RisteysWeb.LabTestHTML do
     })
   end
 
-  defp prettify_distribution(distribution, :binary) do
-    %{
-      "bins" => bins,
-      "measurement_unit" => measurement_unit
-    } = distribution
-
+  defp build_obsplot_payload(:continuous, bins, y_key, x_label, y_label) do
     bins =
-      for %{"bin" => xx, "nrecords" => yy} <- bins, into: %{} do
+      for bin <- bins do
+        %{^y_key => yy} = bin
+
+        x1_str =
+          if bin.range_left == :minus_infinity do
+            "−∞"
+          else
+            RisteysWeb.Utils.pretty_number(bin.range_left)
+          end
+
+        x2_str =
+          if bin.range_right == :plus_infinity do
+            "+∞"
+          else
+            RisteysWeb.Utils.pretty_number(bin.range_right)
+          end
+
+        en_dash = "–"
+        range_str = x1_str <> en_dash <> x2_str
+
+        y_formatted = RisteysWeb.Utils.pretty_number(yy)
+
+        %{
+          "x1" => bin.range_left_finite,
+          "x2" => bin.range_right_finite,
+          "y" => yy,
+          "x_formatted" => range_str,
+          "y_formatted" => y_formatted
+        }
+      end
+
+    payload = %{
+      "bins" => bins,
+      "x_label" => x_label,
+      "y_label" => y_label
+    }
+
+    assigns = %{
+      payload: Jason.encode!(payload)
+    }
+
+    ~H"""
+    <div class="obsplot" data-obsplot-type="continuous" data-obsplot={@payload}></div>
+    """
+  end
+
+  defp build_obsplot_payload(:binary, bins, y_key, x_label, y_label) do
+    bins =
+      for bin <- bins, into: %{} do
+        %{^y_key => yy, "range" => xx} = bin
+
         xx =
           case xx do
             "0.0" -> :negative
@@ -194,245 +260,67 @@ defmodule RisteysWeb.LabTestHTML do
     ]
 
     assigns = %{
-      payload: Jason.encode!(%{bins: bins})
+      payload: Jason.encode!(%{"bins" => bins, "x_label" => x_label, "y_label" => y_label})
     }
 
-    obsplot = ~H"""
-    <div class="obsplot" data-obsplot-discrete={@payload}></div>
+    ~H"""
+    <div class="obsplot" data-obsplot-type="discrete" data-obsplot={@payload}></div>
     """
-
-    %{
-      measurement_unit: measurement_unit,
-      obsplot: obsplot
-    }
   end
 
-  defp prettify_distribution(distribution, :categorical) do
-    %{
-      "bins" => bins,
-      "breaks" => _breaks,
-      "measurement_unit" => measurement_unit
-    } = distribution
-
-    obsplot_bins =
-      for %{"bin" => xx, "nrecords" => yy} <- bins do
-        xx = RisteysWeb.Utils.parse_number(xx)
-        %{x: xx, y: yy}
-      end
-
-    assigns = %{
-      payload: Jason.encode!(%{bins: obsplot_bins, measurement_unit: measurement_unit})
-    }
-
-    obsplot = ~H"""
-    <div class="obsplot" data-obsplot-categorical={@payload}></div>
-    """
-
-    %{
-      measurement_unit: measurement_unit,
-      obsplot: obsplot
-    }
-  end
-
-  defp prettify_distribution(distribution, :continuous) do
-    %{"measurement_unit" => measurement_unit} = distribution
-
-    payload =
-      distribution
-      |> build_obsplot_payload()
-      |> Jason.encode!()
-
-    assigns = %{
-      payload: payload
-    }
-
-    obsplot = ~H"""
-    <div class="obsplot" data-obsplot-continuous={@payload}></div>
-    """
-
-    %{measurement_unit: measurement_unit, obsplot: obsplot}
-  end
-
-  def build_obsplot_payload(distribution) do
-    %{
-      "bins" => bins,
-      "breaks" => breaks,
-      "measurement_unit" => measurement_unit
-    } = distribution
-
-    # Derive break interval
-    # TODO(Vincent 2024-05-27)  Use pre-computed break interval value from the
-    # data when that's implemented and available in DB.
-    parsed_breaks =
-      breaks
-      |> Enum.map(&RisteysWeb.Utils.parse_number/1)
-      |> Enum.sort(:asc)
-
-    [break1, break2] = Enum.take(parsed_breaks, 2)
-    break_interval = break2 - break1
-
-    # Reconstruct bins by combining break_ranges and parsed_bins from above
-    reconstructed_bins =
-      reconstruct_bins(bins, parsed_breaks, break_interval)
-
-    %{
-      "bins" => reconstructed_bins,
-      "measurement_unit" => measurement_unit
-    }
-  end
-
-  defp reconstruct_bins(bins, breaks, break_interval) do
+  defp build_obsplot_payload(:categorical, bins, y_key, x_label, y_label) do
     bins =
-      Enum.map(bins, fn bin ->
+      for %{"range" => xx, ^y_key => yy} <- bins do
+        xx = RisteysWeb.Utils.parse_number(xx)
+        %{"x" => xx, "y" => yy}
+      end
+
+    payload = %{
+      "bins" => bins,
+      "x_label" => x_label,
+      "y_label" => y_label
+    }
+
+    assigns = %{
+      payload: Jason.encode!(payload)
+    }
+
+    ~H"""
+    <div class="obsplot" data-obsplot-type="categorical" data-obsplot={@payload}></div>
+    """
+  end
+
+  defp build_obsplot_payload(:years, bins, y_key) do
+    bins =
+      for bin <- bins do
+        %{^y_key => yy} = bin
+        x_formatted = to_string(bin.range_left)
+        y_formatted = RisteysWeb.Utils.pretty_number(yy)
+
         %{
-          "bin" => range,
-          "nrecords" => nrecords,
-          "npeople" => _npeople
-        } = bin
-
-        [range_left, range_right] = extract_range_values(range)
-
-        {x1, x1_str, extrema?} =
-          case range_left do
-            "-inf" ->
-              right = RisteysWeb.Utils.parse_number(range_right)
-              x1 = right - break_interval
-              x1_str = "−∞"
-              {x1, x1_str, true}
-
-            _ ->
-              x1 = RisteysWeb.Utils.parse_number(range_left)
-              x1_str = RisteysWeb.Utils.pretty_number(x1)
-              {x1, x1_str, false}
-          end
-
-        {x2, x2_str, extrema?} =
-          case range_right do
-            "inf" ->
-              left = RisteysWeb.Utils.parse_number(range_left)
-              x2 = left + break_interval
-              x2_str = "+∞"
-              {x2, x2_str, true}
-
-            _ ->
-              x2 = RisteysWeb.Utils.parse_number(range_right)
-              x2_str = RisteysWeb.Utils.pretty_number(x2)
-              {x2, x2_str, false || extrema?}
-          end
-
-        en_dash = "–"
-        range_str = x1_str <> en_dash <> x2_str
-
-        %{x1: x1, x2: x2, y: nrecords, range: range_str, extrema?: extrema?}
-      end)
-      |> Enum.sort_by(fn bin -> bin.x1 end, :asc)
-
-    gaps =
-      for [bin_left, bin_right] <- Enum.chunk_every(bins, 2, 1, :discard), reduce: [] do
-        acc ->
-          if bin_left.x2 != bin_right.x1 do
-            [%{left: bin_left.x2, right: bin_right.x1} | acc]
-          else
-            acc
-          end
+          "x1" => bin.range_left_finite,
+          "x2" => bin.range_right_finite,
+          "y" => yy,
+          "x_formatted" => x_formatted,
+          "y_formatted" => y_formatted
+        }
       end
 
-    first_break = Enum.fetch!(breaks, 0)
-    last_break = Enum.fetch!(breaks, -1)
-    first_bin = Enum.fetch!(bins, 0)
-    last_bin = Enum.fetch!(bins, -1)
+    payload = %{
+      "bins" => bins
+    }
 
-    gaps =
-      if first_bin.extrema? do
-        gaps
-      else
-        [%{left: first_break, right: first_bin.x1} | gaps]
-      end
+    assigns = %{
+      payload: Jason.encode!(payload)
+    }
 
-    gaps =
-      if last_bin.extrema? do
-        gaps
-      else
-        last_gap = %{left: last_bin.x2, right: "inf"}
-        Enum.concat([gaps, [last_gap]])
-      end
-
-    new_bins =
-      gaps
-      |> Enum.map(&fill_gap(&1, break_interval, last_break))
-      |> Enum.concat()
-
-    [bins, new_bins]
-    |> Enum.concat()
-    |> Enum.map(fn bin ->
-      {_, bin} = Map.pop(bin, :extrema?)
-      bin
-    end)
-    |> Enum.sort_by(fn %{x1: x1} -> x1 end, :asc)
-  end
-
-  defp fill_gap(gap, break_interval, last_break) do
-    gap_right_finite =
-      if gap.right == "inf" do
-        last_break + break_interval
-      else
-        gap.right
-      end
-
-    n_missing_bins = round((gap_right_finite - gap.left) / break_interval)
-
-    1..n_missing_bins//1
-    |> Enum.map(fn ii ->
-      right = gap.left + ii * break_interval
-      left = right - break_interval
-
-      x1_str = RisteysWeb.Utils.pretty_number(left)
-
-      x2_str =
-        if gap.right == "inf" and ii == n_missing_bins do
-          "+∞"
-        else
-          RisteysWeb.Utils.pretty_number(right)
-        end
-
-      en_dash = "–"
-      range_str = x1_str <> en_dash <> x2_str
-      %{x1: left, x2: right, y: 0, range: range_str}
-    end)
-  end
-
-  defp extract_range_values(range) do
-    [x1, x2] = String.split(range, ", ")
-    x1 = String.slice(x1, 1..-1//1)
-    x2 = String.slice(x2, 0..-2//1)
-
-    [x1, x2]
+    ~H"""
+    <div class="obsplot" data-obsplot-type="years" data-obsplot={@payload}></div>
+    """
   end
 
   defp days_to_years(ndays) do
     days_in_year = 365.25
-
     ndays / days_in_year
-  end
-
-  defp prettify_distribution_year_of_birth(%{"bins" => bins}) do
-    plot_bins =
-      for bin <- bins do
-        %{
-          "range_left_parsed" => x1,
-          "range_right_parsed" => x2,
-          "npeople" => yy
-        } = bin
-
-        %{x1: x1, x2: x2, y: yy}
-      end
-
-    assigns = %{
-      payload: Jason.encode!(%{bins: plot_bins})
-    }
-
-    ~H"""
-    <div class="obsplot" data-obsplot-continuous={@payload}></div>
-    """
   end
 end

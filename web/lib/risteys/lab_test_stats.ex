@@ -337,53 +337,74 @@ defmodule Risteys.LabTestStats do
   end
 
   def get_single_lab_test_stats(omop_id) do
-    Repo.one(
-      from lab_test in OMOP.Concept,
-        # N people
-        full_join: npeople in NPeople,
-        on: lab_test.id == npeople.omop_concept_dbid,
-        # Median N measurements / person
-        full_join: median_n_measurements in MedianNMeasurements,
-        on: lab_test.id == median_n_measurements.omop_concept_dbid,
-        # Median duration from first to last measurement
-        full_join: median_duration in MedianNDaysFirstToLastMeasurement,
-        on: lab_test.id == median_duration.omop_concept_dbid,
-        # Distributions of lab values
-        full_join: distribution_lab_values in DistributionsLabValues,
-        on: lab_test.id == distribution_lab_values.omop_concept_dbid,
-        # Distribution of year of birth
-        full_join: distribution_year_of_birth in DistributionYearOfBirth,
-        on: lab_test.id == distribution_year_of_birth.omop_concept_dbid,
-        where: lab_test.concept_id == ^omop_id,
-        select: %{
-          omop_concept_id: ^omop_id,
-          name: lab_test.concept_name,
-          median_n_measurements: median_n_measurements.median_n_measurements,
-          npeople_female: npeople.female_count,
-          npeople_male: npeople.male_count,
-          npeople_both_sex: coalesce(npeople.female_count, 0) + coalesce(npeople.male_count, 0),
-          median_ndays_first_to_last_measurement:
-            median_duration.median_ndays_first_to_last_measurement,
-          distributions_lab_values: distribution_lab_values.distributions,
-          distribution_year_of_birth: distribution_year_of_birth.distribution
-        }
-    )
-    |> sort_distributions_lab_values()
-  end
-
-  defp sort_distributions_lab_values(lab_test_stats) do
-    sorted =
-      lab_test_stats.distributions_lab_values
-      |> Enum.sort_by(
-        fn dist ->
-          for bin <- dist["bins"], reduce: 0 do
-            acc -> acc + bin["nrecords"]
-          end
-        end,
-        :desc
+    stats =
+      Repo.one(
+        from lab_test in OMOP.Concept,
+          # N people
+          full_join: npeople in NPeople,
+          on: lab_test.id == npeople.omop_concept_dbid,
+          # Median N measurements / person
+          full_join: median_n_measurements in MedianNMeasurements,
+          on: lab_test.id == median_n_measurements.omop_concept_dbid,
+          # Median duration from first to last measurement
+          full_join: median_duration in MedianNDaysFirstToLastMeasurement,
+          on: lab_test.id == median_duration.omop_concept_dbid,
+          # Distributions of lab values
+          full_join: distribution_lab_values in DistributionsLabValues,
+          on: lab_test.id == distribution_lab_values.omop_concept_dbid,
+          # Distribution of year of birth
+          full_join: distribution_year_of_birth in DistributionYearOfBirth,
+          on: lab_test.id == distribution_year_of_birth.omop_concept_dbid,
+          where: lab_test.concept_id == ^omop_id,
+          select: %{
+            omop_concept_id: ^omop_id,
+            name: lab_test.concept_name,
+            median_n_measurements: median_n_measurements.median_n_measurements,
+            npeople_female: npeople.female_count,
+            npeople_male: npeople.male_count,
+            npeople_both_sex: coalesce(npeople.female_count, 0) + coalesce(npeople.male_count, 0),
+            median_ndays_first_to_last_measurement:
+              median_duration.median_ndays_first_to_last_measurement,
+            distributions_lab_values: distribution_lab_values.distributions,
+            distribution_year_of_birth: distribution_year_of_birth.distribution
+          }
       )
 
-    %{lab_test_stats | distributions_lab_values: sorted}
+    distributions_lab_values =
+      stats.distributions_lab_values
+      |> sort_distributions_lab_values()
+      |> Enum.map(fn dist ->
+        # Only rebuild the distribution when its values are in a continuous scale
+        %{"measurement_unit" => measurement_unit} = dist
+
+        if measurement_unit not in ["binary", "titre"] do
+          rebuild_distribution(dist, %{"range" => :range, "nrecords" => :nrecords}, %{nrecords: 0})
+        else
+          dist
+        end
+      end)
+
+    distribution_year_of_birth =
+      stats.distribution_year_of_birth
+      |> rebuild_distribution(%{"range" => :range, "npeople" => :npeople}, %{npeople: 0})
+
+    %{
+      stats
+      | distributions_lab_values: distributions_lab_values,
+        distribution_year_of_birth: distribution_year_of_birth
+    }
+  end
+
+  defp sort_distributions_lab_values(distribution) do
+    Enum.sort_by(
+      distribution,
+      fn dist ->
+        for bin <- dist["bins"], reduce: 0 do
+          acc -> acc + bin["nrecords"]
+        end
+      end,
+      :desc
+    )
   end
 
   @doc """
@@ -407,53 +428,29 @@ defmodule Risteys.LabTestStats do
 
     bins_map =
       stats_file_path
-      |> File.stream!()
-      |> CSV.decode!(headers: true)
-      |> Stream.reject(fn %{"OMOP_ID" => omop_concept_id} -> omop_concept_id == "NA" end)
-      # Discard rows that are related to an OMOP Concept ID we don't have in the DB.
-      # This assumes that the OMOP concept IDs have been imported already.
-      |> Enum.reduce({MapSet.new(), []}, fn %{"OMOP_ID" => omop_concept_id} = row, {seen, rows} ->
-        case {Map.has_key?(omop_ids, omop_concept_id), MapSet.member?(seen, omop_concept_id)} do
-          {true, _} ->
-            {seen, [row | rows]}
+      |> read_stats_rows()
+      |> group_bins_by(["OMOP_ID", "LAB_UNIT"])
+      # Minimal string parsing
+      |> Enum.map(fn {key, rows} ->
+        new_rows =
+          for row <- rows do
+            %{
+              "Bin" => bin_range,
+              "NPeople" => npeople,
+              "NRecords" => nrecords
+            } = row
 
-          {false, true} ->
-            {seen, rows}
+            {npeople_int, ""} = Integer.parse(npeople)
+            {nrecords_int, ""} = Integer.parse(nrecords)
 
-          {false, false} ->
-            Logger.warning(
-              "Discarding all rows for lab value distribution for omop_concept_id=#{omop_concept_id}: OMOP concept ID not found in database."
-            )
+            %{
+              "range" => bin_range,
+              "npeople" => npeople_int,
+              "nrecords" => nrecords_int
+            }
+          end
 
-            {MapSet.put(seen, omop_concept_id), rows}
-        end
-      end)
-      |> (fn {_seen, rows} -> rows end).()
-      # Collect bins for each unique {OMOP_ID, LAB_UNIT}
-      # Data structure of the accumulator:
-      #   %{
-      #     {"omop id 1", "meas unit 1"} => [
-      #       {bin: "bin 1", npeople: Int, nrecords: Int},
-      #       ...
-      #     ],
-      #     ...
-      #   }
-      |> Enum.reduce(%{}, fn row, acc ->
-        %{
-          "OMOP_ID" => omop_concept_id,
-          "LAB_UNIT" => measurement_unit,
-          "Bin" => bin,
-          "NRecords" => nrecords,
-          "NPeople" => npeople
-        } = row
-
-        key = {omop_concept_id, measurement_unit}
-        existing_bins = Map.get(acc, key, [])
-
-        bin = %{"bin" => bin, "npeople" => npeople, "nrecords" => nrecords}
-
-        new_bins = [bin | existing_bins]
-        Map.put(acc, key, new_bins)
+        {key, new_rows}
       end)
 
     breaks_map =
@@ -468,11 +465,7 @@ defmodule Risteys.LabTestStats do
           "lab_unit" => measurement_unit
         } = row
 
-        # TODO(Vincent 2024-05-30)  Not sure if there is a good reason to convert to string here.
-        # Either convert to string and explain why here, or keep as floats.
-        breaks = Enum.map(breaks, &to_string/1)
-
-        Map.put(acc, {omop_id, measurement_unit}, breaks)
+        Map.put(acc, [omop_id, measurement_unit], breaks)
       end)
 
     # Merging bins and breaks.
@@ -481,7 +474,7 @@ defmodule Risteys.LabTestStats do
     # If some breaks don't have associated bins, then they are silently
     # discarded.
     distributions_map =
-      Enum.reduce(bins_map, %{}, fn {{omop_concept_id, measurement_unit} = key, dist_bins}, acc ->
+      Enum.reduce(bins_map, %{}, fn {[omop_concept_id, measurement_unit] = key, dist_bins}, acc ->
         dist_breaks =
           case Map.get(breaks_map, key) do
             nil ->
@@ -501,7 +494,7 @@ defmodule Risteys.LabTestStats do
     # Ungroup the distributions by measurement unit. Only leave the OMOP ID as key.
     grouped_by_omop_id =
       Enum.reduce(distributions_map, %{}, fn {key, value}, acc ->
-        {omop_concept_id, measurement_unit} = key
+        [omop_concept_id, measurement_unit] = key
         %{bins: dist_bins, breaks: dist_breaks} = value
 
         distribution = %{
@@ -527,11 +520,12 @@ defmodule Risteys.LabTestStats do
         }
       end)
 
-    Repo.transaction(fn ->
-      Repo.delete_all(DistributionsLabValues)
+    {:ok, :ok} =
+      Repo.transaction(fn ->
+        Repo.delete_all(DistributionsLabValues)
 
-      Enum.each(attrs_list, &create_stats_distribution_lab_values/1)
-    end)
+        Enum.each(attrs_list, &create_stats_distribution_lab_values/1)
+      end)
   end
 
   defp create_stats_distribution_lab_values(attrs) do
@@ -545,93 +539,28 @@ defmodule Risteys.LabTestStats do
 
     bins_map =
       stats_file_path
-      |> File.stream!()
-      |> CSV.decode!(headers: true)
-      |> Stream.reject(fn %{"OMOP_ID" => omop_concept_id} -> omop_concept_id == "NA" end)
-      # Discard rows that are related to an OMOP Concept ID we don't have in the DB.
-      # This assumes that the OMOP concept IDs have been imported already.
-      |> Enum.reduce({MapSet.new(), []}, fn %{"OMOP_ID" => omop_concept_id} = row, {seen, rows} ->
-        case {Map.has_key?(omop_ids, omop_concept_id), MapSet.member?(seen, omop_concept_id)} do
-          {true, _} ->
-            {seen, [row | rows]}
+      |> read_stats_rows()
+      |> group_bins_by(["OMOP_ID"])
+      # Ungroup the single value group ["OMOP_ID"]
+      |> Enum.map(fn {[omop_concept_id], rows} -> {omop_concept_id, rows} end)
+      # Minimal string parsing
+      |> Enum.map(fn {key, rows} ->
+        new_rows =
+          for row <- rows do
+            %{
+              "Bin" => bin_range,
+              "NPeople" => npeople
+            } = row
 
-          {false, true} ->
-            {seen, rows}
+            {npeople_int, ""} = Integer.parse(npeople)
 
-          {false, false} ->
-            Logger.warning(
-              "Discarding all rows for lab value distribution for omop_concept_id=#{omop_concept_id}: OMOP concept ID not found in database."
-            )
+            %{
+              "range" => bin_range,
+              "npeople" => npeople_int
+            }
+          end
 
-            {MapSet.put(seen, omop_concept_id), rows}
-        end
-      end)
-      |> (fn {_seen, rows} -> rows end).()
-      |> Enum.reduce(%{}, fn row, acc ->
-        %{
-          "OMOP_ID" => omop_concept_id,
-          "Bin" => bin_range,
-          "NPeople" => npeople
-        } = row
-
-        [range_left_parsed, range_right_parsed] =
-          bin_range
-          |> String.split(", ")
-          |> (fn [left, right] ->
-                [String.slice(left, 1..-1//1), String.slice(right, 0..-2//1)]
-              end).()
-          |> Enum.map(fn year_str ->
-            case year_str do
-              "-inf" ->
-                "-inf"
-
-              "inf" ->
-                "inf"
-
-              _ ->
-                {year_int, _remainder} = Integer.parse(year_str)
-                year_int
-            end
-          end)
-
-        {npeople_int, _remainder} = Integer.parse(npeople)
-
-        bin = %{
-          "range" => bin_range,
-          "range_left_parsed" => range_left_parsed,
-          "range_right_parsed" => range_right_parsed,
-          "npeople" => npeople_int
-        }
-
-        existing_bins = Map.get(acc, omop_concept_id, [])
-        new_bins = [bin | existing_bins]
-        Map.put(acc, omop_concept_id, new_bins)
-      end)
-      |> Enum.into(%{}, fn {omop_concept_id, bins} ->
-        sorted_bins =
-          Enum.sort(
-            bins,
-            fn bin_a, bin_b ->
-              cond do
-                bin_a["range_left_parsed"] == "-inf" ->
-                  true
-
-                bin_a["range_right_parsed"] == "inf" ->
-                  false
-
-                bin_b["range_left_parsed"] == "-inf" ->
-                  false
-
-                bin_b["range_right_parsed"] == "inf" ->
-                  true
-
-                true ->
-                  bin_a["range_left_parsed"] < bin_b["range_left_parsed"]
-              end
-            end
-          )
-
-        {omop_concept_id, sorted_bins}
+        {key, new_rows}
       end)
 
     breaks_map =
@@ -645,12 +574,13 @@ defmodule Risteys.LabTestStats do
           "left_closed" => _left_closed?
         } = row
 
+        # NOTE(Vincent 2024-06-05)  For some reason the pipeline output has year
+        # breaks as strings. Convert them to int here.
         breaks_list_int =
           Enum.map(breaks_list, fn year ->
             {year_int, _remainder} = Integer.parse(year)
             year_int
           end)
-          |> Enum.sort(:asc)
 
         Map.put(acc, omop_concept_id, breaks_list_int)
       end)
@@ -673,9 +603,226 @@ defmodule Risteys.LabTestStats do
       end)
   end
 
+  # Takes a bin stats file path and returns the rows for which we have OMOP ID
+  # already in our database.
+  defp read_stats_rows(stats_file_path) do
+    omop_ids = OMOP.get_map_omop_ids()
+
+    stats_file_path
+    |> File.stream!()
+    |> CSV.decode!(headers: true)
+    |> Stream.reject(fn %{"OMOP_ID" => omop_concept_id} -> omop_concept_id == "NA" end)
+    # Discard rows that are related to an OMOP Concept ID we don't have in the DB.
+    # This assumes that the OMOP concept IDs have been imported already.
+    |> Enum.reduce({MapSet.new(), []}, fn %{"OMOP_ID" => omop_concept_id} = row, {seen, rows} ->
+      case {Map.has_key?(omop_ids, omop_concept_id), MapSet.member?(seen, omop_concept_id)} do
+        {true, _} ->
+          {seen, [row | rows]}
+
+        {false, true} ->
+          {seen, rows}
+
+        {false, false} ->
+          Logger.warning(
+            "Discarding all rows for lab value distribution for omop_concept_id=#{omop_concept_id}: OMOP concept ID not found in database."
+          )
+
+          {MapSet.put(seen, omop_concept_id), rows}
+      end
+    end)
+    |> (fn {_seen, rows} -> rows end).()
+  end
+
+  defp group_bins_by(bin_rows, group_by_columns) do
+    bin_rows
+    |> Enum.reduce(%{}, fn row, acc ->
+      key = Enum.map(group_by_columns, &Map.fetch!(row, &1))
+
+      Map.update(acc, key, [], fn existing_rows ->
+        [row | existing_rows]
+      end)
+    end)
+  end
+
   defp create_stats_distribution_year_of_birth(attrs) do
     %DistributionYearOfBirth{}
     |> DistributionYearOfBirth.changeset(attrs)
     |> Repo.insert!()
+  end
+
+  @doc """
+  Helper changeset validator to validate N people is green (N=0, or N>= 5).
+  Returns a list of changeset errors.
+  """
+  def validate_npeople_green(field, distribution, access_to_bin, key_npeople) do
+    distribution
+    |> get_in(access_to_bin)
+    |> Enum.map(fn bin ->
+      case Map.fetch(bin, key_npeople) do
+        :error ->
+          {field, "Bin is missing the key #{key_npeople}, bin=#{inspect(bin)}"}
+
+        {:ok, npeople} when is_integer(npeople) and npeople > 0 and npeople < 5 ->
+          {field,
+           "Bin has wrong value for #{key_npeople}, expected an integer >= 5 or 0, instead got: #{inspect(npeople)} in bin=#{inspect(bin)}"}
+
+        _ ->
+          nil
+      end
+    end)
+    |> Enum.reject(&is_nil/1)
+  end
+
+  defp rebuild_distribution(distribution, rename_fields, default) do
+    %{
+      "bins" => bins,
+      "breaks" => breaks
+    } = distribution
+
+    # Derive break interval
+    # TODO(Vincent 2024-05-27)  Use pre-computed break interval value from the
+    # data when that's implemented and available in DB.
+    breaks = Enum.sort(breaks, :asc)
+    [break1, break2] = Enum.take(breaks, 2)
+    break_interval = break2 - break1
+
+    new_bins =
+      bins
+      # Rename bin fields/keys
+      |> Enum.map(fn bin ->
+        for {old_name, new_name} <- rename_fields, reduce: bin do
+          acc ->
+            {value, acc} = Map.pop!(acc, old_name)
+            Map.put(acc, new_name, value)
+        end
+      end)
+      |> reconstruct_bins(breaks, break_interval, default)
+
+    %{distribution | "bins" => new_bins}
+  end
+
+  defp reconstruct_bins(bins, breaks, break_interval, default) do
+    bins =
+      Enum.map(bins, fn bin ->
+        [range_left_str, range_right_str] = extract_range_values(bin.range)
+
+        {range_left, range_left_finite} =
+          case range_left_str do
+            "-inf" ->
+              left = :minus_infinity
+              right = RisteysWeb.Utils.parse_number(range_right_str)
+              left_finite = right - break_interval
+              {left, left_finite}
+
+            _ ->
+              left = RisteysWeb.Utils.parse_number(range_left_str)
+              {left, left}
+          end
+
+        {range_right, range_right_finite} =
+          case range_right_str do
+            "inf" ->
+              right = :plus_infinity
+              left = RisteysWeb.Utils.parse_number(range_left_str)
+              right_finite = left + break_interval
+              {right, right_finite}
+
+            _ ->
+              right = RisteysWeb.Utils.parse_number(range_right_str)
+              {right, right}
+          end
+
+        Map.merge(
+          bin,
+          %{
+            range_left: range_left,
+            range_left_finite: range_left_finite,
+            range_right: range_right,
+            range_right_finite: range_right_finite
+          }
+        )
+      end)
+      |> Enum.sort_by(fn bin -> bin.range_left end, :asc)
+
+    gaps =
+      for [bin_left, bin_right] <- Enum.chunk_every(bins, 2, 1, :discard), reduce: [] do
+        acc ->
+          if bin_left.range_right_finite != bin_right.range_left_finite do
+            [%{left: bin_left.range_right_finite, right: bin_right.range_left_finite} | acc]
+          else
+            acc
+          end
+      end
+
+    first_break = Enum.fetch!(breaks, 0)
+    last_break = Enum.fetch!(breaks, -1)
+    first_bin = Enum.fetch!(bins, 0)
+    last_bin = Enum.fetch!(bins, -1)
+
+    gaps =
+      if first_bin.range_left == :minus_infinity do
+        gaps
+      else
+        [%{left: first_break, right: first_bin.range_left_finite} | gaps]
+      end
+
+    gaps =
+      if last_bin.range_right == :plus_infinity do
+        gaps
+      else
+        last_gap = %{left: last_bin.range_right_finite, right: :plus_infinity}
+        Enum.concat([gaps, [last_gap]])
+      end
+
+    new_bins =
+      gaps
+      |> Enum.map(&fill_gap(&1, break_interval, last_break, default))
+      |> Enum.concat()
+
+    [bins, new_bins]
+    |> Enum.concat()
+    |> Enum.sort_by(fn %{range_left_finite: range_left_finite} -> range_left_finite end, :asc)
+  end
+
+  defp fill_gap(gap, break_interval, last_break, default) do
+    gap_right_finite =
+      if gap.right == :plus_infinity do
+        last_break + break_interval
+      else
+        gap.right
+      end
+
+    n_missing_bins = round((gap_right_finite - gap.left) / break_interval)
+
+    1..n_missing_bins//1
+    |> Enum.map(fn ii ->
+      right = gap.left + ii * break_interval
+      left = right - break_interval
+
+      range_right =
+        if ii == n_missing_bins and gap.right == :plus_infinity do
+          :plus_infinity
+        else
+          right
+        end
+
+      Map.merge(
+        default,
+        %{
+          range_left: left,
+          range_left_finite: left,
+          range_right: range_right,
+          range_right_finite: right
+        }
+      )
+    end)
+  end
+
+  defp extract_range_values(range) do
+    [x1, x2] = String.split(range, ", ")
+    x1 = String.slice(x1, 1..-1//1)
+    x2 = String.slice(x2, 0..-2//1)
+
+    [x1, x2]
   end
 end

@@ -114,13 +114,12 @@ defmodule RisteysWeb.Utils do
   end
 
   @doc """
-  Takes a string number, parse it as a float or an integer, and return the parsed number.
+  Takes a string number, parse it as an integer or a float, and return the parsed number.
   """
   def parse_number(number_str) do
-    case {Float.parse(number_str), Integer.parse(number_str)} do
-      {{parsed, _remainder}, _int} -> parsed
-      {:error, {parsed, _remainder}} -> parsed
-      _ -> :error
+    case {Integer.parse(number_str), Float.parse(number_str)} do
+      {{parsed_integer, ""}, _} -> parsed_integer
+      {{_parsed, _remainder}, {parsed_float, ""}} -> parsed_float
     end
   end
 
