@@ -638,7 +638,7 @@ defmodule Risteys.LabTestStats do
     |> Enum.reduce(%{}, fn row, acc ->
       key = Enum.map(group_by_columns, &Map.fetch!(row, &1))
 
-      Map.update(acc, key, [], fn existing_rows ->
+      Map.update(acc, key, [row], fn existing_rows ->
         [row | existing_rows]
       end)
     end)
