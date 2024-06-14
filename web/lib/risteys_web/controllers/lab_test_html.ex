@@ -175,12 +175,52 @@ defmodule RisteysWeb.LabTestHTML do
         :npeople
       )
 
+    distribution_age_first_measurement =
+      build_obsplot_payload(
+        :continuous,
+        lab_test.distribution_age_first_measurement["bins"],
+        :npeople,
+        "Age at first measurement",
+        "Number of people"
+      )
+
+    distribution_age_last_measurement =
+      build_obsplot_payload(
+        :continuous,
+        lab_test.distribution_age_last_measurement["bins"],
+        :npeople,
+        "Age at last measurement",
+        "Number of people"
+      )
+
+    distribution_age_start_of_registry =
+      build_obsplot_payload(
+        :continuous,
+        lab_test.distribution_age_start_of_registry["bins"],
+        :npeople,
+        "Age at start of registry",
+        "Number of people"
+      )
+
+    distribution_ndays_first_to_last_measurement =
+      build_obsplot_payload(
+        :continuous,
+        lab_test.distribution_ndays_first_to_last_measurement["bins"],
+        :npeople,
+        "Duration from first to last measurement (days)",
+        "Number of people"
+      )
+
     Map.merge(lab_test, %{
       npeople_both_sex: npeople_both_sex,
       median_n_measurements: median_n_measurements,
       median_nyears_first_to_last_measurement: median_nyears_first_to_last_measurement,
       distributions_lab_values: distributions_lab_values,
-      distribution_year_of_birth: distribution_year_of_birth
+      distribution_year_of_birth: distribution_year_of_birth,
+      distribution_age_first_measurement: distribution_age_first_measurement,
+      distribution_age_last_measurement: distribution_age_last_measurement,
+      distribution_age_start_of_registry: distribution_age_start_of_registry,
+      distribution_ndays_first_to_last_measurement: distribution_ndays_first_to_last_measurement
     })
   end
 
