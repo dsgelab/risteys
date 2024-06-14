@@ -11,6 +11,8 @@ defmodule Risteys.LabTestStats do
   alias Risteys.LabTestStats.MedianNDaysFirstToLastMeasurement
   alias Risteys.LabTestStats.DistributionsLabValues
   alias Risteys.LabTestStats.DistributionYearOfBirth
+  alias Risteys.LabTestStats.DistributionAgeFirstMeasurement
+  alias Risteys.LabTestStats.DistributionAgeLastMeasurement
 
   require Logger
 
@@ -603,6 +605,160 @@ defmodule Risteys.LabTestStats do
       end)
   end
 
+  defp create_stats_distribution_year_of_birth(attrs) do
+    %DistributionYearOfBirth{}
+    |> DistributionYearOfBirth.changeset(attrs)
+    |> Repo.insert!()
+  end
+
+  def import_stats_distribution_age_first_measurement(stats_file_path, breaks_file_path) do
+    omop_ids = OMOP.get_map_omop_ids()
+
+    bins_map =
+      stats_file_path
+      |> read_stats_rows()
+      |> group_bins_by(["OMOP_ID"])
+      # Ungroup the single-value group ["OMOP_ID]
+      |> Enum.map(fn {[omop_concept_id], rows} -> {omop_concept_id, rows} end)
+      |> Enum.map(fn {key, rows} ->
+        new_rows =
+          for row <- rows do
+            %{
+              "BinAgeAtFirstMeasurement_years" => bin_range,
+              "NPeople" => npeople
+            } = row
+
+            {npeople_int, ""} = Integer.parse(npeople)
+
+            %{
+              "range" => bin_range,
+              "npeople" => npeople_int
+            }
+          end
+
+        {key, new_rows}
+      end)
+
+    breaks_map =
+      breaks_file_path
+      |> File.stream!()
+      |> Stream.map(&Jason.decode!/1)
+      |> Enum.reduce(%{}, fn row, acc ->
+        %{
+          "omop_id" => omop_concept_id,
+          "breaks" => breaks_list,
+          "left_closed" => true
+        } = row
+
+        # NOTE(Vincent 2024-06-14)  For some reason the pipeline output has
+        # age breaks as strings. Convert them to int here.
+        breaks_list_int =
+          Enum.map(breaks_list, fn year ->
+            {year_int, _remainder} = Integer.parse(year)
+            year_int
+          end)
+
+        Map.put(acc, omop_concept_id, breaks_list_int)
+      end)
+
+    attrs_list =
+      for {omop_concept_id, bins} <- bins_map do
+        breaks = Map.get(breaks_map, omop_concept_id, [])
+
+        %{
+          omop_concept_dbid: Map.fetch!(omop_ids, omop_concept_id),
+          distribution: %{"bins" => bins, "breaks" => breaks}
+        }
+      end
+
+    {:ok, :ok} =
+      Repo.transaction(fn ->
+        Repo.delete_all(DistributionAgeFirstMeasurement)
+
+        Enum.each(attrs_list, &create_stats_distribution_age_first_measurement/1)
+      end)
+  end
+
+  defp create_stats_distribution_age_first_measurement(attrs) do
+    %DistributionAgeFirstMeasurement{}
+    |> DistributionAgeFirstMeasurement.changeset(attrs)
+    |> Repo.insert!()
+  end
+
+  def import_stats_distribution_age_last_measurement(stats_file_path, breaks_file_path) do
+      omop_ids = OMOP.get_map_omop_ids()
+
+      bins_map =
+        stats_file_path
+        |> read_stats_rows()
+        |> group_bins_by(["OMOP_ID"])
+        # Ungroup the single-value group ["OMOP_ID]
+        |> Enum.map(fn {[omop_concept_id], rows} -> {omop_concept_id, rows} end)
+        |> Enum.map(fn {key, rows} ->
+          new_rows =
+            for row <- rows do
+              %{
+                "BinAgeAtLastMeasurement_years" => bin_range,
+                "NPeople" => npeople
+              } = row
+
+              {npeople_int, ""} = Integer.parse(npeople)
+
+              %{
+                "range" => bin_range,
+                "npeople" => npeople_int
+              }
+            end
+
+          {key, new_rows}
+        end)
+
+      breaks_map =
+        breaks_file_path
+        |> File.stream!()
+        |> Stream.map(&Jason.decode!/1)
+        |> Enum.reduce(%{}, fn row, acc ->
+          %{
+            "omop_id" => omop_concept_id,
+            "breaks" => breaks_list,
+            "left_closed" => true
+          } = row
+
+          # NOTE(Vincent 2024-06-14)  For some reason the pipeline output has
+          # age breaks as strings. Convert them to int here.
+          breaks_list_int =
+            Enum.map(breaks_list, fn year ->
+              {year_int, _remainder} = Integer.parse(year)
+              year_int
+            end)
+
+          Map.put(acc, omop_concept_id, breaks_list_int)
+        end)
+
+      attrs_list =
+        for {omop_concept_id, bins} <- bins_map do
+          breaks = Map.get(breaks_map, omop_concept_id, [])
+
+          %{
+            omop_concept_dbid: Map.fetch!(omop_ids, omop_concept_id),
+            distribution: %{"bins" => bins, "breaks" => breaks}
+          }
+        end
+
+      {:ok, :ok} =
+        Repo.transaction(fn ->
+          Repo.delete_all(DistributionAgeLastMeasurement)
+
+          Enum.each(attrs_list, &create_stats_distribution_age_last_measurement/1)
+        end)
+    end
+
+    defp create_stats_distribution_age_last_measurement(attrs) do
+      %DistributionAgeLastMeasurement{}
+      |> DistributionAgeLastMeasurement.changeset(attrs)
+      |> Repo.insert!()
+    end
+
   # Takes a bin stats file path and returns the rows for which we have OMOP ID
   # already in our database.
   defp read_stats_rows(stats_file_path) do
@@ -642,12 +798,6 @@ defmodule Risteys.LabTestStats do
         [row | existing_rows]
       end)
     end)
-  end
-
-  defp create_stats_distribution_year_of_birth(attrs) do
-    %DistributionYearOfBirth{}
-    |> DistributionYearOfBirth.changeset(attrs)
-    |> Repo.insert!()
   end
 
   @doc """
