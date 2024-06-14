@@ -13,6 +13,8 @@ defmodule Risteys.LabTestStats do
   alias Risteys.LabTestStats.DistributionYearOfBirth
   alias Risteys.LabTestStats.DistributionAgeFirstMeasurement
   alias Risteys.LabTestStats.DistributionAgeLastMeasurement
+  alias Risteys.LabTestStats.DistributionAgeStartOfRegistry
+  alias Risteys.LabTestStats.DistributionNDaysFirstToLastMeasurement
 
   require Logger
 
@@ -345,18 +347,39 @@ defmodule Risteys.LabTestStats do
           # N people
           full_join: npeople in NPeople,
           on: lab_test.id == npeople.omop_concept_dbid,
+
           # Median N measurements / person
           full_join: median_n_measurements in MedianNMeasurements,
           on: lab_test.id == median_n_measurements.omop_concept_dbid,
+
           # Median duration from first to last measurement
           full_join: median_duration in MedianNDaysFirstToLastMeasurement,
           on: lab_test.id == median_duration.omop_concept_dbid,
+
           # Distributions of lab values
           full_join: distribution_lab_values in DistributionsLabValues,
           on: lab_test.id == distribution_lab_values.omop_concept_dbid,
+
           # Distribution of year of birth
           full_join: distribution_year_of_birth in DistributionYearOfBirth,
           on: lab_test.id == distribution_year_of_birth.omop_concept_dbid,
+
+          # Distribution of age at first measurement
+          full_join: distribution_age_first_measurement in DistributionAgeFirstMeasurement,
+          on: lab_test.id == distribution_age_first_measurement.omop_concept_dbid,
+
+          # Distribution of age at last measurement
+          full_join: distribution_age_last_measurement in DistributionAgeLastMeasurement,
+          on: lab_test.id == distribution_age_last_measurement.omop_concept_dbid,
+
+          # Distribution of age at start of registry
+          full_join: distribution_age_start_of_registry in DistributionAgeStartOfRegistry,
+          on: lab_test.id == distribution_age_start_of_registry.omop_concept_dbid,
+
+          # Distribution of duration from first to last measurement
+          full_join:
+            distribution_ndays_first_to_last_measurement in DistributionNDaysFirstToLastMeasurement,
+          on: lab_test.id == distribution_ndays_first_to_last_measurement.omop_concept_dbid,
           where: lab_test.concept_id == ^omop_id,
           select: %{
             omop_concept_id: ^omop_id,
@@ -368,7 +391,12 @@ defmodule Risteys.LabTestStats do
             median_ndays_first_to_last_measurement:
               median_duration.median_ndays_first_to_last_measurement,
             distributions_lab_values: distribution_lab_values.distributions,
-            distribution_year_of_birth: distribution_year_of_birth.distribution
+            distribution_year_of_birth: distribution_year_of_birth.distribution,
+            distribution_age_first_measurement: distribution_age_first_measurement.distribution,
+            distribution_age_last_measurement: distribution_age_last_measurement.distribution,
+            distribution_age_start_of_registry: distribution_age_start_of_registry.distribution,
+            distribution_ndays_first_to_last_measurement:
+              distribution_ndays_first_to_last_measurement.distribution
           }
       )
 
@@ -390,10 +418,30 @@ defmodule Risteys.LabTestStats do
       stats.distribution_year_of_birth
       |> rebuild_distribution(%{"range" => :range, "npeople" => :npeople}, %{npeople: 0})
 
+    distribution_age_first_measurement =
+      stats.distribution_age_first_measurement
+      |> rebuild_distribution(%{"range" => :range, "npeople" => :npeople}, %{npeople: 0})
+
+    distribution_age_last_measurement =
+      stats.distribution_age_last_measurement
+      |> rebuild_distribution(%{"range" => :range, "npeople" => :npeople}, %{npeople: 0})
+
+    distribution_age_start_of_registry =
+      stats.distribution_age_start_of_registry
+      |> rebuild_distribution(%{"range" => :range, "npeople" => :npeople}, %{npeople: 0})
+
+    distribution_ndays_first_to_last_measurement =
+      stats.distribution_ndays_first_to_last_measurement
+      |> rebuild_distribution(%{"range" => :range, "npeople" => :npeople}, %{npeople: 0})
+
     %{
       stats
       | distributions_lab_values: distributions_lab_values,
-        distribution_year_of_birth: distribution_year_of_birth
+        distribution_year_of_birth: distribution_year_of_birth,
+        distribution_age_first_measurement: distribution_age_first_measurement,
+        distribution_age_last_measurement: distribution_age_last_measurement,
+        distribution_age_start_of_registry: distribution_age_start_of_registry,
+        distribution_ndays_first_to_last_measurement: distribution_ndays_first_to_last_measurement
     }
   end
 
@@ -537,65 +585,30 @@ defmodule Risteys.LabTestStats do
   end
 
   def import_stats_distribution_year_of_birth(stats_file_path, breaks_file_path) do
-    omop_ids = OMOP.get_map_omop_ids()
-
-    bins_map =
-      stats_file_path
-      |> read_stats_rows()
-      |> group_bins_by(["OMOP_ID"])
-      # Ungroup the single value group ["OMOP_ID"]
-      |> Enum.map(fn {[omop_concept_id], rows} -> {omop_concept_id, rows} end)
-      # Minimal string parsing
-      |> Enum.map(fn {key, rows} ->
-        new_rows =
-          for row <- rows do
-            %{
-              "Bin" => bin_range,
-              "NPeople" => npeople
-            } = row
-
-            {npeople_int, ""} = Integer.parse(npeople)
-
-            %{
-              "range" => bin_range,
-              "npeople" => npeople_int
-            }
-          end
-
-        {key, new_rows}
-      end)
-
-    breaks_map =
-      breaks_file_path
-      |> File.stream!()
-      |> Stream.map(&Jason.decode!/1)
-      |> Enum.reduce(%{}, fn row, acc ->
-        %{
-          "omop_id" => omop_concept_id,
-          "breaks" => breaks_list,
-          "left_closed" => _left_closed?
-        } = row
-
-        # NOTE(Vincent 2024-06-05)  For some reason the pipeline output has year
-        # breaks as strings. Convert them to int here.
-        breaks_list_int =
-          Enum.map(breaks_list, fn year ->
-            {year_int, _remainder} = Integer.parse(year)
-            year_int
-          end)
-
-        Map.put(acc, omop_concept_id, breaks_list_int)
-      end)
+    stats_columns = %{
+      "Bin" => %{
+        to: "range",
+        parser: &Function.identity/1
+      },
+      "NPeople" => %{
+        to: "npeople",
+        parser: fn npeople ->
+          {npeople_int, ""} = Integer.parse(npeople)
+          npeople_int
+        end
+      }
+    }
 
     attrs_list =
-      for {omop_concept_id, bins} <- bins_map do
-        breaks = Map.get(breaks_map, omop_concept_id, [])
-
-        %{
-          omop_concept_dbid: Map.fetch!(omop_ids, omop_concept_id),
-          distribution: %{"bins" => bins, "breaks" => breaks}
-        }
-      end
+      load_distribution_as_attrs_list(
+        stats_file_path,
+        stats_columns,
+        breaks_file_path,
+        fn year ->
+          {year_int, ""} = Integer.parse(year)
+          year_int
+        end
+      )
 
     {:ok, :ok} =
       Repo.transaction(fn ->
@@ -612,64 +625,30 @@ defmodule Risteys.LabTestStats do
   end
 
   def import_stats_distribution_age_first_measurement(stats_file_path, breaks_file_path) do
-    omop_ids = OMOP.get_map_omop_ids()
-
-    bins_map =
-      stats_file_path
-      |> read_stats_rows()
-      |> group_bins_by(["OMOP_ID"])
-      # Ungroup the single-value group ["OMOP_ID]
-      |> Enum.map(fn {[omop_concept_id], rows} -> {omop_concept_id, rows} end)
-      |> Enum.map(fn {key, rows} ->
-        new_rows =
-          for row <- rows do
-            %{
-              "BinAgeAtFirstMeasurement_years" => bin_range,
-              "NPeople" => npeople
-            } = row
-
-            {npeople_int, ""} = Integer.parse(npeople)
-
-            %{
-              "range" => bin_range,
-              "npeople" => npeople_int
-            }
-          end
-
-        {key, new_rows}
-      end)
-
-    breaks_map =
-      breaks_file_path
-      |> File.stream!()
-      |> Stream.map(&Jason.decode!/1)
-      |> Enum.reduce(%{}, fn row, acc ->
-        %{
-          "omop_id" => omop_concept_id,
-          "breaks" => breaks_list,
-          "left_closed" => true
-        } = row
-
-        # NOTE(Vincent 2024-06-14)  For some reason the pipeline output has
-        # age breaks as strings. Convert them to int here.
-        breaks_list_int =
-          Enum.map(breaks_list, fn year ->
-            {year_int, _remainder} = Integer.parse(year)
-            year_int
-          end)
-
-        Map.put(acc, omop_concept_id, breaks_list_int)
-      end)
+    stats_columns = %{
+      "BinAgeAtFirstMeasurement_years" => %{
+        to: "range",
+        parser: &Function.identity/1
+      },
+      "NPeople" => %{
+        to: "npeople",
+        parser: fn npeople ->
+          {npeople_int, ""} = Integer.parse(npeople)
+          npeople_int
+        end
+      }
+    }
 
     attrs_list =
-      for {omop_concept_id, bins} <- bins_map do
-        breaks = Map.get(breaks_map, omop_concept_id, [])
-
-        %{
-          omop_concept_dbid: Map.fetch!(omop_ids, omop_concept_id),
-          distribution: %{"bins" => bins, "breaks" => breaks}
-        }
-      end
+      load_distribution_as_attrs_list(
+        stats_file_path,
+        stats_columns,
+        breaks_file_path,
+        fn age ->
+          {age_int, ""} = Integer.parse(age)
+          age_int
+        end
+      )
 
     {:ok, :ok} =
       Repo.transaction(fn ->
@@ -686,78 +665,181 @@ defmodule Risteys.LabTestStats do
   end
 
   def import_stats_distribution_age_last_measurement(stats_file_path, breaks_file_path) do
-      omop_ids = OMOP.get_map_omop_ids()
-
-      bins_map =
-        stats_file_path
-        |> read_stats_rows()
-        |> group_bins_by(["OMOP_ID"])
-        # Ungroup the single-value group ["OMOP_ID]
-        |> Enum.map(fn {[omop_concept_id], rows} -> {omop_concept_id, rows} end)
-        |> Enum.map(fn {key, rows} ->
-          new_rows =
-            for row <- rows do
-              %{
-                "BinAgeAtLastMeasurement_years" => bin_range,
-                "NPeople" => npeople
-              } = row
-
-              {npeople_int, ""} = Integer.parse(npeople)
-
-              %{
-                "range" => bin_range,
-                "npeople" => npeople_int
-              }
-            end
-
-          {key, new_rows}
-        end)
-
-      breaks_map =
-        breaks_file_path
-        |> File.stream!()
-        |> Stream.map(&Jason.decode!/1)
-        |> Enum.reduce(%{}, fn row, acc ->
-          %{
-            "omop_id" => omop_concept_id,
-            "breaks" => breaks_list,
-            "left_closed" => true
-          } = row
-
-          # NOTE(Vincent 2024-06-14)  For some reason the pipeline output has
-          # age breaks as strings. Convert them to int here.
-          breaks_list_int =
-            Enum.map(breaks_list, fn year ->
-              {year_int, _remainder} = Integer.parse(year)
-              year_int
-            end)
-
-          Map.put(acc, omop_concept_id, breaks_list_int)
-        end)
-
-      attrs_list =
-        for {omop_concept_id, bins} <- bins_map do
-          breaks = Map.get(breaks_map, omop_concept_id, [])
-
-          %{
-            omop_concept_dbid: Map.fetch!(omop_ids, omop_concept_id),
-            distribution: %{"bins" => bins, "breaks" => breaks}
-          }
+    stats_columns = %{
+      "BinAgeAtLastMeasurement_years" => %{
+        to: "range",
+        parser: &Function.identity/1
+      },
+      "NPeople" => %{
+        to: "npeople",
+        parser: fn npeople ->
+          {npeople_int, ""} = Integer.parse(npeople)
+          npeople_int
         end
+      }
+    }
 
-      {:ok, :ok} =
-        Repo.transaction(fn ->
-          Repo.delete_all(DistributionAgeLastMeasurement)
+    attrs_list =
+      load_distribution_as_attrs_list(
+        stats_file_path,
+        stats_columns,
+        breaks_file_path,
+        fn age ->
+          {age_int, ""} = Integer.parse(age)
+          age_int
+        end
+      )
 
-          Enum.each(attrs_list, &create_stats_distribution_age_last_measurement/1)
-        end)
+    {:ok, :ok} =
+      Repo.transaction(fn ->
+        Repo.delete_all(DistributionAgeLastMeasurement)
+
+        Enum.each(attrs_list, &create_stats_distribution_age_last_measurement/1)
+      end)
+  end
+
+  defp create_stats_distribution_age_last_measurement(attrs) do
+    %DistributionAgeLastMeasurement{}
+    |> DistributionAgeLastMeasurement.changeset(attrs)
+    |> Repo.insert!()
+  end
+
+  def import_stats_distribution_age_start_of_registry(stats_file_path, breaks_file_path) do
+    stats_columns = %{
+      "BinAgeAtStudyStart_years" => %{
+        to: "range",
+        parser: &Function.identity/1
+      },
+      "NPeople" => %{
+        to: "npeople",
+        parser: fn npeople ->
+          {npeople_int, ""} = Integer.parse(npeople)
+          npeople_int
+        end
+      }
+    }
+
+    attrs_list =
+      load_distribution_as_attrs_list(
+        stats_file_path,
+        stats_columns,
+        breaks_file_path,
+        fn age ->
+          {age_int, ""} = Integer.parse(age)
+          age_int
+        end
+      )
+
+    {:ok, :ok} =
+      Repo.transaction(fn ->
+        Repo.delete_all(DistributionAgeStartOfRegistry)
+
+        Enum.each(attrs_list, &create_stats_distribution_age_start_of_registry/1)
+      end)
+  end
+
+  defp create_stats_distribution_age_start_of_registry(attrs) do
+    %DistributionAgeStartOfRegistry{}
+    |> DistributionAgeStartOfRegistry.changeset(attrs)
+    |> Repo.insert!()
+  end
+
+  def import_stats_distribution_ndays_first_to_last_measurement(
+        stats_file_path,
+        breaks_file_path
+      ) do
+    stats_columns = %{
+      "Bin" => %{
+        to: "range",
+        parser: &Function.identity/1
+      },
+      "NPeople" => %{
+        to: "npeople",
+        parser: fn npeople ->
+          {npeople_int, ""} = Integer.parse(npeople)
+          npeople_int
+        end
+      }
+    }
+
+    attrs_list =
+      load_distribution_as_attrs_list(
+        stats_file_path,
+        stats_columns,
+        breaks_file_path,
+        &Function.identity/1
+      )
+
+    {:ok, :ok} =
+      Repo.transaction(fn ->
+        Repo.delete_all(DistributionNDaysFirstToLastMeasurement)
+
+        Enum.each(attrs_list, &create_stats_distribution_ndays_first_to_last_measurement/1)
+      end)
+  end
+
+  defp create_stats_distribution_ndays_first_to_last_measurement(attrs) do
+    %DistributionNDaysFirstToLastMeasurement{}
+    |> DistributionNDaysFirstToLastMeasurement.changeset(attrs)
+    |> Repo.insert!()
+  end
+
+  def load_distribution_as_attrs_list(
+        stats_file_path,
+        columns_spec,
+        breaks_file_path,
+        break_parser
+      ) do
+    omop_ids = OMOP.get_map_omop_ids()
+
+    bins_map =
+      stats_file_path
+      |> read_stats_rows()
+      |> group_bins_by(["OMOP_ID"])
+      # Ungroup the single-value group ["OMOP_ID]
+      |> Enum.map(fn {[omop_concept_id], rows} -> {omop_concept_id, rows} end)
+      |> Enum.map(fn {key, rows} ->
+        new_rows =
+          for row <- rows do
+            for column <- columns_spec, into: %{} do
+              {column_source, %{to: column_internal, parser: column_parser}} = column
+
+              %{^column_source => value} = row
+
+              parsed_value = column_parser.(value)
+
+              {column_internal, parsed_value}
+            end
+          end
+
+        {key, new_rows}
+      end)
+
+    breaks_map =
+      breaks_file_path
+      |> File.stream!()
+      |> Stream.map(&Jason.decode!/1)
+      |> Enum.reduce(%{}, fn row, acc ->
+        %{
+          "omop_id" => omop_concept_id,
+          "breaks" => breaks_list,
+          "left_closed" => true
+        } = row
+
+        breaks_list_parsed = Enum.map(breaks_list, break_parser)
+
+        Map.put(acc, omop_concept_id, breaks_list_parsed)
+      end)
+
+    for {omop_concept_id, bins} <- bins_map do
+      breaks = Map.get(breaks_map, omop_concept_id, [])
+
+      %{
+        omop_concept_dbid: Map.fetch!(omop_ids, omop_concept_id),
+        distribution: %{"bins" => bins, "breaks" => breaks}
+      }
     end
-
-    defp create_stats_distribution_age_last_measurement(attrs) do
-      %DistributionAgeLastMeasurement{}
-      |> DistributionAgeLastMeasurement.changeset(attrs)
-      |> Repo.insert!()
-    end
+  end
 
   # Takes a bin stats file path and returns the rows for which we have OMOP ID
   # already in our database.
