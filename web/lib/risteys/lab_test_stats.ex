@@ -400,6 +400,13 @@ defmodule Risteys.LabTestStats do
           }
       )
 
+    stats = Map.put(
+      stats,
+      :sex_female_percent,
+      100 * stats.npeople_female / stats.npeople_both_sex
+      |> RisteysWeb.Utils.pretty_number()
+    )
+
     distributions_lab_values =
       stats.distributions_lab_values
       |> sort_distributions_lab_values()

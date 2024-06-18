@@ -208,4 +208,26 @@ defmodule Risteys.OMOP do
     |> Concept.changeset(attrs)
     |> Repo.insert!()
   end
+
+  def get_parent_component(lab_test_concept_id) do
+    Repo.one(
+      from lab_test in Concept,
+        join: rel in LOINCRelationship,
+        on: rel.lab_test_id == lab_test.id,
+        join: loinc_component in Concept,
+        on: rel.loinc_component_id == loinc_component.id,
+        where: lab_test.concept_id == ^lab_test_concept_id,
+        select: loinc_component
+    )
+  end
+
+  def list_children_lab_tests(loinc_component) do
+    Repo.all(
+      from lab_test in Concept,
+        join: rel in LOINCRelationship,
+        on: lab_test.id == rel.lab_test_id,
+        where: rel.loinc_component_id == ^loinc_component.id,
+        select: lab_test
+    )
+  end
 end
