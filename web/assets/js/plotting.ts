@@ -50,6 +50,9 @@ function plotAllObs() {
         case "years":
           ee.append(plotYearOfBirh(data));
           break;
+        case "year-months":
+          ee.append(plotYearMonths(data));
+          break;
         case "continuous":
           ee.append(plotContinuous(data));
           break;
@@ -245,6 +248,70 @@ function plotYearOfBirh(data: ObsData) {
             y: false,
             x_formatted: true,
             y_formatted: true,
+          },
+        }),
+      ),
+    ],
+  });
+}
+
+// TODO(Vincent 2024-06-20)  Provide proper types in this function.
+// Not done for now as I might refactor all the plotting functions soon(TM).
+function plotYearMonths(data) {
+  // Convert Year-Month value from string to JS Date
+  const bins = data.bins.map((bin) => {
+    return { ...bin, yearMonthDate: new Date(bin.year_month) };
+  });
+
+  return Plot.plot({
+    marginLeft: 70,
+    style: defaultPlotStyle,
+    x: {
+      label: "Time",
+      nice: true,
+    },
+    y: {
+      label: "Number of records",
+      tickFormat: "s",
+      nice: true,
+      zero: true,
+    },
+
+    marks: [
+      Plot.gridY({ stroke: "#aaa" }),
+      Plot.ruleY([0]),
+      Plot.rectY(bins, {
+        x: "yearMonthDate",
+        y: "nrecords",
+        interval: "month",
+        fill: "var(--color-risteys-darkblue, black)",
+        insetRight: 0, // Remove the default 1px inset, as it leads to a strong Moiré pattern.
+      }),
+      Plot.tip(
+        bins,
+        Plot.pointerX({
+          x: "yearMonthDate",
+          y: "nrecords",
+          channels: {
+            timePeriod: {
+              label: "Time period",
+              value: (bin) => {
+                return bin.yearMonthDate.toLocaleString(undefined, {
+                  month: "short",
+                  year: "numeric",
+                });
+              },
+            },
+            yFormatted: {
+              label: "Number of records",
+              value: (bin) => formatLocaleEU.format(",")(bin.nrecords),
+            },
+          },
+          format: {
+            x: false,
+            y: false,
+            timePeriod: true,
+            yFormatted: true,
           },
         }),
       ),
