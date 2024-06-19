@@ -15,6 +15,7 @@ defmodule Risteys.LabTestStats do
   alias Risteys.LabTestStats.DistributionAgeLastMeasurement
   alias Risteys.LabTestStats.DistributionAgeStartOfRegistry
   alias Risteys.LabTestStats.DistributionNDaysFirstToLastMeasurement
+  alias Risteys.LabTestStats.DistributionNMeasurementsOverYears
 
   require Logger
 
@@ -380,6 +381,10 @@ defmodule Risteys.LabTestStats do
           full_join:
             distribution_ndays_first_to_last_measurement in DistributionNDaysFirstToLastMeasurement,
           on: lab_test.id == distribution_ndays_first_to_last_measurement.omop_concept_dbid,
+
+          # Distribution N measurements over the years
+          full_join: distribution_n_measurements_over_years in DistributionNMeasurementsOverYears,
+          on: lab_test.id == distribution_n_measurements_over_years.omop_concept_dbid,
           where: lab_test.concept_id == ^omop_id,
           select: %{
             omop_concept_id: ^omop_id,
@@ -396,16 +401,19 @@ defmodule Risteys.LabTestStats do
             distribution_age_last_measurement: distribution_age_last_measurement.distribution,
             distribution_age_start_of_registry: distribution_age_start_of_registry.distribution,
             distribution_ndays_first_to_last_measurement:
-              distribution_ndays_first_to_last_measurement.distribution
+              distribution_ndays_first_to_last_measurement.distribution,
+            distribution_n_measurements_over_years:
+              distribution_n_measurements_over_years.distribution
           }
       )
 
-    stats = Map.put(
-      stats,
-      :sex_female_percent,
-      100 * stats.npeople_female / stats.npeople_both_sex
-      |> RisteysWeb.Utils.pretty_number()
-    )
+    stats =
+      Map.put(
+        stats,
+        :sex_female_percent,
+        (100 * stats.npeople_female / stats.npeople_both_sex)
+        |> RisteysWeb.Utils.pretty_number()
+      )
 
     distributions_lab_values =
       stats.distributions_lab_values
@@ -441,6 +449,10 @@ defmodule Risteys.LabTestStats do
       stats.distribution_ndays_first_to_last_measurement
       |> rebuild_distribution(%{"range" => :range, "npeople" => :npeople}, %{npeople: 0})
 
+    distribution_n_measurements_over_years =
+      stats.distribution_n_measurements_over_years
+      |> rebuild_year_month_distribution()
+
     %{
       stats
       | distributions_lab_values: distributions_lab_values,
@@ -448,7 +460,9 @@ defmodule Risteys.LabTestStats do
         distribution_age_first_measurement: distribution_age_first_measurement,
         distribution_age_last_measurement: distribution_age_last_measurement,
         distribution_age_start_of_registry: distribution_age_start_of_registry,
-        distribution_ndays_first_to_last_measurement: distribution_ndays_first_to_last_measurement
+        distribution_ndays_first_to_last_measurement:
+          distribution_ndays_first_to_last_measurement,
+        distribution_n_measurements_over_years: distribution_n_measurements_over_years
     }
   end
 
@@ -791,6 +805,76 @@ defmodule Risteys.LabTestStats do
     |> Repo.insert!()
   end
 
+  def import_stats_distribution_n_measurements_over_years(stats_file_path) do
+    omop_ids = OMOP.get_map_omop_ids()
+
+    bins_map =
+      stats_file_path
+      |> read_stats_rows()
+      |> group_bins_by(["OMOP_ID"])
+      # Ungroup the single-value group ["OMOP_ID]
+      |> Enum.map(fn {[omop_concept_id], rows} -> {omop_concept_id, rows} end)
+      |> Enum.map(fn {key, rows} ->
+        new_rows =
+          for row <- rows do
+            %{
+              "YearMonth" => range,
+              "NRecords" => nrecords,
+              "NPeople" => npeople
+            } = row
+
+            {nrecords_int, ""} = Integer.parse(nrecords)
+            {npeople_int, ""} = Integer.parse(npeople)
+
+            %{
+              "range" => range,
+              "nrecords" => nrecords_int,
+              "npeople" => npeople_int
+            }
+          end
+
+        {key, new_rows}
+      end)
+
+    # TODO(Vincent 2024-06-19)  Use breaks from the pipeline output.
+    # Currently these stats don't come with an associated breaks list, because
+    # the pipeline just aggregate on OMOP_ID and YearMonth, withouth pre-
+    # computing the YearMonth.
+    # Ideally the YearMonth breaks list is written as part of the pipeline
+    # output and then used here.
+    # But for now we don't have it, so I decide to generate it on the fly here.
+    year_month_list =
+      for year <- 2014..2022, month <- 1..12 do
+        month_str =
+          month
+          |> to_string()
+          |> String.pad_leading(2, "0")
+
+        "#{year}-#{month_str}"
+      end
+
+    attrs_list =
+      for {omop_concept_id, bins} <- bins_map do
+        %{
+          omop_concept_dbid: Map.fetch!(omop_ids, omop_concept_id),
+          distribution: %{"bins" => bins, "breaks" => year_month_list}
+        }
+      end
+
+    {:ok, :ok} =
+      Repo.transaction(fn ->
+        Repo.delete_all(DistributionNMeasurementsOverYears)
+
+        Enum.each(attrs_list, &create_stats_distribution_n_measurements_over_years/1)
+      end)
+  end
+
+  defp create_stats_distribution_n_measurements_over_years(attrs) do
+    %DistributionNMeasurementsOverYears{}
+    |> DistributionNMeasurementsOverYears.changeset(attrs)
+    |> Repo.insert!()
+  end
+
   def load_distribution_as_attrs_list(
         stats_file_path,
         columns_spec,
@@ -1055,6 +1139,34 @@ defmodule Risteys.LabTestStats do
         }
       )
     end)
+  end
+
+  defp rebuild_year_month_distribution(distribution) do
+    %{
+      "bins" => bins,
+      "breaks" => breaks
+    } = distribution
+
+    bins_indexed =
+      for bin <- bins, into: %{} do
+        %{"range" => range} = bin
+        {range, bin}
+      end
+
+    for break <- breaks do
+      case Map.fetch(bins_indexed, break) do
+        {:ok, bin} ->
+          %{
+            "range" => xx,
+            "nrecords" => yy
+          } = bin
+
+          %{year_month: xx, nrecords: yy}
+
+        :error ->
+          %{year_month: break, nrecords: 0}
+      end
+    end
   end
 
   defp extract_range_values(range) do
