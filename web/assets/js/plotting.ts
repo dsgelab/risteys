@@ -1,3 +1,6 @@
+// TODO(Vincent 2024-06-20)  Provide proper types where its missing.
+// Not done for now as I might refactor all the plotting functions soon(TM).
+
 import * as Plot from "../vendor/plot.v0.6.14.js";
 import * as d3 from "../vendor/d3.v7.9.0.js";
 
@@ -52,6 +55,9 @@ function plotAllObs() {
           break;
         case "year-months":
           ee.append(plotYearMonths(data));
+          break;
+        case "n-measurements-per-person":
+          ee.append(plotNMeasurementsPerPerson(data));
           break;
         case "continuous":
           ee.append(plotContinuous(data));
@@ -255,8 +261,6 @@ function plotYearOfBirh(data: ObsData) {
   });
 }
 
-// TODO(Vincent 2024-06-20)  Provide proper types in this function.
-// Not done for now as I might refactor all the plotting functions soon(TM).
 function plotYearMonths(data) {
   // Convert Year-Month value from string to JS Date
   const bins = data.bins.map((bin) => {
@@ -285,7 +289,7 @@ function plotYearMonths(data) {
         y: "nrecords",
         interval: "month",
         fill: "var(--color-risteys-darkblue, black)",
-        insetRight: 0, // Remove the default 1px inset, as it leads to a strong Moiré pattern.
+        insetRight: 0, // ::MOIRE Remove the default 1px inset, as it leads to a strong Moiré pattern.
       }),
       Plot.tip(
         bins,
@@ -312,6 +316,66 @@ function plotYearMonths(data) {
             y: false,
             timePeriod: true,
             yFormatted: true,
+          },
+        }),
+      ),
+    ],
+  });
+}
+
+function plotNMeasurementsPerPerson(data) {
+  const minDisplayBins = 50;
+
+  // NOTE(Vincent 2024-06-20) Setting `undefined` as the domain makes Plot.plot
+  // infer it from the data as [min, max].
+  const xDomain =
+    data.bins.length >= minDisplayBins ? undefined : [1, minDisplayBins];
+
+  return Plot.plot({
+    marginLeft: 70,
+    style: defaultPlotStyle,
+    x: {
+      label: "Number of measurements per person",
+      nice: true,
+      domain: xDomain,
+    },
+    y: {
+      label: "Number of people",
+      tickFormat: "s",
+      nice: true,
+      zero: true,
+    },
+
+    marks: [
+      Plot.gridY({ stroke: "#aaa" }),
+      Plot.ruleY([0]),
+      Plot.rectY(data.bins, {
+        x: "n_measurements",
+        y: "npeople",
+        interval: 1,
+        fill: "var(--color-risteys-darkblue, black)",
+        insetRight: 0, // see ::MOIRE
+      }),
+      Plot.tip(
+        data.bins,
+        Plot.pointerX({
+          x: "n_measurements",
+          y: "npeople",
+          channels: {
+            NMeasurements: {
+              label: "N. measurements",
+              value: (bin) => bin.n_measurements,
+            },
+            NPeople: {
+              label: "N. people",
+              value: (bin) => bin.npeople,
+            },
+          },
+          format: {
+            x: false,
+            y: false,
+            NMeasurements: true,
+            NPeople: true,
           },
         }),
       ),
