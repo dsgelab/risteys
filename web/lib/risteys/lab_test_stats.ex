@@ -16,6 +16,7 @@ defmodule Risteys.LabTestStats do
   alias Risteys.LabTestStats.DistributionAgeStartOfRegistry
   alias Risteys.LabTestStats.DistributionNDaysFirstToLastMeasurement
   alias Risteys.LabTestStats.DistributionNMeasurementsOverYears
+  alias Risteys.LabTestStats.DistributionNMeasurementsPerPerson
 
   require Logger
 
@@ -385,6 +386,11 @@ defmodule Risteys.LabTestStats do
           # Distribution N measurements over the years
           full_join: distribution_n_measurements_over_years in DistributionNMeasurementsOverYears,
           on: lab_test.id == distribution_n_measurements_over_years.omop_concept_dbid,
+
+          # Distribution N measurements per person
+          full_join: distribution_n_measurements_per_person in DistributionNMeasurementsPerPerson,
+          on: lab_test.id == distribution_n_measurements_per_person.omop_concept_dbid,
+
           where: lab_test.concept_id == ^omop_id,
           select: %{
             omop_concept_id: ^omop_id,
@@ -403,7 +409,9 @@ defmodule Risteys.LabTestStats do
             distribution_ndays_first_to_last_measurement:
               distribution_ndays_first_to_last_measurement.distribution,
             distribution_n_measurements_over_years:
-              distribution_n_measurements_over_years.distribution
+              distribution_n_measurements_over_years.distribution,
+            distribution_n_measurements_per_person:
+              distribution_n_measurements_per_person.distribution
           }
       )
 
@@ -453,6 +461,10 @@ defmodule Risteys.LabTestStats do
       stats.distribution_n_measurements_over_years
       |> rebuild_year_month_distribution()
 
+    distribution_n_measurements_per_person =
+      stats.distribution_n_measurements_per_person
+      |> rebuild_n_measurements_per_person_distribution()
+
     %{
       stats
       | distributions_lab_values: distributions_lab_values,
@@ -462,7 +474,8 @@ defmodule Risteys.LabTestStats do
         distribution_age_start_of_registry: distribution_age_start_of_registry,
         distribution_ndays_first_to_last_measurement:
           distribution_ndays_first_to_last_measurement,
-        distribution_n_measurements_over_years: distribution_n_measurements_over_years
+        distribution_n_measurements_over_years: distribution_n_measurements_over_years,
+        distribution_n_measurements_per_person: distribution_n_measurements_per_person
     }
   end
 
@@ -875,6 +888,74 @@ defmodule Risteys.LabTestStats do
     |> Repo.insert!()
   end
 
+  def import_stats_distribution_n_measurements_per_person(stats_file_path) do
+    omop_ids = OMOP.get_map_omop_ids()
+
+    bins_map =
+      stats_file_path
+      |> read_stats_rows()
+      |> group_bins_by(["OMOP_ID"])
+      # Ungroup the single-value group ["OMOP_ID]
+      |> Enum.map(fn {[omop_concept_id], rows} -> {omop_concept_id, rows} end)
+      |> Enum.map(fn {key, rows} ->
+        new_rows =
+          for row <- rows do
+            %{
+              "Bin" => nmeasurements,
+              "NPeople" => npeople
+            } = row
+
+            {nmeasurements_int, ""} = Integer.parse(nmeasurements)
+            {npeople_int, ""} = Integer.parse(npeople)
+
+            %{
+              "nmeasurements" => nmeasurements_int,
+              "npeople" => npeople_int
+            }
+          end
+
+        {key, new_rows}
+      end)
+
+    # TODO(Vincent 2024-06-20)  Reconstructing missing bins here, but ideally
+    # it should be done from an output file of the pipeline.
+    breaks_indexed =
+      for {omop_id, bins} <- bins_map, into: %{} do
+        max_measurements =
+          bins
+          |> Enum.map(fn %{"nmeasurements" => nn} -> nn end)
+          |> Enum.max()
+
+        breaks = Range.to_list(1..max_measurements)
+
+        {omop_id, breaks}
+      end
+
+    attrs_list =
+      for {omop_concept_id, bins} <- bins_map do
+        %{
+          omop_concept_dbid: Map.fetch!(omop_ids, omop_concept_id),
+          distribution: %{
+            "bins" => bins,
+            "breaks" => Map.fetch!(breaks_indexed, omop_concept_id)
+          }
+        }
+      end
+
+    {:ok, :ok} =
+      Repo.transaction(fn ->
+        Repo.delete_all(DistributionNMeasurementsPerPerson)
+
+        Enum.each(attrs_list, &create_stats_distribution_n_measurements_per_person/1)
+      end)
+  end
+
+  defp create_stats_distribution_n_measurements_per_person(attrs) do
+    %DistributionNMeasurementsPerPerson{}
+    |> DistributionNMeasurementsPerPerson.changeset(attrs)
+    |> Repo.insert!()
+  end
+
   def load_distribution_as_attrs_list(
         stats_file_path,
         columns_spec,
@@ -1166,6 +1247,24 @@ defmodule Risteys.LabTestStats do
         :error ->
           %{year_month: break, nrecords: 0}
       end
+    end
+  end
+
+  defp rebuild_n_measurements_per_person_distribution(distribution) do
+    %{
+      "bins" => bins,
+      "breaks" => breaks
+    } = distribution
+
+    bins_indexed =
+      for bin <- bins, into: %{} do
+        %{"nmeasurements" => n_measurements} = bin
+        {n_measurements, bin}
+      end
+
+    for break <- breaks do
+      %{"npeople" => n_people} = Map.get(bins_indexed, break, %{"npeople" => 0})
+      %{n_measurements: break, npeople: n_people}
     end
   end
 

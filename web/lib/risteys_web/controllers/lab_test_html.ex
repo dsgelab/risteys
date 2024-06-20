@@ -214,6 +214,9 @@ defmodule RisteysWeb.LabTestHTML do
     distribution_n_measurements_over_years =
       build_obsplot_payload(:year_months, lab_test.distribution_n_measurements_over_years)
 
+    distribution_n_measurements_per_person =
+      build_obsplot_payload(:n_measurements_per_person, lab_test.distribution_n_measurements_per_person)
+
     Map.merge(lab_test, %{
       npeople_both_sex: npeople_both_sex,
       median_n_measurements: median_n_measurements,
@@ -224,7 +227,8 @@ defmodule RisteysWeb.LabTestHTML do
       distribution_age_last_measurement: distribution_age_last_measurement,
       distribution_age_start_of_registry: distribution_age_start_of_registry,
       distribution_ndays_first_to_last_measurement: distribution_ndays_first_to_last_measurement,
-      distribution_n_measurements_over_years: distribution_n_measurements_over_years
+      distribution_n_measurements_over_years: distribution_n_measurements_over_years,
+      distribution_n_measurements_per_person: distribution_n_measurements_per_person
     })
   end
 
@@ -374,6 +378,20 @@ defmodule RisteysWeb.LabTestHTML do
 
     ~H"""
     <div class="obsplot" data-obsplot-type="year-months" data-obsplot={@payload}></div>
+    """
+  end
+
+  defp build_obsplot_payload(:n_measurements_per_person, bins) do
+    payload = %{
+      "bins" => bins
+    }
+
+    assigns = %{
+      payload: Jason.encode!(payload)
+    }
+
+    ~H"""
+    <div class="obsplot" data-obsplot-type="n-measurements-per-person" data-obsplot={@payload}></div>
     """
   end
 
