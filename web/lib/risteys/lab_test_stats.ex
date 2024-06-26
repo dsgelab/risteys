@@ -17,6 +17,7 @@ defmodule Risteys.LabTestStats do
   alias Risteys.LabTestStats.DistributionNDaysFirstToLastMeasurement
   alias Risteys.LabTestStats.DistributionNMeasurementsOverYears
   alias Risteys.LabTestStats.DistributionNMeasurementsPerPerson
+  alias Risteys.LabTestStats.DistributionValueRangePerPerson
 
   require Logger
 
@@ -391,6 +392,10 @@ defmodule Risteys.LabTestStats do
           full_join: distribution_n_measurements_per_person in DistributionNMeasurementsPerPerson,
           on: lab_test.id == distribution_n_measurements_per_person.omop_concept_dbid,
 
+          # Distribution value range per person
+          full_join: distribution_value_range_per_person in DistributionValueRangePerPerson,
+          on: lab_test.id == distribution_value_range_per_person.omop_concept_dbid,
+
           where: lab_test.concept_id == ^omop_id,
           select: %{
             omop_concept_id: ^omop_id,
@@ -411,7 +416,9 @@ defmodule Risteys.LabTestStats do
             distribution_n_measurements_over_years:
               distribution_n_measurements_over_years.distribution,
             distribution_n_measurements_per_person:
-              distribution_n_measurements_per_person.distribution
+              distribution_n_measurements_per_person.distribution,
+            distribution_value_range_per_person:
+              distribution_value_range_per_person.distribution
           }
       )
 
@@ -465,6 +472,10 @@ defmodule Risteys.LabTestStats do
       stats.distribution_n_measurements_per_person
       |> rebuild_n_measurements_per_person_distribution()
 
+    distribution_value_range_per_person =
+      stats.distribution_value_range_per_person
+      |> rebuild_distribution(%{"range" => :range, "npeople" => :npeople}, %{npeople: 0})
+
     %{
       stats
       | distributions_lab_values: distributions_lab_values,
@@ -475,7 +486,8 @@ defmodule Risteys.LabTestStats do
         distribution_ndays_first_to_last_measurement:
           distribution_ndays_first_to_last_measurement,
         distribution_n_measurements_over_years: distribution_n_measurements_over_years,
-        distribution_n_measurements_per_person: distribution_n_measurements_per_person
+        distribution_n_measurements_per_person: distribution_n_measurements_per_person,
+        distribution_value_range_per_person: distribution_value_range_per_person
     }
   end
 
@@ -953,6 +965,43 @@ defmodule Risteys.LabTestStats do
   defp create_stats_distribution_n_measurements_per_person(attrs) do
     %DistributionNMeasurementsPerPerson{}
     |> DistributionNMeasurementsPerPerson.changeset(attrs)
+    |> Repo.insert!()
+  end
+
+  def import_stats_distribution_value_range_per_person(stats_file_path, breaks_file_path) do
+    stats_columns = %{
+      "Bin" => %{
+        to: "range",
+        parser: &Function.identity/1
+      },
+      "NPeople" => %{
+        to: "npeople",
+        parser: fn npeople ->
+          {npeople_int, ""} = Integer.parse(npeople)
+          npeople_int
+        end
+      }
+    }
+
+    attrs_list =
+      load_distribution_as_attrs_list(
+        stats_file_path,
+        stats_columns,
+        breaks_file_path,
+        &Function.identity/1
+      )
+
+    {:ok, :ok} =
+      Repo.transaction(fn ->
+        Repo.delete_all(DistributionValueRangePerPerson)
+
+        Enum.each(attrs_list, &create_stats_distribution_value_range_per_person/1)
+      end)
+  end
+
+  defp create_stats_distribution_value_range_per_person(attrs) do
+    %DistributionValueRangePerPerson{}
+    |> DistributionValueRangePerPerson.changeset(attrs)
     |> Repo.insert!()
   end
 
