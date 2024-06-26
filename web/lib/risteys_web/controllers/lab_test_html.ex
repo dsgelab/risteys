@@ -217,6 +217,9 @@ defmodule RisteysWeb.LabTestHTML do
     distribution_n_measurements_per_person =
       build_obsplot_payload(:n_measurements_per_person, lab_test.distribution_n_measurements_per_person)
 
+    distribution_value_range_per_person =
+      build_obsplot_payload(:continuous, lab_test.distribution_value_range_per_person["bins"], :npeople, "Value range (max − min) per person for the most common measurement unit.", "Number of people")
+
     Map.merge(lab_test, %{
       npeople_both_sex: npeople_both_sex,
       median_n_measurements: median_n_measurements,
@@ -228,7 +231,8 @@ defmodule RisteysWeb.LabTestHTML do
       distribution_age_start_of_registry: distribution_age_start_of_registry,
       distribution_ndays_first_to_last_measurement: distribution_ndays_first_to_last_measurement,
       distribution_n_measurements_over_years: distribution_n_measurements_over_years,
-      distribution_n_measurements_per_person: distribution_n_measurements_per_person
+      distribution_n_measurements_per_person: distribution_n_measurements_per_person,
+      distribution_value_range_per_person: distribution_value_range_per_person
     })
   end
 
