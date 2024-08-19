@@ -5,8 +5,10 @@ defmodule RisteysWeb.FGEndpointController do
     Repo,
     FGEndpoint,
     KeyFigures,
-    CodeWAS
+    CodeWAS,
+    LabWAS
   }
+
   import Ecto.Query
 
   def redirect_legacy_url(conn, %{"name" => name}) do
@@ -83,6 +85,9 @@ defmodule RisteysWeb.FGEndpointController do
     codewas_cohort = CodeWAS.get_cohort_stats(endpoint)
     codewas_codes = CodeWAS.list_codes(endpoint)
 
+    # LabWAS table
+    labwas_rows = LabWAS.get_labwas(endpoint)
+
     conn
     |> assign(:endpoint, endpoint)
     |> assign(:page_title, endpoint.name)
@@ -102,26 +107,29 @@ defmodule RisteysWeb.FGEndpointController do
     |> assign(:variants_by_corr, variants_by_corr)
     |> assign(:codewas_cohort, codewas_cohort)
     |> assign(:codewas_codes, codewas_codes)
+    |> assign(:labwas_rows, labwas_rows)
     |> render("show.html")
   end
 
   defp get_key_figures(endpoint, dataset) do
     key_fig =
-      Repo.one(from kf in KeyFigures,
-      where: kf.fg_endpoint_id == ^endpoint.id and kf.dataset == ^dataset,
-      select: %{
-        fg_endpoint_id: kf.fg_endpoint_id,
-        nindivs_all: kf.nindivs_all,
-        nindivs_female: kf.nindivs_female,
-        nindivs_male: kf.nindivs_male,
-        median_age_all: kf.median_age_all,
-        median_age_female: kf.median_age_female,
-        median_age_male: kf.median_age_male,
-        prevalence_all: kf.prevalence_all,
-        prevalence_female: kf.prevalence_female,
-        prevalence_male: kf.prevalence_male,
-        dataset: kf.dataset
-      })
+      Repo.one(
+        from kf in KeyFigures,
+          where: kf.fg_endpoint_id == ^endpoint.id and kf.dataset == ^dataset,
+          select: %{
+            fg_endpoint_id: kf.fg_endpoint_id,
+            nindivs_all: kf.nindivs_all,
+            nindivs_female: kf.nindivs_female,
+            nindivs_male: kf.nindivs_male,
+            median_age_all: kf.median_age_all,
+            median_age_female: kf.median_age_female,
+            median_age_male: kf.median_age_male,
+            prevalence_all: kf.prevalence_all,
+            prevalence_female: kf.prevalence_female,
+            prevalence_male: kf.prevalence_male,
+            dataset: kf.dataset
+          }
+      )
 
     no_key_figures = %{
       fg_endpoint_id: "-",
@@ -139,7 +147,9 @@ defmodule RisteysWeb.FGEndpointController do
 
     # create and return key_figures
     case key_fig do
-      nil -> no_key_figures
+      nil ->
+        no_key_figures
+
       _ ->
         Enum.reduce(
           key_fig,
