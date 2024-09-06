@@ -15,6 +15,7 @@ defmodule RisteysWeb.Live.CodeWASTable do
       |> assign(:active_sorter, default_sorter)
       |> assign(:code_filter, "")
       |> assign(:vocabulary_filter, "")
+      |> assign(:description_filter, "")
       |> assign(:display_codes, all_codes)
 
     {:ok, socket, layout: false}
@@ -32,13 +33,15 @@ defmodule RisteysWeb.Live.CodeWASTable do
   def handle_event("update_table", filters, socket) do
     %{
       "code-filter" => code_filter,
-      "vocabulary-filter" => vocabulary_filter
+      "vocabulary-filter" => vocabulary_filter,
+      "description-filter" => description_filter
     } = filters
 
     socket =
       socket
       |> assign(:code_filter, code_filter)
       |> assign(:vocabulary_filter, vocabulary_filter)
+      |> assign(:description_filter, description_filter)
       |> update_table()
 
     {:noreply, socket}
@@ -49,27 +52,34 @@ defmodule RisteysWeb.Live.CodeWASTable do
       socket.assigns.all_codes
       |> Enum.filter(fn row ->
         code_filter =
-        String.contains?(
-          String.downcase(row.code),
-          String.downcase(socket.assigns.code_filter)
-        )
+          String.contains?(
+            String.downcase(row.code),
+            String.downcase(socket.assigns.code_filter)
+          )
 
         vocabulary_namings = Risteys.CodeWAS.Codes.vocabulary_namings(row.vocabulary)
+
         vocabulary_filter =
           String.contains?(
             String.downcase(row.vocabulary),
             String.downcase(socket.assigns.vocabulary_filter)
           ) or
+            String.contains?(
+              String.downcase(vocabulary_namings.short),
+              String.downcase(socket.assigns.vocabulary_filter)
+            ) or
+            String.contains?(
+              String.downcase(vocabulary_namings.full),
+              String.downcase(socket.assigns.vocabulary_filter)
+            )
+
+        description_filter =
           String.contains?(
-            String.downcase(vocabulary_namings.short),
-            String.downcase(socket.assigns.vocabulary_filter)
-          ) or
-          String.contains?(
-            String.downcase(vocabulary_namings.full),
-            String.downcase(socket.assigns.vocabulary_filter)
+            String.downcase(row.description),
+            String.downcase(socket.assigns.description_filter)
           )
 
-        code_filter and vocabulary_filter
+        code_filter and vocabulary_filter and description_filter
       end)
       |> sort_with_nil(socket.assigns.active_sorter)
 
@@ -129,7 +139,9 @@ defmodule RisteysWeb.Live.CodeWASTable do
 
   defp mask_low_n(value) do
     if is_nil(value) do
-      Phoenix.HTML.Tag.content_tag(:abbr, "*", title: "To safeguard privacy, we will not display the precise number of study subjects.")
+      Phoenix.HTML.Tag.content_tag(:abbr, "*",
+        title: "To safeguard privacy, we will not display the precise number of study subjects."
+      )
     else
       value
     end
