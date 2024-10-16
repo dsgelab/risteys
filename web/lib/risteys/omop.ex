@@ -96,9 +96,9 @@ defmodule Risteys.OMOP do
 
     subset_concept_ids =
       omop_ids_file_path
-      |> File.stream!()
-      |> CSV.decode!(headers: true)
-      |> Stream.map(fn %{"OMOP_ID" => omop_id} -> omop_id end)
+      |> File.stream!(line_or_bytes: :line)
+      |> Stream.map(&Jason.decode!/1)
+      |> Stream.map(fn %{"OMOP_CONCEPT_ID" => omop_id} -> omop_id end)
       |> Stream.reject(fn omop_id -> omop_id == "NA" end)
       |> Enum.into(MapSet.new())
 
