@@ -10,52 +10,55 @@ defmodule RisteysWeb.LabTestHTML do
     npeople_total =
       stats.npeople_total && RisteysWeb.Utils.pretty_number(stats.npeople_total)
 
+    plot_npeople_absolute = plot_count(stats.npeople_total, overall_stats.npeople)
+
+    percent_people_two_plus_records =
+      stats.percent_people_two_plus_records &&
+        RisteysWeb.Utils.pretty_number(stats.percent_people_two_plus_records) <> "%"
+
+    plot_percent_people_two_plus_records =
+      plot_count(
+        stats.percent_people_two_plus_records,
+        overall_stats.percent_people_two_plus_records
+      )
+
     sex_female_percent =
       case stats.sex_female_percent do
         nil -> nil
         value -> RisteysWeb.Utils.round_and_str(value, 2) <> "%"
       end
 
-    median_n_measurements =
-      stats.median_n_measurements &&
-        RisteysWeb.Utils.pretty_number(stats.median_n_measurements, 1)
-
     plot_sex_female_percent = plot_sex(stats.sex_female_percent)
 
-    plot_npeople_absolute = plot_count(stats.npeople_total, overall_stats.npeople)
-
-    plot_median_n_measurements =
-      plot_count(stats.median_n_measurements, overall_stats.median_n_measurements)
-
-    median_nyears_first_to_last_measurement =
-      case stats.median_ndays_first_to_last_measurement do
+    median_years_first_to_last_measurement =
+      case stats.median_years_first_to_last_measurement do
         nil ->
           nil
 
         _ ->
-          stats.median_ndays_first_to_last_measurement
-          |> days_to_years()
+          stats.median_years_first_to_last_measurement
           |> RisteysWeb.Utils.pretty_number(2)
       end
 
-    tick_every_year = 365.25
+    # in years
+    tick_every = 1.0
 
     plot_median_duration_first_to_last_measurement =
       plot_count(
-        stats.median_ndays_first_to_last_measurement,
-        overall_stats.median_ndays_first_to_last_measurement,
-        tick_every_year
+        stats.median_years_first_to_last_measurement,
+        overall_stats.median_years_first_to_last_measurement,
+        tick_every
       )
 
     pretty_stats =
       Map.merge(pretty_stats, %{
         npeople_total: npeople_total,
-        sex_female_percent: sex_female_percent,
-        median_n_measurements: median_n_measurements,
         plot_npeople_absolute: plot_npeople_absolute,
+        sex_female_percent: sex_female_percent,
         plot_sex_female_percent: plot_sex_female_percent,
-        plot_median_n_measurements: plot_median_n_measurements,
-        median_nyears_first_to_last_measurement: median_nyears_first_to_last_measurement,
+        percent_people_two_plus_records: percent_people_two_plus_records,
+        plot_percent_people_two_plus_records: plot_percent_people_two_plus_records,
+        median_years_first_to_last_measurement: median_years_first_to_last_measurement,
         plot_median_duration_first_to_last_measurement:
           plot_median_duration_first_to_last_measurement
       })
@@ -127,14 +130,13 @@ defmodule RisteysWeb.LabTestHTML do
       lab_test.median_n_measurements &&
         RisteysWeb.Utils.pretty_number(lab_test.median_n_measurements, 1)
 
-    median_nyears_first_to_last_measurement =
-      case lab_test.median_ndays_first_to_last_measurement do
+    median_years_first_to_last_measurement =
+      case lab_test.median_years_first_to_last_measurement do
         nil ->
           nil
 
         num ->
           num
-          |> days_to_years()
           |> RisteysWeb.Utils.pretty_number(2)
       end
 
@@ -215,15 +217,24 @@ defmodule RisteysWeb.LabTestHTML do
       build_obsplot_payload(:year_months, lab_test.distribution_n_measurements_over_years)
 
     distribution_n_measurements_per_person =
-      build_obsplot_payload(:n_measurements_per_person, lab_test.distribution_n_measurements_per_person)
+      build_obsplot_payload(
+        :n_measurements_per_person,
+        lab_test.distribution_n_measurements_per_person
+      )
 
     distribution_value_range_per_person =
-      build_obsplot_payload(:continuous, lab_test.distribution_value_range_per_person["bins"], :npeople, "Value range (max − min) per person for the most common measurement unit.", "Number of people")
+      build_obsplot_payload(
+        :continuous,
+        lab_test.distribution_value_range_per_person["bins"],
+        :npeople,
+        "Value range (max − min) per person for the most common measurement unit.",
+        "Number of people"
+      )
 
     Map.merge(lab_test, %{
       npeople_both_sex: npeople_both_sex,
       median_n_measurements: median_n_measurements,
-      median_nyears_first_to_last_measurement: median_nyears_first_to_last_measurement,
+      median_years_first_to_last_measurement: median_years_first_to_last_measurement,
       distributions_lab_values: distributions_lab_values,
       distribution_year_of_birth: distribution_year_of_birth,
       distribution_age_first_measurement: distribution_age_first_measurement,
@@ -397,10 +408,5 @@ defmodule RisteysWeb.LabTestHTML do
     ~H"""
     <div class="obsplot" data-obsplot-type="n-measurements-per-person" data-obsplot={@payload}></div>
     """
-  end
-
-  defp days_to_years(ndays) do
-    days_in_year = 365.25
-    ndays / days_in_year
   end
 end

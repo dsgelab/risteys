@@ -8,7 +8,8 @@ defmodule Risteys.LabTestStats do
   alias Risteys.OMOP
   alias Risteys.LabTestStats.NPeople
   alias Risteys.LabTestStats.MedianNMeasurements
-  alias Risteys.LabTestStats.MedianNDaysFirstToLastMeasurement
+  alias Risteys.LabTestStats.PeopleWithTwoPlusRecords
+  alias Risteys.LabTestStats.MedianYearsFirstToLastMeasurement
   alias Risteys.LabTestStats.DistributionsLabValues
   alias Risteys.LabTestStats.DistributionYearOfBirth
   alias Risteys.LabTestStats.DistributionAgeFirstMeasurement
@@ -34,19 +35,20 @@ defmodule Risteys.LabTestStats do
       sex_female_percent: nil
     }
 
-    median_n_measurements_empty_stats = %{
-      median_n_measurements: nil
+    percent_people_two_plus_records_empty_stats = %{
+      percent_people_two_plus_records: nil
     }
 
-    median_ndays_first_to_last_measurement_empty_stats = %{
-      median_ndays_first_to_last_measurement: nil
+    median_years_first_to_last_measurement_empty_stats = %{
+      median_years_first_to_last_measurement: nil
     }
 
     npeople_stats = get_stats_npeople()
-    median_n_measurements_stats = get_stats_median_n_measurements()
 
-    median_ndays_first_to_last_measurement_stats =
-      get_stats_median_ndays_first_to_last_measurement()
+    percent_people_two_plus_records = get_stats_percent_people_two_plus_records()
+
+    median_years_first_to_last_measurement_stats =
+      get_stats_median_years_first_to_last_measurement()
 
     for %{lab_tests: lab_tests} = rec <- lab_tests_tree do
       with_stats =
@@ -55,16 +57,16 @@ defmodule Risteys.LabTestStats do
           |> Map.merge(Map.get(npeople_stats, lab_test.lab_test_concept_id, npeople_empty_stats))
           |> Map.merge(
             Map.get(
-              median_n_measurements_stats,
+              percent_people_two_plus_records,
               lab_test.lab_test_concept_id,
-              median_n_measurements_empty_stats
+              percent_people_two_plus_records_empty_stats
             )
           )
           |> Map.merge(
             Map.get(
-              median_ndays_first_to_last_measurement_stats,
+              median_years_first_to_last_measurement_stats,
               lab_test.lab_test_concept_id,
-              median_ndays_first_to_last_measurement_empty_stats
+              median_years_first_to_last_measurement_empty_stats
             )
           )
         end
@@ -80,9 +82,9 @@ defmodule Risteys.LabTestStats do
   def get_overall_stats() do
     %{
       npeople: get_overall_stats_npeople(),
-      median_n_measurements: get_overall_stats_median_n_measurements(),
-      median_ndays_first_to_last_measurement:
-        get_overall_stats_median_ndays_first_to_last_measurement()
+      median_years_first_to_last_measurement:
+        get_overall_stats_median_years_first_to_last_measurement(),
+      percent_people_two_plus_records: get_overall_stats_percent_people_two_plus_records()
     }
   end
 
@@ -96,17 +98,17 @@ defmodule Risteys.LabTestStats do
     )
   end
 
-  defp get_overall_stats_median_n_measurements() do
+  defp get_overall_stats_median_years_first_to_last_measurement() do
     Repo.one(
-      from stats in MedianNMeasurements,
-        select: max(stats.median_n_measurements)
+      from stats in MedianYearsFirstToLastMeasurement,
+        select: max(stats.median_years_first_to_last_measurement)
     )
   end
 
-  defp get_overall_stats_median_ndays_first_to_last_measurement() do
+  defp get_overall_stats_percent_people_two_plus_records() do
     Repo.one(
-      from stats in MedianNDaysFirstToLastMeasurement,
-        select: max(stats.median_ndays_first_to_last_measurement)
+      from stats in PeopleWithTwoPlusRecords,
+        select: max(stats.percent_people)
     )
   end
 
@@ -118,9 +120,9 @@ defmodule Risteys.LabTestStats do
 
     stats =
       file_path
-      |> File.stream!()
-      |> CSV.decode!(headers: true)
-      |> Stream.filter(fn %{"OMOP_ID" => omop_concept_id} ->
+      |> File.stream!(line_or_bytes: :line)
+      |> Stream.map(&Jason.decode!/1)
+      |> Stream.filter(fn %{"OMOP_CONCEPT_ID" => omop_concept_id} ->
         case Map.has_key?(omop_ids, omop_concept_id) do
           true ->
             true
@@ -137,12 +139,10 @@ defmodule Risteys.LabTestStats do
       # Group NPeople stats by OMOP concept ID
       |> Enum.reduce(%{}, fn row, acc ->
         %{
-          "OMOP_ID" => omop_concept_id,
+          "OMOP_CONCEPT_ID" => omop_concept_id,
           "Sex" => sex,
           "NPeople" => npeople
         } = row
-
-        npeople = String.to_integer(npeople)
 
         empty_counts = %{female_count: nil, male_count: nil}
         counts = Map.get(acc, omop_concept_id, empty_counts)
@@ -212,28 +212,30 @@ defmodule Risteys.LabTestStats do
     end)
   end
 
-  # Return a map of lab test OMOP concept ID => Median N mesurements stats
-  defp get_stats_median_n_measurements() do
+  # Returns a map of OMOP Concept ID => Percent people with 2+ records
+  defp get_stats_percent_people_two_plus_records() do
     Repo.all(
-      from stat in MedianNMeasurements,
-        left_join: lab_test in OMOP.Concept,
-        on: stat.omop_concept_dbid == lab_test.id,
+      from stat in PeopleWithTwoPlusRecords,
+        left_join: omop_concept in OMOP.Concept,
+        on: stat.omop_concept_dbid == omop_concept.id,
         select: {
-          lab_test.concept_id,
-          %{median_n_measurements: stat.median_n_measurements}
+          omop_concept.concept_id,
+          %{
+            percent_people_two_plus_records: stat.percent_people
+          }
         }
     )
     |> Enum.into(%{})
   end
 
-  defp get_stats_median_ndays_first_to_last_measurement() do
+  defp get_stats_median_years_first_to_last_measurement() do
     Repo.all(
-      from stat in MedianNDaysFirstToLastMeasurement,
+      from stat in MedianYearsFirstToLastMeasurement,
         left_join: lab_test in OMOP.Concept,
         on: stat.omop_concept_dbid == lab_test.id,
         select: {
           lab_test.concept_id,
-          %{median_ndays_first_to_last_measurement: stat.median_ndays_first_to_last_measurement}
+          %{median_years_first_to_last_measurement: stat.median_years_first_to_last_measurement}
         }
     )
     |> Enum.into(%{})
@@ -292,16 +294,68 @@ defmodule Risteys.LabTestStats do
   end
 
   @doc """
-  Reset all the median N days from first to last measurement stats from a file.
+  Reset all stats of people with 2+ records to data from a file.
   """
-  def import_stats_median_ndays_first_to_last(file_path) do
+  def import_stats_people_with_two_plus_records(file_path) do
     omop_ids = OMOP.get_map_omop_ids()
 
     stats =
       file_path
-      |> File.stream!()
-      |> CSV.decode!(headers: true)
-      |> Stream.filter(fn %{"OMOP_ID" => omop_concept_id} ->
+      |> File.stream!(line_or_bytes: :lines)
+      |> Stream.map(&Jason.decode!/1)
+      |> Stream.filter(fn %{"OMOP_CONCEPT_ID" => omop_concept_id} ->
+        case Map.has_key?(omop_ids, omop_concept_id) do
+          true ->
+            true
+
+          false ->
+            Logger.warning(
+              "Discarding stats people with 2+ records for omop_concept_id=#{omop_concept_id}: OMOP concept ID not found in database."
+            )
+
+            false
+        end
+      end)
+      |> Enum.map(fn row ->
+        %{
+          "OMOP_CONCEPT_ID" => omop_concept_id,
+          "PercentagePeopleWithTwoOrMoreRecords" => percent_people,
+          "NPeople" => npeople
+        } = row
+
+        omop_concept_dbid = Map.fetch!(omop_ids, omop_concept_id)
+
+        %{
+          omop_concept_dbid: omop_concept_dbid,
+          percent_people: percent_people,
+          npeople: npeople
+        }
+      end)
+
+    Repo.transaction(fn ->
+      Repo.delete_all(PeopleWithTwoPlusRecords)
+
+      Enum.each(stats, &create_stats_people_with_two_plus_records/1)
+    end)
+  end
+
+  defp create_stats_people_with_two_plus_records(attrs) do
+    %PeopleWithTwoPlusRecords{}
+    |> PeopleWithTwoPlusRecords.changeset(attrs)
+    |> Repo.insert!()
+  end
+
+  @doc """
+  Reset all the median duration (years) from first to last measurement stats from a file.
+  """
+  def import_stats_median_years_first_to_last(file_path) do
+    omop_ids = OMOP.get_map_omop_ids()
+
+    stats =
+      file_path
+      |> File.stream!(line_or_bytes: :line)
+      |> Stream.map(&Jason.decode!/1)
+      |> Stream.filter(fn %{"OMOP_CONCEPT_ID" => omop_concept_id} ->
         case Map.has_key?(omop_ids, omop_concept_id) do
           true ->
             true
@@ -316,30 +370,30 @@ defmodule Risteys.LabTestStats do
       end)
       |> Enum.map(fn row ->
         %{
-          "OMOP_ID" => omop_concept_id,
-          "MedianDurationDaysFirstToLast" => median_ndays,
-          "NPeopleAfterFilterOut" => npeople
+          "OMOP_CONCEPT_ID" => omop_concept_id,
+          "MedianDurationYearsFirstToLast" => median_years,
+          "NPeople" => npeople
         } = row
 
         lab_test_dbid = Map.fetch!(omop_ids, omop_concept_id)
 
         %{
           omop_concept_dbid: lab_test_dbid,
-          median_ndays_first_to_last_measurement: median_ndays,
+          median_years_first_to_last_measurement: median_years,
           npeople: npeople
         }
       end)
 
     Repo.transaction(fn ->
-      Repo.delete_all(MedianNDaysFirstToLastMeasurement)
+      Repo.delete_all(MedianYearsFirstToLastMeasurement)
 
-      Enum.each(stats, &create_stats_median_ndays_first_to_last_measurement/1)
+      Enum.each(stats, &create_stats_median_years_first_to_last_measurement/1)
     end)
   end
 
-  defp create_stats_median_ndays_first_to_last_measurement(attrs) do
-    %MedianNDaysFirstToLastMeasurement{}
-    |> MedianNDaysFirstToLastMeasurement.changeset(attrs)
+  defp create_stats_median_years_first_to_last_measurement(attrs) do
+    %MedianYearsFirstToLastMeasurement{}
+    |> MedianYearsFirstToLastMeasurement.changeset(attrs)
     |> Repo.insert!()
   end
 
@@ -356,7 +410,7 @@ defmodule Risteys.LabTestStats do
           on: lab_test.id == median_n_measurements.omop_concept_dbid,
 
           # Median duration from first to last measurement
-          full_join: median_duration in MedianNDaysFirstToLastMeasurement,
+          full_join: median_duration in MedianYearsFirstToLastMeasurement,
           on: lab_test.id == median_duration.omop_concept_dbid,
 
           # Distributions of lab values
@@ -395,7 +449,6 @@ defmodule Risteys.LabTestStats do
           # Distribution value range per person
           full_join: distribution_value_range_per_person in DistributionValueRangePerPerson,
           on: lab_test.id == distribution_value_range_per_person.omop_concept_dbid,
-
           where: lab_test.concept_id == ^omop_id,
           select: %{
             omop_concept_id: ^omop_id,
@@ -404,8 +457,8 @@ defmodule Risteys.LabTestStats do
             npeople_female: npeople.female_count,
             npeople_male: npeople.male_count,
             npeople_both_sex: coalesce(npeople.female_count, 0) + coalesce(npeople.male_count, 0),
-            median_ndays_first_to_last_measurement:
-              median_duration.median_ndays_first_to_last_measurement,
+            median_years_first_to_last_measurement:
+              median_duration.median_years_first_to_last_measurement,
             distributions_lab_values: distribution_lab_values.distributions,
             distribution_year_of_birth: distribution_year_of_birth.distribution,
             distribution_age_first_measurement: distribution_age_first_measurement.distribution,
@@ -417,8 +470,7 @@ defmodule Risteys.LabTestStats do
               distribution_n_measurements_over_years.distribution,
             distribution_n_measurements_per_person:
               distribution_n_measurements_per_person.distribution,
-            distribution_value_range_per_person:
-              distribution_value_range_per_person.distribution
+            distribution_value_range_per_person: distribution_value_range_per_person.distribution
           }
       )
 
