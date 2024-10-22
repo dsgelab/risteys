@@ -185,7 +185,7 @@ function plotContinuous(data: ObsDataWithLabels) {
           y: "y",
           channels: {
             x_formatted: {
-              value: "x_formatted",
+              value: "x1x2_formatted",
               label: data.x_label,
             },
             y_formatted: {

@@ -140,146 +140,101 @@ defmodule RisteysWeb.LabTestHTML do
           |> RisteysWeb.Utils.pretty_number(2)
       end
 
-    distributions_lab_values =
-      for dist <- lab_test.distributions_lab_values do
-        %{"bins" => bins} = dist
-        y_label = "Number of records"
+    distribution_lab_values =
+      case lab_test.distribution_lab_values do
+        nil ->
+          nil
 
-        case dist["measurement_unit"] do
-          "binary" ->
-            %{
-              obsplot: build_obsplot_payload(:binary, bins, "nrecords", "", y_label),
-              measurement_unit: "binary"
-            }
-
-          "titre" ->
-            x_label = "Measured value (titre)"
-
-            %{
-              obsplot: build_obsplot_payload(:categorical, bins, "nrecords", x_label, y_label),
-              measurement_unit: "titre"
-            }
-
-          _ ->
-            x_label = "Measured value (#{dist["measurement_unit"]})"
-
-            %{
-              obsplot: build_obsplot_payload(:continuous, bins, :nrecords, x_label, y_label),
-              measurement_unit: dist["measurement_unit"]
-            }
-        end
+        dist ->
+          build_obsplot_payload(
+            :continuous,
+            dist.bins,
+            "y",
+            "Measured value (#{dist.unit})",
+            "Number of records"
+          )
       end
 
-    distribution_year_of_birth =
-      build_obsplot_payload(
-        :years,
-        lab_test.distribution_year_of_birth["bins"],
-        :npeople
-      )
+    # TODO(Vincent 2024-10-23) ::WIP_DIST_LAB_VALUE
+    # distribution_year_of_birth =
+    #   build_obsplot_payload(
+    #     :years,
+    #     lab_test.distribution_year_of_birth["bins"],
+    #     :npeople
+    #   )
 
-    distribution_age_first_measurement =
-      build_obsplot_payload(
-        :continuous,
-        lab_test.distribution_age_first_measurement["bins"],
-        :npeople,
-        "Age at first measurement",
-        "Number of people"
-      )
+    # distribution_age_first_measurement =
+    #   build_obsplot_payload(
+    #     :continuous,
+    #     lab_test.distribution_age_first_measurement["bins"],
+    #     :npeople,
+    #     "Age at first measurement",
+    #     "Number of people"
+    #   )
 
-    distribution_age_last_measurement =
-      build_obsplot_payload(
-        :continuous,
-        lab_test.distribution_age_last_measurement["bins"],
-        :npeople,
-        "Age at last measurement",
-        "Number of people"
-      )
+    # distribution_age_last_measurement =
+    #   build_obsplot_payload(
+    #     :continuous,
+    #     lab_test.distribution_age_last_measurement["bins"],
+    #     :npeople,
+    #     "Age at last measurement",
+    #     "Number of people"
+    #   )
 
-    distribution_age_start_of_registry =
-      build_obsplot_payload(
-        :continuous,
-        lab_test.distribution_age_start_of_registry["bins"],
-        :npeople,
-        "Age at start of registry",
-        "Number of people"
-      )
+    # distribution_age_start_of_registry =
+    #   build_obsplot_payload(
+    #     :continuous,
+    #     lab_test.distribution_age_start_of_registry["bins"],
+    #     :npeople,
+    #     "Age at start of registry",
+    #     "Number of people"
+    #   )
 
-    distribution_ndays_first_to_last_measurement =
-      build_obsplot_payload(
-        :continuous,
-        lab_test.distribution_ndays_first_to_last_measurement["bins"],
-        :npeople,
-        "Duration from first to last measurement (days)",
-        "Number of people"
-      )
+    # distribution_ndays_first_to_last_measurement =
+    #   build_obsplot_payload(
+    #     :continuous,
+    #     lab_test.distribution_ndays_first_to_last_measurement["bins"],
+    #     :npeople,
+    #     "Duration from first to last measurement (days)",
+    #     "Number of people"
+    #   )
 
-    distribution_n_measurements_over_years =
-      build_obsplot_payload(:year_months, lab_test.distribution_n_measurements_over_years)
+    # distribution_n_measurements_over_years =
+    #   build_obsplot_payload(:year_months, lab_test.distribution_n_measurements_over_years)
 
-    distribution_n_measurements_per_person =
-      build_obsplot_payload(
-        :n_measurements_per_person,
-        lab_test.distribution_n_measurements_per_person
-      )
+    # distribution_n_measurements_per_person =
+    #   build_obsplot_payload(
+    #     :n_measurements_per_person,
+    #     lab_test.distribution_n_measurements_per_person
+    #   )
 
-    distribution_value_range_per_person =
-      build_obsplot_payload(
-        :continuous,
-        lab_test.distribution_value_range_per_person["bins"],
-        :npeople,
-        "Value range (max − min) per person for the most common measurement unit.",
-        "Number of people"
-      )
+    # distribution_value_range_per_person =
+    #   build_obsplot_payload(
+    #     :continuous,
+    #     lab_test.distribution_value_range_per_person["bins"],
+    #     :npeople,
+    #     "Value range (max − min) per person for the most common measurement unit.",
+    #     "Number of people"
+    #   )
 
     Map.merge(lab_test, %{
       npeople_both_sex: npeople_both_sex,
       median_n_measurements: median_n_measurements,
       median_years_first_to_last_measurement: median_years_first_to_last_measurement,
-      distributions_lab_values: distributions_lab_values,
-      distribution_year_of_birth: distribution_year_of_birth,
-      distribution_age_first_measurement: distribution_age_first_measurement,
-      distribution_age_last_measurement: distribution_age_last_measurement,
-      distribution_age_start_of_registry: distribution_age_start_of_registry,
-      distribution_ndays_first_to_last_measurement: distribution_ndays_first_to_last_measurement,
-      distribution_n_measurements_over_years: distribution_n_measurements_over_years,
-      distribution_n_measurements_per_person: distribution_n_measurements_per_person,
-      distribution_value_range_per_person: distribution_value_range_per_person
+      distribution_lab_values: distribution_lab_values
+      # TODO(Vincent 2024-10-23) ::WIP_DIST_LAB_VALUE
+      # distribution_year_of_birth: distribution_year_of_birth,
+      # distribution_age_first_measurement: distribution_age_first_measurement,
+      # distribution_age_last_measurement: distribution_age_last_measurement,
+      # distribution_age_start_of_registry: distribution_age_start_of_registry,
+      # distribution_ndays_first_to_last_measurement: distribution_ndays_first_to_last_measurement,
+      # distribution_n_measurements_over_years: distribution_n_measurements_over_years,
+      # distribution_n_measurements_per_person: distribution_n_measurements_per_person,
+      # distribution_value_range_per_person: distribution_value_range_per_person
     })
   end
 
   defp build_obsplot_payload(:continuous, bins, y_key, x_label, y_label) do
-    bins =
-      for bin <- bins do
-        %{^y_key => yy} = bin
-
-        x1_str =
-          if bin.range_left == :minus_infinity do
-            "−∞"
-          else
-            RisteysWeb.Utils.pretty_number(bin.range_left)
-          end
-
-        x2_str =
-          if bin.range_right == :plus_infinity do
-            "+∞"
-          else
-            RisteysWeb.Utils.pretty_number(bin.range_right)
-          end
-
-        en_dash = "–"
-        range_str = x1_str <> en_dash <> x2_str
-
-        y_formatted = RisteysWeb.Utils.pretty_number(yy)
-
-        %{
-          "x1" => bin.range_left_finite,
-          "x2" => bin.range_right_finite,
-          "y" => yy,
-          "x_formatted" => range_str,
-          "y_formatted" => y_formatted
-        }
-      end
-
     payload = %{
       "bins" => bins,
       "x_label" => x_label,

@@ -10,7 +10,7 @@ defmodule Risteys.LabTestStats do
   alias Risteys.LabTestStats.MedianNMeasurements
   alias Risteys.LabTestStats.PeopleWithTwoPlusRecords
   alias Risteys.LabTestStats.MedianYearsFirstToLastMeasurement
-  alias Risteys.LabTestStats.DistributionsLabValues
+  alias Risteys.LabTestStats.DistributionLabValues
   alias Risteys.LabTestStats.DistributionYearOfBirth
   alias Risteys.LabTestStats.DistributionAgeFirstMeasurement
   alias Risteys.LabTestStats.DistributionAgeLastMeasurement
@@ -413,8 +413,8 @@ defmodule Risteys.LabTestStats do
           full_join: median_duration in MedianYearsFirstToLastMeasurement,
           on: lab_test.id == median_duration.omop_concept_dbid,
 
-          # Distributions of lab values
-          full_join: distribution_lab_values in DistributionsLabValues,
+          # Distribution of lab values
+          full_join: distribution_lab_values in DistributionLabValues,
           on: lab_test.id == distribution_lab_values.omop_concept_dbid,
 
           # Distribution of year of birth
@@ -459,7 +459,7 @@ defmodule Risteys.LabTestStats do
             npeople_both_sex: coalesce(npeople.female_count, 0) + coalesce(npeople.male_count, 0),
             median_years_first_to_last_measurement:
               median_duration.median_years_first_to_last_measurement,
-            distributions_lab_values: distribution_lab_values.distributions,
+            distribution_lab_values: distribution_lab_values,
             distribution_year_of_birth: distribution_year_of_birth.distribution,
             distribution_age_first_measurement: distribution_age_first_measurement.distribution,
             distribution_age_last_measurement: distribution_age_last_measurement.distribution,
@@ -482,203 +482,226 @@ defmodule Risteys.LabTestStats do
         |> RisteysWeb.Utils.pretty_number()
       )
 
-    distributions_lab_values =
-      stats.distributions_lab_values
-      |> sort_distributions_lab_values()
-      |> Enum.map(fn dist ->
-        # Only rebuild the distribution when its values are in a continuous scale
-        %{"measurement_unit" => measurement_unit} = dist
+    distribution_lab_values =
+      stats.distribution_lab_values
 
-        if measurement_unit not in ["binary", "titre"] do
-          rebuild_distribution(dist, %{"range" => :range, "nrecords" => :nrecords}, %{nrecords: 0})
-        else
-          dist
-        end
-      end)
+    # TODO(Vincent 2024-10-23) ::WIP_DIST_LAB_VALUE
+    # Temporarily deactivated following code while working on the distribution of lab values:
 
-    distribution_year_of_birth =
-      stats.distribution_year_of_birth
-      |> rebuild_distribution(%{"range" => :range, "npeople" => :npeople}, %{npeople: 0})
+    # distribution_year_of_birth =
+    #   stats.distribution_year_of_birth
+    #   |> rebuild_distribution(%{"range" => :range, "npeople" => :npeople}, %{npeople: 0})
 
-    distribution_age_first_measurement =
-      stats.distribution_age_first_measurement
-      |> rebuild_distribution(%{"range" => :range, "npeople" => :npeople}, %{npeople: 0})
+    # distribution_age_first_measurement =
+    #   stats.distribution_age_first_measurement
+    #   |> rebuild_distribution(%{"range" => :range, "npeople" => :npeople}, %{npeople: 0})
 
-    distribution_age_last_measurement =
-      stats.distribution_age_last_measurement
-      |> rebuild_distribution(%{"range" => :range, "npeople" => :npeople}, %{npeople: 0})
+    # distribution_age_last_measurement =
+    #   stats.distribution_age_last_measurement
+    #   |> rebuild_distribution(%{"range" => :range, "npeople" => :npeople}, %{npeople: 0})
 
-    distribution_age_start_of_registry =
-      stats.distribution_age_start_of_registry
-      |> rebuild_distribution(%{"range" => :range, "npeople" => :npeople}, %{npeople: 0})
+    # distribution_age_start_of_registry =
+    #   stats.distribution_age_start_of_registry
+    #   |> rebuild_distribution(%{"range" => :range, "npeople" => :npeople}, %{npeople: 0})
 
-    distribution_ndays_first_to_last_measurement =
-      stats.distribution_ndays_first_to_last_measurement
-      |> rebuild_distribution(%{"range" => :range, "npeople" => :npeople}, %{npeople: 0})
+    # distribution_ndays_first_to_last_measurement =
+    #   stats.distribution_ndays_first_to_last_measurement
+    #   |> rebuild_distribution(%{"range" => :range, "npeople" => :npeople}, %{npeople: 0})
 
-    distribution_n_measurements_over_years =
-      stats.distribution_n_measurements_over_years
-      |> rebuild_year_month_distribution()
+    # distribution_n_measurements_over_years =
+    #   stats.distribution_n_measurements_over_years
+    #   |> rebuild_year_month_distribution()
 
-    distribution_n_measurements_per_person =
-      stats.distribution_n_measurements_per_person
-      |> rebuild_n_measurements_per_person_distribution()
+    # distribution_n_measurements_per_person =
+    #   stats.distribution_n_measurements_per_person
+    #   |> rebuild_n_measurements_per_person_distribution()
 
-    distribution_value_range_per_person =
-      stats.distribution_value_range_per_person
-      |> rebuild_distribution(%{"range" => :range, "npeople" => :npeople}, %{npeople: 0})
+    # distribution_value_range_per_person =
+    #   stats.distribution_value_range_per_person
+    #   |> rebuild_distribution(%{"range" => :range, "npeople" => :npeople}, %{npeople: 0})
 
     %{
       stats
-      | distributions_lab_values: distributions_lab_values,
-        distribution_year_of_birth: distribution_year_of_birth,
-        distribution_age_first_measurement: distribution_age_first_measurement,
-        distribution_age_last_measurement: distribution_age_last_measurement,
-        distribution_age_start_of_registry: distribution_age_start_of_registry,
-        distribution_ndays_first_to_last_measurement:
-          distribution_ndays_first_to_last_measurement,
-        distribution_n_measurements_over_years: distribution_n_measurements_over_years,
-        distribution_n_measurements_per_person: distribution_n_measurements_per_person,
-        distribution_value_range_per_person: distribution_value_range_per_person
+      | distribution_lab_values: distribution_lab_values
+        # TODO(Vincent 2024-10-23) ::WIP_DIST_LAB_VALUE
+        # distribution_year_of_birth: distribution_year_of_birth,
+        # distribution_age_first_measurement: distribution_age_first_measurement,
+        # distribution_age_last_measurement: distribution_age_last_measurement,
+        # distribution_age_start_of_registry: distribution_age_start_of_registry,
+        # distribution_ndays_first_to_last_measurement:
+        #   distribution_ndays_first_to_last_measurement,
+        # distribution_n_measurements_over_years: distribution_n_measurements_over_years,
+        # distribution_n_measurements_per_person: distribution_n_measurements_per_person,
+        # distribution_value_range_per_person: distribution_value_range_per_person
     }
-  end
-
-  defp sort_distributions_lab_values(distribution) do
-    Enum.sort_by(
-      distribution,
-      fn dist ->
-        for bin <- dist["bins"], reduce: 0 do
-          acc -> acc + bin["nrecords"]
-        end
-      end,
-      :desc
-    )
   end
 
   @doc """
   Reset all the lab value distributions from files.
 
-  `stats_file_path` format should be CSV with the following columns:
-  - OMOP_ID
-  - LAB_UNIT
-  - Bin
-  - NRecords
+  `continuous_stats_file_path` is a JSONL file with the following keys:
+  - OMOP_CONCEPT_ID
+  - BinIndex
+  - BinCount
   - NPeople
 
-  `breaks_file_path` format should be newline-delimited JSON, each line having
-  the columns:
-  - omop_id
-  - lab_unit
-  - breaks
+  `continuous_bins_definitions_file_path` is a JSONL file with the following keys:
+  - OMOP_CONCEPT_ID
+  - BinIndex
+  - BinX1
+  - BinX2
+  - BinLabelX1
+  - BinLabelX2
+  - BinLabel
+  - MEASUREMENT_UNIT_HARMONIZED
+  - BreakMin
+  - BreakMax
+
+  `discrete_stats_file_path` is a JSONL file with the following keys:
+  - MEASUREMENT_VALUE_HARMONIZED
+  - BinCount
+  - NPeople
   """
-  def import_stats_distribution_lab_values(stats_file_path, breaks_file_path) do
-    omop_ids = OMOP.get_map_omop_ids()
+  def import_stats_distribution_lab_values(
+        continuous_stats_file_path,
+        continuous_bins_definitions_file_path,
+        discrete_stats_file_path
+      ) do
+    attrs_list_continuous =
+      import_stats_distributions_lab_values_continuous(
+        continuous_stats_file_path,
+        continuous_bins_definitions_file_path
+      )
 
-    bins_map =
-      stats_file_path
-      |> read_stats_rows()
-      |> group_bins_by(["OMOP_ID", "LAB_UNIT"])
-      # Minimal string parsing
-      |> Enum.map(fn {key, rows} ->
-        new_rows =
-          for row <- rows do
-            %{
-              "Bin" => bin_range,
-              "NPeople" => npeople,
-              "NRecords" => nrecords
-            } = row
+    attrs_list_discrete = import_stats_distributions_lab_values_discrete(discrete_stats_file_path)
 
-            {npeople_int, ""} = Integer.parse(npeople)
-            {nrecords_int, ""} = Integer.parse(nrecords)
-
-            %{
-              "range" => bin_range,
-              "npeople" => npeople_int,
-              "nrecords" => nrecords_int
-            }
-          end
-
-        {key, new_rows}
-      end)
-
-    breaks_map =
-      breaks_file_path
-      |> File.stream!()
-      |> Stream.map(&Jason.decode!/1)
-      # Collect breaks, group by {omop id, lab unit}.
-      |> Enum.reduce(%{}, fn row, acc ->
-        %{
-          "omop_id" => omop_id,
-          "breaks" => breaks,
-          "lab_unit" => measurement_unit
-        } = row
-
-        Map.put(acc, [omop_id, measurement_unit], breaks)
-      end)
-
-    # Merging bins and breaks.
-    # If some bins don't have associated breaks, then we put an empty break
-    # list, because we still want to keep the bins.
-    # If some breaks don't have associated bins, then they are silently
-    # discarded.
-    distributions_map =
-      Enum.reduce(bins_map, %{}, fn {[omop_concept_id, measurement_unit] = key, dist_bins}, acc ->
-        dist_breaks =
-          case Map.get(breaks_map, key) do
-            nil ->
-              Logger.warning(
-                "Data for omop_concept_id=#{omop_concept_id}, measurement_unit=#{measurement_unit} doesn't have any associated breaks. Adding empty breaks."
-              )
-
-              []
-
-            dist_breaks ->
-              dist_breaks
-          end
-
-        Map.put(acc, key, %{bins: dist_bins, breaks: dist_breaks})
-      end)
-
-    # Ungroup the distributions by measurement unit. Only leave the OMOP ID as key.
-    grouped_by_omop_id =
-      Enum.reduce(distributions_map, %{}, fn {key, value}, acc ->
-        [omop_concept_id, measurement_unit] = key
-        %{bins: dist_bins, breaks: dist_breaks} = value
-
-        distribution = %{
-          "measurement_unit" => measurement_unit,
-          "bins" => dist_bins,
-          "breaks" => dist_breaks
-        }
-
-        existing_distributions = Map.get(acc, omop_concept_id, %{})
-        new_distributions = Map.put(existing_distributions, measurement_unit, distribution)
-
-        Map.put(acc, omop_concept_id, new_distributions)
-      end)
-
-    attrs_list =
-      Enum.map(grouped_by_omop_id, fn {omop_concept_id, distributions} ->
-        distributions = Map.values(distributions)
-        omop_concept_dbid = Map.fetch!(omop_ids, omop_concept_id)
-
-        %{
-          omop_concept_dbid: omop_concept_dbid,
-          distributions: distributions
-        }
-      end)
+    attrs_list_all = Enum.concat(attrs_list_continuous, attrs_list_discrete)
 
     {:ok, :ok} =
       Repo.transaction(fn ->
-        Repo.delete_all(DistributionsLabValues)
+        Repo.delete_all(DistributionLabValues)
 
-        Enum.each(attrs_list, &create_stats_distribution_lab_values/1)
+        Enum.each(attrs_list_all, &create_stats_distribution_lab_values/1)
       end)
   end
 
+  defp import_stats_distributions_lab_values_continuous(
+         continuous_stats_file_path,
+         continuous_bins_definitions_file_path
+       ) do
+    omop_ids = OMOP.get_map_omop_ids()
+
+    {map_xs, map_metadata} =
+      continuous_bins_definitions_file_path
+      |> File.stream!(:line)
+      |> Stream.map(&Jason.decode!/1)
+      |> Enum.reduce({%{}, %{}}, fn row, {acc_xs, acc_metadata} ->
+        %{
+          "OMOP_CONCEPT_ID" => omop_id,
+          "BinIndex" => bin_index,
+          "BinX1" => x1,
+          "BinX2" => x2,
+          "BinLabelX1" => x1_formatted,
+          "BinLabelX2" => x2_formatted,
+          "BinLabel" => x1x2_formatted,
+          "MEASUREMENT_UNIT_HARMONIZED" => unit,
+          "BreakMin" => break_min,
+          "BreakMax" => break_max
+        } = row
+
+        bin_xs = %{
+          x1: x1,
+          x2: x2,
+          x1_formatted: x1_formatted,
+          x2_formatted: x2_formatted,
+          x1x2_formatted: x1x2_formatted
+        }
+
+        acc_xs = Map.put_new(acc_xs, {omop_id, bin_index}, bin_xs)
+
+        metadata = %{
+          unit: unit,
+          break_min: break_min,
+          break_max: break_max
+        }
+
+        acc_metadata = Map.put(acc_metadata, omop_id, metadata)
+
+        {acc_xs, acc_metadata}
+      end)
+
+    map_continuous_distributions =
+      continuous_stats_file_path
+      |> File.stream!(:line)
+      |> Stream.map(&Jason.decode!/1)
+      |> Enum.reduce(%{}, fn row, acc ->
+        %{
+          "OMOP_CONCEPT_ID" => omop_id,
+          "BinIndex" => bin_index,
+          "BinCount" => bin_count,
+          "NPeople" => npeople
+        } = row
+
+        y_formatted = RisteysWeb.Utils.pretty_number(bin_count)
+
+        bin =
+          Map.fetch!(map_xs, {omop_id, bin_index})
+          |> Map.merge(%{
+            y: bin_count,
+            y_formatted: y_formatted,
+            npeople: npeople
+          })
+
+        omop_id_bins = [bin | Map.get(acc, omop_id, [])]
+
+        Map.put(acc, omop_id, omop_id_bins)
+      end)
+
+    for {omop_id, bins} <- map_continuous_distributions do
+      omop_concept_dbid = Map.fetch!(omop_ids, omop_id)
+      metadata = Map.fetch!(map_metadata, omop_id)
+      Map.merge(%{omop_concept_dbid: omop_concept_dbid, bins: bins}, metadata)
+    end
+  end
+
+  defp import_stats_distributions_lab_values_discrete(discrete_stats_file_path) do
+    omop_ids = OMOP.get_map_omop_ids()
+
+    discrete_stats_file_path
+    |> File.stream!(:line)
+    |> Stream.map(&Jason.decode!/1)
+    |> Enum.reduce(%{}, fn row, acc ->
+      %{"OMOP_CONCEPT_ID" => omop_id} = row
+      rows = [row | Map.get(acc, omop_id, [])]
+      Map.put(acc, omop_id, rows)
+    end)
+    |> Enum.map(fn {omop_id, rows} ->
+      omop_concept_dbid = Map.fetch!(omop_ids, omop_id)
+
+      bins =
+        Enum.map(rows, fn row ->
+          %{
+            "MEASUREMENT_VALUE_HARMONIZED" => x,
+            "BinCount" => y,
+            "NPeople" => npeople
+          } = row
+
+          %{x: x, y: y, npeople: npeople}
+        end)
+
+      unit = rows |> hd() |> Map.fetch!("MEASUREMENT_UNIT_HARMONIZED")
+
+      %{
+        omop_concept_dbid: omop_concept_dbid,
+        bins: bins,
+        unit: unit
+      }
+    end)
+  end
+
   defp create_stats_distribution_lab_values(attrs) do
-    %DistributionsLabValues{}
-    |> DistributionsLabValues.changeset(attrs)
+    %DistributionLabValues{}
+    |> DistributionLabValues.changeset(attrs)
     |> Repo.insert!()
   end
 
