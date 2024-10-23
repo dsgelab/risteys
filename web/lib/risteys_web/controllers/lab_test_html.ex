@@ -126,6 +126,10 @@ defmodule RisteysWeb.LabTestHTML do
     npeople_both_sex =
       lab_test.npeople_both_sex && RisteysWeb.Utils.pretty_number(lab_test.npeople_both_sex)
 
+    percent_people_two_plus_records =
+      lab_test.percent_people_two_plus_records &&
+        RisteysWeb.Utils.pretty_number(lab_test.percent_people_two_plus_records)
+
     median_n_measurements =
       lab_test.median_n_measurements &&
         RisteysWeb.Utils.pretty_number(lab_test.median_n_measurements, 1)
@@ -219,6 +223,7 @@ defmodule RisteysWeb.LabTestHTML do
 
     Map.merge(lab_test, %{
       npeople_both_sex: npeople_both_sex,
+      percent_people_two_plus_records: percent_people_two_plus_records,
       median_n_measurements: median_n_measurements,
       median_years_first_to_last_measurement: median_years_first_to_last_measurement,
       distribution_lab_values: distribution_lab_values

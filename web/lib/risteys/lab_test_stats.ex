@@ -405,6 +405,10 @@ defmodule Risteys.LabTestStats do
           full_join: npeople in NPeople,
           on: lab_test.id == npeople.omop_concept_dbid,
 
+          # People with 2+ records
+          full_join: people_with_two_plus_records in PeopleWithTwoPlusRecords,
+          on: lab_test.id == people_with_two_plus_records.omop_concept_dbid,
+
           # Median N measurements / person
           full_join: median_n_measurements in MedianNMeasurements,
           on: lab_test.id == median_n_measurements.omop_concept_dbid,
@@ -453,6 +457,7 @@ defmodule Risteys.LabTestStats do
           select: %{
             omop_concept_id: ^omop_id,
             name: lab_test.concept_name,
+            percent_people_two_plus_records: people_with_two_plus_records.percent_people,
             median_n_measurements: median_n_measurements.median_n_measurements,
             npeople_female: npeople.female_count,
             npeople_male: npeople.male_count,
