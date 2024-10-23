@@ -6,6 +6,7 @@ defmodule Risteys.LabTestStats do
   import Ecto.Query, warn: false
   alias Risteys.Repo
   alias Risteys.OMOP
+  alias Risteys.LabTestStats.DatasetMetadata
   alias Risteys.LabTestStats.NPeople
   alias Risteys.LabTestStats.MedianNMeasurements
   alias Risteys.LabTestStats.PeopleWithTwoPlusRecords
@@ -89,13 +90,7 @@ defmodule Risteys.LabTestStats do
   end
 
   defp get_overall_stats_npeople() do
-    Repo.one(
-      from npeople_stats in NPeople,
-        left_join: omop_concept in OMOP.Concept,
-        on: npeople_stats.omop_concept_dbid == omop_concept.id,
-        select:
-          max(coalesce(npeople_stats.female_count, 0) + coalesce(npeople_stats.male_count, 0))
-    )
+    Repo.one(DatasetMetadata).npeople_alive
   end
 
   defp get_overall_stats_median_years_first_to_last_measurement() do
@@ -110,6 +105,26 @@ defmodule Risteys.LabTestStats do
       from stats in PeopleWithTwoPlusRecords,
         select: max(stats.percent_people)
     )
+  end
+
+  def import_dataset_metadata(file_path) do
+    data =
+      file_path
+      |> File.read!()
+      |> Jason.decode!()
+
+
+    %{"NPeople" => npeople_alive} = data
+
+    attrs = %{npeople_alive: npeople_alive}
+
+    {:ok, _} = Repo.transaction(fn ->
+      Repo.delete_all(DatasetMetadata)
+
+      %DatasetMetadata{}
+      |> DatasetMetadata.changeset(attrs)
+      |> Repo.insert!()
+    end)
   end
 
   @doc """
