@@ -456,7 +456,6 @@ defmodule Risteys.LabTestStats do
             median_n_measurements: median_n_measurements.median_n_measurements,
             npeople_female: npeople.female_count,
             npeople_male: npeople.male_count,
-            npeople_both_sex: coalesce(npeople.female_count, 0) + coalesce(npeople.male_count, 0),
             median_years_first_to_last_measurement:
               median_duration.median_years_first_to_last_measurement,
             distribution_lab_values: distribution_lab_values,
@@ -474,13 +473,32 @@ defmodule Risteys.LabTestStats do
           }
       )
 
-    stats =
-      Map.put(
-        stats,
-        :sex_female_percent,
+    npeople_both_sex =
+      case {stats.npeople_female, stats.npeople_male} do
+        {nil, nil} ->
+          nil
+
+        {nil, nmale} ->
+          nmale
+
+        {nfemale, nil} ->
+          nfemale
+
+        {nfemale, nmale} ->
+          nfemale + nmale
+      end
+
+    stats = Map.put_new(stats, :npeople_both_sex, npeople_both_sex)
+
+    sex_female_percent =
+      if is_nil(stats.npeople_female) or is_nil(stats.npeople_both_sex) do
+        nil
+      else
         (100 * stats.npeople_female / stats.npeople_both_sex)
         |> RisteysWeb.Utils.pretty_number()
-      )
+      end
+
+    stats = Map.put_new(stats, :sex_female_percent, sex_female_percent)
 
     distribution_lab_values =
       stats.distribution_lab_values
