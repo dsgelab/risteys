@@ -159,6 +159,30 @@ defmodule RisteysWeb.LabTestHTML do
           )
       end
 
+    qc_table =
+      Enum.map(lab_test.qc_table, fn qc_row ->
+        percent_missing_formatted =
+          qc_row.percent_missing_measurement_value &&
+            RisteysWeb.Utils.pretty_number(qc_row.percent_missing_measurement_value)
+
+        plot_test_outcome =
+          build_obsplot_payload(:qc_table_test_outcome, qc_row.test_outcome_counts)
+
+        plot_harmonized_value_distribution =
+          qc_row.distribution_measurement_values &&
+            build_obsplot_payload(
+              :qc_table_harmonized_value_distribution,
+              qc_row.distribution_measurement_values
+            )
+
+        %{
+          percent_missing_measurement_value_formatted: percent_missing_formatted,
+          plot_harmonized_value_distribution: plot_harmonized_value_distribution,
+          plot_test_outcome: plot_test_outcome
+        }
+        |> Map.merge(qc_row)
+      end)
+
     # TODO(Vincent 2024-10-23) ::WIP_DIST_LAB_VALUE
     # distribution_year_of_birth =
     #   build_obsplot_payload(
@@ -226,7 +250,8 @@ defmodule RisteysWeb.LabTestHTML do
       percent_people_two_plus_records: percent_people_two_plus_records,
       median_n_measurements: median_n_measurements,
       median_years_first_to_last_measurement: median_years_first_to_last_measurement,
-      distribution_lab_values: distribution_lab_values
+      distribution_lab_values: distribution_lab_values,
+      qc_table: qc_table
       # TODO(Vincent 2024-10-23) ::WIP_DIST_LAB_VALUE
       # distribution_year_of_birth: distribution_year_of_birth,
       # distribution_age_first_measurement: distribution_age_first_measurement,
@@ -368,5 +393,105 @@ defmodule RisteysWeb.LabTestHTML do
     ~H"""
     <div class="obsplot" data-obsplot-type="n-measurements-per-person" data-obsplot={@payload}></div>
     """
+  end
+
+  defp build_obsplot_payload(:qc_table_test_outcome, nil) do
+    "Distribution not available"
+  end
+
+  defp build_obsplot_payload(:qc_table_test_outcome, distribution) do
+    sum_count =
+      distribution
+      |> Enum.map(fn %{"count" => count} -> count end)
+      |> Enum.sum()
+
+    bins =
+      for bin <- distribution do
+        %{"count" => count, "test_outcome" => test_outcome} = bin
+
+        percent_count = 100 * count / sum_count
+        x_label = RisteysWeb.Utils.pretty_number(percent_count) <> "%"
+
+        yy = test_outcome || "NA"
+
+        %{x: percent_count, y: yy, x_label: x_label}
+      end
+
+    order_labels = [
+      "NA",
+      "N",
+      "A",
+      "AA",
+      "L",
+      "LL",
+      "H",
+      "HH"
+    ]
+
+    bins =
+      for label <- order_labels do
+        with_this_label = Enum.filter(bins, fn %{y: yy} -> yy == label end)
+
+        case with_this_label do
+          [] -> nil
+          # There should be only one bin with a given label
+          [head | _rest] -> head
+        end
+      end
+      |> Enum.reject(&is_nil/1)
+
+    assigns = %{
+      payload: Jason.encode!(%{bins: bins})
+    }
+
+    ~H"""
+    <div class="obsplot" data-obsplot-type="qc-table-test-outcome" data-obsplot={@payload}></div>
+    """
+  end
+
+  defp build_obsplot_payload(:qc_table_harmonized_value_distribution, distribution) do
+    %{
+      "bins" => list_bins,
+      "break_min" => break_min,
+      "break_max" => break_max,
+      "measurement_unit" => measurement_unit
+    } = distribution
+
+    bins =
+      for bin <- list_bins do
+        %{"x1" => x1, "x2" => x2, "yy" => yy, "x1x2_formatted" => x1x2_formatted} = bin
+
+        %{
+          x1: x1,
+          x2: x2,
+          y: yy,
+          x1x2_formatted: x1x2_formatted <> "  " <> measurement_unit
+        }
+      end
+      # Remove (-inf; _] and (_ ; +inf)
+      |> Enum.reject(fn bin -> is_nil(bin.x1) or is_nil(bin.x2) end)
+
+    assigns = %{
+      payload:
+        Jason.encode!(%{
+          xmin: break_min,
+          xmax: break_max,
+          measurement_unit: measurement_unit,
+          bins: bins
+        })
+    }
+
+    if Enum.empty?(bins) do
+      nil
+    else
+      ~H"""
+      <div
+        class="obsplot"
+        data-obsplot-type="qc-table-harmonized-value-distribution"
+        data-obsplot={@payload}
+      >
+      </div>
+      """
+    end
   end
 end

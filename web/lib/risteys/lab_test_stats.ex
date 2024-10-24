@@ -11,6 +11,7 @@ defmodule Risteys.LabTestStats do
   alias Risteys.LabTestStats.MedianNMeasurements
   alias Risteys.LabTestStats.PeopleWithTwoPlusRecords
   alias Risteys.LabTestStats.MedianYearsFirstToLastMeasurement
+  alias Risteys.LabTestStats.QCTable
   alias Risteys.LabTestStats.DistributionLabValues
   alias Risteys.LabTestStats.DistributionYearOfBirth
   alias Risteys.LabTestStats.DistributionAgeFirstMeasurement
@@ -113,18 +114,18 @@ defmodule Risteys.LabTestStats do
       |> File.read!()
       |> Jason.decode!()
 
-
     %{"NPeople" => npeople_alive} = data
 
     attrs = %{npeople_alive: npeople_alive}
 
-    {:ok, _} = Repo.transaction(fn ->
-      Repo.delete_all(DatasetMetadata)
+    {:ok, _} =
+      Repo.transaction(fn ->
+        Repo.delete_all(DatasetMetadata)
 
-      %DatasetMetadata{}
-      |> DatasetMetadata.changeset(attrs)
-      |> Repo.insert!()
-    end)
+        %DatasetMetadata{}
+        |> DatasetMetadata.changeset(attrs)
+        |> Repo.insert!()
+      end)
   end
 
   @doc """
@@ -523,6 +524,8 @@ defmodule Risteys.LabTestStats do
     distribution_lab_values =
       stats.distribution_lab_values
 
+    qc_table = get_qc_table(omop_id)
+
     # TODO(Vincent 2024-10-23) ::WIP_DIST_LAB_VALUE
     # Temporarily deactivated following code while working on the distribution of lab values:
 
@@ -560,7 +563,7 @@ defmodule Risteys.LabTestStats do
 
     %{
       stats
-      | distribution_lab_values: distribution_lab_values
+      | distribution_lab_values: distribution_lab_values,
         # TODO(Vincent 2024-10-23) ::WIP_DIST_LAB_VALUE
         # distribution_year_of_birth: distribution_year_of_birth,
         # distribution_age_first_measurement: distribution_age_first_measurement,
@@ -572,6 +575,243 @@ defmodule Risteys.LabTestStats do
         # distribution_n_measurements_per_person: distribution_n_measurements_per_person,
         # distribution_value_range_per_person: distribution_value_range_per_person
     }
+    |> Map.put_new(:qc_table, qc_table)
+  end
+
+  def import_qc_tables(
+        qc_tables_stats_file_path,
+        qc_tables_dist_values_stats_file_path,
+        qc_tables_dist_bins_definitions_file_path,
+        qc_tables_test_outcome_counts_file_path
+      ) do
+    map_stats = scan_qc_tables_stats(qc_tables_stats_file_path)
+
+    map_distribution_measurement_values =
+      scan_qc_tables_distribution_measurement_values(
+        qc_tables_dist_values_stats_file_path,
+        qc_tables_dist_bins_definitions_file_path
+      )
+
+    map_test_outcome_counts = scan_qc_tables_test_outcome(qc_tables_test_outcome_counts_file_path)
+
+    map_omop_dbids = OMOP.get_map_omop_ids()
+
+    attrs_list =
+      for {key, stats} <- map_stats do
+        {omop_id, test_name, measurement_unit} = key
+
+        omop_concept_dbid = Map.get(map_omop_dbids, omop_id)
+
+        distribution = Map.get(map_distribution_measurement_values, key)
+        test_outcome_counts = Map.get(map_test_outcome_counts, key)
+
+        Map.merge(stats, %{
+          omop_concept_dbid: omop_concept_dbid,
+          omop_id: omop_id,
+          test_name: test_name,
+          measurement_unit: measurement_unit,
+          test_outcome_counts: test_outcome_counts,
+          distribution_measurement_values: distribution
+        })
+      end
+      |> Enum.filter(fn %{omop_concept_dbid: omop_concept_dbid, omop_id: omop_id} ->
+        if is_nil(omop_concept_dbid) do
+          Logger.warning(
+            "Discarding stats for QC table for OMOP Concept ID: #{omop_id}: OMOP concept ID not found in the database."
+          )
+
+          false
+        else
+          true
+        end
+      end)
+
+    {:ok, :ok} =
+      Repo.transaction(fn ->
+        Repo.delete_all(QCTable)
+
+        Enum.each(attrs_list, fn attrs ->
+          %QCTable{}
+          |> QCTable.changeset(attrs)
+          |> Repo.insert!()
+        end)
+      end)
+  end
+
+  defp scan_qc_tables_stats(file_path) do
+    file_path
+    |> File.stream!()
+    |> Stream.map(&Jason.decode!/1)
+    |> Enum.reduce(%{}, fn row, acc ->
+      %{
+        "OMOP_CONCEPT_ID" => omop_id,
+        "TEST_NAME" => test_name,
+        "MEASUREMENT_UNIT" => measurement_unit,
+        "MEASUREMENT_UNIT_HARMONIZED" => measurement_unit_harmonized,
+        "NRecords" => nrecords,
+        "NPeople" => npeople,
+        "PercentMissingMeasurementValue" => percent_missing_measurement_value
+      } = row
+
+      key = {omop_id, test_name, measurement_unit}
+
+      value = %{
+        measurement_unit_harmonized: measurement_unit_harmonized,
+        nrecords: nrecords,
+        npeople: npeople,
+        percent_missing_measurement_value: percent_missing_measurement_value
+      }
+
+      Map.put_new(acc, key, value)
+    end)
+  end
+
+  defp scan_qc_tables_test_outcome(file_path) do
+    file_path
+    |> File.stream!()
+    |> Stream.map(&Jason.decode!/1)
+    |> Enum.reduce(%{}, fn row, acc ->
+      %{
+        "OMOP_CONCEPT_ID" => omop_id,
+        "TEST_NAME" => test_name,
+        "MEASUREMENT_UNIT" => measurement_unit,
+        "TEST_OUTCOME" => test_outcome,
+        "TestOutcomeCount" => count,
+        "NPeople" => npeople
+      } = row
+
+      key = {omop_id, test_name, measurement_unit}
+      new_count = %{test_outcome: test_outcome, count: count, npeople: npeople}
+      list_counts = [new_count | Map.get(acc, key, [])]
+
+      Map.put(acc, key, list_counts)
+    end)
+  end
+
+  def scan_qc_tables_distribution_measurement_values(stats_file_path, bins_definitions_file_path) do
+    map_stats =
+      stats_file_path
+      |> File.stream!()
+      |> Stream.map(&Jason.decode!/1)
+      |> Enum.reduce(%{}, fn row, acc ->
+        %{
+          "OMOP_CONCEPT_ID" => omop_id,
+          "TEST_NAME" => test_name,
+          "MEASUREMENT_UNIT" => measurement_unit,
+          "BinIndex" => bin_index,
+          "NPeople" => npeople,
+          "BinCount" => yy
+        } = row
+
+        # We use bin_index in the key to merge it with the bins definitions.
+        # It will be dropped from the key after this merge.
+        key = {omop_id, test_name, measurement_unit, bin_index}
+        value = %{npeople: npeople, yy: yy}
+
+        Map.put_new(acc, key, value)
+      end)
+
+    {map_bins_definitions, map_distribution_metadata} =
+      bins_definitions_file_path
+      |> File.stream!()
+      |> Stream.map(&Jason.decode!/1)
+      |> Enum.reduce({%{}, %{}}, fn row, {acc_bins_definitions, acc_distribution_metadata} ->
+        %{
+          "OMOP_CONCEPT_ID" => omop_id,
+          "BinIndex" => bin_index,
+          "BreakMin" => break_min,
+          "BreakMax" => break_max,
+          "BinX1" => x1,
+          "BinX2" => x2,
+          "BinLabelX1" => x1_formatted,
+          "BinLabelX2" => x2_formatted,
+          "BinLabel" => x1x2_formatted
+        } = row
+
+        key_bins_definitions = {omop_id, bin_index}
+
+        value_bins_definitions = %{
+          x1: x1,
+          x2: x2,
+          x1_formatted: x1_formatted,
+          x2_formatted: x2_formatted,
+          x1x2_formatted: x1x2_formatted
+        }
+
+        key_distribution_metadata = omop_id
+
+        value_distribution_metadata = %{
+          break_min: break_min,
+          break_max: break_max,
+        }
+
+        {
+          Map.put_new(acc_bins_definitions, key_bins_definitions, value_bins_definitions),
+          Map.put(
+            acc_distribution_metadata,
+            key_distribution_metadata,
+            value_distribution_metadata
+          )
+        }
+      end)
+
+    map_bins =
+      for {stats_key, stats_value} <- map_stats, into: %{} do
+        {omop_id, test_name, measurement_unit, bin_index} = stats_key
+
+        key_bins_definitions = {omop_id, bin_index}
+
+        value =
+          map_bins_definitions
+          |> Map.fetch!(key_bins_definitions)
+          |> Map.merge(stats_value)
+
+        {stats_key, value}
+      end
+
+    bins =
+      Enum.reduce(map_bins, %{}, fn {key, value}, acc ->
+        {omop_id, test_name, measurement_unit, _bin_index} = key
+
+        new_key = {omop_id, test_name, measurement_unit}
+        list_bins = [value | Map.get(acc, new_key, [])]
+
+        Map.put(acc, new_key, list_bins)
+      end)
+
+    for {key, list_bins} <- bins, into: %{} do
+      {omop_id, _test_name, measurement_unit} = key
+
+      key_distribution_metadata = omop_id
+
+      distribution_metadata =
+        map_distribution_metadata
+        |> Map.fetch!(key_distribution_metadata)
+        |> Map.put_new(:measurement_unit, measurement_unit)
+
+      {key, Map.put_new(distribution_metadata, :bins, list_bins)}
+    end
+  end
+
+  def get_qc_table(omop_id) do
+    Repo.all(
+      from qc_row in QCTable,
+        join: omop in OMOP.Concept,
+        on: qc_row.omop_concept_dbid == omop.id,
+        where: omop.concept_id == ^omop_id,
+        order_by: [desc: :npeople],
+        select: %{
+          omop_id: omop.concept_id,
+          test_name: qc_row.test_name,
+          measurement_unit: qc_row.measurement_unit,
+          measurement_unit_harmonized: qc_row.measurement_unit_harmonized,
+          nrecords: qc_row.nrecords,
+          npeople: qc_row.npeople,
+          percent_missing_measurement_value: qc_row.percent_missing_measurement_value,
+          test_outcome_counts:  qc_row.test_outcome_counts,
+          distribution_measurement_values: qc_row.distribution_measurement_values,
+        }
+    )
   end
 
   @doc """

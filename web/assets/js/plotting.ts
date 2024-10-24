@@ -62,6 +62,12 @@ function plotAllObs() {
         case "continuous":
           ee.append(plotContinuous(data));
           break;
+        case "qc-table-test-outcome":
+          ee.append(plotQCTableTestOutcome(data));
+          break;
+        case "qc-table-harmonized-value-distribution":
+          ee.append(plotQCTableHarmonizedValueDistribution(data));
+          break;
         default:
           console.warn(`Unsupported plot type: ${ee.dataset.obsplotType}`);
       }
@@ -381,6 +387,140 @@ function plotNMeasurementsPerPerson(data) {
       ),
     ],
   });
+}
+
+function plotQCTableTestOutcome(data: ObsData) {
+  const colors = {
+    grey: "#ddd",
+    darkerGrey: "#959fa6",
+    orange: "#dca863",
+    blue: "#6495b2",
+    violet: "#a580a4",
+    red: "#cb4141",
+    darkRed: "#a61722",
+  };
+
+  const colorRange = {
+    NA: colors.grey,
+    normal: colors.darkerGrey,
+    abnormal: colors.orange,
+    low: colors.violet,
+    high: colors.red,
+    veryHigh: colors.darkRed,
+  };
+
+  // TODO(Vincent 2024-10-28)  The tip might get visually truncated in some cases when it's
+  // anchored to the bottom, as the bars drawn after it be on top of it.
+  // I tried to mitigate that by setting z-index: 1 & position: relative on the tip <g> element,
+  // but this doesn't work. Probably because it's inside the SVG and not the HTML. If I manually
+  // set the z-index & position on 1 <svg> element then it works. But if I do it here it will be
+  // applied to *all* plots, which defeats its purpose.
+  return Plot.plot({
+    width: 140,
+    height: 20,
+    margin: 0,
+    style: "overflow: visible;",
+    fontSize: 24,
+    x: { label: null, ticks: false },
+    y: { label: null, tickSize: 0 },
+    color: {
+      domain: ["NA", "N", "A", "L", "H", "HH"],
+      range: [
+        colorRange.NA,
+        colorRange.normal,
+        colorRange.abnormal,
+        colorRange.low,
+        colorRange.high,
+        colorRange.veryHigh,
+      ],
+    },
+    marks: [
+      Plot.barX(data.bins, {
+        x: "x",
+        fill: "y",
+      }),
+      Plot.tip(
+        data.bins,
+        Plot.pointerX(
+          Plot.stackX({
+            x: "x",
+            channels: {
+              testOutcome: {
+                label: "Test outcome",
+                value: (bin) => bin.y,
+              },
+              percentage: {
+                label: "",
+                value: (bin) => bin.x_label,
+              },
+            },
+            format: {
+              x: false,
+              testOuctome: true,
+              percentage: true,
+            },
+            fontSize: 13,
+          }),
+        ),
+      ),
+    ],
+  });
+}
+
+function plotQCTableHarmonizedValueDistribution(data) {
+  if (data.bins.length === 0) {
+    return "";
+  } else {
+    return Plot.plot({
+      width: 140,
+      height: 30,
+      margin: 0,
+      marginBottom: 12,
+      style: "overflow: visible;",
+      x: {
+        domain: [data.xmin, data.xmax],
+        ticks: [data.xmin, data.xmax],
+        label: null,
+      },
+      y: {
+        ticks: false,
+        label: null,
+      },
+      marks: [
+        Plot.ruleY([0]),
+        Plot.rectY(data.bins, {
+          x1: "x1",
+          x2: "x2",
+          y: "y",
+        }),
+        Plot.tip(
+          data.bins,
+          Plot.pointerX({
+            // Center the tip on the bin width
+            x: (bin) => bin.x1 + Math.abs(bin.x2 - bin.x1) / 2,
+            y: "y",
+            channels: {
+              xFormatted: {
+                label: "Value",
+                value: (bin) => bin.x1x2_formatted,
+              },
+              yFormatted: {
+                label: "N measurements",
+                value: "y",
+              },
+            },
+            format: {
+              x: false,
+              y: false,
+              xFormatted: true,
+              yFormatted: true,
+            },
+            fontSize: 13,
+          }),
+        ),
+      ],
+    });
+  }
 }
 
 export { plotAllObs };
