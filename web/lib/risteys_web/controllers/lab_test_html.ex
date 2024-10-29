@@ -183,14 +183,14 @@ defmodule RisteysWeb.LabTestHTML do
         |> Map.merge(qc_row)
       end)
 
-    # TODO(Vincent 2024-10-23) ::WIP_DIST_LAB_VALUE
-    # distribution_year_of_birth =
-    #   build_obsplot_payload(
-    #     :years,
-    #     lab_test.distribution_year_of_birth["bins"],
-    #     :npeople
-    #   )
+    distribution_year_of_birth =
+      if is_nil(lab_test.distribution_year_of_birth) do
+        nil
+      else
+        build_obsplot_payload(:years, lab_test.distribution_year_of_birth)
+      end
 
+    # TODO(Vincent 2024-10-23) ::WIP_DIST_LAB_VALUE
     # distribution_age_first_measurement =
     #   build_obsplot_payload(
     #     :continuous,
@@ -251,9 +251,9 @@ defmodule RisteysWeb.LabTestHTML do
       median_n_measurements: median_n_measurements,
       median_years_first_to_last_measurement: median_years_first_to_last_measurement,
       distribution_lab_values: distribution_lab_values,
-      qc_table: qc_table
+      qc_table: qc_table,
+      distribution_year_of_birth: distribution_year_of_birth
       # TODO(Vincent 2024-10-23) ::WIP_DIST_LAB_VALUE
-      # distribution_year_of_birth: distribution_year_of_birth,
       # distribution_age_first_measurement: distribution_age_first_measurement,
       # distribution_age_last_measurement: distribution_age_last_measurement,
       # distribution_age_start_of_registry: distribution_age_start_of_registry,
@@ -338,33 +338,27 @@ defmodule RisteysWeb.LabTestHTML do
     """
   end
 
-  defp build_obsplot_payload(:years, bins, y_key) do
-    bins =
-      for bin <- bins do
-        %{^y_key => yy} = bin
-        x_formatted = to_string(bin.range_left)
-        y_formatted = RisteysWeb.Utils.pretty_number(yy)
+  defp build_obsplot_payload(:years, distribution) do
+    %{
+      "bins" => list_bins,
+      "break_min" => break_min,
+      "break_max" => break_max
+    } = distribution
 
-        %{
-          "x1" => bin.range_left_finite,
-          "x2" => bin.range_right_finite,
-          "y" => yy,
-          "x_formatted" => x_formatted,
-          "y_formatted" => y_formatted
-        }
-      end
-
-    payload = %{
-      "bins" => bins
-    }
+    # Remove (-inf; _] and (_ ; +inf)
+    bins = Enum.reject(list_bins, fn %{"x1" => x1, "x2" => x2} -> is_nil(x1) or is_nil(x2) end)
 
     assigns = %{
-      payload: Jason.encode!(payload)
+      payload: Jason.encode!(%{xmin: break_min, xmax: break_max, bins: bins})
     }
 
-    ~H"""
-    <div class="obsplot" data-obsplot-type="years" data-obsplot={@payload}></div>
-    """
+    if Enum.empty?(bins) do
+      nil
+    else
+      ~H"""
+      <div class="obsplot" data-obsplot-type="years" data-obsplot={@payload}></div>
+      """
+    end
   end
 
   defp build_obsplot_payload(:year_months, bins) do

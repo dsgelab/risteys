@@ -29,6 +29,8 @@ type Bins = BinContinuous[] | BinNotContinuous[];
 
 interface ObsData {
   bins: Bins;
+  xmin?: number;
+  xmax?: number;
 }
 
 interface ObsDataWithLabels extends ObsData {
@@ -219,6 +221,7 @@ function plotYearOfBirh(data: ObsData) {
       label: "Year of birth",
       tickFormat: "d",
       nice: true,
+      domain: [data.xmin, data.xmax],
     },
     y: {
       label: "Number of people",
@@ -247,11 +250,11 @@ function plotYearOfBirh(data: ObsData) {
           y: "y",
           channels: {
             x_formatted: {
-              value: "x_formatted",
+              value: "x1x2_formatted",
               label: "Year of birth",
             },
             y_formatted: {
-              value: "y_formatted",
+              value: "y",
               label: "Number of people",
             },
           },
@@ -267,7 +270,7 @@ function plotYearOfBirh(data: ObsData) {
   });
 }
 
-function plotYearMonths(data) {
+function plotYearMonths(data: ObsData) {
   // Convert Year-Month value from string to JS Date
   const bins = data.bins.map((bin) => {
     return { ...bin, yearMonthDate: new Date(bin.year_month) };
