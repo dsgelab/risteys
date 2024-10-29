@@ -29,8 +29,8 @@ type Bins = BinContinuous[] | BinNotContinuous[];
 
 interface ObsData {
   bins: Bins;
-  xmin?: number;
-  xmax?: number;
+  xmin: number;
+  xmax: number;
 }
 
 interface ObsDataWithLabels extends ObsData {
@@ -165,6 +165,7 @@ function plotContinuous(data: ObsDataWithLabels) {
     x: {
       label: data.x_label,
       nice: true,
+      domain: [data.xmin, data.xmax],
     },
     y: {
       label: data.y_label,

@@ -150,11 +150,22 @@ defmodule RisteysWeb.LabTestHTML do
           nil
 
         dist ->
+          # TODO(Vincent 2024-10-30) ::OBSPLOT_FORMATTING Ideally the formatting
+          # would be already correct when it comes here. So either make it
+          # correct in the pipeline output, or otherwise when importing the
+          # data.
+          bins =
+            for bin <- dist.bins do
+              %{bin | "x1x2_formatted" => "#{bin["x1x2_formatted"]} #{dist.unit}"}
+            end
+
+          dist = %{dist | bins: bins}
+
           build_obsplot_payload(
             :continuous,
-            dist.bins,
+            dist,
             "y",
-            "Measured value (#{dist.unit})",
+            "Measured value",
             "Number of records"
           )
       end
@@ -190,16 +201,30 @@ defmodule RisteysWeb.LabTestHTML do
         build_obsplot_payload(:years, lab_test.distribution_year_of_birth)
       end
 
-    # TODO(Vincent 2024-10-23) ::WIP_DIST_LAB_VALUE
-    # distribution_age_first_measurement =
-    #   build_obsplot_payload(
-    #     :continuous,
-    #     lab_test.distribution_age_first_measurement["bins"],
-    #     :npeople,
-    #     "Age at first measurement",
-    #     "Number of people"
-    #   )
+    distribution_age_first_measurement =
+      case lab_test.distribution_age_first_measurement do
+        nil ->
+          nil
 
+        dist ->
+          # TODO(Vincent 2024-10-30) ::OBSPLOT_FORMATTING
+          bins =
+            for bin <- dist["bins"] do
+              %{bin | "x1x2_formatted" => "#{bin["x1x2_formatted"]} years"}
+            end
+
+          dist = %{dist | "bins" => bins}
+
+          build_obsplot_payload(
+            :continuous,
+            dist,
+            :y,
+            "Age at first measurement",
+            "Number of people"
+          )
+      end
+
+    # TODO(Vincent 2024-10-23) ::WIP_DIST_LAB_VALUE
     # distribution_age_last_measurement =
     #   build_obsplot_payload(
     #     :continuous,
@@ -252,9 +277,9 @@ defmodule RisteysWeb.LabTestHTML do
       median_years_first_to_last_measurement: median_years_first_to_last_measurement,
       distribution_lab_values: distribution_lab_values,
       qc_table: qc_table,
-      distribution_year_of_birth: distribution_year_of_birth
+      distribution_year_of_birth: distribution_year_of_birth,
+      distribution_age_first_measurement: distribution_age_first_measurement
       # TODO(Vincent 2024-10-23) ::WIP_DIST_LAB_VALUE
-      # distribution_age_first_measurement: distribution_age_first_measurement,
       # distribution_age_last_measurement: distribution_age_last_measurement,
       # distribution_age_start_of_registry: distribution_age_start_of_registry,
       # distribution_ndays_first_to_last_measurement: distribution_ndays_first_to_last_measurement,
@@ -264,11 +289,38 @@ defmodule RisteysWeb.LabTestHTML do
     })
   end
 
-  defp build_obsplot_payload(:continuous, bins, y_key, x_label, y_label) do
+  defp build_obsplot_payload(:continuous, distribution, y_key, x_label, y_label) do
+    # TODO(Vincent 2024-10-30) Refactor distribution schemas so that they arrive here with a
+    # unified structure.
+    # Currently dist lab values has :bins, :break_min, etc. has schema fields, so they it arrives
+    # here :bins, etc. But the other distributions have schemas with just :distribution, so they
+    # arrive here with "bins", etc. has keys.
+    # I think the best way would be that all the distribution schemas have :bins, :xmin, :xmax,
+    # etc. has keys.
+    bins =
+      case distribution do
+        %{bins: bins} -> bins
+        %{"bins" => bins} -> bins
+      end
+
+    xmin =
+      case distribution do
+        %{break_min: xmin} -> xmin
+        %{"xmin" => xmin} -> xmin
+      end
+
+    xmax =
+      case distribution do
+        %{break_max: xmax} -> xmax
+        %{"xmax" => xmax} -> xmax
+      end
+
     payload = %{
-      "bins" => bins,
-      "x_label" => x_label,
-      "y_label" => y_label
+      bins: bins,
+      x_label: x_label,
+      y_label: y_label,
+      xmin: xmin,
+      xmax: xmax
     }
 
     assigns = %{

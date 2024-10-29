@@ -521,20 +521,16 @@ defmodule Risteys.LabTestStats do
 
     stats = Map.put_new(stats, :sex_female_percent, sex_female_percent)
 
-    distribution_lab_values =
-      stats.distribution_lab_values
+    distribution_lab_values = stats.distribution_lab_values
 
     qc_table = get_qc_table(omop_id)
 
+    distribution_year_of_birth = stats.distribution_year_of_birth
+
+    distribution_age_first_measurement = stats.distribution_age_first_measurement
+
     # TODO(Vincent 2024-10-23) ::WIP_DIST_LAB_VALUE
     # Temporarily deactivated following code while working on the distribution of lab values:
-
-    distribution_year_of_birth =
-      stats.distribution_year_of_birth
-
-    # distribution_age_first_measurement =
-    #   stats.distribution_age_first_measurement
-    #   |> rebuild_distribution(%{"range" => :range, "npeople" => :npeople}, %{npeople: 0})
 
     # distribution_age_last_measurement =
     #   stats.distribution_age_last_measurement
@@ -563,9 +559,9 @@ defmodule Risteys.LabTestStats do
     %{
       stats
       | distribution_lab_values: distribution_lab_values,
-        distribution_year_of_birth: distribution_year_of_birth
+        distribution_year_of_birth: distribution_year_of_birth,
+        distribution_age_first_measurement: distribution_age_first_measurement
         # TODO(Vincent 2024-10-23) ::WIP_DIST_LAB_VALUE
-        # distribution_age_first_measurement: distribution_age_first_measurement,
         # distribution_age_last_measurement: distribution_age_last_measurement,
         # distribution_age_start_of_registry: distribution_age_start_of_registry,
         # distribution_ndays_first_to_last_measurement:
@@ -1090,38 +1086,107 @@ defmodule Risteys.LabTestStats do
     |> Repo.insert!()
   end
 
-  def import_stats_distribution_age_first_measurement(stats_file_path, breaks_file_path) do
-    stats_columns = %{
-      "BinAgeAtFirstMeasurement_years" => %{
-        to: "range",
-        parser: &Function.identity/1
-      },
-      "NPeople" => %{
-        to: "npeople",
-        parser: fn npeople ->
-          {npeople_int, ""} = Integer.parse(npeople)
-          npeople_int
+  def import_stats_distribution_age_first_measurement(
+        stats_file_path,
+        bins_definitions_file_path
+      ) do
+    db_omop_ids = OMOP.get_map_omop_ids()
+
+    %{with_errors: omop_ids_with_errors, without_errors: rows_bins_defs} =
+      bins_definitions_file_path
+      |> File.stream!()
+      |> Stream.map(&Jason.decode!/1)
+      |> Enum.reduce(%{with_errors: MapSet.new(), without_errors: []}, fn row, acc ->
+        %{"OMOP_CONCEPT_ID" => omop_id} = row
+
+        %{with_errors: with_errors, without_errors: without_errors} = acc
+
+        case {MapSet.member?(with_errors, omop_id), Map.has_key?(db_omop_ids, omop_id)} do
+          {true, _} ->
+            acc
+
+          {false, false} ->
+            Logger.warning(
+              "Discarding Dist age at 1st measurement for OMOP ID = #{omop_id}: not found in database."
+            )
+
+            %{acc | with_errors: MapSet.put(with_errors, omop_id)}
+
+          {false, true} ->
+            %{acc | without_errors: [row | without_errors]}
         end
-      }
-    }
+      end)
+
+    map_bins_definitions =
+      rows_bins_defs
+      |> Enum.map(fn row ->
+        {omop_id, row} = Map.pop!(row, "OMOP_CONCEPT_ID")
+        {bin_index, row} = Map.pop!(row, "BinIndex")
+
+        {{omop_id, bin_index}, row}
+      end)
+      |> Enum.into(%{})
+
+    distributions =
+      stats_file_path
+      |> File.stream!()
+      |> Stream.map(&Jason.decode!/1)
+      |> Stream.reject(fn %{"OMOP_CONCEPT_ID" => omop_id} ->
+        MapSet.member?(omop_ids_with_errors, omop_id)
+      end)
+      |> Enum.reduce(%{}, fn row, acc ->
+        %{
+          "OMOP_CONCEPT_ID" => omop_id,
+          "BinIndex" => bin_index,
+          "NPeople" => npeople,
+          "BinCount" => yy
+        } = row
+
+        bin_metadata = Map.fetch!(map_bins_definitions, {omop_id, bin_index})
+
+        %{
+          "BinX1" => x1,
+          "BinX2" => x2,
+          "BinLabel" => x1x2_formatted,
+          "BreakMin" => break_min,
+          "BreakMax" => break_max
+        } = bin_metadata
+
+        this_bin = %{
+          x1: x1,
+          x2: x2,
+          y: yy,
+          x1x2_formatted: x1x2_formatted,
+          npeople: npeople
+        }
+
+        bins = get_in(acc, [omop_id, :bins]) || []
+        bins = [this_bin | bins]
+
+        distribution = %{
+          bins: bins,
+          xmin: break_min,
+          xmax: break_max
+        }
+
+        Map.put(acc, omop_id, distribution)
+      end)
 
     attrs_list =
-      load_distribution_as_attrs_list(
-        stats_file_path,
-        stats_columns,
-        breaks_file_path,
-        fn age ->
-          {age_int, ""} = Integer.parse(age)
-          age_int
-        end
-      )
+      for {omop_id, distribution} <- distributions do
+        omop_dbid = Map.fetch!(db_omop_ids, omop_id)
 
-    {:ok, :ok} =
-      Repo.transaction(fn ->
-        Repo.delete_all(DistributionAgeFirstMeasurement)
+        %{
+          omop_concept_dbid: omop_dbid,
+          distribution: distribution
+        }
+      end
 
-        Enum.each(attrs_list, &create_stats_distribution_age_first_measurement/1)
-      end)
+    Repo.transaction(fn ->
+      Repo.delete_all(DistributionAgeFirstMeasurement)
+
+      Enum.each(attrs_list, &create_stats_distribution_age_first_measurement/1)
+    end)
   end
 
   defp create_stats_distribution_age_first_measurement(attrs) do
