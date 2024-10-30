@@ -4,7 +4,7 @@ defmodule Risteys.LabTestStats.DistributionAgeLastMeasurement do
 
   schema "lab_test_stats_distribution_age_last_measurement" do
     field :omop_concept_dbid, :id
-    field :distribution,  :map
+    field :distribution, :map
 
     timestamps()
   end
@@ -18,8 +18,8 @@ defmodule Risteys.LabTestStats.DistributionAgeLastMeasurement do
       Risteys.LabTestStats.validate_npeople_green(
         :distribution,
         dist,
-        ["bins", Access.all()],
-        "npeople"
+        [:bins, Access.all()],
+        :npeople
       )
     end)
     |> unique_constraint([:omop_concept_dbid])

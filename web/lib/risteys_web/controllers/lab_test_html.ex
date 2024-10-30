@@ -150,10 +150,10 @@ defmodule RisteysWeb.LabTestHTML do
           nil
 
         dist ->
-          # TODO(Vincent 2024-10-30) ::OBSPLOT_FORMATTING Ideally the formatting
-          # would be already correct when it comes here. So either make it
-          # correct in the pipeline output, or otherwise when importing the
-          # data.
+          # TODO(Vincent 2024-10-30) ::OBSPLOT_FORMATTING
+          # Ideally the formatting would be already correct when it comes here.
+          # So either make it correct in the pipeline output, or otherwise when
+          # importing the data.
           bins =
             for bin <- dist.bins do
               %{bin | "x1x2_formatted" => "#{bin["x1x2_formatted"]} #{dist.unit}"}
@@ -224,8 +224,21 @@ defmodule RisteysWeb.LabTestHTML do
           )
       end
 
-    # TODO(Vincent 2024-10-23) ::WIP_DIST_LAB_VALUE
-    # distribution_age_last_measurement =
+    distribution_age_last_measurement =
+      case lab_test.distribution_age_last_measurement do
+        nil ->
+          nil
+
+        dist ->
+          build_obsplot_payload(
+            :continuous,
+            dist,
+            :y,
+            "Age at last measurement",
+            "Number of people"
+          )
+      end
+
     #   build_obsplot_payload(
     #     :continuous,
     #     lab_test.distribution_age_last_measurement["bins"],
@@ -234,6 +247,7 @@ defmodule RisteysWeb.LabTestHTML do
     #     "Number of people"
     #   )
 
+    # TODO(Vincent 2024-10-23) ::WIP_DIST_LAB_VALUE
     # distribution_age_start_of_registry =
     #   build_obsplot_payload(
     #     :continuous,
@@ -278,9 +292,9 @@ defmodule RisteysWeb.LabTestHTML do
       distribution_lab_values: distribution_lab_values,
       qc_table: qc_table,
       distribution_year_of_birth: distribution_year_of_birth,
-      distribution_age_first_measurement: distribution_age_first_measurement
+      distribution_age_first_measurement: distribution_age_first_measurement,
+      distribution_age_last_measurement: distribution_age_last_measurement
       # TODO(Vincent 2024-10-23) ::WIP_DIST_LAB_VALUE
-      # distribution_age_last_measurement: distribution_age_last_measurement,
       # distribution_age_start_of_registry: distribution_age_start_of_registry,
       # distribution_ndays_first_to_last_measurement: distribution_ndays_first_to_last_measurement,
       # distribution_n_measurements_over_years: distribution_n_measurements_over_years,
