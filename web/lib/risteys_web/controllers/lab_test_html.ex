@@ -239,24 +239,22 @@ defmodule RisteysWeb.LabTestHTML do
           )
       end
 
-    #   build_obsplot_payload(
-    #     :continuous,
-    #     lab_test.distribution_age_last_measurement["bins"],
-    #     :npeople,
-    #     "Age at last measurement",
-    #     "Number of people"
-    #   )
+    distribution_age_start_of_registry =
+      case lab_test.distribution_age_start_of_registry do
+        nil ->
+          nil
+
+        dist ->
+          build_obsplot_payload(
+            :continuous,
+            dist,
+            :y,
+            "Age at start of registry",
+            "Number of people"
+          )
+      end
 
     # TODO(Vincent 2024-10-23) ::WIP_DIST_LAB_VALUE
-    # distribution_age_start_of_registry =
-    #   build_obsplot_payload(
-    #     :continuous,
-    #     lab_test.distribution_age_start_of_registry["bins"],
-    #     :npeople,
-    #     "Age at start of registry",
-    #     "Number of people"
-    #   )
-
     # distribution_ndays_first_to_last_measurement =
     #   build_obsplot_payload(
     #     :continuous,
@@ -293,9 +291,9 @@ defmodule RisteysWeb.LabTestHTML do
       qc_table: qc_table,
       distribution_year_of_birth: distribution_year_of_birth,
       distribution_age_first_measurement: distribution_age_first_measurement,
-      distribution_age_last_measurement: distribution_age_last_measurement
+      distribution_age_last_measurement: distribution_age_last_measurement,
+      distribution_age_start_of_registry: distribution_age_start_of_registry
       # TODO(Vincent 2024-10-23) ::WIP_DIST_LAB_VALUE
-      # distribution_age_start_of_registry: distribution_age_start_of_registry,
       # distribution_ndays_first_to_last_measurement: distribution_ndays_first_to_last_measurement,
       # distribution_n_measurements_over_years: distribution_n_measurements_over_years,
       # distribution_n_measurements_per_person: distribution_n_measurements_per_person,
