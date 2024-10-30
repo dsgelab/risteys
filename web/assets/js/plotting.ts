@@ -255,7 +255,7 @@ function plotYearOfBirh(data: ObsData) {
               label: "Year of birth",
             },
             y_formatted: {
-              value: "y",
+              value: "y_formatted",
               label: "Number of people",
             },
           },

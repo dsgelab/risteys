@@ -1021,6 +1021,8 @@ defmodule Risteys.LabTestStats do
           "BinCount" => yy
         } = row
 
+        y_formatted = RisteysWeb.Utils.pretty_number(yy)
+
         bin_metadata = Map.fetch!(map_bins_definitions, {omop_id, bin_index})
 
         %{
@@ -1034,8 +1036,9 @@ defmodule Risteys.LabTestStats do
         this_bin = %{
           x1: x1,
           x2: x2,
-          y: yy,
           x1x2_formatted: x1x2_formatted,
+          y: yy,
+          y_formatted: y_formatted,
           npeople: npeople
         }
 
@@ -1130,6 +1133,8 @@ defmodule Risteys.LabTestStats do
           "BinCount" => yy
         } = row
 
+        y_formatted = RisteysWeb.Utils.pretty_number(yy)
+
         bin_metadata = Map.fetch!(map_bins_definitions, {omop_id, bin_index})
 
         %{
@@ -1143,8 +1148,9 @@ defmodule Risteys.LabTestStats do
         this_bin = %{
           x1: x1,
           x2: x2,
-          y: yy,
           x1x2_formatted: x1x2_formatted,
+          y: yy,
+          y_formatted: y_formatted,
           npeople: npeople
         }
 
@@ -1234,6 +1240,8 @@ defmodule Risteys.LabTestStats do
           "BinCount" => yy
         } = row
 
+        y_formatted = RisteysWeb.Utils.pretty_number(yy)
+
         bin_metadata = Map.fetch!(map_bins_definitions, {omop_id, bin_index})
 
         %{
@@ -1247,8 +1255,9 @@ defmodule Risteys.LabTestStats do
         this_bin = %{
           x1: x1,
           x2: x2,
-          y: yy,
           x1x2_formatted: "#{x1x2_formatted} years",
+          y: yy,
+          y_formatted: y_formatted,
           npeople: npeople
         }
 
@@ -1338,6 +1347,8 @@ defmodule Risteys.LabTestStats do
           "BinCount" => yy
         } = row
 
+        y_formatted = RisteysWeb.Utils.pretty_number(yy)
+
         bin_metadata = Map.fetch!(map_bins_definitions, {omop_id, bin_index})
 
         %{
@@ -1351,8 +1362,9 @@ defmodule Risteys.LabTestStats do
         this_bin = %{
           x1: x1,
           x2: x2,
-          y: yy,
           x1x2_formatted: "#{x1x2_formatted} years",
+          y: yy,
+          y_formatted: y_formatted,
           npeople: npeople
         }
 
@@ -1445,6 +1457,8 @@ defmodule Risteys.LabTestStats do
           "BinCount" => yy
         } = row
 
+        y_formatted = RisteysWeb.Utils.pretty_number(yy)
+
         bin_metadata = Map.fetch!(map_bins_definitions, {omop_id, bin_index})
 
         %{
@@ -1458,8 +1472,9 @@ defmodule Risteys.LabTestStats do
         this_bin = %{
           x1: x1,
           x2: x2,
-          y: yy,
           x1x2_formatted: "#{x1x2_formatted} years",
+          y: yy,
+          y_formatted: y_formatted,
           npeople: npeople
         }
 
