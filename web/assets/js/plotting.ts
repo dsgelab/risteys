@@ -343,20 +343,13 @@ function plotYearMonths(data: ObsData) {
 }
 
 function plotNMeasurementsPerPerson(data) {
-  const minDisplayBins = 50;
-
-  // NOTE(Vincent 2024-06-20) Setting `undefined` as the domain makes Plot.plot
-  // infer it from the data as [min, max].
-  const xDomain =
-    data.bins.length >= minDisplayBins ? undefined : [1, minDisplayBins];
-
   return Plot.plot({
     marginLeft: 70,
     style: defaultPlotStyle,
     x: {
       label: "Number of measurements per person",
       nice: true,
-      domain: xDomain,
+      domain: [data.xmin, data.xmax],
     },
     y: {
       label: "Number of people",
@@ -369,25 +362,26 @@ function plotNMeasurementsPerPerson(data) {
       Plot.gridY({ stroke: "#aaa" }),
       Plot.ruleY([0]),
       Plot.rectY(data.bins, {
-        x: "n_measurements",
-        y: "npeople",
-        interval: 1,
+        x1: "x1",
+        x2: "x2",
+        y: "y",
         fill: "var(--color-risteys-darkblue, black)",
         insetRight: 0, // see ::MOIRE
       }),
       Plot.tip(
         data.bins,
         Plot.pointerX({
-          x: "n_measurements",
-          y: "npeople",
+          x1: "x1",
+          x2: "x2",
+          y: "y",
           channels: {
             NMeasurements: {
               label: "N. measurements",
-              value: (bin) => bin.n_measurements,
+              value: "x1x2_formatted",
             },
             NPeople: {
               label: "N. people",
-              value: (bin) => bin.npeople,
+              value: "y_formatted",
             },
           },
           format: {
