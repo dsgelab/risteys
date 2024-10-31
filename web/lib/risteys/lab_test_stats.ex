@@ -266,8 +266,8 @@ defmodule Risteys.LabTestStats do
     stats =
       file_path
       |> File.stream!()
-      |> CSV.decode!(headers: true)
-      |> Stream.filter(fn %{"OMOP_ID" => omop_concept_id} ->
+      |> Stream.map(&Jason.decode!/1)
+      |> Stream.filter(fn %{"OMOP_CONCEPT_ID" => omop_concept_id} ->
         case Map.has_key?(omop_ids, omop_concept_id) do
           true ->
             true
@@ -282,7 +282,7 @@ defmodule Risteys.LabTestStats do
       end)
       |> Enum.map(fn row ->
         %{
-          "OMOP_ID" => omop_concept_id,
+          "OMOP_CONCEPT_ID" => omop_concept_id,
           "MedianNMeasurementsPerPerson" => median_n_measurements,
           "NPeople" => npeople
         } = row
