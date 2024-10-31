@@ -526,10 +526,6 @@ defmodule Risteys.LabTestStats do
     # TODO(Vincent 2024-10-23) ::WIP_DIST_LAB_VALUE
     # Temporarily deactivated following code while working on the distribution of lab values:
 
-    # distribution_n_measurements_over_years =
-    #   stats.distribution_n_measurements_over_years
-    #   |> rebuild_year_month_distribution()
-
     # distribution_n_measurements_per_person =
     #   stats.distribution_n_measurements_per_person
     #   |> rebuild_n_measurements_per_person_distribution()
@@ -538,22 +534,15 @@ defmodule Risteys.LabTestStats do
     #   stats.distribution_value_range_per_person
     #   |> rebuild_distribution(%{"range" => :range, "npeople" => :npeople}, %{npeople: 0})
 
-    %{
-      stats
-      | distribution_lab_values: stats.distribution_lab_values,
-        distribution_year_of_birth: stats.distribution_year_of_birth,
-        distribution_age_first_measurement: stats.distribution_age_first_measurement,
-        distribution_age_last_measurement: stats.distribution_age_last_measurement,
-        distribution_age_start_of_registry: stats.distribution_age_start_of_registry,
-        distribution_nyears_first_to_last_measurement:
-          stats.distribution_nyears_first_to_last_measurement
+    # TODO(Vincent 2024-10-23) ::WIP_DIST_LAB_VALUE
+    # %{
+    #   stats
+    #   |
+    #   distribution_n_measurements_per_person: distribution_n_measurements_per_person,
+    #   distribution_value_range_per_person: distribution_value_range_per_person
+    # }
 
-        # TODO(Vincent 2024-10-23) ::WIP_DIST_LAB_VALUE
-        # distribution_n_measurements_over_years: distribution_n_measurements_over_years,
-        # distribution_n_measurements_per_person: distribution_n_measurements_per_person,
-        # distribution_value_range_per_person: distribution_value_range_per_person
-    }
-    |> Map.put_new(:qc_table, qc_table)
+    Map.put_new(stats, :qc_table, qc_table)
   end
 
   def import_qc_tables(
@@ -1513,68 +1502,105 @@ defmodule Risteys.LabTestStats do
     |> Repo.insert!()
   end
 
-  def import_stats_distribution_n_measurements_over_years(stats_file_path) do
-    omop_ids = OMOP.get_map_omop_ids()
+  # NOTE(Vincent 2024-10-31) This function has different handling than the other
+  # import distribution functions as the bins definitions don't depend (and
+  # don't include) on an OMOP ID.
+  def import_stats_distribution_n_measurement_over_years(
+        stats_file_path,
+        bins_definitions_file_path
+      ) do
+    map_bins_definitions =
+      bins_definitions_file_path
+      |> File.stream!()
+      |> Stream.map(&Jason.decode!/1)
+      |> Enum.map(fn row -> Map.pop!(row, "BinLabel") end)
+      |> Enum.into(%{})
 
-    bins_map =
+    db_omop_ids = OMOP.get_map_omop_ids()
+
+    distributions =
       stats_file_path
-      |> read_stats_rows()
-      |> group_bins_by(["OMOP_ID"])
-      # Ungroup the single-value group ["OMOP_ID]
-      |> Enum.map(fn {[omop_concept_id], rows} -> {omop_concept_id, rows} end)
-      |> Enum.map(fn {key, rows} ->
-        new_rows =
-          for row <- rows do
-            %{
-              "YearMonth" => range,
-              "NRecords" => nrecords,
-              "NPeople" => npeople
-            } = row
+      |> File.stream!()
+      |> Stream.map(&Jason.decode!/1)
+      |> Enum.reduce(%{with_errors: MapSet.new(), without_errors: []}, fn row, acc ->
+        %{"OMOP_CONCEPT_ID" => omop_id} = row
 
-            {nrecords_int, ""} = Integer.parse(nrecords)
-            {npeople_int, ""} = Integer.parse(npeople)
+        case {Map.has_key?(db_omop_ids, omop_id), MapSet.member?(acc.with_errors, omop_id)} do
+          {true, _} ->
+            %{acc | without_errors: [row | acc.without_errors]}
 
-            %{
-              "range" => range,
-              "nrecords" => nrecords_int,
-              "npeople" => npeople_int
-            }
-          end
+          {false, false} ->
+            Logger.warning(
+              "Discarding Dist N meas over years for OMOP ID = #{omop_id}: not found in database."
+            )
 
-        {key, new_rows}
+            %{acc | with_errors: MapSet.put(acc.with_errors, omop_id)}
+
+          {false, true} ->
+            acc
+        end
+      end)
+      |> (fn %{without_errors: rows} -> rows end).()
+      # TODO(Vincent 2024-10-31) Fix pipeline output to either have bins 2013-12
+      # and 2024-01, or remove the stats for this bins in the output.
+      |> Enum.reject(fn %{"BinLabel" => bin_label} ->
+        bin_label == "2013-12" or bin_label == "2024-01"
+      end)
+      |> Enum.reduce(%{}, fn row, acc ->
+        %{
+          "OMOP_CONCEPT_ID" => omop_id,
+          "BinLabel" => bin_label,
+          "BinCount" => yy,
+          "NPeople" => npeople
+        } = row
+
+        y_formatted = RisteysWeb.Utils.pretty_number(yy)
+
+        bin_metadata = Map.fetch!(map_bins_definitions, bin_label)
+
+        %{
+          "BinX1" => x1,
+          "BinX2" => x2,
+          "BreakMin" => xmin,
+          "BreakMax" => xmax
+        } = bin_metadata
+
+        this_bin = %{
+          x1: x1,
+          x2: x2,
+          x1x2_formatted: bin_label,
+          y: yy,
+          y_formatted: y_formatted,
+          npeople: npeople
+        }
+
+        bins = get_in(acc, [omop_id, :bins]) || []
+        bins = [this_bin | bins]
+
+        distribution = %{
+          bins: bins,
+          xmin: xmin,
+          xmax: xmax
+        }
+
+        Map.put(acc, omop_id, distribution)
       end)
 
-    # TODO(Vincent 2024-06-19)  Use breaks from the pipeline output.
-    # Currently these stats don't come with an associated breaks list, because
-    # the pipeline just aggregate on OMOP_ID and YearMonth, withouth pre-
-    # computing the YearMonth.
-    # Ideally the YearMonth breaks list is written as part of the pipeline
-    # output and then used here.
-    # But for now we don't have it, so I decide to generate it on the fly here.
-    year_month_list =
-      for year <- 2014..2022, month <- 1..12 do
-        month_str =
-          month
-          |> to_string()
-          |> String.pad_leading(2, "0")
-
-        "#{year}-#{month_str}"
-      end
-
     attrs_list =
-      for {omop_concept_id, bins} <- bins_map do
+      for {omop_id, distribution} <- distributions do
+        omop_dbid = Map.fetch!(db_omop_ids, omop_id)
+
         %{
-          omop_concept_dbid: Map.fetch!(omop_ids, omop_concept_id),
-          distribution: %{"bins" => bins, "breaks" => year_month_list}
+          omop_concept_dbid: omop_dbid,
+          distribution: distribution
         }
       end
 
-    {:ok, :ok} =
-      Repo.transaction(fn ->
-        Repo.delete_all(DistributionNMeasurementsOverYears)
+    Repo.transaction(fn ->
+      Repo.delete_all(DistributionNMeasurementsOverYears)
 
-        Enum.each(attrs_list, &create_stats_distribution_n_measurements_over_years/1)
-      end)
+      Enum.each(attrs_list, &create_stats_distribution_n_measurements_over_years/1)
+    end)
   end
 
   defp create_stats_distribution_n_measurements_over_years(attrs) do

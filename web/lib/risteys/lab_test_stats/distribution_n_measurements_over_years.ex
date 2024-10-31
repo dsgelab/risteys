@@ -18,8 +18,8 @@ defmodule Risteys.LabTestStats.DistributionNMeasurementsOverYears do
       Risteys.LabTestStats.validate_npeople_green(
         :distribution,
         dist,
-        ["bins", Access.all()],
-        "npeople"
+        [:bins, Access.all()],
+        :npeople
       )
     end)
   end

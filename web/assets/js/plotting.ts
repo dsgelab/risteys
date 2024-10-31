@@ -272,10 +272,16 @@ function plotYearOfBirh(data: ObsData) {
 }
 
 function plotYearMonths(data: ObsData) {
-  // Convert Year-Month value from string to JS Date
+  // Convert Year-Month value from string to JS Date to print it using the user's locale
   const bins = data.bins.map((bin) => {
-    return { ...bin, yearMonthDate: new Date(bin.year_month) };
+    return {
+      ...bin,
+      x1: new Date(bin.x1),
+      x2: new Date(bin.x2),
+    };
   });
+
+  console.log(bins);
 
   return Plot.plot({
     marginLeft: 70,
@@ -283,6 +289,7 @@ function plotYearMonths(data: ObsData) {
     x: {
       label: "Time",
       nice: true,
+      domain: [new Date(data.xmin), new Date(data.xmax)],
     },
     y: {
       label: "Number of records",
@@ -295,8 +302,9 @@ function plotYearMonths(data: ObsData) {
       Plot.gridY({ stroke: "#aaa" }),
       Plot.ruleY([0]),
       Plot.rectY(bins, {
-        x: "yearMonthDate",
-        y: "nrecords",
+        x1: "x1",
+        x2: "x2",
+        y: "y",
         interval: "month",
         fill: "var(--color-risteys-darkblue, black)",
         insetRight: 0, // ::MOIRE Remove the default 1px inset, as it leads to a strong Moiré pattern.
@@ -304,13 +312,14 @@ function plotYearMonths(data: ObsData) {
       Plot.tip(
         bins,
         Plot.pointerX({
-          x: "yearMonthDate",
-          y: "nrecords",
+          x1: "x1",
+          x2: "x2",
+          y: "y",
           channels: {
             timePeriod: {
               label: "Time period",
               value: (bin) => {
-                return bin.yearMonthDate.toLocaleString(undefined, {
+                return bin.x1.toLocaleString(undefined, {
                   month: "short",
                   year: "numeric",
                 });
@@ -318,7 +327,7 @@ function plotYearMonths(data: ObsData) {
             },
             yFormatted: {
               label: "Number of records",
-              value: (bin) => formatLocaleEU.format(",")(bin.nrecords),
+              value: "y_formatted",
             },
           },
           format: {
