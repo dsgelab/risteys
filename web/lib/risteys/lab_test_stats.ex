@@ -523,20 +523,6 @@ defmodule Risteys.LabTestStats do
 
     qc_table = get_qc_table(omop_id)
 
-    # TODO(Vincent 2024-10-23) ::WIP_DIST_LAB_VALUE
-    # Temporarily deactivated following code while working on the distribution of lab values:
-
-    # distribution_value_range_per_person =
-    #   stats.distribution_value_range_per_person
-    #   |> rebuild_distribution(%{"range" => :range, "npeople" => :npeople}, %{npeople: 0})
-
-    # TODO(Vincent 2024-10-23) ::WIP_DIST_LAB_VALUE
-    # %{
-    #   stats
-    #   |
-    #   distribution_value_range_per_person: distribution_value_range_per_person
-    # }
-
     Map.put_new(stats, :qc_table, qc_table)
   end
 
@@ -1705,35 +1691,110 @@ defmodule Risteys.LabTestStats do
     |> Repo.insert!()
   end
 
-  def import_stats_distribution_value_range_per_person(stats_file_path, breaks_file_path) do
-    stats_columns = %{
-      "Bin" => %{
-        to: "range",
-        parser: &Function.identity/1
-      },
-      "NPeople" => %{
-        to: "npeople",
-        parser: fn npeople ->
-          {npeople_int, ""} = Integer.parse(npeople)
-          npeople_int
+  def import_stats_distribution_value_range_per_person(
+        stats_file_path,
+        bins_definitions_file_path
+      ) do
+    db_omop_ids = OMOP.get_map_omop_ids()
+
+    %{with_errors: omop_ids_with_errors, without_errors: rows_bins_defs} =
+      bins_definitions_file_path
+      |> File.stream!()
+      |> Stream.map(&Jason.decode!/1)
+      |> Enum.reduce(%{with_errors: MapSet.new(), without_errors: []}, fn row, acc ->
+        %{"OMOP_CONCEPT_ID" => omop_id} = row
+
+        case {MapSet.member?(acc.with_errors, omop_id), Map.has_key?(db_omop_ids, omop_id)} do
+          {true, _} ->
+            acc
+
+          {false, false} ->
+            Logger.warning(
+              "Discarding Dist value range for OMOP ID = #{omop_id}: not found in database."
+            )
+
+            %{acc | with_errors: MapSet.put(acc.with_errors, omop_id)}
+
+          {false, true} ->
+            %{acc | without_errors: [row | acc.without_errors]}
         end
-      }
-    }
+      end)
+
+    map_bins_definitions =
+      rows_bins_defs
+      |> Enum.map(fn row ->
+        {omop_id, row} = Map.pop!(row, "OMOP_CONCEPT_ID")
+        {bin_index, row} = Map.pop!(row, "BinIndex")
+
+        {{omop_id, bin_index}, row}
+      end)
+      |> Enum.into(%{})
+
+    distributions =
+      stats_file_path
+      |> File.stream!()
+      |> Stream.map(&Jason.decode!/1)
+      |> Stream.reject(fn %{"OMOP_CONCEPT_ID" => omop_id} ->
+        MapSet.member?(omop_ids_with_errors, omop_id)
+      end)
+      |> Enum.reduce(%{}, fn row, acc ->
+        %{
+          "OMOP_CONCEPT_ID" => omop_id,
+          "BinIndex" => bin_index,
+          "NPeople" => npeople,
+          "BinCount" => yy
+        } = row
+
+        y_formatted = RisteysWeb.Utils.pretty_number(yy)
+
+        bin_metadata = Map.fetch!(map_bins_definitions, {omop_id, bin_index})
+
+        %{
+          "BinX1" => x1,
+          "BinX2" => x2,
+          "BinLabel" => x1x2_formatted,
+          "BreakMin" => xmin,
+          "BreakMax" => xmax,
+          "MEASUREMENT_UNIT_HARMONIZED" => unit
+        } = bin_metadata
+
+        this_bin = %{
+          x1: x1,
+          x2: x2,
+          x1x2_formatted: "#{x1x2_formatted} #{unit}",
+          y: yy,
+          y_formatted: y_formatted,
+          npeople: npeople
+        }
+
+        bins = get_in(acc, [omop_id, :bins]) || []
+        bins = [this_bin | bins]
+
+        distribution = %{
+          bins: bins,
+          xmin: xmin,
+          xmax: xmax,
+          unit: unit
+        }
+
+        Map.put(acc, omop_id, distribution)
+      end)
 
     attrs_list =
-      load_distribution_as_attrs_list(
-        stats_file_path,
-        stats_columns,
-        breaks_file_path,
-        &Function.identity/1
-      )
+      for {omop_id, distribution} <- distributions do
+        omop_dbid = Map.fetch!(db_omop_ids, omop_id)
 
-    {:ok, :ok} =
-      Repo.transaction(fn ->
-        Repo.delete_all(DistributionValueRangePerPerson)
+        %{
+          omop_concept_dbid: omop_dbid,
+          distribution: distribution
+        }
+      end
 
-        Enum.each(attrs_list, &create_stats_distribution_value_range_per_person/1)
-      end)
+    Repo.transaction(fn ->
+      Repo.delete_all(DistributionValueRangePerPerson)
+
+      Enum.each(attrs_list, &create_stats_distribution_value_range_per_person/1)
+    end)
   end
 
   defp create_stats_distribution_value_range_per_person(attrs) do

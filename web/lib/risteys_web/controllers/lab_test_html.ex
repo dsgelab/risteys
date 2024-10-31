@@ -287,16 +287,20 @@ defmodule RisteysWeb.LabTestHTML do
           build_obsplot_payload(:n_measurements_per_person, dist)
       end
 
-    # TODO(Vincent 2024-10-23) ::WIP_DIST_LAB_VALUE
+    distribution_value_range_per_person =
+      case lab_test.distribution_value_range_per_person do
+        nil ->
+          nil
 
-    # distribution_value_range_per_person =
-    #   build_obsplot_payload(
-    #     :continuous,
-    #     lab_test.distribution_value_range_per_person["bins"],
-    #     :npeople,
-    #     "Value range (max − min) per person for the most common measurement unit.",
-    #     "Number of people"
-    #   )
+        dist ->
+          build_obsplot_payload(
+            :continuous,
+            dist,
+            :y,
+            "Value range",
+            "Number of people"
+          )
+      end
 
     Map.merge(lab_test, %{
       npeople_both_sex: npeople_both_sex,
@@ -312,9 +316,8 @@ defmodule RisteysWeb.LabTestHTML do
       distribution_nyears_first_to_last_measurement:
         distribution_nyears_first_to_last_measurement,
       distribution_n_measurements_over_years: distribution_n_measurements_over_years,
-      distribution_n_measurements_per_person: distribution_n_measurements_per_person
-      # TODO(Vincent 2024-10-23) ::WIP_DIST_LAB_VALUE
-      # distribution_value_range_per_person: distribution_value_range_per_person
+      distribution_n_measurements_per_person: distribution_n_measurements_per_person,
+      distribution_value_range_per_person: distribution_value_range_per_person
     })
   end
 
