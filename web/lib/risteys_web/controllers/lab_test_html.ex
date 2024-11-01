@@ -164,7 +164,6 @@ defmodule RisteysWeb.LabTestHTML do
           build_obsplot_payload(
             :continuous,
             dist,
-            "y",
             "Measured value",
             "Number of records"
           )
@@ -218,7 +217,6 @@ defmodule RisteysWeb.LabTestHTML do
           build_obsplot_payload(
             :continuous,
             dist,
-            :y,
             "Age at first measurement",
             "Number of people"
           )
@@ -233,7 +231,6 @@ defmodule RisteysWeb.LabTestHTML do
           build_obsplot_payload(
             :continuous,
             dist,
-            :y,
             "Age at last measurement",
             "Number of people"
           )
@@ -248,7 +245,6 @@ defmodule RisteysWeb.LabTestHTML do
           build_obsplot_payload(
             :continuous,
             dist,
-            :y,
             "Age at start of registry",
             "Number of people"
           )
@@ -263,7 +259,6 @@ defmodule RisteysWeb.LabTestHTML do
           build_obsplot_payload(
             :continuous,
             dist,
-            :y,
             "Duration",
             "Number of people"
           )
@@ -296,7 +291,6 @@ defmodule RisteysWeb.LabTestHTML do
           build_obsplot_payload(
             :continuous,
             dist,
-            :y,
             "Value range",
             "Number of people"
           )
@@ -321,7 +315,7 @@ defmodule RisteysWeb.LabTestHTML do
     })
   end
 
-  defp build_obsplot_payload(:continuous, distribution, y_key, x_label, y_label) do
+  defp build_obsplot_payload(:continuous, distribution, x_label, y_label) do
     # TODO(Vincent 2024-10-30) Refactor distribution schemas so that they arrive here with a
     # unified structure.
     # Currently dist lab values has :bins, :break_min, etc. has schema fields, so they it arrives
@@ -361,64 +355,6 @@ defmodule RisteysWeb.LabTestHTML do
 
     ~H"""
     <div class="obsplot" data-obsplot-type="continuous" data-obsplot={@payload}></div>
-    """
-  end
-
-  defp build_obsplot_payload(:binary, bins, y_key, x_label, y_label) do
-    bins =
-      for bin <- bins, into: %{} do
-        %{^y_key => yy, "range" => xx} = bin
-
-        xx =
-          case xx do
-            "0.0" -> :negative
-            "1.0" -> :positive
-          end
-
-        {xx, yy}
-      end
-
-    # Make sure we have display both positive and negative, even if we don't have both of them in the data.
-    default = %{
-      positive: nil,
-      negative: nil
-    }
-
-    bins = Map.merge(default, bins)
-
-    bins = [
-      %{x: "positive", y: bins.positive},
-      %{x: "negative", y: bins.negative}
-    ]
-
-    assigns = %{
-      payload: Jason.encode!(%{"bins" => bins, "x_label" => x_label, "y_label" => y_label})
-    }
-
-    ~H"""
-    <div class="obsplot" data-obsplot-type="discrete" data-obsplot={@payload}></div>
-    """
-  end
-
-  defp build_obsplot_payload(:categorical, bins, y_key, x_label, y_label) do
-    bins =
-      for %{"range" => xx, ^y_key => yy} <- bins do
-        xx = RisteysWeb.Utils.parse_number(xx)
-        %{"x" => xx, "y" => yy}
-      end
-
-    payload = %{
-      "bins" => bins,
-      "x_label" => x_label,
-      "y_label" => y_label
-    }
-
-    assigns = %{
-      payload: Jason.encode!(payload)
-    }
-
-    ~H"""
-    <div class="obsplot" data-obsplot-type="categorical" data-obsplot={@payload}></div>
     """
   end
 
