@@ -458,9 +458,8 @@ defmodule RisteysWeb.LabTestHTML do
   defp build_obsplot_payload(:qc_table_harmonized_value_distribution, distribution) do
     %{
       "bins" => list_bins,
-      "break_min" => break_min,
-      "break_max" => break_max,
-      "measurement_unit" => measurement_unit
+      "xmin" => xmin,
+      "xmax" => xmax
     } = distribution
 
     bins =
@@ -471,7 +470,7 @@ defmodule RisteysWeb.LabTestHTML do
           x1: x1,
           x2: x2,
           y: yy,
-          x1x2_formatted: x1x2_formatted <> "  " <> measurement_unit
+          x1x2_formatted: x1x2_formatted
         }
       end
       # Remove (-inf; _] and (_ ; +inf)
@@ -480,9 +479,8 @@ defmodule RisteysWeb.LabTestHTML do
     assigns = %{
       payload:
         Jason.encode!(%{
-          xmin: break_min,
-          xmax: break_max,
-          measurement_unit: measurement_unit,
+          xmin: xmin,
+          xmax: xmax,
           bins: bins
         })
     }

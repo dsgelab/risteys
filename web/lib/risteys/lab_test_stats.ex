@@ -532,7 +532,8 @@ defmodule Risteys.LabTestStats do
         qc_tables_dist_bins_definitions_file_path,
         qc_tables_test_outcome_counts_file_path
       ) do
-    map_stats = scan_qc_tables_stats(qc_tables_stats_file_path)
+    map_stats =
+      scan_qc_tables_stats(qc_tables_stats_file_path)
 
     map_distribution_measurement_values =
       scan_qc_tables_distribution_measurement_values(
@@ -666,13 +667,12 @@ defmodule Risteys.LabTestStats do
       |> Enum.reduce({%{}, %{}}, fn row, {acc_bins_definitions, acc_distribution_metadata} ->
         %{
           "OMOP_CONCEPT_ID" => omop_id,
+          "MEASUREMENT_UNIT_HARMONIZED" => measurement_unit_harmonized,
           "BinIndex" => bin_index,
-          "BreakMin" => break_min,
-          "BreakMax" => break_max,
+          "BreakMin" => xmin,
+          "BreakMax" => xmax,
           "BinX1" => x1,
           "BinX2" => x2,
-          "BinLabelX1" => x1_formatted,
-          "BinLabelX2" => x2_formatted,
           "BinLabel" => x1x2_formatted
         } = row
 
@@ -681,16 +681,15 @@ defmodule Risteys.LabTestStats do
         value_bins_definitions = %{
           x1: x1,
           x2: x2,
-          x1_formatted: x1_formatted,
-          x2_formatted: x2_formatted,
-          x1x2_formatted: x1x2_formatted
+          x1x2_formatted: "#{x1x2_formatted} #{measurement_unit_harmonized}"
         }
 
         key_distribution_metadata = omop_id
 
         value_distribution_metadata = %{
-          break_min: break_min,
-          break_max: break_max
+          xmin: xmin,
+          xmax: xmax,
+          measurement_unit_harmonized: measurement_unit_harmonized
         }
 
         {
@@ -707,11 +706,9 @@ defmodule Risteys.LabTestStats do
       for {stats_key, stats_value} <- map_stats, into: %{} do
         {omop_id, _test_name, _measurement_unit, bin_index} = stats_key
 
-        key_bins_definitions = {omop_id, bin_index}
-
         value =
           map_bins_definitions
-          |> Map.fetch!(key_bins_definitions)
+          |> Map.fetch!({omop_id, bin_index})
           |> Map.merge(stats_value)
 
         {stats_key, value}
@@ -721,23 +718,17 @@ defmodule Risteys.LabTestStats do
       Enum.reduce(map_bins, %{}, fn {key, value}, acc ->
         {omop_id, test_name, measurement_unit, _bin_index} = key
 
-        new_key = {omop_id, test_name, measurement_unit}
-        list_bins = [value | Map.get(acc, new_key, [])]
+        dist_key = {omop_id, test_name, measurement_unit}
+        list_bins = [value | Map.get(acc, dist_key, [])]
 
-        Map.put(acc, new_key, list_bins)
+        Map.put(acc, dist_key, list_bins)
       end)
 
-    for {key, list_bins} <- bins, into: %{} do
-      {omop_id, _test_name, measurement_unit} = key
+    for {dist_key, list_bins} <- bins, into: %{} do
+      {omop_id, _test_name, _measurement_unit} = dist_key
+      distribution_metadata = Map.fetch!(map_distribution_metadata, omop_id)
 
-      key_distribution_metadata = omop_id
-
-      distribution_metadata =
-        map_distribution_metadata
-        |> Map.fetch!(key_distribution_metadata)
-        |> Map.put_new(:measurement_unit, measurement_unit)
-
-      {key, Map.put_new(distribution_metadata, :bins, list_bins)}
+      {dist_key, Map.put_new(distribution_metadata, :bins, list_bins)}
     end
   end
 
