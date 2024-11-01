@@ -136,7 +136,7 @@ defmodule Risteys.LabTestStats do
 
     stats =
       file_path
-      |> File.stream!(line_or_bytes: :line)
+      |> File.stream!()
       |> Stream.map(&Jason.decode!/1)
       |> Stream.filter(fn %{"OMOP_CONCEPT_ID" => omop_concept_id} ->
         case Map.has_key?(omop_ids, omop_concept_id) do
@@ -317,7 +317,7 @@ defmodule Risteys.LabTestStats do
 
     stats =
       file_path
-      |> File.stream!(line_or_bytes: :lines)
+      |> File.stream!()
       |> Stream.map(&Jason.decode!/1)
       |> Stream.filter(fn %{"OMOP_CONCEPT_ID" => omop_concept_id} ->
         case Map.has_key?(omop_ids, omop_concept_id) do
@@ -369,7 +369,7 @@ defmodule Risteys.LabTestStats do
 
     stats =
       file_path
-      |> File.stream!(line_or_bytes: :line)
+      |> File.stream!()
       |> Stream.map(&Jason.decode!/1)
       |> Stream.filter(fn %{"OMOP_CONCEPT_ID" => omop_concept_id} ->
         case Map.has_key?(omop_ids, omop_concept_id) do
@@ -824,7 +824,7 @@ defmodule Risteys.LabTestStats do
 
     {map_xs, map_metadata} =
       continuous_bins_definitions_file_path
-      |> File.stream!(:line)
+      |> File.stream!()
       |> Stream.map(&Jason.decode!/1)
       |> Enum.reduce({%{}, %{}}, fn row, {acc_xs, acc_metadata} ->
         %{
@@ -863,7 +863,7 @@ defmodule Risteys.LabTestStats do
 
     map_continuous_distributions =
       continuous_stats_file_path
-      |> File.stream!(:line)
+      |> File.stream!()
       |> Stream.map(&Jason.decode!/1)
       |> Enum.reduce(%{}, fn row, acc ->
         %{
@@ -899,7 +899,7 @@ defmodule Risteys.LabTestStats do
     omop_ids = OMOP.get_map_omop_ids()
 
     discrete_stats_file_path
-    |> File.stream!(:line)
+    |> File.stream!()
     |> Stream.map(&Jason.decode!/1)
     |> Enum.reduce(%{}, fn row, acc ->
       %{"OMOP_CONCEPT_ID" => omop_id} = row
