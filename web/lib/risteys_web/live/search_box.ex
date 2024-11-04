@@ -26,10 +26,9 @@ defmodule RisteysWeb.Live.SearchBox do
   def handle_event("update_search_results", %{"search_query" => query}, socket) do
     results =
       [
+        ["Endpoint name", search_names(query)],
         ["ICD-10 code", search_icds(query)],
-        ["Endpoint long name", search_longnames(query)],
-        ["Description", search_descriptions(query)],
-        ["Endpoint name", search_names(query)]
+        ["Endpoint long name", search_longnames(query)]
       ]
       |> Enum.reject(fn [_category, result_list] -> Enum.empty?(result_list) end)
 
@@ -102,24 +101,6 @@ defmodule RisteysWeb.Live.SearchBox do
         endpoint_name: name,
         endpoint_column: highlight_matches(name, query),
         content_column: highlight_matches(longname, query)
-      }
-    end)
-  end
-
-  defp search_descriptions(query) do
-    Risteys.FGEndpoint.search_descriptions(query, 10)
-    |> Enum.map(fn %{name: name, description: description} ->
-      description =
-        description
-        |> String.split(".")
-        |> Enum.filter(fn sentence -> String.contains?(sentence, query) end)
-        |> Enum.intersperse("…")
-        |> Enum.join("")
-
-      %{
-        endpoint_name: name,
-        endpoint_column: name,
-        content_column: highlight_matches(description, query)
       }
     end)
   end

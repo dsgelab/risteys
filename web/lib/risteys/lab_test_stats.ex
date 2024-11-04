@@ -1816,4 +1816,74 @@ defmodule Risteys.LabTestStats do
     end)
     |> Enum.reject(&is_nil/1)
   end
+
+  def find_matching_records(user_keywords) do
+    searchable_attributes = [
+      {:omop, :concept_id},
+      {:qc_table, :test_name},
+      {:omop, :concept_name}
+    ]
+
+    init_query =
+      from omop_concept in OMOP.Concept,
+        as: :omop,
+        left_join: qc_table in QCTable,
+        as: :qc_table,
+        on: omop_concept.id == qc_table.omop_concept_dbid,
+        left_join: npeople in NPeople,
+        as: :npeople,
+        on: omop_concept.id == npeople.omop_concept_dbid,
+        left_join: people_with_two_plus_records in PeopleWithTwoPlusRecords,
+        as: :people_with_two_plus_records,
+        on: omop_concept.id == people_with_two_plus_records.omop_concept_dbid
+
+    filters =
+      for {as_table, field_name} <- searchable_attributes, keyword <- user_keywords do
+        {{as_table, field_name}, "%" <> keyword <> "%"}
+      end
+
+    running_query =
+      Enum.reduce(filters, init_query, fn {{as_table, field_name}, where_value}, query ->
+        from qq in query, or_where: field(as(^as_table), ^field_name) |> ilike(^where_value)
+      end)
+
+    running_query =
+      from qq in running_query,
+        select: %{
+          omop_concept_dbid: as(:omop).id,
+          omop_concept_id: as(:omop).concept_id,
+          omop_concept_name: as(:omop).concept_name,
+          omop_concept_npeople:
+            coalesce(as(:npeople).female_count, 0) + coalesce(as(:npeople).male_count, 0),
+          omop_concept_percent_people_with_two_plus_records:
+            as(:people_with_two_plus_records).percent_people,
+          test_name: as(:qc_table).test_name,
+          test_npeople: as(:qc_table).npeople
+        }
+
+    Repo.all(
+      from subq in subquery(running_query),
+        group_by: [
+          subq.omop_concept_dbid,
+          subq.omop_concept_id,
+          subq.omop_concept_name,
+          subq.omop_concept_npeople,
+          subq.omop_concept_percent_people_with_two_plus_records
+        ],
+        select: %{
+          omop_concept_dbid: subq.omop_concept_dbid,
+          omop_concept_id: subq.omop_concept_id,
+          omop_concept_name: subq.omop_concept_name,
+          omop_concept_npeople: subq.omop_concept_npeople,
+          omop_concept_percent_people_with_two_plus_records:
+            subq.omop_concept_percent_people_with_two_plus_records,
+          list_test_names:
+            fragment(
+              "array_to_string(array_agg(? ORDER BY ? DESC), ' ')",
+              subq.test_name,
+              subq.test_npeople
+            )
+        }
+    )
+  end
 end
