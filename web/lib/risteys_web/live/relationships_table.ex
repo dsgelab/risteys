@@ -1,7 +1,15 @@
 defmodule RisteysWeb.Live.RelationshipsTable do
   use RisteysWeb, :live_view
 
-  def mount(_params, %{"endpoint" => endpoint, "is_authz_list_variants" => authz_list_variants?, "variants_by_corr" => variants_by_corr}, socket) do
+  def mount(
+        _params,
+        %{
+          "endpoint" => endpoint,
+          "is_authz_list_variants" => authz_list_variants?,
+          "variants_by_corr" => variants_by_corr
+        },
+        socket
+      ) do
     default_sorter = "sa-hr_desc"
 
     # Trick to make the initial render non-blocking.
@@ -89,16 +97,24 @@ defmodule RisteysWeb.Live.RelationshipsTable do
           # TODO(Vincent) The case_overlap_percent are converted here to float at runtime,
           #   Would be better to have them as number in the DB directly. Keep both str and num if needed.
           "cases-fr_asc" ->
-            if is_nil(row.fr_case_overlap_percent), do: nil, else: String.to_float(row.fr_case_overlap_percent)
+            if is_nil(row.fr_case_overlap_percent),
+              do: nil,
+              else: String.to_float(row.fr_case_overlap_percent)
 
           "cases-fr_desc" ->
-            if is_nil(row.fr_case_overlap_percent), do: nil, else: String.to_float(row.fr_case_overlap_percent)
+            if is_nil(row.fr_case_overlap_percent),
+              do: nil,
+              else: String.to_float(row.fr_case_overlap_percent)
 
           "cases-fg_asc" ->
-            if is_nil(row.fg_case_overlap_percent), do: nil, else: String.to_float(row.fg_case_overlap_percent)
+            if is_nil(row.fg_case_overlap_percent),
+              do: nil,
+              else: String.to_float(row.fg_case_overlap_percent)
 
           "cases-fg_desc" ->
-            if is_nil(row.fg_case_overlap_percent), do: nil, else: String.to_float(row.fg_case_overlap_percent)
+            if is_nil(row.fg_case_overlap_percent),
+              do: nil,
+              else: String.to_float(row.fg_case_overlap_percent)
 
           "sa-hr_asc" ->
             row.hr
@@ -106,23 +122,11 @@ defmodule RisteysWeb.Live.RelationshipsTable do
           "sa-hr_desc" ->
             row.hr
 
-          "sa-extremity_asc" ->
-            row.hr_binned
-
-          "sa-extremity_desc" ->
-            row.hr_binned
-
           "gc-rg_asc" ->
             row.rg
 
           "gc-rg_desc" ->
             row.rg
-
-          "gc-extremity_asc" ->
-            row.rg_binned
-
-          "gc-extremity_desc" ->
-            row.rg_binned
 
           "gs-hits_asc" ->
             row.gws_hits
@@ -139,30 +143,6 @@ defmodule RisteysWeb.Live.RelationshipsTable do
       end
 
     Enum.sort_by(elements, mapper, RisteysWeb.Utils.sorter_nil_end(direction))
-  end
-
-  defp text_percentile(normalized_value) do
-    value = floor(normalized_value * 100)
-
-    ending =
-      cond do
-        value >= 10 and value <= 20 ->
-          "th"
-
-        rem(value, 10) == 1 ->
-          "st"
-
-        rem(value, 10) == 2 ->
-          "nd"
-
-        rem(value, 10) == 3 ->
-          "rd"
-
-        true ->
-          "th"
-      end
-
-    Integer.to_string(value) <> ending <> " percentile"
   end
 
   defp format_relationship_values(table) do

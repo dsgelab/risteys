@@ -869,9 +869,6 @@ defmodule Risteys.FGEndpoint do
   def get_relationships(endpoint_name) do
     page_endpoint = Repo.get_by!(Definition, name: endpoint_name)
 
-    # At least this number of HR in a group (by outcome_id) to be statically meaningful
-    extremity_groups_min_count = 30
-
     query_definition =
       from other_endpoint in Definition,
         where: other_endpoint.id != ^page_endpoint.id,
@@ -910,7 +907,7 @@ defmodule Risteys.FGEndpoint do
           hr: coxhr.hr,
           ci_min: coxhr.ci_min,
           ci_max: coxhr.ci_max,
-          pvalue: coxhr.pvalue,
+          pvalue: coxhr.pvalue
         }
 
     subquery_genetic_correlation =
@@ -920,7 +917,7 @@ defmodule Risteys.FGEndpoint do
           fg_endpoint_b_id: genetic_correlation.fg_endpoint_b_id,
           rg: genetic_correlation.rg,
           se: genetic_correlation.se,
-          pvalue: genetic_correlation.pvalue,
+          pvalue: genetic_correlation.pvalue
         }
 
     subquery_correlation =
@@ -947,11 +944,9 @@ defmodule Risteys.FGEndpoint do
           hr_ci_max: coxhr.ci_max,
           hr_ci_min: coxhr.ci_min,
           hr_pvalue: coxhr.pvalue,
-          hr_binned: nil,
           rg: genetic_correlation.rg,
           rg_se: genetic_correlation.se,
           rg_pvalue: genetic_correlation.pvalue,
-          rg_binned: nil,
           fg_case_overlap_percent: fg_correlation.case_overlap_percent,
           fg_case_overlap_N: fg_correlation.case_overlap_N,
           gws_hits: definition.gws_hits,
@@ -959,45 +954,6 @@ defmodule Risteys.FGEndpoint do
             fg_correlation.coloc_gws_hits_same_dir + fg_correlation.coloc_gws_hits_opp_dir
         }
     )
-  end
-
-  defp compute_hr_extremities(page_endpoint, min_count) do
-    extremities =
-      from cox in CoxHR,
-        where: cox.lagged_hr_cut_year == 0,
-        select: %{
-          prior_id: cox.prior_id,
-          outcome_id: cox.outcome_id,
-          percent_rank: percent_rank() |> over(partition_by: cox.outcome_id, order_by: cox.hr),
-          count: count() |> over(partition_by: cox.outcome_id)
-        }
-
-    from extrem in subquery(extremities),
-      where: extrem.prior_id == ^page_endpoint.id and extrem.count >= ^min_count,
-      select: %{
-        outcome_id: extrem.outcome_id,
-        percent_rank: extrem.percent_rank
-      }
-  end
-
-  defp compute_rg_extremities(page_endpoint, min_count) do
-    extremities =
-      from gene_corr in GeneticCorrelation,
-        select: %{
-          fg_endpoint_a_id: gene_corr.fg_endpoint_a_id,
-          fg_endpoint_b_id: gene_corr.fg_endpoint_b_id,
-          percent_rank:
-            percent_rank()
-            |> over(partition_by: gene_corr.fg_endpoint_b_id, order_by: gene_corr.rg),
-          count: count() |> over(partition_by: gene_corr.fg_endpoint_b_id)
-        }
-
-    from extrem in subquery(extremities),
-      where: extrem.fg_endpoint_a_id == ^page_endpoint.id and extrem.count >= ^min_count,
-      select: %{
-        fg_endpoint_b_id: extrem.fg_endpoint_b_id,
-        percent_rank: extrem.percent_rank
-      }
   end
 
   # --- Drug statistics
