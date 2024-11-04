@@ -14,5 +14,14 @@ defmodule Risteys.LabTestStats.DistributionValueRangePerPerson do
     distribution_value_range_per_person
     |> cast(attrs, [:omop_concept_dbid, :distribution])
     |> validate_required([:omop_concept_dbid, :distribution])
+    |> validate_change(:distribution, fn :distribution, dist ->
+      Risteys.LabTestStats.validate_npeople_green(
+        :distribution,
+        dist,
+        [:bins, Access.all()],
+        :npeople
+      )
+    end)
+    |> unique_constraint([:omop_concept_dbid])
   end
 end

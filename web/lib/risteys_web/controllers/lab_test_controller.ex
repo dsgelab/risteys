@@ -40,12 +40,6 @@ defmodule RisteysWeb.LabTestController do
       |> Risteys.LabTestStats.get_single_lab_test_stats()
       |> RisteysWeb.LabTestHTML.show_prettify_stats()
 
-    main_obsplot =
-      case pretty_stats.distributions_lab_values do
-        [first | _] -> first.obsplot
-        [] -> nil
-      end
-
     conn
     |> assign(:omop_concept_id, omop_id)
     |> assign(:link_athena_lab_test, link_athena_lab_test)
@@ -53,7 +47,6 @@ defmodule RisteysWeb.LabTestController do
     |> assign(:n_other_in_collection, n_other_in_collection)
     |> assign(:link_athena_loinc_component, link_athena_loinc_component)
     |> assign(:lab_test, pretty_stats)
-    |> assign(:main_obsplot, main_obsplot)
     |> render()
   end
 end

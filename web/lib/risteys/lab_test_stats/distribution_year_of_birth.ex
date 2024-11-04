@@ -9,11 +9,11 @@ defmodule Risteys.LabTestStats.DistributionYearOfBirth do
     # distribution =
     #   %{
     #     bins: [
-    #       %{"range" => "bin range" Str, "npeople" => N Int},
+    #       %{y: int, npeople: int, x1: float, x2: float, x1x2_formatted: string},
     #       ...
     #     ],
-    #     breaks: [year Int, year Int, ... year Int]
-    #
+    #     break_min: float,
+    #     break_max: float
     #   }
     field :distribution, :map
 
@@ -29,8 +29,8 @@ defmodule Risteys.LabTestStats.DistributionYearOfBirth do
       Risteys.LabTestStats.validate_npeople_green(
         :distribution,
         dist,
-        ["bins", Access.all()],
-        "npeople"
+        [:bins, Access.all()],
+        :npeople
       )
     end)
     |> unique_constraint([:omop_concept_dbid])

@@ -126,6 +126,10 @@ defmodule RisteysWeb.LabTestHTML do
     npeople_both_sex =
       lab_test.npeople_both_sex && RisteysWeb.Utils.pretty_number(lab_test.npeople_both_sex)
 
+    percent_people_two_plus_records =
+      lab_test.percent_people_two_plus_records &&
+        RisteysWeb.Utils.pretty_number(lab_test.percent_people_two_plus_records)
+
     median_n_measurements =
       lab_test.median_n_measurements &&
         RisteysWeb.Utils.pretty_number(lab_test.median_n_measurements, 1)
@@ -140,150 +144,209 @@ defmodule RisteysWeb.LabTestHTML do
           |> RisteysWeb.Utils.pretty_number(2)
       end
 
-    distributions_lab_values =
-      for dist <- lab_test.distributions_lab_values do
-        %{"bins" => bins} = dist
-        y_label = "Number of records"
+    distribution_lab_values =
+      case lab_test.distribution_lab_values do
+        nil ->
+          nil
 
-        case dist["measurement_unit"] do
-          "binary" ->
-            %{
-              obsplot: build_obsplot_payload(:binary, bins, "nrecords", "", y_label),
-              measurement_unit: "binary"
-            }
+        dist ->
+          # TODO(Vincent 2024-10-30) ::OBSPLOT_FORMATTING
+          # Ideally the formatting would be already correct when it comes here.
+          # So either make it correct in the pipeline output, or otherwise when
+          # importing the data.
+          bins =
+            for bin <- dist.bins do
+              %{bin | "x1x2_formatted" => "#{bin["x1x2_formatted"]} #{dist.unit}"}
+            end
 
-          "titre" ->
-            x_label = "Measured value (titre)"
+          dist = %{dist | bins: bins}
 
-            %{
-              obsplot: build_obsplot_payload(:categorical, bins, "nrecords", x_label, y_label),
-              measurement_unit: "titre"
-            }
-
-          _ ->
-            x_label = "Measured value (#{dist["measurement_unit"]})"
-
-            %{
-              obsplot: build_obsplot_payload(:continuous, bins, :nrecords, x_label, y_label),
-              measurement_unit: dist["measurement_unit"]
-            }
-        end
+          build_obsplot_payload(
+            :continuous,
+            dist,
+            "Measured value",
+            "Number of records"
+          )
       end
 
+    qc_table =
+      Enum.map(lab_test.qc_table, fn qc_row ->
+        percent_missing_formatted =
+          qc_row.percent_missing_measurement_value &&
+            RisteysWeb.Utils.pretty_number(qc_row.percent_missing_measurement_value)
+
+        plot_test_outcome =
+          build_obsplot_payload(:qc_table_test_outcome, qc_row.test_outcome_counts)
+
+        plot_harmonized_value_distribution =
+          qc_row.distribution_measurement_values &&
+            build_obsplot_payload(
+              :qc_table_harmonized_value_distribution,
+              qc_row.distribution_measurement_values
+            )
+
+        %{
+          percent_missing_measurement_value_formatted: percent_missing_formatted,
+          plot_harmonized_value_distribution: plot_harmonized_value_distribution,
+          plot_test_outcome: plot_test_outcome
+        }
+        |> Map.merge(qc_row)
+      end)
+
     distribution_year_of_birth =
-      build_obsplot_payload(
-        :years,
-        lab_test.distribution_year_of_birth["bins"],
-        :npeople
-      )
+      if is_nil(lab_test.distribution_year_of_birth) do
+        nil
+      else
+        build_obsplot_payload(:years, lab_test.distribution_year_of_birth)
+      end
 
     distribution_age_first_measurement =
-      build_obsplot_payload(
-        :continuous,
-        lab_test.distribution_age_first_measurement["bins"],
-        :npeople,
-        "Age at first measurement",
-        "Number of people"
-      )
+      case lab_test.distribution_age_first_measurement do
+        nil ->
+          nil
+
+        dist ->
+          # TODO(Vincent 2024-10-30) ::OBSPLOT_FORMATTING
+          bins =
+            for bin <- dist["bins"] do
+              %{bin | "x1x2_formatted" => "#{bin["x1x2_formatted"]} years"}
+            end
+
+          dist = %{dist | "bins" => bins}
+
+          build_obsplot_payload(
+            :continuous,
+            dist,
+            "Age at first measurement",
+            "Number of people"
+          )
+      end
 
     distribution_age_last_measurement =
-      build_obsplot_payload(
-        :continuous,
-        lab_test.distribution_age_last_measurement["bins"],
-        :npeople,
-        "Age at last measurement",
-        "Number of people"
-      )
+      case lab_test.distribution_age_last_measurement do
+        nil ->
+          nil
+
+        dist ->
+          build_obsplot_payload(
+            :continuous,
+            dist,
+            "Age at last measurement",
+            "Number of people"
+          )
+      end
 
     distribution_age_start_of_registry =
-      build_obsplot_payload(
-        :continuous,
-        lab_test.distribution_age_start_of_registry["bins"],
-        :npeople,
-        "Age at start of registry",
-        "Number of people"
-      )
+      case lab_test.distribution_age_start_of_registry do
+        nil ->
+          nil
 
-    distribution_ndays_first_to_last_measurement =
-      build_obsplot_payload(
-        :continuous,
-        lab_test.distribution_ndays_first_to_last_measurement["bins"],
-        :npeople,
-        "Duration from first to last measurement (days)",
-        "Number of people"
-      )
+        dist ->
+          build_obsplot_payload(
+            :continuous,
+            dist,
+            "Age at start of registry",
+            "Number of people"
+          )
+      end
+
+    distribution_nyears_first_to_last_measurement =
+      case lab_test.distribution_nyears_first_to_last_measurement do
+        nil ->
+          nil
+
+        dist ->
+          build_obsplot_payload(
+            :continuous,
+            dist,
+            "Duration",
+            "Number of people"
+          )
+      end
 
     distribution_n_measurements_over_years =
-      build_obsplot_payload(:year_months, lab_test.distribution_n_measurements_over_years)
+      case lab_test.distribution_n_measurements_over_years do
+        nil ->
+          nil
+
+        dist ->
+          build_obsplot_payload(:year_months, dist)
+      end
 
     distribution_n_measurements_per_person =
-      build_obsplot_payload(
-        :n_measurements_per_person,
-        lab_test.distribution_n_measurements_per_person
-      )
+      case lab_test.distribution_n_measurements_per_person do
+        nil ->
+          nil
+
+        dist ->
+          build_obsplot_payload(:n_measurements_per_person, dist)
+      end
 
     distribution_value_range_per_person =
-      build_obsplot_payload(
-        :continuous,
-        lab_test.distribution_value_range_per_person["bins"],
-        :npeople,
-        "Value range (max − min) per person for the most common measurement unit.",
-        "Number of people"
-      )
+      case lab_test.distribution_value_range_per_person do
+        nil ->
+          nil
+
+        dist ->
+          build_obsplot_payload(
+            :continuous,
+            dist,
+            "Value range",
+            "Number of people"
+          )
+      end
 
     Map.merge(lab_test, %{
       npeople_both_sex: npeople_both_sex,
+      percent_people_two_plus_records: percent_people_two_plus_records,
       median_n_measurements: median_n_measurements,
       median_years_first_to_last_measurement: median_years_first_to_last_measurement,
-      distributions_lab_values: distributions_lab_values,
+      distribution_lab_values: distribution_lab_values,
+      qc_table: qc_table,
       distribution_year_of_birth: distribution_year_of_birth,
       distribution_age_first_measurement: distribution_age_first_measurement,
       distribution_age_last_measurement: distribution_age_last_measurement,
       distribution_age_start_of_registry: distribution_age_start_of_registry,
-      distribution_ndays_first_to_last_measurement: distribution_ndays_first_to_last_measurement,
+      distribution_nyears_first_to_last_measurement:
+        distribution_nyears_first_to_last_measurement,
       distribution_n_measurements_over_years: distribution_n_measurements_over_years,
       distribution_n_measurements_per_person: distribution_n_measurements_per_person,
       distribution_value_range_per_person: distribution_value_range_per_person
     })
   end
 
-  defp build_obsplot_payload(:continuous, bins, y_key, x_label, y_label) do
+  defp build_obsplot_payload(:continuous, distribution, x_label, y_label) do
+    # TODO(Vincent 2024-10-30) Refactor distribution schemas so that they arrive here with a
+    # unified structure.
+    # Currently dist lab values has :bins, :break_min, etc. has schema fields, so they it arrives
+    # here :bins, etc. But the other distributions have schemas with just :distribution, so they
+    # arrive here with "bins", etc. has keys.
+    # I think the best way would be that all the distribution schemas have :bins, :xmin, :xmax,
+    # etc. has keys.
     bins =
-      for bin <- bins do
-        %{^y_key => yy} = bin
+      case distribution do
+        %{bins: bins} -> bins
+        %{"bins" => bins} -> bins
+      end
 
-        x1_str =
-          if bin.range_left == :minus_infinity do
-            "−∞"
-          else
-            RisteysWeb.Utils.pretty_number(bin.range_left)
-          end
+    xmin =
+      case distribution do
+        %{break_min: xmin} -> xmin
+        %{"xmin" => xmin} -> xmin
+      end
 
-        x2_str =
-          if bin.range_right == :plus_infinity do
-            "+∞"
-          else
-            RisteysWeb.Utils.pretty_number(bin.range_right)
-          end
-
-        en_dash = "–"
-        range_str = x1_str <> en_dash <> x2_str
-
-        y_formatted = RisteysWeb.Utils.pretty_number(yy)
-
-        %{
-          "x1" => bin.range_left_finite,
-          "x2" => bin.range_right_finite,
-          "y" => yy,
-          "x_formatted" => range_str,
-          "y_formatted" => y_formatted
-        }
+    xmax =
+      case distribution do
+        %{break_max: xmax} -> xmax
+        %{"xmax" => xmax} -> xmax
       end
 
     payload = %{
-      "bins" => bins,
-      "x_label" => x_label,
-      "y_label" => y_label
+      bins: bins,
+      x_label: x_label,
+      y_label: y_label,
+      xmin: xmin,
+      xmax: xmax
     }
 
     assigns = %{
@@ -295,100 +358,32 @@ defmodule RisteysWeb.LabTestHTML do
     """
   end
 
-  defp build_obsplot_payload(:binary, bins, y_key, x_label, y_label) do
-    bins =
-      for bin <- bins, into: %{} do
-        %{^y_key => yy, "range" => xx} = bin
+  defp build_obsplot_payload(:years, distribution) do
+    %{
+      "bins" => list_bins,
+      "break_min" => break_min,
+      "break_max" => break_max
+    } = distribution
 
-        xx =
-          case xx do
-            "0.0" -> :negative
-            "1.0" -> :positive
-          end
-
-        {xx, yy}
-      end
-
-    # Make sure we have display both positive and negative, even if we don't have both of them in the data.
-    default = %{
-      positive: nil,
-      negative: nil
-    }
-
-    bins = Map.merge(default, bins)
-
-    bins = [
-      %{x: "positive", y: bins.positive},
-      %{x: "negative", y: bins.negative}
-    ]
+    # Remove (-inf; _] and (_ ; +inf)
+    bins = Enum.reject(list_bins, fn %{"x1" => x1, "x2" => x2} -> is_nil(x1) or is_nil(x2) end)
 
     assigns = %{
-      payload: Jason.encode!(%{"bins" => bins, "x_label" => x_label, "y_label" => y_label})
+      payload: Jason.encode!(%{xmin: break_min, xmax: break_max, bins: bins})
     }
 
-    ~H"""
-    <div class="obsplot" data-obsplot-type="discrete" data-obsplot={@payload}></div>
-    """
+    if Enum.empty?(bins) do
+      nil
+    else
+      ~H"""
+      <div class="obsplot" data-obsplot-type="years" data-obsplot={@payload}></div>
+      """
+    end
   end
 
-  defp build_obsplot_payload(:categorical, bins, y_key, x_label, y_label) do
-    bins =
-      for %{"range" => xx, ^y_key => yy} <- bins do
-        xx = RisteysWeb.Utils.parse_number(xx)
-        %{"x" => xx, "y" => yy}
-      end
-
-    payload = %{
-      "bins" => bins,
-      "x_label" => x_label,
-      "y_label" => y_label
-    }
-
+  defp build_obsplot_payload(:year_months, dist) do
     assigns = %{
-      payload: Jason.encode!(payload)
-    }
-
-    ~H"""
-    <div class="obsplot" data-obsplot-type="categorical" data-obsplot={@payload}></div>
-    """
-  end
-
-  defp build_obsplot_payload(:years, bins, y_key) do
-    bins =
-      for bin <- bins do
-        %{^y_key => yy} = bin
-        x_formatted = to_string(bin.range_left)
-        y_formatted = RisteysWeb.Utils.pretty_number(yy)
-
-        %{
-          "x1" => bin.range_left_finite,
-          "x2" => bin.range_right_finite,
-          "y" => yy,
-          "x_formatted" => x_formatted,
-          "y_formatted" => y_formatted
-        }
-      end
-
-    payload = %{
-      "bins" => bins
-    }
-
-    assigns = %{
-      payload: Jason.encode!(payload)
-    }
-
-    ~H"""
-    <div class="obsplot" data-obsplot-type="years" data-obsplot={@payload}></div>
-    """
-  end
-
-  defp build_obsplot_payload(:year_months, bins) do
-    payload = %{
-      "bins" => bins
-    }
-
-    assigns = %{
-      payload: Jason.encode!(payload)
+      payload: Jason.encode!(dist)
     }
 
     ~H"""
@@ -396,17 +391,111 @@ defmodule RisteysWeb.LabTestHTML do
     """
   end
 
-  defp build_obsplot_payload(:n_measurements_per_person, bins) do
-    payload = %{
-      "bins" => bins
-    }
-
+  defp build_obsplot_payload(:n_measurements_per_person, dist) do
     assigns = %{
-      payload: Jason.encode!(payload)
+      payload: Jason.encode!(dist)
     }
 
     ~H"""
     <div class="obsplot" data-obsplot-type="n-measurements-per-person" data-obsplot={@payload}></div>
     """
+  end
+
+  defp build_obsplot_payload(:qc_table_test_outcome, nil) do
+    "Distribution not available"
+  end
+
+  defp build_obsplot_payload(:qc_table_test_outcome, distribution) do
+    sum_count =
+      distribution
+      |> Enum.map(fn %{"count" => count} -> count end)
+      |> Enum.sum()
+
+    bins =
+      for bin <- distribution do
+        %{"count" => count, "test_outcome" => test_outcome} = bin
+
+        percent_count = 100 * count / sum_count
+        x_label = RisteysWeb.Utils.pretty_number(percent_count) <> "%"
+
+        yy = test_outcome || "NA"
+
+        %{x: percent_count, y: yy, x_label: x_label}
+      end
+
+    order_labels = [
+      "NA",
+      "N",
+      "A",
+      "AA",
+      "L",
+      "LL",
+      "H",
+      "HH"
+    ]
+
+    bins =
+      for label <- order_labels do
+        with_this_label = Enum.filter(bins, fn %{y: yy} -> yy == label end)
+
+        case with_this_label do
+          [] -> nil
+          # There should be only one bin with a given label
+          [head | _rest] -> head
+        end
+      end
+      |> Enum.reject(&is_nil/1)
+
+    assigns = %{
+      payload: Jason.encode!(%{bins: bins})
+    }
+
+    ~H"""
+    <div class="obsplot" data-obsplot-type="qc-table-test-outcome" data-obsplot={@payload}></div>
+    """
+  end
+
+  defp build_obsplot_payload(:qc_table_harmonized_value_distribution, distribution) do
+    %{
+      "bins" => list_bins,
+      "xmin" => xmin,
+      "xmax" => xmax
+    } = distribution
+
+    bins =
+      for bin <- list_bins do
+        %{"x1" => x1, "x2" => x2, "yy" => yy, "x1x2_formatted" => x1x2_formatted} = bin
+
+        %{
+          x1: x1,
+          x2: x2,
+          y: yy,
+          x1x2_formatted: x1x2_formatted
+        }
+      end
+      # Remove (-inf; _] and (_ ; +inf)
+      |> Enum.reject(fn bin -> is_nil(bin.x1) or is_nil(bin.x2) end)
+
+    assigns = %{
+      payload:
+        Jason.encode!(%{
+          xmin: xmin,
+          xmax: xmax,
+          bins: bins
+        })
+    }
+
+    if Enum.empty?(bins) do
+      nil
+    else
+      ~H"""
+      <div
+        class="obsplot"
+        data-obsplot-type="qc-table-harmonized-value-distribution"
+        data-obsplot={@payload}
+      >
+      </div>
+      """
+    end
   end
 end

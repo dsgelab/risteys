@@ -10,22 +10,21 @@
   <div class="highlight">
     <article class="fluid-container">
       <div class="highlight-content">
-        <%= case @main_obsplot do %>
-          <% nil -> %>
-            The lab value distribution is not available
-          <% obsplot -> %>
-            <%= obsplot %>
-        <% end %>
+        <%= @lab_test.distribution_lab_values ||
+          "No data available for the lab value distribution." %>
 
         <dl>
           <dt>Number of people</dt>
-          <dd><%= @lab_test.npeople_both_sex %> (<%= @lab_test.sex_female_percent %>% female)</dd>
+          <dd>
+            <%= @lab_test.npeople_both_sex || ~H"&mdash;" %> (<%= @lab_test.sex_female_percent ||
+              ~H"&mdash;" %>% female)
+          </dd>
 
-          <dt>Median number of measurements per person</dt>
-          <dd><%= @lab_test.median_n_measurements %></dd>
+          <dt>People with &ge;2 records</dt>
+          <dd><%= @lab_test.percent_people_two_plus_records || ~H"&mdash;" %>%</dd>
 
-          <dt>Median duration from first to last measurement (years)</dt>
-          <dd><%= @lab_test.median_years_first_to_last_measurement %></dd>
+          <dt>Median duration from first to last measurement</dt>
+          <dd><%= @lab_test.median_years_first_to_last_measurement || ~H"&mdash;" %> years</dd>
         </dl>
       </div>
     </article>
@@ -51,6 +50,45 @@
           </dd>
         </dl>
       </article>
+
+      <article>
+        <h3>OMOP mapping QC</h3>
+
+        <table>
+          <thead>
+            <tr>
+              <th>OMOP concept ID</th>
+              <th>Test name</th>
+              <th>Measurement unit (harmonized unit)</th>
+              <th>N&nbsp;people</th>
+              <th>N&nbsp;records</th>
+              <th>Missing measurement value</th>
+              <th>Harmonized value distribution</th>
+              <th>Test outcome</th>
+            </tr>
+          </thead>
+          <tbody>
+            <%= for qc_row <- @lab_test.qc_table do %>
+              <tr>
+                <td><%= qc_row.omop_id %></td>
+                <td><%= qc_row.test_name %></td>
+                <td>
+                  <%= qc_row.measurement_unit || ~H"&mdash;" %> (<%= qc_row.measurement_unit_harmonized ||
+                    ~H"&mdash;" %>)
+                </td>
+                <td><%= qc_row.npeople %></td>
+                <td><%= qc_row.nrecords %></td>
+                <td><%= qc_row.percent_missing_measurement_value_formatted %>%</td>
+
+                <td>
+                  <%= qc_row.plot_harmonized_value_distribution || "Distribution not available" %>
+                </td>
+                <td><%= qc_row.plot_test_outcome %></td>
+              </tr>
+            <% end %>
+          </tbody>
+        </table>
+      </article>
     </article>
 
     <article>
@@ -58,41 +96,49 @@
 
       <dl>
         <dt>Number of people</dt>
-        <dd><%= @lab_test.npeople_both_sex %> (<%= @lab_test.sex_female_percent %>% female)</dd>
+        <dd>
+          <%= @lab_test.npeople_both_sex || ~H"&mdash;" %> (<%= @lab_test.sex_female_percent ||
+            ~H"&mdash;" %>% female)
+        </dd>
       </dl>
 
       <article>
         <h3>Year of birth distribution</h3>
         <figure>
-          <%= @lab_test.distribution_year_of_birth %>
+          <%= @lab_test.distribution_year_of_birth ||
+            "No data available for the year of birth distribution." %>
         </figure>
       </article>
 
       <article>
         <h3>Age at first measurement</h3>
         <figure>
-          <%= @lab_test.distribution_age_first_measurement %>
+          <%= @lab_test.distribution_age_first_measurement ||
+            "No data available for the age at first measurement distribution." %>
         </figure>
       </article>
 
       <article>
         <h3>Age at last measurement</h3>
         <figure>
-          <%= @lab_test.distribution_age_last_measurement %>
+          <%= @lab_test.distribution_age_last_measurement ||
+            "No data available for the age at last measurement distribution." %>
         </figure>
       </article>
 
       <article>
         <h3>Age at start of registry</h3>
         <figure>
-          <%= @lab_test.distribution_age_start_of_registry %>
+          <%= @lab_test.distribution_age_start_of_registry ||
+            "No data available for the age at start of registry distribution." %>
         </figure>
       </article>
 
       <article>
         <h3>Duration from first to last measurement</h3>
         <figure>
-          <%= @lab_test.distribution_ndays_first_to_last_measurement %>
+          <%= @lab_test.distribution_nyears_first_to_last_measurement ||
+            "No data available for the duration from to last measurement distribution." %>
         </figure>
       </article>
     </article>
@@ -101,18 +147,29 @@
       <h2>Statistics</h2>
 
       <dl>
-        <dt>Median number of measurements per person</dt>
-        <dd><%= @lab_test.median_n_measurements %></dd>
+        <dt>People with &ge;2 records</dt>
+        <dd><%= @lab_test.percent_people_two_plus_records || ~H"&mdash;" %>%</dd>
 
-        <dt>Median duration from first to last measurement (years)</dt>
-        <dd><%= @lab_test.median_years_first_to_last_measurement %></dd>
+        <dt>Median number of measurements per person</dt>
+        <dd><%= @lab_test.median_n_measurements || ~H"&mdash;" %></dd>
+
+        <dt>Median duration from first to last measurement</dt>
+        <dd>
+          <%= case @lab_test.median_years_first_to_last_measurement do %>
+            <% nil -> %>
+              &mdash;
+            <% value -> %>
+              <%= value %> years
+          <% end %>
+        </dd>
       </dl>
 
       <article>
         <h3>Number of measurements over the years</h3>
 
         <figure>
-          <%= @lab_test.distribution_n_measurements_over_years %>
+          <%= @lab_test.distribution_n_measurements_over_years ||
+            "No data available for the distribution of number of measurements over the years." %>
         </figure>
       </article>
 
@@ -120,30 +177,26 @@
         <h3>Number of measurements per person</h3>
 
         <figure>
-          <%= @lab_test.distribution_n_measurements_per_person %>
+          <%= @lab_test.distribution_n_measurements_per_person ||
+            "No data available for the distribution of number of measurements per person." %>
         </figure>
       </article>
 
       <article>
-        <h3>Distributions of lab values</h3>
+        <h3>Distribution of lab values</h3>
 
-        <%= for dist <- @lab_test.distributions_lab_values do %>
-          <article class="distribution-lab-values">
-            <figure>
-              <%= dist.obsplot %>
-              <figcaption>
-                Distribution of lab values, for data with unit: <%= dist.measurement_unit %>
-              </figcaption>
-            </figure>
-          </article>
-        <% end %>
+        <figure>
+          <%= @lab_test.distribution_lab_values ||
+            "No data available for the lab value distribution." %>
+        </figure>
       </article>
 
       <article>
         <h3>Value range per person</h3>
 
         <figure>
-          <%= @lab_test.distribution_value_range_per_person %>
+          <%= @lab_test.distribution_value_range_per_person ||
+            "No data available for the distribution of value range per person." %>
         </figure>
       </article>
     </article>

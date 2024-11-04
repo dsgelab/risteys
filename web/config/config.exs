@@ -52,11 +52,12 @@ config :ueberauth, Ueberauth,
   ]
 
 config :ueberauth, Ueberauth.Strategy.Google.OAuth,
-  client_id: (System.get_env("GOOGLE_CLIENT_ID") ||
-    raise "Environment variable GOOGLE_CLIENT_ID is missing."),
-
-  client_secret: (System.get_env("GOOGLE_CLIENT_SECRET") ||
-    raise "Environment variable GOOGLE_CLIENT_SECRET is missing.")
+  client_id:
+    System.get_env("GOOGLE_CLIENT_ID") ||
+      raise("Environment variable GOOGLE_CLIENT_ID is missing."),
+  client_secret:
+    System.get_env("GOOGLE_CLIENT_SECRET") ||
+      raise("Environment variable GOOGLE_CLIENT_SECRET is missing.")
 
 # Use Jason for JSON parsing in Phoenix
 config :phoenix, :json_library, Jason

@@ -29,6 +29,8 @@ type Bins = BinContinuous[] | BinNotContinuous[];
 
 interface ObsData {
   bins: Bins;
+  xmin: number;
+  xmax: number;
 }
 
 interface ObsDataWithLabels extends ObsData {
@@ -61,6 +63,12 @@ function plotAllObs() {
           break;
         case "continuous":
           ee.append(plotContinuous(data));
+          break;
+        case "qc-table-test-outcome":
+          ee.append(plotQCTableTestOutcome(data));
+          break;
+        case "qc-table-harmonized-value-distribution":
+          ee.append(plotQCTableHarmonizedValueDistribution(data));
           break;
         default:
           console.warn(`Unsupported plot type: ${ee.dataset.obsplotType}`);
@@ -157,6 +165,7 @@ function plotContinuous(data: ObsDataWithLabels) {
     x: {
       label: data.x_label,
       nice: true,
+      domain: [data.xmin, data.xmax],
     },
     y: {
       label: data.y_label,
@@ -185,7 +194,7 @@ function plotContinuous(data: ObsDataWithLabels) {
           y: "y",
           channels: {
             x_formatted: {
-              value: "x_formatted",
+              value: "x1x2_formatted",
               label: data.x_label,
             },
             y_formatted: {
@@ -213,6 +222,7 @@ function plotYearOfBirh(data: ObsData) {
       label: "Year of birth",
       tickFormat: "d",
       nice: true,
+      domain: [data.xmin, data.xmax],
     },
     y: {
       label: "Number of people",
@@ -241,7 +251,7 @@ function plotYearOfBirh(data: ObsData) {
           y: "y",
           channels: {
             x_formatted: {
-              value: "x_formatted",
+              value: "x1x2_formatted",
               label: "Year of birth",
             },
             y_formatted: {
@@ -261,11 +271,17 @@ function plotYearOfBirh(data: ObsData) {
   });
 }
 
-function plotYearMonths(data) {
-  // Convert Year-Month value from string to JS Date
+function plotYearMonths(data: ObsData) {
+  // Convert Year-Month value from string to JS Date to print it using the user's locale
   const bins = data.bins.map((bin) => {
-    return { ...bin, yearMonthDate: new Date(bin.year_month) };
+    return {
+      ...bin,
+      x1: new Date(bin.x1),
+      x2: new Date(bin.x2),
+    };
   });
+
+  console.log(bins);
 
   return Plot.plot({
     marginLeft: 70,
@@ -273,6 +289,7 @@ function plotYearMonths(data) {
     x: {
       label: "Time",
       nice: true,
+      domain: [new Date(data.xmin), new Date(data.xmax)],
     },
     y: {
       label: "Number of records",
@@ -285,8 +302,9 @@ function plotYearMonths(data) {
       Plot.gridY({ stroke: "#aaa" }),
       Plot.ruleY([0]),
       Plot.rectY(bins, {
-        x: "yearMonthDate",
-        y: "nrecords",
+        x1: "x1",
+        x2: "x2",
+        y: "y",
         interval: "month",
         fill: "var(--color-risteys-darkblue, black)",
         insetRight: 0, // ::MOIRE Remove the default 1px inset, as it leads to a strong Moiré pattern.
@@ -294,13 +312,14 @@ function plotYearMonths(data) {
       Plot.tip(
         bins,
         Plot.pointerX({
-          x: "yearMonthDate",
-          y: "nrecords",
+          x1: "x1",
+          x2: "x2",
+          y: "y",
           channels: {
             timePeriod: {
               label: "Time period",
               value: (bin) => {
-                return bin.yearMonthDate.toLocaleString(undefined, {
+                return bin.x1.toLocaleString(undefined, {
                   month: "short",
                   year: "numeric",
                 });
@@ -308,7 +327,7 @@ function plotYearMonths(data) {
             },
             yFormatted: {
               label: "Number of records",
-              value: (bin) => formatLocaleEU.format(",")(bin.nrecords),
+              value: "y_formatted",
             },
           },
           format: {
@@ -324,20 +343,13 @@ function plotYearMonths(data) {
 }
 
 function plotNMeasurementsPerPerson(data) {
-  const minDisplayBins = 50;
-
-  // NOTE(Vincent 2024-06-20) Setting `undefined` as the domain makes Plot.plot
-  // infer it from the data as [min, max].
-  const xDomain =
-    data.bins.length >= minDisplayBins ? undefined : [1, minDisplayBins];
-
   return Plot.plot({
     marginLeft: 70,
     style: defaultPlotStyle,
     x: {
       label: "Number of measurements per person",
       nice: true,
-      domain: xDomain,
+      domain: [data.xmin, data.xmax],
     },
     y: {
       label: "Number of people",
@@ -350,25 +362,26 @@ function plotNMeasurementsPerPerson(data) {
       Plot.gridY({ stroke: "#aaa" }),
       Plot.ruleY([0]),
       Plot.rectY(data.bins, {
-        x: "n_measurements",
-        y: "npeople",
-        interval: 1,
+        x1: "x1",
+        x2: "x2",
+        y: "y",
         fill: "var(--color-risteys-darkblue, black)",
         insetRight: 0, // see ::MOIRE
       }),
       Plot.tip(
         data.bins,
         Plot.pointerX({
-          x: "n_measurements",
-          y: "npeople",
+          x1: "x1",
+          x2: "x2",
+          y: "y",
           channels: {
             NMeasurements: {
               label: "N. measurements",
-              value: (bin) => bin.n_measurements,
+              value: "x1x2_formatted",
             },
             NPeople: {
               label: "N. people",
-              value: (bin) => bin.npeople,
+              value: "y_formatted",
             },
           },
           format: {
@@ -381,6 +394,146 @@ function plotNMeasurementsPerPerson(data) {
       ),
     ],
   });
+}
+
+function plotQCTableTestOutcome(data: ObsData) {
+  const colors = {
+    grey: "#ddd",
+    darkerGrey: "#959fa6",
+    orange: "#dca863",
+    orangeBrighter: "#f8cf9b",
+    blue: "#6495b2",
+    violet: "#a580a4",
+    violetBrighter: "#c59ec4",
+    red: "#cb4141",
+    darkRed: "#a61722",
+  };
+
+  const colorRange = {
+    NA: colors.grey,
+    normal: colors.darkerGrey,
+    abnormal: colors.orange,
+    veryAbnormal: colors.orangeBrighter,
+    low: colors.violet,
+    veryLow: colors.violetBrighter,
+    high: colors.red,
+    veryHigh: colors.darkRed,
+  };
+
+  // TODO(Vincent 2024-10-28)  The tip might get visually truncated in some cases when it's
+  // anchored to the bottom, as the bars drawn after it be on top of it.
+  // I tried to mitigate that by setting z-index: 1 & position: relative on the tip <g> element,
+  // but this doesn't work. Probably because it's inside the SVG and not the HTML. If I manually
+  // set the z-index & position on 1 <svg> element then it works. But if I do it here it will be
+  // applied to *all* plots, which defeats its purpose.
+  return Plot.plot({
+    width: 140,
+    height: 20,
+    margin: 0,
+    style: "overflow: visible;",
+    fontSize: 24,
+    x: { label: null, ticks: false },
+    y: { label: null, tickSize: 0 },
+    color: {
+      domain: ["NA", "N", "A", "AA", "L", "LL", "H", "HH"],
+      range: [
+        colorRange.NA,
+        colorRange.normal,
+        colorRange.abnormal,
+        colorRange.veryAbnormal,
+        colorRange.low,
+        colorRange.veryLow,
+        colorRange.high,
+        colorRange.veryHigh,
+      ],
+    },
+    marks: [
+      Plot.barX(data.bins, {
+        x: "x",
+        fill: "y",
+      }),
+      Plot.tip(
+        data.bins,
+        Plot.pointerX(
+          Plot.stackX({
+            x: "x",
+            channels: {
+              testOutcome: {
+                label: "Test outcome",
+                value: (bin) => bin.y,
+              },
+              percentage: {
+                label: "",
+                value: (bin) => bin.x_label,
+              },
+            },
+            format: {
+              x: false,
+              testOuctome: true,
+              percentage: true,
+            },
+            fontSize: 13,
+          }),
+        ),
+      ),
+    ],
+  });
+}
+
+function plotQCTableHarmonizedValueDistribution(data) {
+  if (data.bins.length === 0) {
+    return "";
+  } else {
+    return Plot.plot({
+      width: 140,
+      height: 30,
+      margin: 0,
+      marginBottom: 12,
+      style: "overflow: visible;",
+      x: {
+        domain: [data.xmin, data.xmax],
+        ticks: [data.xmin, data.xmax],
+        label: null,
+      },
+      y: {
+        ticks: false,
+        label: null,
+      },
+      marks: [
+        Plot.ruleY([0]),
+        Plot.rectY(data.bins, {
+          x1: "x1",
+          x2: "x2",
+          y: "y",
+        }),
+        Plot.tip(
+          data.bins,
+          Plot.pointerX({
+            // Center the tip on the bin width
+            x: (bin) => bin.x1 + Math.abs(bin.x2 - bin.x1) / 2,
+            y: "y",
+            channels: {
+              xFormatted: {
+                label: "Value",
+                value: (bin) => bin.x1x2_formatted,
+              },
+              yFormatted: {
+                label: "N measurements",
+                value: "y",
+              },
+            },
+            format: {
+              x: false,
+              y: false,
+              xFormatted: true,
+              yFormatted: true,
+            },
+            fontSize: 13,
+          }),
+        ),
+      ],
+    });
+  }
 }
 
 export { plotAllObs };
