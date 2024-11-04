@@ -401,8 +401,10 @@ function plotQCTableTestOutcome(data: ObsData) {
     grey: "#ddd",
     darkerGrey: "#959fa6",
     orange: "#dca863",
+    orangeBrighter: "#f8cf9b",
     blue: "#6495b2",
     violet: "#a580a4",
+    violetBrighter: "#c59ec4",
     red: "#cb4141",
     darkRed: "#a61722",
   };
@@ -411,7 +413,9 @@ function plotQCTableTestOutcome(data: ObsData) {
     NA: colors.grey,
     normal: colors.darkerGrey,
     abnormal: colors.orange,
+    veryAbnormal: colors.orangeBrighter,
     low: colors.violet,
+    veryLow: colors.violetBrighter,
     high: colors.red,
     veryHigh: colors.darkRed,
   };
@@ -431,12 +435,14 @@ function plotQCTableTestOutcome(data: ObsData) {
     x: { label: null, ticks: false },
     y: { label: null, tickSize: 0 },
     color: {
-      domain: ["NA", "N", "A", "L", "H", "HH"],
+      domain: ["NA", "N", "A", "AA", "L", "LL", "H", "HH"],
       range: [
         colorRange.NA,
         colorRange.normal,
         colorRange.abnormal,
+        colorRange.veryAbnormal,
         colorRange.low,
+        colorRange.veryLow,
         colorRange.high,
         colorRange.veryHigh,
       ],
