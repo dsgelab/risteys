@@ -263,17 +263,21 @@ defmodule Risteys.SearchEngine do
     lab_tests_have_more_results =
       Enum.count_until(lab_tests_ranked, max_n_results_by_facet + 1) > max_n_results_by_facet
 
+    lab_tests_top_results = extract_top_records(lab_tests_ranked, max_n_results_by_facet)
+
     endpoints_have_more_results =
       Enum.count_until(endpoints_ranked, max_n_results_by_facet + 1) > max_n_results_by_facet
+
+    endpoints_top_results = extract_top_records(endpoints_ranked, max_n_results_by_facet)
 
     %{
       lab_tests: %{
         have_more_results: lab_tests_have_more_results,
-        top_results: extract_top_records(lab_tests_ranked, max_n_results_by_facet)
+        top_results: lab_tests_top_results
       },
       endpoints: %{
         have_more_results: endpoints_have_more_results,
-        top_results: extract_top_records(endpoints_ranked, max_n_results_by_facet)
+        top_results: endpoints_top_results
       }
     }
   end
