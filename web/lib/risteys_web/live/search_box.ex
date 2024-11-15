@@ -24,7 +24,7 @@ defmodule RisteysWeb.Live.SearchBox do
     |> assign(:form, to_form(%{"search_query" => ""}))
     |> assign(:user_query, "")
     |> assign(:results, empty_results)
-    |> assign(:selected, select_nothing())
+    |> assign(:selected_id, nil)
   end
 
   def handle_event("update_search_results", %{"search_query" => ""}, socket) do
@@ -38,161 +38,82 @@ defmodule RisteysWeb.Live.SearchBox do
       query
       |> Risteys.SearchEngine.search()
       |> clean_results()
+      |> add_result_ids()
 
     socket =
       socket
       |> assign(:user_query, query)
       |> assign(:results, results)
+      |> assign(:selected_id, nil)
 
     {:noreply, socket}
   end
-
-  # def handle_event("update_search_results", %{"search_query" => query}, socket) do
-  #   results =
-  #     [
-  #       ["Endpoint name", search_names(query)],
-  #       ["ICD-10 code", search_icds(query)],
-  #       ["Endpoint long name", search_longnames(query)]
-  #     ]
-  #     |> Enum.reject(fn [_category, result_list] -> Enum.empty?(result_list) end)
-
-  #   socket = assign(socket, :results, results)
-
-  #   selected =
-  #     if Enum.empty?(results) do
-  #       select_nothing()
-  #     else
-  #       select_first(results)
-  #     end
-
-  #   socket = assign(socket, :selected, selected)
-
-  #   {:noreply, socket}
-  # end
 
   def handle_event("submit_endpoint", _value, socket) do
-    socket = redirect(socket, to: ~p"/endpoints/#{socket.assigns.selected.endpoint}")
+    find_in_lab_tests =
+      Enum.find(socket.assigns.results.lab_tests.top_results, fn lab_test ->
+        lab_test.result_id == socket.assigns.selected_id
+      end)
+
+    find_in_endpoints =
+      Enum.find(socket.assigns.results.endpoints.top_results, fn endpoint ->
+        endpoint.result_id == socket.assigns.selected_id
+      end)
+
+    socket =
+      case {find_in_lab_tests, find_in_endpoints} do
+        {nil, nil} ->
+          socket
+
+        {lab_test, nil} ->
+          redirect(socket, to: ~p"/lab-tests/#{lab_test.omop_concept_id}")
+
+        {nil, endpoint} ->
+          redirect(socket, to: ~p"/endpoints/#{endpoint.name}")
+      end
+
     {:noreply, socket}
   end
 
-  # def handle_event("keydown", %{"key" => "ArrowDown"}, socket) do
-  #   selected = change_selected(socket.assigns.results, socket.assigns.selected, :next)
-  #   socket = assign(socket, :selected, selected)
-  #   {:noreply, socket}
-  # end
+  def handle_event("keydown", %{"key" => "ArrowDown"}, socket) do
+    selected_id = change_selected(socket.assigns.results, socket.assigns.selected_id, :next)
+    socket = assign(socket, :selected_id, selected_id)
+    {:noreply, socket}
+  end
 
-  # def handle_event("keydown", %{"key" => "ArrowUp"}, socket) do
-  #   selected = change_selected(socket.assigns.results, socket.assigns.selected, :previous)
-  #   socket = assign(socket, :selected, selected)
-  #   {:noreply, socket}
-  # end
+  def handle_event("keydown", %{"key" => "ArrowUp"}, socket) do
+    selected_id = change_selected(socket.assigns.results, socket.assigns.selected_id, :previous)
+    socket = assign(socket, :selected_id, selected_id)
+    {:noreply, socket}
+  end
 
   def handle_event("keydown", _value, socket) do
     {:noreply, socket}
   end
 
-  defp select_nothing() do
-    %{
-      category_name: nil,
-      result_id: nil
-    }
+  defp change_selected(results, selected_id, :next) do
+    case selected_id do
+      nil ->
+        0
+
+      nn ->
+        n_lab_tests = length(results.lab_tests.top_results)
+        n_endpoints = length(results.endpoints.top_results)
+        min(nn + 1, n_lab_tests + n_endpoints - 1)
+    end
   end
 
-  # defp select_nothing() do
-  #   %{category_index: nil, result_index: nil, endpoint: nil}
-  # end
+  defp change_selected(results, selected_id, :previous) do
+    case selected_id do
+      nil ->
+        n_lab_tests = length(results.lab_tests.top_results)
+        n_endpoints = length(results.endpoints.top_results)
+        n_lab_tests + n_endpoints - 1
 
-  # defp select_first(results) do
-  #   [[_category_name, [%{endpoint_name: endpoint_name} | _]] | _] = results
-  #   %{category_index: 0, result_index: 0, endpoint: endpoint_name}
-  # end
-
-  # defp search_icds(query) do
-  #   Risteys.FGEndpoint.search_icds(query, 10)
-  #   |> Enum.map(fn %{name: name, icds: icds} ->
-  #     icds =
-  #       icds
-  #       # dedup ICDs
-  #       |> MapSet.new()
-  #       |> MapSet.to_list()
-  #       |> Enum.join(", ")
-
-  #     %{
-  #       endpoint_name: name,
-  #       endpoint_column: name,
-  #       content_column: highlight_matches(icds, query)
-  #     }
-  #   end)
-  # end
-
-  # defp search_longnames(query) do
-  #   Risteys.FGEndpoint.search_longnames(query, 10)
-  #   |> Enum.map(fn %{name: name, longname: longname} ->
-  #     %{
-  #       endpoint_name: name,
-  #       endpoint_column: highlight_matches(name, query),
-  #       content_column: highlight_matches(longname, query)
-  #     }
-  #   end)
-  # end
-
-  # defp search_names(query) do
-  #   Risteys.FGEndpoint.search_names(query, 10)
-  #   |> Enum.map(fn %{name: name, longname: longname} ->
-  #     %{
-  #       endpoint_name: name,
-  #       endpoint_column: highlight_matches(name, query),
-  #       content_column: longname
-  #     }
-  #   end)
-  # end
-
-  # defp highlight_matches(content, query) do
-  #   regex = Regex.compile!(query, "i")
-  #   content_chunks = Regex.split(regex, content, include_captures: true)
-
-  #   for {chunk, index} <- Enum.with_index(content_chunks) do
-  #     # matches will be in the indices 1, 3, 5, ...
-  #     if Integer.is_odd(index) do
-  #       Phoenix.HTML.Tag.content_tag(:span, chunk, class: "highlight")
-  #     else
-  #       chunk
-  #     end
-  #   end
-  # end
-
-  # defp change_selected(results, selected, action) do
-  #   flat_index =
-  #     for {[_name, category_results], category_index} <- Enum.with_index(results) do
-  #       for {result, result_index} <- Enum.with_index(category_results) do
-  #         %{
-  #           category_index: category_index,
-  #           result_index: result_index,
-  #           endpoint: result.endpoint_name
-  #         }
-  #       end
-  #     end
-  #     |> List.flatten()
-
-  #   current_index =
-  #     Enum.find_index(flat_index, fn result ->
-  #       result.category_index == selected.category_index and
-  #         result.result_index == selected.result_index
-  #     end)
-
-  #   new_index =
-  #     case action do
-  #       :next ->
-  #         # min() for bound checking
-  #         min(current_index + 1, length(flat_index) - 1)
-
-  #       :previous ->
-  #         # max(, 0) to prevent cycling the results with a negative index
-  #         max(current_index - 1, 0)
-  #     end
-
-  #   Enum.at(flat_index, new_index)
-  # end
+      nn ->
+        max(nn - 1, 0)
+    end
+  end
 
   # Keep only necessary data fields in the result to minimize the data transfer to the frontend
   defp clean_results(results) do
@@ -240,6 +161,23 @@ defmodule RisteysWeb.Live.SearchBox do
     }
   end
 
+  defp add_result_ids(results) do
+    top_lab_tests_with_index =
+      for {result, index} <- Enum.with_index(results.lab_tests.top_results) do
+        Map.put(result, :result_id, index)
+      end
+
+    top_endpoints_with_index =
+      for {result, index} <-
+            Enum.with_index(results.endpoints.top_results, length(top_lab_tests_with_index)) do
+        Map.put(result, :result_id, index)
+      end
+
+    results
+    |> put_in([:lab_tests, :top_results], top_lab_tests_with_index)
+    |> put_in([:endpoints, :top_results], top_endpoints_with_index)
+  end
+
   defp aria_expanded?(results) do
     some_lab_tests? =
       results
@@ -254,19 +192,11 @@ defmodule RisteysWeb.Live.SearchBox do
     some_lab_tests? or some_endpoints?
   end
 
-  defp gen_item_id(nil, nil) do
-    nil
+  defp class_selected(selected_id, result_id) do
+    if selected_id == result_id do
+      "is_selected"
+    else
+      ""
+    end
   end
-
-  defp gen_item_id(category_name, result_id) do
-    "item__#{category_name}_#{result_id}"
-  end
-
-  # defp class_selected(selected, category_index, result_index) do
-  #   if selected.category_index == category_index and selected.result_index == result_index do
-  #     "item selected"
-  #   else
-  #     "item"
-  #   end
-  # end
 end
