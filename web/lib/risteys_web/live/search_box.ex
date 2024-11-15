@@ -4,8 +4,14 @@ defmodule RisteysWeb.Live.SearchBox do
 
   def mount(_params, _session, socket) do
     results = %{
-      lab_tests: [],
-      endpoints: []
+      lab_tests: %{
+        have_more_results: false,
+        top_results: []
+      },
+      endpoints: %{
+        have_more_results: false,
+        top_results: []
+      }
     }
 
     socket =
