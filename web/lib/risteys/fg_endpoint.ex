@@ -3,23 +3,26 @@ defmodule Risteys.FGEndpoint do
   The FGEndpoint context.
   """
   import Ecto.Query, warn: false
-  alias Risteys.Repo
-  alias Risteys.Icd10
-  alias Risteys.YearDistribution
+
   alias Risteys.AgeDistribution
-  alias Risteys.MortalityParams
-  alias Risteys.MortalityBaseline
-  alias Risteys.MortalityCounts
   alias Risteys.CoxHR
-  alias Risteys.Genomics
   alias Risteys.DrugStats
-  alias Risteys.FGEndpoint.GeneticCorrelation
+  alias Risteys.FGEndpoint
+  alias Risteys.FGEndpoint.CaseOverlapsFR
   alias Risteys.FGEndpoint.Correlation
   alias Risteys.FGEndpoint.Definition
   alias Risteys.FGEndpoint.DefinitionICD10
   alias Risteys.FGEndpoint.ExplainerStep
+  alias Risteys.FGEndpoint.GeneticCorrelation
   alias Risteys.FGEndpoint.StatsCumulativeIncidence
-  alias Risteys.FGEndpoint.CaseOverlapsFR
+  alias Risteys.Genomics
+  alias Risteys.Icd10
+  alias Risteys.Icd9
+  alias Risteys.MortalityBaseline
+  alias Risteys.MortalityCounts
+  alias Risteys.MortalityParams
+  alias Risteys.Repo
+  alias Risteys.YearDistribution
 
   # -- Endpoint --
   def list_endpoint_names() do
@@ -166,6 +169,110 @@ defmodule Risteys.FGEndpoint do
         limit: ^limit
 
     Repo.all(query)
+  end
+
+  def find_matching_records(user_keywords) do
+    searchable_attributes = [
+      :endpoint_name,
+      :endpoint_longname,
+      :icd10_code,
+      :icd10_description,
+      :icd9_code,
+      :icd9_description
+    ]
+
+    init_query =
+      from endpoint in Definition,
+        left_join: key_figures in Risteys.KeyFigures,
+        on: endpoint.id == key_figures.fg_endpoint_id,
+        left_join: assoc_icd10 in FGEndpoint.DefinitionICD10,
+        on: endpoint.id == assoc_icd10.fg_endpoint_id,
+        left_join: icd10 in Icd10,
+        on: assoc_icd10.icd10_id == icd10.id,
+        left_join: assoc_icd9 in FGEndpoint.DefinitionICD9,
+        on: endpoint.id == assoc_icd9.fg_endpoint_id,
+        left_join: icd9 in Icd9,
+        on: assoc_icd9.icd9_id == icd9.id,
+        where: key_figures.dataset == "FG",
+        select: %{
+          endpoint_dbid: endpoint.id,
+          endpoint_name: endpoint.name,
+          endpoint_longname: endpoint.longname,
+          icd10_code: icd10.code,
+          icd10_description: icd10.description,
+          icd9_code: icd9.code,
+          icd9_description: icd9.description,
+          stats_n_gws_hits: endpoint.gws_hits,
+          stats_n_cases: key_figures.nindivs_all
+        }
+
+    filters =
+      for field_name <- searchable_attributes, keyword <- user_keywords do
+        {field_name, "%" <> keyword <> "%"}
+      end
+
+    running_query =
+      Enum.reduce(
+        filters,
+        subquery(init_query),
+        fn {field_name, where_value}, query ->
+          from qq in query, or_where: field(qq, ^field_name) |> ilike(^where_value)
+        end
+      )
+
+    Repo.all(
+      from subq in running_query,
+        group_by: [
+          subq.endpoint_dbid,
+          subq.endpoint_name,
+          subq.endpoint_longname,
+          subq.stats_n_gws_hits,
+          subq.stats_n_cases
+        ],
+        select: %{
+          dbid: subq.endpoint_dbid,
+          name: subq.endpoint_name,
+          longname: subq.endpoint_longname,
+          n_gws_hits: subq.stats_n_gws_hits,
+          n_cases: subq.stats_n_cases,
+          icd10_codes:
+            fragment(
+              "lower(array_to_string(array_remove(array_agg(DISTINCT ?), NULL), ' '))",
+              subq.icd10_code
+            ),
+          icd10_descriptions:
+            fragment(
+              "lower(array_to_string(array_remove(array_agg(?), NULL), ' '))",
+              subq.icd10_description
+            ),
+          icd9_codes:
+            fragment(
+              "lower(array_to_string(array_remove(array_agg(DISTINCT ?), NULL), ' '))",
+              subq.icd9_code
+            ),
+          icd9_descriptions:
+            fragment(
+              "lower(array_to_string(array_remove(array_agg(?), NULL), ' '))",
+              subq.icd9_description
+            )
+        }
+    )
+
+    # NOTE(Vincent 2024-11-06)  At some point I wanted to do as much processing as possible by the
+    # database, but the code became quite complex and the output data structure was kind of messy
+    # to work with.
+    # Here is the code that attempted to have dynamic fields indicating matches:
+    #
+    #    query =
+    #      Enum.reduce(filters, from(_ in query, select: %{}), fn {attr, lookup}, query ->
+    #        key = Atom.to_string(attr)
+    #
+    #        from qq in query, select_merge: %{{^key, ^lookup} => field(qq, ^attr) |> ilike(^lookup)}
+    #      end)
+    #
+    #    return_attributes = [:name, :longname, :gws_hits]
+    #
+    #    query = from qq in query, select_merge: map(qq, ^return_attributes)
   end
 
   # -- Endpoint Explainer --

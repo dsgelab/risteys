@@ -1,49 +1,109 @@
 <div
-    role="combobox"
-    class="outshadow"
-    aria-label="search for anything on Risteys"
-    aria-haspopup="grid"
-    aria-owns="search-results"
-    aria-expanded={aria_expanded?(@results)}
+  role="combobox"
+  class="searchbox outshadow"
+  aria-label="Search Risteys"
+  aria-haspopup="grid"
+  aria-owns="search-results"
+  aria-expanded={aria_expanded?(@results)}
 >
+  <.form for={@form} phx-change="update_search_results" phx-submit="submit_endpoint">
+    <.input
+      type="text"
+      field={@form[:search_query]}
+      phx-keydown="keydown"
+      role="searchbox"
+      aria-multiline="false"
+      aria-autocomplete="list"
+      aria-controls="search-results"
+      aria-activedescendant={@selected_id || ""}
+      placeholder="click or type 's' to search"
+      id="search-input"
+      autocomplete="off"
+    />
+  </.form>
 
-    <.form for={@form} phx-change="update_search_results" phx-submit="submit_endpoint">
-        <.input
-            type="text"
-            field={@form[:search_query]}
-            phx-keydown="keydown"
-            role="searchbox"
-            aria-multiline="false"
-            aria-autocomplete="list"
-            aria-controls="search-results"
-            aria-activedescendant={gen_item_id(@selected.category_index, @selected.result_index)}
-            placeholder="click or type 's' to search"
-            id="search-input"
-            autocomplete="off"
-        />
-    </.form>
-
-    <div id="search-results" class="results" role="grid">
-        <%= for {[category_name, category_results], category_index} <- Enum.with_index(@results) do %>
-        <div class="category">
-            <div class="category-name"><%= category_name %></div>
-
-            <%= for {result, result_index} <- category_results |> Enum.with_index() do %>
-            <div
-                id={gen_item_id(category_index, result_index)}
-                class={class_selected(@selected, category_index, result_index)}
-                role="row"
-            >
-                <span class="font-mono" role="rowcell">
-                    <a href={~p"/endpoints/#{result.endpoint_name}"}><%= result.endpoint_column %></a>
-                </span>
-                <span class="pr-2 inline-block" role="rowcell">
-                    <%= result.content_column %>
-                </span>
+  <div class="search-results">
+    <%= if @user_query != ""
+      and Enum.empty?(get_in(@results, [:lab_tests, :top_results]))
+      and Enum.empty?(get_in(@results, [:endpoints, :top_results]))
+    do %>
+      <p class="info-no-results">
+        I didn't find any results matching your query.
+        You can check the <a href={~p"/lab-tests/"}>Index of lab tests</a>.
+      </p>
+    <% end %>
+    <%= if not Enum.empty?(get_in(@results, [:lab_tests, :top_results])) do %>
+      <h4>Lab tests</h4>
+      <div class="lab-tests" role="grid">
+        <div role="rowgroup">
+          <div role="row">
+            <div role="gridcell"></div>
+            <div class="omop-concept-id" role="gridcell">OMOP ID</div>
+            <div class="omop-concept-name" role="gridcell">Name</div>
+            <div class="omop-concept-npeople" role="gridcell">N&nbsp;People</div>
+            <div class="omop-concept-percent-records" role="gridcell">
+              %&nbsp;people with 2+ records
             </div>
-            <% end %>
+          </div>
         </div>
-        <% end %>
-    </div>
+        <div role="rowgroup">
+          <%= for lab_test <- get_in(@results, [:lab_tests, :top_results]) || [] do %>
+            <a
+              class={class_selected(@selected_id, lab_test.result_id)}
+              role="row"
+              href={~p"/lab-tests/#{lab_test.omop_concept_id}"}
+            >
+              <div class="icon" role="gridcell">
+                <img src={~p"/images/icon_lab_test.svg"} alt="lab test" width="14" height="14" />
+              </div>
+              <div class="omop-concept-id font-mono" role="gridcell">
+                <%= lab_test.omop_concept_id %>
+              </div>
+              <div class="omop-concept-name" role="gridcell">
+                <%= lab_test.omop_concept_name %>
+              </div>
+              <div class="omop-concept-npeople" role="gridcell">
+                <%= lab_test.omop_concept_npeople %>
+              </div>
+              <div class="omop-concept-percent-records" role="gridcell">
+                <%= lab_test.omop_concept_percent_people_with_two_plus_records %>
+              </div>
+            </a>
+          <% end %>
+        </div>
+      </div>
+    <% end %>
 
+    <%= if not Enum.empty?(get_in(@results, [:endpoints, :top_results])) do %>
+      <h4>Endpoints</h4>
+      <div class="endpoints" role="grid">
+        <div role="rowgroup">
+          <div role="row">
+            <div role="gridcell"></div>
+            <div class="endpoint-name" role="gridcell">Name</div>
+            <div class="endpoint-longname" role="gridcell">Long name</div>
+            <div class="endpoint-n-cases" role="gridcell">N&nbsp;Cases</div>
+            <div class="endpoint-n-gws-hits" role="gridcell">N&nbsp;GWS hits</div>
+          </div>
+        </div>
+        <div role="rowgroup">
+          <%= for endpoint <- get_in(@results, [:endpoints, :top_results]) || [] do %>
+            <a
+              class={class_selected(@selected_id, endpoint.result_id)}
+              role="row"
+              href={~p"/endpoints/#{endpoint.name}"}
+            >
+              <div class="icon" role="gridcell">
+                <img src={~p"/images/icon_endpoint.svg"} alt="lab test" width="14" height="14" />
+              </div>
+              <div class="endpoint-name font-mono" role="gridcell"><%= endpoint.name %></div>
+              <div class="endpoint-longname" role="gridcell"><%= endpoint.longname %></div>
+              <div class="endpoint-n-cases" role="gridcell"><%= endpoint.n_cases %></div>
+              <div class="endpoint-n-gws-hits" role="gridcell"><%= endpoint.n_gws_hits %></div>
+            </a>
+          <% end %>
+        </div>
+      </div>
+    <% end %>
+  </div>
 </div>

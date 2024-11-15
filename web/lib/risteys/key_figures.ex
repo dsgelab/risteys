@@ -40,13 +40,31 @@ defmodule Risteys.KeyFigures do
     |> validate_exclusion(:nindivs_female, 1..4)
     |> validate_number(:nindivs_male, greater_than_or_equal_to: 0)
     |> validate_exclusion(:nindivs_male, 1..4)
-    |> validate_number(:median_age_all, greater_than_or_equal_to: 0.0, less_than_or_equal_to: 120.0)
-    |> validate_number(:median_age_female, greater_than_or_equal_to: 0.0, less_than_or_equal_to: 120.0)
-    |> validate_number(:median_age_male, greater_than_or_equal_to: 0.0, less_than_or_equal_to: 120.0)
-    |> validate_number(:prevalence_all, greater_than_or_equal_to: 0.0, less_than_or_equal_to: 100.0)
-    |> validate_number(:prevalence_female, greater_than_or_equal_to: 0.0, less_than_or_equal_to: 100.0)
-    |> validate_number(:prevalence_male, greater_than_or_equal_to: 0.0, less_than_or_equal_to: 100.0)
+    |> validate_number(:median_age_all,
+      greater_than_or_equal_to: 0.0,
+      less_than_or_equal_to: 120.0
+    )
+    |> validate_number(:median_age_female,
+      greater_than_or_equal_to: 0.0,
+      less_than_or_equal_to: 120.0
+    )
+    |> validate_number(:median_age_male,
+      greater_than_or_equal_to: 0.0,
+      less_than_or_equal_to: 120.0
+    )
+    |> validate_number(:prevalence_all,
+      greater_than_or_equal_to: 0.0,
+      less_than_or_equal_to: 100.0
+    )
+    |> validate_number(:prevalence_female,
+      greater_than_or_equal_to: 0.0,
+      less_than_or_equal_to: 100.0
+    )
+    |> validate_number(:prevalence_male,
+      greater_than_or_equal_to: 0.0,
+      less_than_or_equal_to: 100.0
+    )
     |> validate_inclusion(:dataset, ["FG", "FR", "FR_index"])
-    |> unique_constraint(:fg_endpoint_id, name: :key_figures_fg_endpoint_id_dataset)
+    |> unique_constraint([:fg_endpoint_id, :dataset], name: :key_figures_fg_endpoint_id_dataset)
   end
 end
