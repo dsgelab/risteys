@@ -235,13 +235,21 @@ defmodule Risteys.FGEndpoint do
           longname: subq.endpoint_longname,
           n_gws_hits: subq.stats_n_gws_hits,
           n_cases: subq.stats_n_cases,
-          icd10_codes: fragment("array_remove(array_agg(DISTINCT ?), NULL)", subq.icd10_code),
+          icd10_codes:
+            fragment(
+              "lower(array_to_string(array_remove(array_agg(DISTINCT ?), NULL), ' '))",
+              subq.icd10_code
+            ),
           icd10_descriptions:
             fragment(
               "lower(array_to_string(array_remove(array_agg(?), NULL), ' '))",
               subq.icd10_description
             ),
-          icd9_codes: fragment("array_remove(array_agg(DISTINCT ?), NULL)", subq.icd9_code),
+          icd9_codes:
+            fragment(
+              "lower(array_to_string(array_remove(array_agg(DISTINCT ?), NULL), ' '))",
+              subq.icd9_code
+            ),
           icd9_descriptions:
             fragment(
               "lower(array_to_string(array_remove(array_agg(?), NULL), ' '))",

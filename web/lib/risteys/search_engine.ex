@@ -34,21 +34,14 @@ defmodule Risteys.SearchEngine do
   end
 
   defp compute_costs_lab_test(lab_test, user_keywords) do
-    {omop_concept_id_n_matched_keywords, cost_omop_concept_id_keywords} =
-      cost_lab_test_attribute_omop_concept_id(lab_test, user_keywords)
+    ordered_attributes = [
+      :omop_concept_id,
+      :list_test_names,
+      :omop_concept_name
+    ]
 
-    {list_test_names_n_matched_keywords, cost_list_test_names_keywords} =
-      cost_lab_test_attribute_list_test_names(lab_test, user_keywords)
-
-    {omop_concept_name_n_matched_keywords, cost_omop_concept_name_keywords} =
-      cost_lab_test_attribute_omop_concept_name(lab_test, user_keywords)
-
-    cost_n_matched_keywords =
-      -Enum.max([
-        omop_concept_id_n_matched_keywords,
-        list_test_names_n_matched_keywords,
-        omop_concept_name_n_matched_keywords
-      ])
+    {cost_n_matched_keywords, cost_attribute} =
+      costs_n_keywords_attributes(user_keywords, lab_test, ordered_attributes)
 
     %{
       record: lab_test,
@@ -56,11 +49,7 @@ defmodule Risteys.SearchEngine do
         # Cost of N matched keywords
         cost_n_matched_keywords,
         # Costs by attribute:
-        [
-          cost_omop_concept_id_keywords,
-          cost_list_test_names_keywords,
-          cost_omop_concept_name_keywords
-        ],
+        cost_attribute,
         # Features independent of the user keywords
         cost_lab_test_npeople(lab_test),
         cost_lab_test_percent_people_with_two_plus_records(lab_test)
@@ -84,29 +73,24 @@ defmodule Risteys.SearchEngine do
   end
 
   defp compute_costs_endpoint(endpoint, user_keywords) do
-    {name_n_matched_keywords, cost_name_keywords} =
-      cost_endpoint_attribute_name(endpoint, user_keywords)
+    ordered_attributes = [
+      :name,
+      :icd10_codes,
+      :icd9_codes,
+      :longname,
+      :icd10_descriptions,
+      :icd9_descriptions
+    ]
 
-    {longname_n_matched_keywords, cost_longname_keywords} =
-      cost_endpoint_attribute_longname(endpoint, user_keywords)
-
-    cost_n_matched_keywords =
-      -Enum.max([
-        name_n_matched_keywords,
-        longname_n_matched_keywords
-      ])
+    {cost_n_matched_keywords, cost_attribute} =
+      costs_n_keywords_attributes(user_keywords, endpoint, ordered_attributes)
 
     %{
       record: endpoint,
       features_costs: [
         cost_n_matched_keywords,
         # Costs by attribute:
-        [
-          cost_name_keywords,
-          cost_endpoint_icd_codes(endpoint, user_keywords),
-          cost_longname_keywords,
-          cost_icd_descriptions(endpoint, user_keywords)
-        ],
+        cost_attribute,
         # Features that don't depend on the user's keywords
         cost_endpoint_n_cases(endpoint),
         cost_endpoint_n_gws_hits(endpoint)
@@ -118,121 +102,63 @@ defmodule Risteys.SearchEngine do
     Enum.sort_by(results, fn %{features_costs: features_costs} -> features_costs end)
   end
 
-  defp cost_lab_test_attribute_omop_concept_id(lab_test, user_keywords) do
-    cost_attribute(user_keywords, lab_test.omop_concept_id)
-  end
+  defp costs_n_keywords_attributes(user_keywords, result, ordered_attributes) do
+    matches =
+      for keyword <- user_keywords, attribute <- ordered_attributes do
+        found? =
+          Map.fetch!(result, attribute)
+          |> String.downcase()
+          |> String.contains?(keyword)
 
-  defp cost_lab_test_attribute_omop_concept_name(lab_test, user_keywords) do
-    cost_attribute(user_keywords, lab_test.omop_concept_name)
-  end
+        {keyword, attribute, found?}
+      end
 
-  defp cost_lab_test_attribute_list_test_names(lab_test, user_keywords) do
-    cost_attribute(user_keywords, lab_test.list_test_names)
-  end
-
-  defp cost_endpoint_attribute_name(endpoint, user_keywords) do
-    cost_attribute(user_keywords, endpoint.name)
-  end
-
-  defp cost_endpoint_attribute_longname(endpoint, user_keywords) do
-    cost_attribute(user_keywords, endpoint.longname)
-  end
-
-  defp cost_endpoint_icd_codes(endpoint, user_keywords) do
-    all_icds =
-      MapSet.new(endpoint.icd10_codes)
-      |> MapSet.union(MapSet.new(endpoint.icd9_codes))
-
-    n_exact_matches =
-      MapSet.new(user_keywords)
-      |> MapSet.intersection(all_icds)
-      |> MapSet.size()
-
-    n_prefix_matches =
-      for keyword <- user_keywords, reduce: 0 do
+    by_keyword =
+      for {keyword, _attribute, found?} <- matches, reduce: %{} do
         acc ->
-          prefix_length = String.length(keyword)
+          n_found = Map.get(acc, keyword, 0)
 
-          icd_prefixes =
-            all_icds
-            |> Enum.map(fn icd -> String.slice(icd, 0, prefix_length) end)
-            |> MapSet.new()
-
-          if MapSet.member?(icd_prefixes, keyword) do
-            acc + 1
+          if found? do
+            Map.put(acc, keyword, n_found + 1)
           else
-            acc
+            Map.put(acc, keyword, n_found)
           end
       end
 
-    [-n_exact_matches, -n_prefix_matches]
-  end
-
-  defp cost_icd_descriptions(endpoint, user_keywords) do
-    n_keyword_found =
-      for keyword <- user_keywords, reduce: 0 do
+    by_attribute =
+      for {_keyword, attribute, found?} <- matches, reduce: %{} do
         acc ->
-          in_icd10? = String.contains?(endpoint.icd10_descriptions, keyword)
-          in_icd9? = String.contains?(endpoint.icd9_descriptions, keyword)
+          n_found = Map.get(acc, attribute, 0)
 
-          if in_icd10? or in_icd9? do
-            acc + 1
+          if found? do
+            Map.put(acc, attribute, n_found + 1)
           else
-            acc
+            Map.put(acc, attribute, n_found)
           end
       end
 
-    -n_keyword_found
-  end
-
-  defp cost_attribute(user_keywords, attribute_string) do
-    keyword_costs =
-      for keyword <- user_keywords do
-        find_keyword_cost(keyword, attribute_string)
-      end
-
-    n_matched_keywords =
-      keyword_costs
-      |> Enum.reject(fn cost -> cost == @cost_infinity end)
+    cost_n_matched_keywords =
+      by_keyword
+      |> Map.values()
+      |> Enum.filter(fn count -> count > 0 end)
       |> length()
 
-    {n_matched_keywords, keyword_costs}
-  end
+    cost_n_matched_keywords = -cost_n_matched_keywords
 
-  defp find_keyword_cost(keyword, string) do
-    string = String.downcase(string)
+    attributes_with_all_keywords =
+      by_attribute
+      |> Map.filter(fn {_attribute, n_keywords_found} ->
+        n_keywords_found == length(user_keywords)
+      end)
 
-    case find_substring_indices(string, keyword) do
-      {nil, nil} ->
-        @cost_infinity
+    cost_attribute =
+      Enum.find_index(ordered_attributes, fn attribute ->
+        Map.has_key?(attributes_with_all_keywords, attribute)
+      end)
 
-      {index_in_string, index_in_word} ->
-        [index_in_string, index_in_word]
-    end
-  end
+    cost_attribute = cost_attribute || @cost_infinity
 
-  @doc """
-  Find the index of substring within string, and the index of substring within the matched word
-  in string.
-  """
-  def find_substring_indices(string, substring) do
-    find_substring_indices(string, substring, 0, 0)
-  end
-
-  defp find_substring_indices(string, substring, index_in_string, index_in_word) do
-    case string do
-      "" ->
-        {nil, nil}
-
-      <<^substring::binary, _rest::binary>> ->
-        {index_in_string, index_in_word}
-
-      <<" ", rest::binary>> ->
-        find_substring_indices(rest, substring, index_in_string + 1, 0)
-
-      <<_char::utf8, rest::binary>> ->
-        find_substring_indices(rest, substring, index_in_string + 1, index_in_word + 1)
-    end
+    {cost_n_matched_keywords, cost_attribute}
   end
 
   defp cost_endpoint_n_cases(endpoint) do
