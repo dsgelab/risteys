@@ -17,6 +17,7 @@ defmodule RisteysWeb.Live.SearchBox do
     socket =
       socket
       |> assign(:form, to_form(%{"search_query" => ""}))
+      |> assign(:user_query, "")
       |> assign(:results, results)
       |> assign(:selected, select_nothing())
 
@@ -26,6 +27,7 @@ defmodule RisteysWeb.Live.SearchBox do
   def handle_event("update_search_results", %{"search_query" => ""}, socket) do
     socket =
       socket
+      |> assign(:user_query, "")
       |> assign(:results, [])
       |> assign(:selected, select_nothing())
 
@@ -38,7 +40,10 @@ defmodule RisteysWeb.Live.SearchBox do
       |> Risteys.SearchEngine.search()
       |> clean_results()
 
-    socket = assign(socket, :results, results)
+    socket =
+      socket
+      |> assign(:user_query, query)
+      |> assign(:results, results)
 
     {:noreply, socket}
   end
