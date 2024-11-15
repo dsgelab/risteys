@@ -49,4 +49,10 @@ defmodule RisteysWeb.LabTestController do
     |> assign(:lab_test, pretty_stats)
     |> render()
   end
+
+  def redir_random(conn, _params) do
+    lab_test_omop_id = Risteys.LabTestStats.get_random_omop_id()
+
+    redirect(conn, to: ~p"/lab-tests/#{lab_test_omop_id}")
+  end
 end

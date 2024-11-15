@@ -81,6 +81,17 @@ defmodule Risteys.LabTestStats do
     end
   end
 
+  def get_random_omop_id() do
+    query =
+      from omop in OMOP.Concept,
+        inner_join: npeople in NPeople,
+        on: omop.id == npeople.omop_concept_dbid,
+        select: omop.concept_id
+
+    Repo.all(query)
+    |> Enum.random()
+  end
+
   def get_overall_stats() do
     %{
       npeople: get_overall_stats_npeople(),

@@ -24,10 +24,12 @@ defmodule RisteysWeb.Router do
     get "/documentation", DocumentationController, :index
 
     get "/endpoints/:name", FGEndpointController, :show
-    get "/random_endpoint", FGEndpointController, :redir_random
 
     get "/lab-tests/", LabTestController, :index
     get "/lab-tests/:omop_id", LabTestController, :show
+
+    get "/random/endpoint", FGEndpointController, :redir_random
+    get "/random/lab-test", LabTestController, :redir_random
 
     # Redirect legacy URLs to keep shared and published links working
     get "/phenocode/:name", FGEndpointController, :redirect_legacy_url
