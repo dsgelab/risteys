@@ -3,7 +3,13 @@ defmodule RisteysWeb.Live.SearchBox do
   require Integer
 
   def mount(_params, _session, socket) do
-    results = %{
+    socket = reset_to_empty_query(socket)
+
+    {:ok, socket, layout: false}
+  end
+
+  defp reset_to_empty_query(socket) do
+    empty_results = %{
       lab_tests: %{
         have_more_results: false,
         top_results: []
@@ -14,22 +20,15 @@ defmodule RisteysWeb.Live.SearchBox do
       }
     }
 
-    socket =
-      socket
-      |> assign(:form, to_form(%{"search_query" => ""}))
-      |> assign(:user_query, "")
-      |> assign(:results, results)
-      |> assign(:selected, select_nothing())
-
-    {:ok, socket, layout: false}
+    socket
+    |> assign(:form, to_form(%{"search_query" => ""}))
+    |> assign(:user_query, "")
+    |> assign(:results, empty_results)
+    |> assign(:selected, select_nothing())
   end
 
   def handle_event("update_search_results", %{"search_query" => ""}, socket) do
-    socket =
-      socket
-      |> assign(:user_query, "")
-      |> assign(:results, [])
-      |> assign(:selected, select_nothing())
+    socket = reset_to_empty_query(socket)
 
     {:noreply, socket}
   end
@@ -242,7 +241,17 @@ defmodule RisteysWeb.Live.SearchBox do
   end
 
   defp aria_expanded?(results) do
-    not Enum.empty?(results.lab_tests) or not Enum.empty?(results.endpoints)
+    some_lab_tests? =
+      results
+      |> get_in([:lab_tests, :top_results])
+      |> (fn rows -> not Enum.empty?(rows) end).()
+
+    some_endpoints? =
+      results
+      |> get_in([:endpoints, :top_results])
+      |> (fn rows -> not Enum.empty?(rows) end).()
+
+    some_lab_tests? or some_endpoints?
   end
 
   defp gen_item_id(nil, nil) do
