@@ -74,10 +74,10 @@ defmodule Risteys.SearchEngine do
 
   defp compute_costs_endpoint(endpoint, user_keywords) do
     ordered_attributes = [
-      :name,
       :icd10_codes,
       :icd9_codes,
       :longname,
+      :name,
       :icd10_descriptions,
       :icd9_descriptions
     ]
@@ -92,8 +92,8 @@ defmodule Risteys.SearchEngine do
         # Costs by attribute:
         cost_attribute,
         # Features that don't depend on the user's keywords
-        cost_endpoint_n_cases(endpoint),
-        cost_endpoint_n_gws_hits(endpoint)
+        cost_endpoint_n_gws_hits(endpoint),
+        cost_endpoint_n_cases(endpoint)
       ]
     }
   end
@@ -167,9 +167,8 @@ defmodule Risteys.SearchEngine do
         @cost_infinity
 
       nn ->
-        scale_factor = 1_000
         # Setting to negative to set lower cost for higher N cases
-        -div(nn, scale_factor)
+        -nn
     end
   end
 
@@ -179,7 +178,7 @@ defmodule Risteys.SearchEngine do
         @cost_infinity
 
       nn ->
-        nn
+        -div(nn, 10)
     end
   end
 
