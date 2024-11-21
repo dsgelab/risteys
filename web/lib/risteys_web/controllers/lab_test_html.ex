@@ -78,13 +78,35 @@ defmodule RisteysWeb.LabTestHTML do
   defp plot_sex(nil), do: ""
 
   defp plot_sex(female_percent) do
-    assigns = %{female_percent: female_percent}
+    width = 60
+    height = 5
+    viewbox = "0 0 #{width} #{height}"
 
+    assigns = %{
+      female_percent: female_percent,
+      width: width,
+      height: height,
+      viewbox: viewbox,
+      split_position: female_percent / 100 * width
+    }
+
+    # Making the plot stretch but keep its height is done by setting the following on <svg>:
+    # - fixed `height`
+    # - `width="100%"`
+    # - `preserveAspectRatio="none"`
     ~H"""
-    <div style="width: 100%; height: 0.3em; background-color: #bfcde6;">
-      <div style={"width: #{@female_percent}%; height: 100%; background-color: #dd9fbd; border-right: 1px solid #000;"}>
-      </div>
-    </div>
+    <svg
+      viewBox={@viewbox}
+      height={@height}
+      width="100%"
+      preserveAspectRatio="none"
+      fill="none"
+      xmlns="http://www.w3.org/2000/svg"
+    >
+      <rect width={@width} height={@height} fill="#bfcde6" />
+      <rect width={@split_position} height={@height} fill="#dd9fbd" />
+      <rect x={@split_position} width="1" height={@height} fill="black" />
+    </svg>
     """
   end
 
@@ -119,6 +141,47 @@ defmodule RisteysWeb.LabTestHTML do
         </div>
       <% end %>
     </div>
+    """
+
+    width = 60
+    height = 5
+    viewbox = "0 0 #{width} #{height}"
+
+    tick_x_positions =
+      case tick_every do
+        nil ->
+          []
+
+        _ ->
+          last = round(npeople_max)
+          step = round(tick_every)
+          Range.to_list(step..last//step)
+      end
+      |> Enum.map(&(&1 / npeople_max * width))
+
+    assigns = %{
+      width: width,
+      height: height,
+      viewbox: viewbox,
+      width_npeople: npeople / npeople_max * width,
+      tick_x_positions: tick_x_positions
+    }
+
+    ~H"""
+    <svg
+      viewBox={@viewbox}
+      height={@height}
+      width="100%"
+      preserveAspectRatio="none"
+      fill="none"
+      xmlns="http://www.w3.org/2000/svg"
+    >
+      <rect width={@width} height={@height} fill="var(--bg-color-plot-empty)" />
+      <rect width={@width_npeople} height={@height} fill="var(--bg-color-plot)" />
+      <%= for tick_x <- @tick_x_positions do %>
+        <rect x={tick_x} width="1" height={@height} fill="var(--bg-color-plot-empty)" />
+      <% end %>
+    </svg>
     """
   end
 
