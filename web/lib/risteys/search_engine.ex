@@ -178,7 +178,7 @@ defmodule Risteys.SearchEngine do
         @cost_infinity
 
       nn ->
-        -div(nn, 10)
+        -nn
     end
   end
 
