@@ -57,6 +57,16 @@ def assign_bots(dataf):
                 pl.col("UserAgent").str.contains("VivoBrowser")
                 & pl.col("UserAgent").str.contains("uni-app")
             )
+
+            # NOTE(Vincent 2024-11-21)
+            # Identified bot behaviour happening on 2024-11-10, appending weird query parameters
+            # to /endpoints/C3_URINARY_TRACT
+            # e.g:
+            #   /endpoints/C3_URINARY_TRACT&sa=U&ved=2ahUKEwjZzKaM38qIAxX6SfEDHaNANnsQFnoECAcQAg&usg=3765
+            #   /endpoints/C3_URINARY_TRACT&sa=U&ved=2ahUKEwjZzKaM38qIAxX6SfEDHaNANnsQFnoECAcQAg&usg=AOvVaw1jgaK37uq8EyRawip2qxVT%29%2F%2A%2A%2FANd%2F%2A%2A%2F4487%2F%2A%2A%2FBETweEn%2F%2A%2A%2F3334%2F%2A%2A%2FANd%2F%2A%2A%2F3334--%2F%2A%2A%2FDlYr
+            # This user agent didn't have any other entries than these weird ones so I flag it as
+            # a bot, eventhough it's not obvious from the user agent provided.
+            | (pl.col("UserAgent") == "Mozilla/5.0 (X11; U; Linux i686; rv:1.9) Gecko/2008080808 Firefox/3.0")
         ).then(pl.lit("Bot"))
         .otherwise(pl.lit("User"))
         .alias("Requester")
