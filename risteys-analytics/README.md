@@ -3,6 +3,7 @@
 This is an [Observable Framework](https://observablehq.com/framework) project. To start the local preview server, run:
 
 ```
+source .venv/bin/activate
 npm run dev
 ```
 
