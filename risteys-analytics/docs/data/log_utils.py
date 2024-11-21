@@ -6,7 +6,7 @@ import polars as pl
 
 def parse_log_file(filepath):
     parsed_lines = []
-    with open(filepath) as fd:
+    with open(filepath, errors="replace") as fd:
         for line in fd:
             parsed = parse_log_line(line)
 
