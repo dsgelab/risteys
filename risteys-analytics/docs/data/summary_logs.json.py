@@ -81,8 +81,9 @@ def filter_in_page_routes(dataf):
         | pl.col("Path").str.starts_with("/documentation")
         | pl.col("Path").str.starts_with("/endpoint/")
         | pl.col("Path").str.starts_with("/endpoints/")
+        | pl.col("Path").str.starts_with("/lab-tests/")
         | pl.col("Path").str.starts_with("/phenocode/")
-        | pl.col("Path").str.starts_with("/random_endpoint")
+        | pl.col("Path").str.starts_with("/random/")
     )
 
 
