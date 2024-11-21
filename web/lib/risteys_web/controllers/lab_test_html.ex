@@ -228,7 +228,8 @@ defmodule RisteysWeb.LabTestHTML do
             :continuous,
             dist,
             "Measured value",
-            "Number of records"
+            "Number of records",
+            "lab-values"
           )
       end
 
@@ -378,7 +379,13 @@ defmodule RisteysWeb.LabTestHTML do
     })
   end
 
-  defp build_obsplot_payload(:continuous, distribution, x_label, y_label) do
+  defp build_obsplot_payload(
+         :continuous,
+         distribution,
+         x_label,
+         y_label,
+         plot_type \\ "continuous"
+       ) do
     # TODO(Vincent 2024-10-30) Refactor distribution schemas so that they arrive here with a
     # unified structure.
     # Currently dist lab values has :bins, :break_min, etc. has schema fields, so they it arrives
@@ -413,11 +420,12 @@ defmodule RisteysWeb.LabTestHTML do
     }
 
     assigns = %{
-      payload: Jason.encode!(payload)
+      payload: Jason.encode!(payload),
+      plot_type: plot_type
     }
 
     ~H"""
-    <div class="obsplot" data-obsplot-type="continuous" data-obsplot={@payload}></div>
+    <div class="obsplot" data-obsplot-type={@plot_type} data-obsplot={@payload}></div>
     """
   end
 

@@ -64,6 +64,9 @@ function plotAllObs() {
         case "continuous":
           ee.append(plotContinuous(data));
           break;
+        case "lab-values":
+          ee.append(plotLabValues(data));
+          break;
         case "qc-table-test-outcome":
           ee.append(plotQCTableTestOutcome(data));
           break;
@@ -158,7 +161,7 @@ function plotCategorical(data: ObsDataWithLabels) {
   });
 }
 
-function plotContinuous(data: ObsDataWithLabels) {
+function plotContinuous(data: ObsDataWithLabels, markX0: boolean = false) {
   return Plot.plot({
     marginLeft: 70,
     style: defaultPlotStyle,
@@ -177,6 +180,7 @@ function plotContinuous(data: ObsDataWithLabels) {
     marks: [
       Plot.gridY({ stroke: "#aaa" }),
       Plot.ruleY([0]),
+      markX0 ? Plot.ruleX([0], { stroke: "#aaa", strokeOpacity: 0.1 }) : null,
       Plot.rectY(data.bins, {
         x1: "x1",
         x2: "x2",
@@ -212,6 +216,10 @@ function plotContinuous(data: ObsDataWithLabels) {
       ),
     ],
   });
+}
+
+function plotLabValues(data: ObsDataWithLabels) {
+  return plotContinuous(data, true);
 }
 
 function plotYearOfBirh(data: ObsData) {
