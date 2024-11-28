@@ -14,7 +14,9 @@ def parse_log_file(filepath):
                 parsed_lines.append(parsed)
 
     return pl.DataFrame(
-        parsed_lines, schema=["DateTime", "Path", "StatusCode", "UserAgent"]
+        parsed_lines,
+        schema=["DateTime", "Path", "StatusCode", "UserAgent"],
+        orient="row"
     )
 
 
@@ -67,6 +69,22 @@ def assign_bots(dataf):
             # This user agent didn't have any other entries than these weird ones so I flag it as
             # a bot, eventhough it's not obvious from the user agent provided.
             | (pl.col("UserAgent") == "Mozilla/5.0 (X11; U; Linux i686; rv:1.9) Gecko/2008080808 Firefox/3.0")
+
+            # NOTE(Vincent 2024-11-28)
+            # Identifed bot behaviour happening on 2024-11-26, full user agent was:
+            # "Scrapy/2.11.2 (+https://scrapy.org)"
+            | pl.col("UserAgent").str.contains("https://scrapy.org")
+
+            # NOTE(Vincent 2024-11-28)
+            # Some low-traffic bots:
+            | pl.col("UserAgent").str.starts_with("Go-http-client/")
+            | pl.col("UserAgent").str.starts_with("workona-favicon-service/")
+            | (pl.col("UserAgent") == "Owler (ows.eu/owler)")
+            | pl.col("UserAgent").str.starts_with("facebookexternalhit/")
+            | pl.col("UserAgent").str.starts_with("Microsoft Office Excel")
+            | pl.col("UserAgent").str.starts_with("Iframely/")
+            | pl.col("UserAgent").str.starts_with("python-requests/")
+            | pl.col("UserAgent").str.starts_with("GoogleOther/")
         ).then(pl.lit("Bot"))
         .otherwise(pl.lit("User"))
         .alias("Requester")
