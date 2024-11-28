@@ -473,7 +473,7 @@ defmodule RisteysWeb.LabTestHTML do
   end
 
   defp build_obsplot_payload(:qc_table_test_outcome, nil) do
-    "Distribution not available"
+    nil
   end
 
   defp build_obsplot_payload(:qc_table_test_outcome, distribution) do
