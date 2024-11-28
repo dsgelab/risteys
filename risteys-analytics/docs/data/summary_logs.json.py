@@ -88,6 +88,10 @@ def filter_in_page_routes(dataf):
 
 
 def top_hits(dataf, limit):
+    # NOTE(Vincent 2024-11-28)  The output has one line => {Path, RequestResult},
+    # with RequestResult := Error | OK.  So multiplying by 2 here to get n rows in the output
+    # to be `limit`.
+    page_limit = limit * 2
     return (
         dataf
         .with_columns(
@@ -104,16 +108,7 @@ def top_hits(dataf, limit):
             pl.col("NHits").sum().over("Path").alias("NHitsTotal")
         )
         .sort("NHitsTotal", descending=True)
-        .head(limit)
-    )
-
-
-def top_hits_old(dataf, limit):
-    return (
-        dataf.group_by("Path")
-        .agg(pl.len().alias("NHits"))
-        .sort("NHits", descending=True)
-        .head(limit)
+        .head(page_limit)
     )
 
 
