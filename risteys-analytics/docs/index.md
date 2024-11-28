@@ -78,7 +78,7 @@ const bots_users = data.traffic.map(
 
 <div class="grid grid-cols-2">
   <div class="card">
-    <h2>Daily page hits</h2>
+    <h2>Daily page hits (from users)</h2>
   ${
   Plot.plot({
     style: "font-family: sans-serif",
@@ -96,10 +96,12 @@ const bots_users = data.traffic.map(
     ]
   })
   }
+
+  Hits excluding images, data, etc.
   </div>
 
   <div class="card">
-    <h2>Top page hits</h2>
+    <h2>Top page hits (from users)</h2>
   ${
   Plot.plot({
     style: "font-family: sans-serif",
@@ -118,6 +120,8 @@ const bots_users = data.traffic.map(
     ]
   })
   }
+
+  Hits excluding images, data, etc.
   </div>
 
   <div class="card">
@@ -145,4 +149,3 @@ const bots_users = data.traffic.map(
     <p>Requests include: pages, images, data, etc.</p>
   </div>
 </div>
-
